@@ -33,7 +33,10 @@ pub enum DiffParseError {
 /// `scope` controls whether we return:
 /// - `Scope::Added`: all added lines
 /// - `Scope::Changed`: only added lines that directly follow at least one removed line in the same hunk
-pub fn parse_unified_diff(diff_text: &str, scope: Scope) -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> {
+pub fn parse_unified_diff(
+    diff_text: &str,
+    scope: Scope,
+) -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> {
     let mut out: Vec<DiffLine> = Vec::new();
     let mut current_path: Option<String> = None;
 
@@ -103,7 +106,11 @@ pub fn parse_unified_diff(diff_text: &str, scope: Scope) -> Result<(Vec<DiffLine
                         path: path.to_string(),
                         line: new_line_no,
                         content: raw[1..].to_string(),
-                        kind: if is_changed { ChangeKind::Changed } else { ChangeKind::Added },
+                        kind: if is_changed {
+                            ChangeKind::Changed
+                        } else {
+                            ChangeKind::Added
+                        },
                     });
                 }
 
@@ -127,13 +134,12 @@ pub fn parse_unified_diff(diff_text: &str, scope: Scope) -> Result<(Vec<DiffLine
         files.insert(l.path.clone());
     }
 
-    Ok((
-        out,
-        DiffStats {
-            files: files.len() as u32,
-            lines: out.len() as u32,
-        },
-    ))
+    let stats = DiffStats {
+        files: files.len() as u32,
+        lines: out.len() as u32,
+    };
+
+    Ok((out, stats))
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -151,7 +157,9 @@ fn parse_hunk_header(line: &str) -> Result<HunkHeader, DiffParseError> {
         .ok_or_else(|| DiffParseError::MalformedHunkHeader(line.to_string()))?;
 
     // plus is like "+3,4" or "+3"
-    let plus = plus.strip_prefix('+').ok_or_else(|| DiffParseError::MalformedHunkHeader(line.to_string()))?;
+    let plus = plus
+        .strip_prefix('+')
+        .ok_or_else(|| DiffParseError::MalformedHunkHeader(line.to_string()))?;
     let start_str = plus.split(',').next().unwrap_or(plus);
     let new_start: u32 = start_str
         .parse()
@@ -187,7 +195,10 @@ fn parse_plus_plus_plus(line: &str) -> Option<String> {
 fn strip_prefix_path(p: &str) -> Option<String> {
     // strips a/ or b/
     let p = p.trim();
-    let p = p.strip_prefix("a/").or_else(|| p.strip_prefix("b/")).unwrap_or(p);
+    let p = p
+        .strip_prefix("a/")
+        .or_else(|| p.strip_prefix("b/"))
+        .unwrap_or(p);
 
     // Normalize to forward slashes for receipts.
     let normalized = Path::new(p)
