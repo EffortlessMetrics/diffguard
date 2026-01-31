@@ -13,7 +13,7 @@ This implementation plan breaks down the diffguard completion work into discrete
     - Return lowercase language identifiers
     - _Requirements: 1.1-1.13_
   
-  - [ ]* 1.2 Write property test for language detection
+  - [ ] 1.2 Write property test for language detection
     - **Property 1: Language Detection Correctness**
     - **Property 2: Unknown Extension Fallback**
     - **Validates: Requirements 1.1-1.13**
@@ -35,7 +35,7 @@ This implementation plan breaks down the diffguard completion work into discrete
     - Implement triple-quoted string detection for Python
     - _Requirements: 2.1-2.8_
   
-  - [ ]* 2.3 Write property tests for language-aware preprocessing
+  - [ ] 2.3 Write property tests for language-aware preprocessing
     - **Property 3: Comment Masking by Language**
     - **Property 4: String Masking by Language**
     - **Validates: Requirements 2.1-2.8**
@@ -68,7 +68,7 @@ This implementation plan breaks down the diffguard completion work into discrete
     - Configure appropriate paths and exclude_paths for test files
     - _Requirements: 3.5_
   
-  - [ ]* 5.4 Write property test for built-in rules compilation
+  - [ ] 5.4 Write property test for built-in rules compilation
     - **Property 5: Built-in Rules Compile Successfully**
     - **Validates: Requirements 3.6**
 
@@ -90,7 +90,7 @@ This implementation plan breaks down the diffguard completion work into discrete
     - Continue processing after malformed content
     - _Requirements: 4.1-4.6_
   
-  - [ ]* 6.3 Write property tests for enhanced diff parsing
+  - [ ] 6.3 Write property tests for enhanced diff parsing
     - **Property 6: Diff Parser Skips Special Files**
     - **Property 7: Diff Parser Handles Renames**
     - **Property 8: Diff Parser Resilience**
@@ -106,7 +106,7 @@ This implementation plan breaks down the diffguard completion work into discrete
     - Verify `schemas/diffguard.check.schema.json` is created
     - _Requirements: 5.1, 5.2_
   
-  - [ ]* 8.2 Write property test for schema validation
+  - [ ] 8.2 Write property test for schema validation
     - **Property 9: Schema Validation Round-Trip**
     - Add `jsonschema` dev dependency for validation
     - Generate random ConfigFile/CheckReceipt instances
@@ -114,7 +114,7 @@ This implementation plan breaks down the diffguard completion work into discrete
     - **Validates: Requirements 5.3, 5.4**
 
 - [ ] 9. Add error message context tests
-  - [ ]* 9.1 Write property test for error messages
+  - [ ] 9.1 Write property test for error messages
     - **Property 10: Error Messages Contain Context**
     - Test invalid regex returns error with rule_id and pattern
     - Test invalid glob returns error with rule_id and glob
@@ -164,7 +164,7 @@ This implementation plan breaks down the diffguard completion work into discrete
 
 ## Notes
 
-- Tasks marked with `*` are optional and can be skipped for faster MVP
+- All tasks are required for comprehensive testing
 - Each task references specific requirements for traceability
 - Checkpoints ensure incremental validation
 - Property tests validate universal correctness properties
