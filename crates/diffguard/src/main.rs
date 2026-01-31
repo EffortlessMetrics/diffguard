@@ -191,10 +191,7 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
         .or(cfg.defaults.max_findings.map(|v| v as usize))
         .unwrap_or(200);
 
-    let diff_context = args
-        .diff_context
-        .or(cfg.defaults.diff_context)
-        .unwrap_or(0);
+    let diff_context = args.diff_context.or(cfg.defaults.diff_context).unwrap_or(0);
 
     let diff_text = git_diff(&base, &head, diff_context)?;
 
@@ -242,8 +239,8 @@ fn load_config(path: Option<PathBuf>, no_default_rules: bool) -> Result<ConfigFi
     let text = std::fs::read_to_string(&path)
         .with_context(|| format!("read config {}", path.display()))?;
 
-    let parsed: ConfigFile = toml::from_str(&text)
-        .with_context(|| format!("parse config {}", path.display()))?;
+    let parsed: ConfigFile =
+        toml::from_str(&text).with_context(|| format!("parse config {}", path.display()))?;
 
     if no_default_rules {
         return Ok(parsed);

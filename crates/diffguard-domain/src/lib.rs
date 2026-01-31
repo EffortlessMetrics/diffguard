@@ -8,4 +8,4 @@ pub mod rules;
 
 pub use evaluate::{evaluate_lines, Evaluation, InputLine};
 pub use preprocess::{PreprocessOptions, Preprocessor};
-pub use rules::{compile_rules, CompiledRule, RuleCompileError};
+pub use rules::{compile_rules, detect_language, CompiledRule, RuleCompileError};

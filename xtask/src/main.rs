@@ -36,7 +36,17 @@ fn main() -> Result<()> {
 
 fn ci() -> Result<()> {
     run("cargo", &["fmt", "--check"])?;
-    run("cargo", &["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"])?;
+    run(
+        "cargo",
+        &[
+            "clippy",
+            "--workspace",
+            "--all-targets",
+            "--",
+            "-D",
+            "warnings",
+        ],
+    )?;
     run("cargo", &["test", "--workspace"])?;
     Ok(())
 }

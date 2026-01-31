@@ -7,7 +7,12 @@ fn run_git(dir: &std::path::Path, args: &[&str]) -> String {
         .args(args)
         .output()
         .expect("git should run");
-    assert!(out.status.success(), "git {:?} failed: {}", args, String::from_utf8_lossy(&out.stderr));
+    assert!(
+        out.status.success(),
+        "git {:?} failed: {}",
+        args,
+        String::from_utf8_lossy(&out.stderr)
+    );
     String::from_utf8_lossy(&out.stdout).trim().to_string()
 }
 
@@ -21,7 +26,11 @@ fn init_repo() -> (TempDir, String) {
 
     // baseline file
     std::fs::create_dir_all(dir.join("src")).unwrap();
-    std::fs::write(dir.join("src/lib.rs"), "pub fn f() -> Option<u32> { Some(1) }\n").unwrap();
+    std::fs::write(
+        dir.join("src/lib.rs"),
+        "pub fn f() -> Option<u32> { Some(1) }\n",
+    )
+    .unwrap();
 
     run_git(dir, &["add", "."]);
     run_git(dir, &["commit", "-m", "base"]);

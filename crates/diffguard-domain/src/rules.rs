@@ -129,9 +129,22 @@ fn compile_globs(globs: &[String], rule_id: &str) -> Result<Option<GlobSet>, Rul
     Ok(Some(builder.build().expect("globset build should succeed")))
 }
 
+/// Detects programming language from file extension.
+/// Returns lowercase language identifier or None for unknown extensions.
 pub fn detect_language(path: &Path) -> Option<&'static str> {
-    match path.extension().and_then(|e| e.to_str()) {
-        Some("rs") => Some("rust"),
+    let ext = path.extension()?.to_str()?;
+    match ext.to_ascii_lowercase().as_str() {
+        "rs" => Some("rust"),
+        "py" | "pyw" => Some("python"),
+        "js" | "mjs" | "cjs" | "jsx" => Some("javascript"),
+        "ts" | "mts" | "cts" | "tsx" => Some("typescript"),
+        "go" => Some("go"),
+        "java" => Some("java"),
+        "kt" | "kts" => Some("kotlin"),
+        "rb" | "rake" => Some("ruby"),
+        "c" | "h" => Some("c"),
+        "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" => Some("cpp"),
+        "cs" => Some("csharp"),
         _ => None,
     }
 }
@@ -160,5 +173,100 @@ mod tests {
         assert!(r.applies_to(Path::new("src/lib.rs"), Some("rust")));
         assert!(!r.applies_to(Path::new("src/lib.rs"), Some("python")));
         assert!(!r.applies_to(Path::new("tests/test.rs"), Some("rust")));
+    }
+
+    #[test]
+    fn detect_language_rust() {
+        assert_eq!(detect_language(Path::new("src/lib.rs")), Some("rust"));
+    }
+
+    #[test]
+    fn detect_language_python() {
+        assert_eq!(detect_language(Path::new("script.py")), Some("python"));
+        assert_eq!(detect_language(Path::new("script.pyw")), Some("python"));
+    }
+
+    #[test]
+    fn detect_language_javascript() {
+        assert_eq!(detect_language(Path::new("app.js")), Some("javascript"));
+        assert_eq!(detect_language(Path::new("module.mjs")), Some("javascript"));
+        assert_eq!(detect_language(Path::new("module.cjs")), Some("javascript"));
+        assert_eq!(
+            detect_language(Path::new("component.jsx")),
+            Some("javascript")
+        );
+    }
+
+    #[test]
+    fn detect_language_typescript() {
+        assert_eq!(detect_language(Path::new("app.ts")), Some("typescript"));
+        assert_eq!(detect_language(Path::new("module.mts")), Some("typescript"));
+        assert_eq!(detect_language(Path::new("module.cts")), Some("typescript"));
+        assert_eq!(
+            detect_language(Path::new("component.tsx")),
+            Some("typescript")
+        );
+    }
+
+    #[test]
+    fn detect_language_go() {
+        assert_eq!(detect_language(Path::new("main.go")), Some("go"));
+    }
+
+    #[test]
+    fn detect_language_java() {
+        assert_eq!(detect_language(Path::new("Main.java")), Some("java"));
+    }
+
+    #[test]
+    fn detect_language_kotlin() {
+        assert_eq!(detect_language(Path::new("Main.kt")), Some("kotlin"));
+        assert_eq!(detect_language(Path::new("build.kts")), Some("kotlin"));
+    }
+
+    #[test]
+    fn detect_language_ruby() {
+        assert_eq!(detect_language(Path::new("script.rb")), Some("ruby"));
+        assert_eq!(detect_language(Path::new("Rakefile.rake")), Some("ruby"));
+    }
+
+    #[test]
+    fn detect_language_c() {
+        assert_eq!(detect_language(Path::new("main.c")), Some("c"));
+        assert_eq!(detect_language(Path::new("header.h")), Some("c"));
+    }
+
+    #[test]
+    fn detect_language_cpp() {
+        assert_eq!(detect_language(Path::new("main.cpp")), Some("cpp"));
+        assert_eq!(detect_language(Path::new("main.cc")), Some("cpp"));
+        assert_eq!(detect_language(Path::new("main.cxx")), Some("cpp"));
+        assert_eq!(detect_language(Path::new("header.hpp")), Some("cpp"));
+        assert_eq!(detect_language(Path::new("header.hxx")), Some("cpp"));
+        assert_eq!(detect_language(Path::new("header.hh")), Some("cpp"));
+    }
+
+    #[test]
+    fn detect_language_csharp() {
+        assert_eq!(detect_language(Path::new("Program.cs")), Some("csharp"));
+    }
+
+    #[test]
+    fn detect_language_unknown() {
+        assert_eq!(detect_language(Path::new("file.txt")), None);
+        assert_eq!(detect_language(Path::new("file.md")), None);
+        assert_eq!(detect_language(Path::new("file.json")), None);
+        assert_eq!(detect_language(Path::new("file.yaml")), None);
+        assert_eq!(detect_language(Path::new("file")), None);
+    }
+
+    #[test]
+    fn detect_language_case_insensitive() {
+        // Test that extension matching is case-insensitive
+        assert_eq!(detect_language(Path::new("file.RS")), Some("rust"));
+        assert_eq!(detect_language(Path::new("file.PY")), Some("python"));
+        assert_eq!(detect_language(Path::new("file.JS")), Some("javascript"));
+        assert_eq!(detect_language(Path::new("file.TS")), Some("typescript"));
+        assert_eq!(detect_language(Path::new("file.CPP")), Some("cpp"));
     }
 }

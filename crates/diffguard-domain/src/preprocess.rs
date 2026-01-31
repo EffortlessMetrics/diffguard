@@ -1,5 +1,94 @@
 use std::fmt;
 
+/// Supported programming languages for preprocessing.
+///
+/// Each language has specific comment and string syntax that the preprocessor
+/// uses to correctly mask comments and strings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Language {
+    Rust,
+    Python,
+    JavaScript,
+    TypeScript,
+    Go,
+    Ruby,
+    C,
+    Cpp,
+    CSharp,
+    Java,
+    Kotlin,
+    #[default]
+    Unknown,
+}
+
+impl Language {
+    /// Parse a language identifier string into a Language enum.
+    ///
+    /// The matching is case-insensitive.
+    pub fn from_str(s: &str) -> Self {
+        match s.to_ascii_lowercase().as_str() {
+            "rust" => Language::Rust,
+            "python" => Language::Python,
+            "javascript" => Language::JavaScript,
+            "typescript" => Language::TypeScript,
+            "go" => Language::Go,
+            "ruby" => Language::Ruby,
+            "c" => Language::C,
+            "cpp" => Language::Cpp,
+            "csharp" => Language::CSharp,
+            "java" => Language::Java,
+            "kotlin" => Language::Kotlin,
+            _ => Language::Unknown,
+        }
+    }
+
+    /// Returns the comment syntax for this language.
+    pub fn comment_syntax(self) -> CommentSyntax {
+        match self {
+            Language::Python | Language::Ruby => CommentSyntax::Hash,
+            Language::Rust => CommentSyntax::CStyleNested,
+            _ => CommentSyntax::CStyle,
+        }
+    }
+
+    /// Returns the string syntax for this language.
+    pub fn string_syntax(self) -> StringSyntax {
+        match self {
+            Language::Rust => StringSyntax::Rust,
+            Language::Python => StringSyntax::Python,
+            Language::JavaScript | Language::TypeScript => StringSyntax::JavaScript,
+            Language::Go => StringSyntax::Go,
+            _ => StringSyntax::CStyle,
+        }
+    }
+}
+
+/// Comment syntax variants for different programming languages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommentSyntax {
+    /// C-style comments: `//` line comments and `/* */` block comments
+    CStyle,
+    /// C-style comments with nesting support (Rust): `//` and `/* */` with nesting
+    CStyleNested,
+    /// Hash comments only: `#` line comments (Python, Ruby)
+    Hash,
+}
+
+/// String syntax variants for different programming languages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StringSyntax {
+    /// C-style strings: `"..."` with backslash escapes
+    CStyle,
+    /// Rust strings: `"..."`, `r#"..."#`, `b"..."`
+    Rust,
+    /// Python strings: `"..."`, `'...'`, `"""..."""`, `'''...'''`
+    Python,
+    /// JavaScript strings: `"..."`, `'...'`, `` `...` `` (template literals)
+    JavaScript,
+    /// Go strings: `"..."`, `` `...` `` (raw strings)
+    Go,
+}
+
 /// Preprocessing options.
 ///
 /// `mask_*` controls whether the corresponding token class is replaced with spaces.
@@ -186,7 +275,11 @@ impl Preprocessor {
                     }
 
                     // Nested block comments are possible in Rust.
-                    if self.opts.mask_comments && bytes[i] == b'/' && i + 1 < len && bytes[i + 1] == b'*' {
+                    if self.opts.mask_comments
+                        && bytes[i] == b'/'
+                        && i + 1 < len
+                        && bytes[i + 1] == b'*'
+                    {
                         if self.opts.mask_comments {
                             out[i + 1] = b' ';
                         }
@@ -195,7 +288,11 @@ impl Preprocessor {
                         continue;
                     }
 
-                    if self.opts.mask_comments && bytes[i] == b'*' && i + 1 < len && bytes[i + 1] == b'/' {
+                    if self.opts.mask_comments
+                        && bytes[i] == b'*'
+                        && i + 1 < len
+                        && bytes[i + 1] == b'/'
+                    {
                         if self.opts.mask_comments {
                             out[i + 1] = b' ';
                         }
@@ -342,6 +439,119 @@ fn detect_raw_string_start(bytes: &[u8], i: usize) -> Option<(usize, usize, usiz
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ==================== Language enum tests ====================
+
+    #[test]
+    fn language_from_str_known_languages() {
+        assert_eq!(Language::from_str("rust"), Language::Rust);
+        assert_eq!(Language::from_str("python"), Language::Python);
+        assert_eq!(Language::from_str("javascript"), Language::JavaScript);
+        assert_eq!(Language::from_str("typescript"), Language::TypeScript);
+        assert_eq!(Language::from_str("go"), Language::Go);
+        assert_eq!(Language::from_str("ruby"), Language::Ruby);
+        assert_eq!(Language::from_str("c"), Language::C);
+        assert_eq!(Language::from_str("cpp"), Language::Cpp);
+        assert_eq!(Language::from_str("csharp"), Language::CSharp);
+        assert_eq!(Language::from_str("java"), Language::Java);
+        assert_eq!(Language::from_str("kotlin"), Language::Kotlin);
+    }
+
+    #[test]
+    fn language_from_str_case_insensitive() {
+        assert_eq!(Language::from_str("RUST"), Language::Rust);
+        assert_eq!(Language::from_str("Python"), Language::Python);
+        assert_eq!(Language::from_str("JavaScript"), Language::JavaScript);
+        assert_eq!(Language::from_str("TypeScript"), Language::TypeScript);
+        assert_eq!(Language::from_str("GO"), Language::Go);
+        assert_eq!(Language::from_str("RUBY"), Language::Ruby);
+        assert_eq!(Language::from_str("C"), Language::C);
+        assert_eq!(Language::from_str("CPP"), Language::Cpp);
+        assert_eq!(Language::from_str("CSharp"), Language::CSharp);
+        assert_eq!(Language::from_str("JAVA"), Language::Java);
+        assert_eq!(Language::from_str("KOTLIN"), Language::Kotlin);
+    }
+
+    #[test]
+    fn language_from_str_unknown() {
+        assert_eq!(Language::from_str("unknown"), Language::Unknown);
+        assert_eq!(Language::from_str(""), Language::Unknown);
+        assert_eq!(Language::from_str("fortran"), Language::Unknown);
+        assert_eq!(Language::from_str("cobol"), Language::Unknown);
+    }
+
+    #[test]
+    fn language_default_is_unknown() {
+        assert_eq!(Language::default(), Language::Unknown);
+    }
+
+    // ==================== CommentSyntax tests ====================
+
+    #[test]
+    fn comment_syntax_hash_languages() {
+        assert_eq!(Language::Python.comment_syntax(), CommentSyntax::Hash);
+        assert_eq!(Language::Ruby.comment_syntax(), CommentSyntax::Hash);
+    }
+
+    #[test]
+    fn comment_syntax_cstyle_nested_languages() {
+        assert_eq!(Language::Rust.comment_syntax(), CommentSyntax::CStyleNested);
+    }
+
+    #[test]
+    fn comment_syntax_cstyle_languages() {
+        assert_eq!(Language::JavaScript.comment_syntax(), CommentSyntax::CStyle);
+        assert_eq!(Language::TypeScript.comment_syntax(), CommentSyntax::CStyle);
+        assert_eq!(Language::Go.comment_syntax(), CommentSyntax::CStyle);
+        assert_eq!(Language::C.comment_syntax(), CommentSyntax::CStyle);
+        assert_eq!(Language::Cpp.comment_syntax(), CommentSyntax::CStyle);
+        assert_eq!(Language::CSharp.comment_syntax(), CommentSyntax::CStyle);
+        assert_eq!(Language::Java.comment_syntax(), CommentSyntax::CStyle);
+        assert_eq!(Language::Kotlin.comment_syntax(), CommentSyntax::CStyle);
+        assert_eq!(Language::Unknown.comment_syntax(), CommentSyntax::CStyle);
+    }
+
+    // ==================== StringSyntax tests ====================
+
+    #[test]
+    fn string_syntax_rust() {
+        assert_eq!(Language::Rust.string_syntax(), StringSyntax::Rust);
+    }
+
+    #[test]
+    fn string_syntax_python() {
+        assert_eq!(Language::Python.string_syntax(), StringSyntax::Python);
+    }
+
+    #[test]
+    fn string_syntax_javascript() {
+        assert_eq!(
+            Language::JavaScript.string_syntax(),
+            StringSyntax::JavaScript
+        );
+        assert_eq!(
+            Language::TypeScript.string_syntax(),
+            StringSyntax::JavaScript
+        );
+    }
+
+    #[test]
+    fn string_syntax_go() {
+        assert_eq!(Language::Go.string_syntax(), StringSyntax::Go);
+    }
+
+    #[test]
+    fn string_syntax_cstyle_languages() {
+        assert_eq!(Language::C.string_syntax(), StringSyntax::CStyle);
+        assert_eq!(Language::Cpp.string_syntax(), StringSyntax::CStyle);
+        assert_eq!(Language::CSharp.string_syntax(), StringSyntax::CStyle);
+        assert_eq!(Language::Java.string_syntax(), StringSyntax::CStyle);
+        assert_eq!(Language::Kotlin.string_syntax(), StringSyntax::CStyle);
+        assert_eq!(Language::Ruby.string_syntax(), StringSyntax::CStyle);
+        assert_eq!(Language::Unknown.string_syntax(), StringSyntax::CStyle);
+    }
+
+    // ==================== Preprocessor tests ====================
 
     #[test]
     fn masks_line_comments_when_enabled() {
