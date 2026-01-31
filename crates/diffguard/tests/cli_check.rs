@@ -1,3 +1,4 @@
+use assert_cmd::cargo;
 use assert_cmd::Command;
 use tempfile::TempDir;
 
@@ -55,7 +56,7 @@ fn fails_on_unwrap_by_default() {
     run_git(dir, &["commit", "-m", "change"]);
     let head = run_git(dir, &["rev-parse", "HEAD"]);
 
-    let mut cmd = Command::cargo_bin("diffguard").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("diffguard"));
     cmd.current_dir(dir)
         .arg("check")
         .arg("--base")
@@ -87,7 +88,7 @@ fn warnings_do_not_fail_by_default_but_can() {
     let head = run_git(dir, &["rev-parse", "HEAD"]);
 
     // default: fail_on=error => exit 0 even with warnings
-    let mut cmd = Command::cargo_bin("diffguard").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("diffguard"));
     cmd.current_dir(dir)
         .arg("check")
         .arg("--base")
@@ -100,7 +101,7 @@ fn warnings_do_not_fail_by_default_but_can() {
     cmd.assert().code(0);
 
     // configured: fail_on=warn => exit 3
-    let mut cmd = Command::cargo_bin("diffguard").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("diffguard"));
     cmd.current_dir(dir)
         .arg("check")
         .arg("--base")

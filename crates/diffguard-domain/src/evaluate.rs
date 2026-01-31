@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use diffguard_types::{Finding, Severity, VerdictCounts};
 
-use crate::preprocess::{PreprocessOptions, Preprocessor};
+use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
 use crate::rules::{detect_language, CompiledRule};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,9 +34,13 @@ pub fn evaluate_lines(
     let mut lines_scanned: u32 = 0;
 
     let mut current_file: Option<String> = None;
-    let mut p_comments = Preprocessor::new(PreprocessOptions::comments_only());
-    let mut p_strings = Preprocessor::new(PreprocessOptions::strings_only());
-    let mut p_both = Preprocessor::new(PreprocessOptions::comments_and_strings());
+    let mut current_lang = Language::Unknown;
+    let mut p_comments =
+        Preprocessor::with_language(PreprocessOptions::comments_only(), current_lang);
+    let mut p_strings =
+        Preprocessor::with_language(PreprocessOptions::strings_only(), current_lang);
+    let mut p_both =
+        Preprocessor::with_language(PreprocessOptions::comments_and_strings(), current_lang);
 
     for l in lines {
         lines_scanned = lines_scanned.saturating_add(1);
@@ -44,9 +48,18 @@ pub fn evaluate_lines(
 
         if current_file.as_deref() != Some(&l.path) {
             current_file = Some(l.path.clone());
-            p_comments.reset();
-            p_strings.reset();
-            p_both.reset();
+
+            // Detect language from file path and update preprocessors
+            let path = std::path::Path::new(&l.path);
+            let lang_str = detect_language(path);
+            current_lang = lang_str
+                .map(|s| s.parse::<Language>().unwrap_or(Language::Unknown))
+                .unwrap_or(Language::Unknown);
+
+            // Update preprocessors with the new language
+            p_comments.set_language(current_lang);
+            p_strings.set_language(current_lang);
+            p_both.set_language(current_lang);
         }
 
         let path = std::path::Path::new(&l.path);
@@ -237,5 +250,171 @@ mod tests {
         assert_eq!(eval.counts.warn, 5);
         assert_eq!(eval.findings.len(), 2);
         assert_eq!(eval.truncated_findings, 3);
+    }
+
+    #[test]
+    fn python_hash_comment_ignored_with_language_aware_preprocessing() {
+        // This test verifies that Python hash comments are properly ignored
+        // when processing Python files (language-aware preprocessing)
+        let rules = compile_rules(&[RuleConfig {
+            id: "python.no_print".to_string(),
+            severity: Severity::Warn,
+            message: "no print".to_string(),
+            languages: vec!["python".to_string()],
+            patterns: vec![r"\bprint\s*\(".to_string()],
+            paths: vec!["**/*.py".to_string()],
+            exclude_paths: vec![],
+            ignore_comments: true,
+            ignore_strings: false,
+        }])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "src/main.py".to_string(),
+                line: 1,
+                content: "# print() should be ignored in comment".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        // Hash comment should be masked for Python files
+        assert_eq!(eval.counts.warn, 0);
+        assert_eq!(eval.findings.len(), 0);
+    }
+
+    #[test]
+    fn python_print_detected_outside_comment() {
+        // This test verifies that print() is detected when not in a comment
+        let rules = compile_rules(&[RuleConfig {
+            id: "python.no_print".to_string(),
+            severity: Severity::Warn,
+            message: "no print".to_string(),
+            languages: vec!["python".to_string()],
+            patterns: vec![r"\bprint\s*\(".to_string()],
+            paths: vec!["**/*.py".to_string()],
+            exclude_paths: vec![],
+            ignore_comments: true,
+            ignore_strings: false,
+        }])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "src/main.py".to_string(),
+                line: 1,
+                content: "print('hello')".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        assert_eq!(eval.counts.warn, 1);
+        assert_eq!(eval.findings.len(), 1);
+    }
+
+    #[test]
+    fn javascript_template_literal_ignored_with_language_aware_preprocessing() {
+        // This test verifies that JavaScript template literals are properly ignored
+        let rules = compile_rules(&[RuleConfig {
+            id: "js.no_console".to_string(),
+            severity: Severity::Warn,
+            message: "no console".to_string(),
+            languages: vec!["javascript".to_string()],
+            patterns: vec![r"\bconsole\.log\s*\(".to_string()],
+            paths: vec!["**/*.js".to_string()],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: true,
+        }])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "src/main.js".to_string(),
+                line: 1,
+                content: "const msg = `console.log() in template literal`;".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        // Template literal should be masked for JavaScript files
+        assert_eq!(eval.counts.warn, 0);
+        assert_eq!(eval.findings.len(), 0);
+    }
+
+    #[test]
+    fn go_backtick_raw_string_ignored_with_language_aware_preprocessing() {
+        // This test verifies that Go backtick raw strings are properly ignored
+        let rules = compile_rules(&[RuleConfig {
+            id: "go.no_fmt_print".to_string(),
+            severity: Severity::Warn,
+            message: "no fmt.Println".to_string(),
+            languages: vec!["go".to_string()],
+            patterns: vec![r"\bfmt\.Println\s*\(".to_string()],
+            paths: vec!["**/*.go".to_string()],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: true,
+        }])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "src/main.go".to_string(),
+                line: 1,
+                content: "var s = `fmt.Println() in raw string`".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        // Backtick raw string should be masked for Go files
+        assert_eq!(eval.counts.warn, 0);
+        assert_eq!(eval.findings.len(), 0);
+    }
+
+    #[test]
+    fn language_changes_between_files() {
+        // This test verifies that the preprocessor correctly switches languages
+        // when processing files with different extensions
+        let rules = compile_rules(&[RuleConfig {
+            id: "detect_pattern".to_string(),
+            severity: Severity::Warn,
+            message: "found pattern".to_string(),
+            languages: vec![],
+            patterns: vec!["pattern".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: true,
+            ignore_strings: false,
+        }])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [
+                // Python file - hash comment should be ignored
+                InputLine {
+                    path: "src/main.py".to_string(),
+                    line: 1,
+                    content: "# pattern in python comment".to_string(),
+                },
+                // Rust file - hash is NOT a comment, should be detected
+                InputLine {
+                    path: "src/lib.rs".to_string(),
+                    line: 1,
+                    content: "# pattern in rust (not a comment)".to_string(),
+                },
+            ],
+            &rules,
+            100,
+        );
+
+        // Only the Rust file should have a finding (hash is not a comment in Rust)
+        assert_eq!(eval.counts.warn, 1);
+        assert_eq!(eval.findings.len(), 1);
+        assert_eq!(eval.findings[0].path, "src/lib.rs");
     }
 }

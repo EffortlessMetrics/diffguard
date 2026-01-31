@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CheckReceipt",
+  "type": "object",
+  "required": [
+    "diff",
+    "findings",
+    "schema",
+    "tool",
+    "verdict"
+  ],
+  "properties": {
+    "diff": {
+      "$ref": "#/definitions/DiffMeta"
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Finding"
+      }
+    },
+    "schema": {
+      "type": "string"
+    },
+    "tool": {
+      "$ref": "#/definitions/ToolMeta"
+    },
+    "verdict": {
+      "$ref": "#/definitions/Verdict"
+    }
+  },
+  "definitions": {
+    "DiffMeta": {
+      "type": "object",
+      "required": [
+        "base",
+        "context_lines",
+        "files_scanned",
+        "head",
+        "lines_scanned",
+        "scope"
+      ],
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "context_lines": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "files_scanned": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "head": {
+          "type": "string"
+        },
+        "lines_scanned": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "scope": {
+          "$ref": "#/definitions/Scope"
+        }
+      }
+    },
+    "Finding": {
+      "type": "object",
+      "required": [
+        "line",
+        "match_text",
+        "message",
+        "path",
+        "rule_id",
+        "severity",
+        "snippet"
+      ],
+      "properties": {
+        "column": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "line": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "match_text": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/definitions/Severity"
+        },
+        "snippet": {
+          "type": "string"
+        }
+      }
+    },
+    "Scope": {
+      "type": "string",
+      "enum": [
+        "added",
+        "changed"
+      ]
+    },
+    "Severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warn",
+        "error"
+      ]
+    },
+    "ToolMeta": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "Verdict": {
+      "type": "object",
+      "required": [
+        "counts",
+        "reasons",
+        "status"
+      ],
+      "properties": {
+        "counts": {
+          "$ref": "#/definitions/VerdictCounts"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "$ref": "#/definitions/VerdictStatus"
+        }
+      }
+    },
+    "VerdictCounts": {
+      "type": "object",
+      "required": [
+        "error",
+        "info",
+        "warn"
+      ],
+      "properties": {
+        "error": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "info": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "warn": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    },
+    "VerdictStatus": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "warn",
+        "fail"
+      ]
+    }
+  }
+}

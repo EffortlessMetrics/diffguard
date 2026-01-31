@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConfigFile",
+  "description": "The on-disk configuration file.",
+  "type": "object",
+  "properties": {
+    "defaults": {
+      "default": {
+        "base": "origin/main",
+        "diff_context": 0,
+        "fail_on": "error",
+        "head": "HEAD",
+        "max_findings": 200,
+        "scope": "added"
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/Defaults"
+        }
+      ]
+    },
+    "rule": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/RuleConfig"
+      }
+    }
+  },
+  "definitions": {
+    "Defaults": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "diff_context": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "fail_on": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/FailOn"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "head": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "max_findings": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "scope": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Scope"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "FailOn": {
+      "type": "string",
+      "enum": [
+        "error",
+        "warn",
+        "never"
+      ]
+    },
+    "RuleConfig": {
+      "type": "object",
+      "required": [
+        "id",
+        "message",
+        "patterns",
+        "severity"
+      ],
+      "properties": {
+        "exclude_paths": {
+          "description": "Exclude path globs.",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "id": {
+          "type": "string"
+        },
+        "ignore_comments": {
+          "default": false,
+          "type": "boolean"
+        },
+        "ignore_strings": {
+          "default": false,
+          "type": "boolean"
+        },
+        "languages": {
+          "description": "Optional language tags (e.g. \"rust\"). Empty means \"all\".",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "message": {
+          "type": "string"
+        },
+        "paths": {
+          "description": "Include path globs. Empty means \"all\".",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "patterns": {
+          "description": "One or more regex patterns.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "severity": {
+          "$ref": "#/definitions/Severity"
+        }
+      }
+    },
+    "Scope": {
+      "type": "string",
+      "enum": [
+        "added",
+        "changed"
+      ]
+    },
+    "Severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warn",
+        "error"
+      ]
+    }
+  }
+}

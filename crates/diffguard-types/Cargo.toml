@@ -10,3 +10,6 @@ serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true
 
+[dev-dependencies]
+proptest.workspace = true
+jsonschema = "0.18"

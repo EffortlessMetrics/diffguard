@@ -7,8 +7,12 @@ edition = "2021"
 [package.metadata]
 cargo-fuzz = true
 
+# Exclude from parent workspace (required for cargo-fuzz)
+[workspace]
+
 [dependencies]
 libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
 
 diffguard-diff = { path = "../crates/diffguard-diff" }
 diffguard-domain = { path = "../crates/diffguard-domain" }
@@ -23,5 +27,11 @@ doc = false
 [[bin]]
 name = "preprocess"
 path = "fuzz_targets/preprocess.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "rule_matcher"
+path = "fuzz_targets/rule_matcher.rs"
 test = false
 doc = false

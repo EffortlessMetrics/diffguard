@@ -13,3 +13,4 @@ diffguard-types = { path = "../diffguard-types" }
 
 [dev-dependencies]
 insta.workspace = true
+proptest.workspace = true

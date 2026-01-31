@@ -269,4 +269,476 @@ mod tests {
         assert_eq!(detect_language(Path::new("file.TS")), Some("typescript"));
         assert_eq!(detect_language(Path::new("file.CPP")), Some("cpp"));
     }
+
+    // =========================================================================
+    // Rule Matching Tests - Task 12.3
+    // Requirements: 9.4, 9.5
+    // =========================================================================
+
+    // --- Overlapping Patterns Tests (first match wins) ---
+
+    #[test]
+    fn overlapping_patterns_first_pattern_wins() {
+        // When multiple patterns could match, the first pattern in the list wins
+        let cfg = RuleConfig {
+            id: "test.overlapping".to_string(),
+            severity: Severity::Warn,
+            message: "found match".to_string(),
+            languages: vec![],
+            patterns: vec![
+                "foo".to_string(),    // First pattern
+                "foobar".to_string(), // Second pattern (more specific)
+            ],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Both patterns could match "foobar", but first_match should return "foo"
+        let content = "foobar";
+        let mut matched = false;
+        for p in &r.patterns {
+            if let Some(m) = p.find(content) {
+                // First pattern "foo" should match at position 0-3
+                assert_eq!(m.start(), 0);
+                assert_eq!(m.end(), 3);
+                assert_eq!(&content[m.start()..m.end()], "foo");
+                matched = true;
+                break;
+            }
+        }
+        assert!(matched, "Expected a pattern to match");
+    }
+
+    #[test]
+    fn overlapping_rules_first_rule_wins() {
+        // When multiple rules could match the same content, both produce findings
+        // but the order of findings follows the rule order
+        let configs = vec![
+            RuleConfig {
+                id: "rule.first".to_string(),
+                severity: Severity::Warn,
+                message: "first rule".to_string(),
+                languages: vec![],
+                patterns: vec!["error".to_string()],
+                paths: vec![],
+                exclude_paths: vec![],
+                ignore_comments: false,
+                ignore_strings: false,
+            },
+            RuleConfig {
+                id: "rule.second".to_string(),
+                severity: Severity::Error,
+                message: "second rule".to_string(),
+                languages: vec![],
+                patterns: vec!["error".to_string()],
+                paths: vec![],
+                exclude_paths: vec![],
+                ignore_comments: false,
+                ignore_strings: false,
+            },
+        ];
+
+        let rules = compile_rules(&configs).unwrap();
+        assert_eq!(rules.len(), 2);
+        assert_eq!(rules[0].id, "rule.first");
+        assert_eq!(rules[1].id, "rule.second");
+    }
+
+    #[test]
+    fn overlapping_patterns_specific_vs_general() {
+        // Test that pattern order matters: general pattern first catches everything
+        let cfg = RuleConfig {
+            id: "test.general_first".to_string(),
+            severity: Severity::Warn,
+            message: "found".to_string(),
+            languages: vec![],
+            patterns: vec![
+                r"\w+".to_string(),      // General: matches any word
+                r"specific".to_string(), // Specific: matches only "specific"
+            ],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // The general pattern should match first
+        let content = "specific";
+        if let Some(m) = r.patterns[0].find(content) {
+            assert_eq!(&content[m.start()..m.end()], "specific");
+        }
+    }
+
+    // --- Complex Glob Pattern Tests ---
+
+    #[test]
+    fn glob_pattern_recursive_wildcard() {
+        // Test **/*.rs matches files in any subdirectory
+        let cfg = RuleConfig {
+            id: "test.glob".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec![],
+            patterns: vec!["x".to_string()],
+            paths: vec!["**/*.rs".to_string()],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match files at any depth
+        assert!(r.applies_to(Path::new("lib.rs"), None));
+        assert!(r.applies_to(Path::new("src/lib.rs"), None));
+        assert!(r.applies_to(Path::new("src/foo/bar/lib.rs"), None));
+        assert!(r.applies_to(Path::new("deeply/nested/path/to/file.rs"), None));
+
+        // Should not match non-.rs files
+        assert!(!r.applies_to(Path::new("src/lib.py"), None));
+        assert!(!r.applies_to(Path::new("src/lib.rs.bak"), None));
+    }
+
+    #[test]
+    fn glob_pattern_specific_directory() {
+        // Test src/**/*.ts matches only files under src/
+        let cfg = RuleConfig {
+            id: "test.glob".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec![],
+            patterns: vec!["x".to_string()],
+            paths: vec!["src/**/*.ts".to_string()],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match files under src/
+        assert!(r.applies_to(Path::new("src/app.ts"), None));
+        assert!(r.applies_to(Path::new("src/components/Button.ts"), None));
+        assert!(r.applies_to(Path::new("src/a/b/c/d.ts"), None));
+
+        // Should not match files outside src/
+        assert!(!r.applies_to(Path::new("app.ts"), None));
+        assert!(!r.applies_to(Path::new("lib/app.ts"), None));
+        assert!(!r.applies_to(Path::new("tests/app.ts"), None));
+    }
+
+    #[test]
+    fn glob_pattern_exclude_test_directories() {
+        // Test excluding **/test/** and **/tests/**
+        let cfg = RuleConfig {
+            id: "test.glob".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec![],
+            patterns: vec!["x".to_string()],
+            paths: vec!["**/*.rs".to_string()],
+            exclude_paths: vec!["**/test/**".to_string(), "**/tests/**".to_string()],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match regular source files
+        assert!(r.applies_to(Path::new("src/lib.rs"), None));
+        assert!(r.applies_to(Path::new("src/foo/bar.rs"), None));
+
+        // Should exclude test directories
+        assert!(!r.applies_to(Path::new("test/lib.rs"), None));
+        assert!(!r.applies_to(Path::new("tests/lib.rs"), None));
+        assert!(!r.applies_to(Path::new("src/test/lib.rs"), None));
+        assert!(!r.applies_to(Path::new("src/tests/lib.rs"), None));
+        assert!(!r.applies_to(Path::new("foo/test/bar.rs"), None));
+        assert!(!r.applies_to(Path::new("foo/tests/bar.rs"), None));
+    }
+
+    #[test]
+    fn glob_pattern_multiple_extensions() {
+        // Test matching multiple file extensions
+        let cfg = RuleConfig {
+            id: "test.glob".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec![],
+            patterns: vec!["x".to_string()],
+            paths: vec![
+                "**/*.js".to_string(),
+                "**/*.ts".to_string(),
+                "**/*.jsx".to_string(),
+                "**/*.tsx".to_string(),
+            ],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match all specified extensions
+        assert!(r.applies_to(Path::new("src/app.js"), None));
+        assert!(r.applies_to(Path::new("src/app.ts"), None));
+        assert!(r.applies_to(Path::new("src/App.jsx"), None));
+        assert!(r.applies_to(Path::new("src/App.tsx"), None));
+
+        // Should not match other extensions
+        assert!(!r.applies_to(Path::new("src/app.py"), None));
+        assert!(!r.applies_to(Path::new("src/app.rs"), None));
+    }
+
+    #[test]
+    fn glob_pattern_exclude_specific_files() {
+        // Test excluding specific file patterns like *.test.* and *.spec.*
+        let cfg = RuleConfig {
+            id: "test.glob".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec![],
+            patterns: vec!["x".to_string()],
+            paths: vec!["**/*.ts".to_string()],
+            exclude_paths: vec!["**/*.test.ts".to_string(), "**/*.spec.ts".to_string()],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match regular TypeScript files
+        assert!(r.applies_to(Path::new("src/app.ts"), None));
+        assert!(r.applies_to(Path::new("src/utils/helper.ts"), None));
+
+        // Should exclude test and spec files
+        assert!(!r.applies_to(Path::new("src/app.test.ts"), None));
+        assert!(!r.applies_to(Path::new("src/app.spec.ts"), None));
+        assert!(!r.applies_to(Path::new("src/utils/helper.test.ts"), None));
+        assert!(!r.applies_to(Path::new("src/utils/helper.spec.ts"), None));
+    }
+
+    #[test]
+    fn glob_pattern_no_include_matches_all() {
+        // When no include paths are specified, rule applies to all files
+        let cfg = RuleConfig {
+            id: "test.glob".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec![],
+            patterns: vec!["x".to_string()],
+            paths: vec![], // Empty - matches all
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match any file
+        assert!(r.applies_to(Path::new("anything.txt"), None));
+        assert!(r.applies_to(Path::new("src/lib.rs"), None));
+        assert!(r.applies_to(Path::new("deeply/nested/file.py"), None));
+    }
+
+    // --- Language Filtering Edge Cases ---
+
+    #[test]
+    fn language_filter_empty_matches_all() {
+        // When no languages are specified, rule applies to all languages
+        let cfg = RuleConfig {
+            id: "test.lang".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec![], // Empty - matches all
+            patterns: vec!["x".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match any language
+        assert!(r.applies_to(Path::new("file.rs"), Some("rust")));
+        assert!(r.applies_to(Path::new("file.py"), Some("python")));
+        assert!(r.applies_to(Path::new("file.js"), Some("javascript")));
+        // Should also match when language is None (unknown extension)
+        assert!(r.applies_to(Path::new("file.txt"), None));
+    }
+
+    #[test]
+    fn language_filter_single_language() {
+        // Rule with single language filter
+        let cfg = RuleConfig {
+            id: "test.lang".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec!["rust".to_string()],
+            patterns: vec!["x".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should only match Rust
+        assert!(r.applies_to(Path::new("file.rs"), Some("rust")));
+        assert!(!r.applies_to(Path::new("file.py"), Some("python")));
+        assert!(!r.applies_to(Path::new("file.js"), Some("javascript")));
+        // Should not match when language is None
+        assert!(!r.applies_to(Path::new("file.txt"), None));
+    }
+
+    #[test]
+    fn language_filter_multiple_languages() {
+        // Rule with multiple language filters
+        let cfg = RuleConfig {
+            id: "test.lang".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec!["javascript".to_string(), "typescript".to_string()],
+            patterns: vec!["x".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match JavaScript and TypeScript
+        assert!(r.applies_to(Path::new("file.js"), Some("javascript")));
+        assert!(r.applies_to(Path::new("file.ts"), Some("typescript")));
+        // Should not match other languages
+        assert!(!r.applies_to(Path::new("file.rs"), Some("rust")));
+        assert!(!r.applies_to(Path::new("file.py"), Some("python")));
+    }
+
+    #[test]
+    fn language_filter_case_insensitive() {
+        // Language matching should be case-insensitive
+        let cfg = RuleConfig {
+            id: "test.lang".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec!["RUST".to_string()], // Uppercase in config
+            patterns: vec!["x".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match regardless of case
+        assert!(r.applies_to(Path::new("file.rs"), Some("rust")));
+        assert!(r.applies_to(Path::new("file.rs"), Some("Rust")));
+        assert!(r.applies_to(Path::new("file.rs"), Some("RUST")));
+    }
+
+    #[test]
+    fn language_filter_with_path_filter_combined() {
+        // Both language and path filters must match
+        let cfg = RuleConfig {
+            id: "test.combined".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec!["rust".to_string()],
+            patterns: vec!["x".to_string()],
+            paths: vec!["src/**/*.rs".to_string()],
+            exclude_paths: vec!["**/tests/**".to_string()],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Must match both language AND path
+        assert!(r.applies_to(Path::new("src/lib.rs"), Some("rust")));
+        assert!(r.applies_to(Path::new("src/foo/bar.rs"), Some("rust")));
+
+        // Wrong language - should not match
+        assert!(!r.applies_to(Path::new("src/lib.rs"), Some("python")));
+
+        // Wrong path - should not match
+        assert!(!r.applies_to(Path::new("lib/lib.rs"), Some("rust")));
+
+        // Excluded path - should not match
+        assert!(!r.applies_to(Path::new("src/tests/lib.rs"), Some("rust")));
+
+        // No language detected - should not match when language filter is set
+        assert!(!r.applies_to(Path::new("src/lib.rs"), None));
+    }
+
+    #[test]
+    fn language_filter_unknown_language_in_config() {
+        // Rule with an unknown/custom language identifier
+        let cfg = RuleConfig {
+            id: "test.lang".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec!["customlang".to_string()],
+            patterns: vec!["x".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should match when the custom language is provided
+        assert!(r.applies_to(Path::new("file.custom"), Some("customlang")));
+        // Should not match other languages
+        assert!(!r.applies_to(Path::new("file.rs"), Some("rust")));
+    }
+
+    #[test]
+    fn language_filter_none_language_with_filter() {
+        // When language filter is set but file has no detected language
+        let cfg = RuleConfig {
+            id: "test.lang".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec!["rust".to_string()],
+            patterns: vec!["x".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let rules = compile_rules(&[cfg]).unwrap();
+        let r = &rules[0];
+
+        // Should not match when language is None and filter is set
+        assert!(!r.applies_to(Path::new("file.txt"), None));
+        assert!(!r.applies_to(Path::new("Makefile"), None));
+        assert!(!r.applies_to(Path::new("README.md"), None));
+    }
 }
