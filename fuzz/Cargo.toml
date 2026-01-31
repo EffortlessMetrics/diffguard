@@ -1,0 +1,27 @@
+[package]
+name = "diffguard-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+diffguard-diff = { path = "../crates/diffguard-diff" }
+diffguard-domain = { path = "../crates/diffguard-domain" }
+diffguard-types = { path = "../crates/diffguard-types" }
+
+[[bin]]
+name = "unified_diff_parser"
+path = "fuzz_targets/unified_diff_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "preprocess"
+path = "fuzz_targets/preprocess.rs"
+test = false
+doc = false

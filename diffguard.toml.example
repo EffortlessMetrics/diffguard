@@ -1,0 +1,28 @@
+[defaults]
+base = "origin/main"
+scope = "added"         # added|changed
+fail_on = "error"       # error|warn|never
+max_findings = 200
+diff_context = 0
+
+[[rule]]
+id = "rust.no_unwrap"
+severity = "error"
+message = "Avoid unwrap/expect in production code."
+languages = ["rust"]
+patterns = ["\\.unwrap\\(", "\\.expect\\("]
+paths = ["**/*.rs"]
+exclude_paths = ["**/tests/**", "**/benches/**", "**/examples/**"]
+ignore_comments = true
+ignore_strings = true
+
+[[rule]]
+id = "rust.no_dbg"
+severity = "warn"
+message = "Remove dbg!/println! before merging."
+languages = ["rust"]
+patterns = ["\\bdbg!\\(", "\\bprintln!\\(", "\\beprintln!\\("]
+paths = ["**/*.rs"]
+exclude_paths = ["**/tests/**", "**/benches/**", "**/examples/**"]
+ignore_comments = true
+ignore_strings = true

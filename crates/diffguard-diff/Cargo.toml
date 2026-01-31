@@ -1,0 +1,15 @@
+[package]
+name = "diffguard-diff"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+
+diffguard-types = { path = "../diffguard-types" }
+
+[dev-dependencies]
+insta.workspace = true

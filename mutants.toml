@@ -1,0 +1,9 @@
+# cargo-mutants configuration
+
+# Keep mutation testing focused on the logic crates.
+exclude_globs = [
+  "crates/diffguard/src/**",
+  "xtask/src/**",
+  "fuzz/**",
+  ".github/**",
+]
