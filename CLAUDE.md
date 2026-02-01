@@ -1,76 +1,73 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working with this repository.
 
 ## Project Overview
 
 **diffguard** is a diff-scoped governance linter for PR automation. It applies rules only to added/changed lines in Git diffs, emitting JSON receipts, Markdown summaries, and GitHub Actions annotations.
 
+## Design Goals
+
+1. **Diff-only scope** - Only lint added/modified lines, not entire files
+2. **Deterministic** - Same inputs always produce same outputs (no randomness, stable ordering)
+3. **Clean architecture** - I/O at edges, pure logic in core crates
+
 ## Common Commands
 
 ```bash
-# Build
-cargo build
-
-# Run all tests
-cargo test --workspace
-
-# Format check
-cargo fmt --check
-
-# Lint (treat warnings as errors)
-cargo clippy --workspace --all-targets -- -D warnings
-
-# Full CI suite (fmt + clippy + test)
-cargo run -p xtask -- ci
-
-# Generate JSON schemas to schemas/
-cargo run -p xtask -- schema
-
-# Run CLI against current diff
-cargo run -p diffguard -- check --base origin/main --head HEAD
-
-# Mutation testing
-cargo mutants
-
-# Fuzz testing (requires nightly)
-cargo +nightly fuzz run unified_diff_parser
+cargo build                                          # Build
+cargo test --workspace                               # Run all tests
+cargo fmt --check                                    # Format check
+cargo clippy --workspace --all-targets -- -D warnings # Lint
+cargo run -p xtask -- ci                             # Full CI suite
+cargo run -p xtask -- schema                         # Generate JSON schemas
+cargo run -p diffguard -- check --base origin/main --head HEAD  # Run CLI
+cargo mutants                                        # Mutation testing
+cargo +nightly fuzz run unified_diff_parser          # Fuzz testing
 ```
 
 ## Architecture
 
-The workspace follows a layered architecture with I/O pushed to the edges:
+Dependency direction flows downward (CLI depends on app, app depends on domain/diff, all depend on types):
 
 ```
-diffguard (CLI) - thin wrapper, clap parsing, file I/O, git subprocess
-    │
-    ▼
-diffguard-app - orchestration: run_check(), render_markdown()
-    │
-    ├─► diffguard-domain - I/O-free business logic
-    │       rules.rs     - compile RuleConfig → CompiledRule (regex + glob)
-    │       evaluate.rs  - match rules against lines, produce findings
-    │       preprocess.rs - language-aware comment/string masking
-    │
-    ├─► diffguard-diff - I/O-free unified diff parsing
-    │       unified.rs   - parse git diff output, extract DiffLine items
-    │
-    └─► diffguard-types - pure DTOs with serde + schemars
-            ConfigFile, RuleConfig, CheckReceipt, Finding, Verdict
+diffguard (CLI)          I/O boundary: clap, file I/O, git subprocess, env vars
+       │
+       ▼
+diffguard-app            Use-cases: run_check(), render_markdown(), compute verdicts
+       │
+       ├────────────────────────┐
+       ▼                        ▼
+diffguard-domain         diffguard-diff
+  Pure business logic      Pure diff parsing
+  - rules.rs               - unified.rs
+  - evaluate.rs
+  - preprocess.rs
+       │                        │
+       └──────────┬─────────────┘
+                  ▼
+          diffguard-types
+            Pure DTOs (serde + schemars)
 ```
-
-**Key principle:** `diffguard-diff`, `diffguard-domain`, and `diffguard-types` have no I/O, enabling easy unit testing, property testing, and fuzzing.
-
-## Crate Responsibilities
 
 | Crate | Purpose |
 |-------|---------|
 | `diffguard-types` | Serializable DTOs, severity/scope enums, built-in rule definitions |
 | `diffguard-diff` | Parse unified diff format, handle binary/submodule/rename detection |
-| `diffguard-domain` | Compile rules, evaluate lines, preprocess (mask comments/strings for 11 languages) |
+| `diffguard-domain` | Compile rules, evaluate lines, preprocess (mask comments/strings) |
 | `diffguard-app` | Orchestrate check runs, compute verdicts, render markdown/annotations |
 | `diffguard` | CLI binary: arg parsing, config loading, git invocation, file output |
 | `xtask` | Repo automation tasks (ci, schema generation) |
+
+## Key Invariants
+
+These are contracts that must be maintained:
+
+- **Exit codes are stable API**: `0`=pass, `1`=tool error, `2`=policy fail, `3`=warn-fail
+- **Receipt schemas are versioned** - avoid breaking changes to JSON output structure
+- **Domain crates are I/O-free** - `diffguard-diff`, `diffguard-domain`, `diffguard-types` must not use `std::process`, filesystem, or environment variables
+- **Diff parsing never panics** - malformed input returns errors, never crashes (fuzz-tested)
+- **Language preprocessing is best-effort** - uses C-like syntax heuristics; not a full parser for any language
 
 ## Testing
 
@@ -79,21 +76,44 @@ diffguard-app - orchestration: run_check(), render_markdown()
 - **Snapshot tests:** `insta` crate for output stability
 - **Property tests:** `proptest` for generative testing
 - **Mutation tests:** `cargo-mutants` (config in `mutants.toml`)
-- **Fuzz tests:** Three targets in `fuzz/fuzz_targets/`: `unified_diff_parser`, `preprocess`, `rule_matcher`
+- **Fuzz tests:** `fuzz/fuzz_targets/` - `unified_diff_parser`, `preprocess`, `rule_matcher`
 
-## Exit Codes
+## Extending diffguard
 
-- `0`: Pass
-- `1`: Tool error (I/O, parse, git, config)
-- `2`: Policy failure (error-level findings)
-- `3`: Warn-level failure (when `fail_on = "warn"`)
+### Adding a new rule config field
+
+1. Add field to `RuleConfig` in `diffguard-types/src/lib.rs`
+2. Update `CompiledRule` in `diffguard-domain/src/rules.rs` if needed at compile time
+3. Update evaluation logic in `diffguard-domain/src/evaluate.rs`
+4. Regenerate schemas: `cargo run -p xtask -- schema`
+5. Update `diffguard.toml.example`
+
+### Adding new rule behavior
+
+1. Modify `evaluate_line()` in `diffguard-domain/src/evaluate.rs`
+2. Add unit tests in same file
+3. Add property tests if behavior is complex
+4. Run `cargo mutants` to verify test coverage
+
+### Changes to diff parsing
+
+1. Modify `diffguard-diff/src/unified.rs`
+2. Add regression test cases
+3. Run fuzz target: `cargo +nightly fuzz run unified_diff_parser`
+4. Ensure no panics on malformed input
+
+### Adding CLI flags
+
+1. Add to `Args` struct in `diffguard/src/main.rs`
+2. Wire through to `diffguard-app` if it affects orchestration
+3. Update `--help` text and any documentation
 
 ## Configuration
 
-Rules are defined in `diffguard.toml`. See `diffguard.toml.example` for format. Key fields:
+Rules defined in `diffguard.toml`. See `diffguard.toml.example`. Key fields:
 - `patterns`: regex patterns to match
 - `paths`/`exclude_paths`: glob-based file filtering
-- `ignore_comments`/`ignore_strings`: preprocessor control
+- `ignore_comments`/`ignore_strings`: preprocessor control (best-effort, C-like syntax)
 - `languages`: optional language filter (auto-detected from extension)
 
 ## MSRV

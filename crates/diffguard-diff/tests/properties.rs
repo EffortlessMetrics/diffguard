@@ -1601,3 +1601,315 @@ proptest! {
         );
     }
 }
+
+// ============================================================================
+// Property: Line Count Consistency
+// ============================================================================
+//
+// Feature: comprehensive-test-coverage, Property: Line Count Consistency
+// For any well-formed diff, the DiffStats.lines count SHALL equal the number
+// of DiffLine items returned.
+// **Validates: Requirements 2.4**
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn property_line_count_matches_stats(
+        path in full_path_strategy(),
+        lines in prop::collection::vec(line_content_strategy(), 1..10),
+    ) {
+        // Filter out empty lines
+        let non_empty_lines: Vec<&str> = lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines.is_empty());
+
+        // Create a well-formed diff
+        let diff = make_diff_with_added_lines(&path, &non_empty_lines);
+
+        // Parse the diff
+        let result = parse_unified_diff(&diff, Scope::Added);
+        prop_assert!(result.is_ok(), "Parsing should succeed");
+
+        let (diff_lines, stats) = result.unwrap();
+
+        // Property: stats.lines should equal the number of DiffLine items
+        prop_assert_eq!(
+            stats.lines as usize,
+            diff_lines.len(),
+            "DiffStats.lines ({}) should equal number of DiffLine items ({})",
+            stats.lines,
+            diff_lines.len()
+        );
+    }
+
+    #[test]
+    fn property_file_count_matches_unique_paths(
+        path1 in full_path_strategy(),
+        path2 in full_path_strategy(),
+        lines1 in prop::collection::vec(line_content_strategy(), 1..3),
+        lines2 in prop::collection::vec(line_content_strategy(), 1..3),
+    ) {
+        // Ensure paths are different
+        prop_assume!(path1 != path2);
+
+        // Filter out empty lines
+        let non_empty_lines1: Vec<&str> = lines1.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_lines2: Vec<&str> = lines2.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines1.is_empty());
+        prop_assume!(!non_empty_lines2.is_empty());
+
+        // Create a multi-file diff
+        let diff1 = make_diff_with_added_lines(&path1, &non_empty_lines1);
+        let diff2 = make_diff_with_added_lines(&path2, &non_empty_lines2);
+        let combined = format!("{}\n{}", diff1, diff2);
+
+        // Parse the diff
+        let result = parse_unified_diff(&combined, Scope::Added);
+        prop_assert!(result.is_ok(), "Parsing should succeed");
+
+        let (diff_lines, stats) = result.unwrap();
+
+        // Count unique paths in diff_lines
+        let unique_paths: std::collections::BTreeSet<&str> = diff_lines
+            .iter()
+            .map(|l| l.path.as_str())
+            .collect();
+
+        // Property: stats.files should equal number of unique paths
+        prop_assert_eq!(
+            stats.files as usize,
+            unique_paths.len(),
+            "DiffStats.files ({}) should equal number of unique paths ({})",
+            stats.files,
+            unique_paths.len()
+        );
+    }
+}
+
+// ============================================================================
+// Property: No Panic on Valid UTF-8 Input
+// ============================================================================
+//
+// Feature: comprehensive-test-coverage, Property: Parser Robustness
+// For any valid UTF-8 string input, `parse_unified_diff` SHALL not panic.
+// **Validates: Requirements 2.5**
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(200))]
+
+    #[test]
+    fn property_no_panic_on_arbitrary_utf8(
+        input in prop::string::string_regex("[\\x00-\\x7F\\u{0080}-\\u{FFFF}]{0,500}").expect("valid regex"),
+    ) {
+        // Parse arbitrary UTF-8 input - should never panic
+        let _ = parse_unified_diff(&input, Scope::Added);
+        let _ = parse_unified_diff(&input, Scope::Changed);
+        // If we reach here without panicking, the test passes
+    }
+
+    #[test]
+    fn property_no_panic_on_unicode_content(
+        prefix in prop::string::string_regex("[a-zA-Z0-9_]{0,20}").expect("valid regex"),
+        unicode_chars in prop::string::string_regex("[\\u{4E00}-\\u{9FFF}\\u{1F600}-\\u{1F64F}]{0,10}").expect("valid regex"),
+        suffix in prop::string::string_regex("[a-zA-Z0-9_]{0,20}").expect("valid regex"),
+    ) {
+        // Create input with Unicode characters
+        let input = format!("{}{}{}", prefix, unicode_chars, suffix);
+
+        // Parse should not panic
+        let _ = parse_unified_diff(&input, Scope::Added);
+        let _ = parse_unified_diff(&input, Scope::Changed);
+    }
+
+    #[test]
+    fn property_no_panic_on_special_characters(
+        special in prop::sample::select(&[
+            "\n", "\r", "\r\n", "\t", "\x00", "\\", "\"", "'", "`",
+            "@@", "+++", "---", "diff", "Binary", "Subproject",
+        ]),
+        count in 1..20usize,
+    ) {
+        // Create input with repeated special characters
+        let input = special.repeat(count);
+
+        // Parse should not panic
+        let _ = parse_unified_diff(&input, Scope::Added);
+        let _ = parse_unified_diff(&input, Scope::Changed);
+    }
+
+    #[test]
+    fn property_no_panic_on_malformed_hunk_headers(
+        prefix in prop::string::string_regex("@@[^@]{0,50}").expect("valid regex"),
+    ) {
+        // Create potentially malformed hunk headers
+        let input = format!(
+            "diff --git a/file b/file\n\
+             --- a/file\n\
+             +++ b/file\n\
+             {}\n\
+             +some content",
+            prefix
+        );
+
+        // Parse should not panic (may return error, but not panic)
+        let _ = parse_unified_diff(&input, Scope::Added);
+        let _ = parse_unified_diff(&input, Scope::Changed);
+    }
+}
+
+// ============================================================================
+// Property: Line Numbers are Monotonically Increasing Within Files
+// ============================================================================
+//
+// Feature: comprehensive-test-coverage, Property: Line Number Validity
+// For any parsed diff, line numbers within the same file SHALL be in
+// the order they appear in the diff (not necessarily strictly increasing
+// but consistent with hunk structure).
+// **Validates: Requirements 2.6**
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn property_line_numbers_are_positive(
+        path in full_path_strategy(),
+        lines in prop::collection::vec(line_content_strategy(), 1..5),
+    ) {
+        let non_empty_lines: Vec<&str> = lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines.is_empty());
+
+        let diff = make_diff_with_added_lines(&path, &non_empty_lines);
+        let result = parse_unified_diff(&diff, Scope::Added);
+        prop_assert!(result.is_ok(), "Parsing should succeed");
+
+        let (diff_lines, _) = result.unwrap();
+
+        // Property: All line numbers should be positive (>= 1)
+        for line in &diff_lines {
+            prop_assert!(
+                line.line >= 1,
+                "Line number should be >= 1, but got {} for path '{}'",
+                line.line,
+                line.path
+            );
+        }
+    }
+
+    #[test]
+    fn property_paths_are_non_empty(
+        path in full_path_strategy(),
+        lines in prop::collection::vec(line_content_strategy(), 1..5),
+    ) {
+        let non_empty_lines: Vec<&str> = lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines.is_empty());
+
+        let diff = make_diff_with_added_lines(&path, &non_empty_lines);
+        let result = parse_unified_diff(&diff, Scope::Added);
+        prop_assert!(result.is_ok(), "Parsing should succeed");
+
+        let (diff_lines, _) = result.unwrap();
+
+        // Property: All paths should be non-empty
+        for line in &diff_lines {
+            prop_assert!(
+                !line.path.is_empty(),
+                "Path should not be empty"
+            );
+        }
+    }
+}
+
+// ============================================================================
+// Property: ChangeKind Consistency
+// ============================================================================
+//
+// Feature: comprehensive-test-coverage, Property: ChangeKind Validity
+// For any diff line, the ChangeKind should be consistent with the scope used.
+// **Validates: Requirements 2.7**
+
+use diffguard_diff::ChangeKind;
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    #[test]
+    fn property_changed_scope_only_has_changed_kind(
+        path in full_path_strategy(),
+        removed_lines in prop::collection::vec(line_content_strategy(), 1..3),
+        added_lines in prop::collection::vec(line_content_strategy(), 1..3),
+    ) {
+        let non_empty_removed: Vec<&str> = removed_lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_added: Vec<&str> = added_lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_removed.is_empty());
+        prop_assume!(!non_empty_added.is_empty());
+
+        let diff = make_changed_diff(&path, &non_empty_removed, &non_empty_added);
+        let result = parse_unified_diff(&diff, Scope::Changed);
+        prop_assert!(result.is_ok(), "Parsing should succeed");
+
+        let (diff_lines, _) = result.unwrap();
+
+        // Property: All lines from Scope::Changed should have ChangeKind::Changed
+        for line in &diff_lines {
+            prop_assert_eq!(
+                line.kind,
+                ChangeKind::Changed,
+                "Lines from Scope::Changed should have ChangeKind::Changed"
+            );
+        }
+    }
+
+    #[test]
+    fn property_pure_additions_have_added_kind(
+        path in full_path_strategy(),
+        lines in prop::collection::vec(line_content_strategy(), 1..5),
+    ) {
+        let non_empty_lines: Vec<&str> = lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines.is_empty());
+
+        let diff = make_pure_addition_diff(&path, &non_empty_lines);
+        let result = parse_unified_diff(&diff, Scope::Added);
+        prop_assert!(result.is_ok(), "Parsing should succeed");
+
+        let (diff_lines, _) = result.unwrap();
+
+        // Property: Pure additions should have ChangeKind::Added
+        for line in &diff_lines {
+            prop_assert_eq!(
+                line.kind,
+                ChangeKind::Added,
+                "Pure additions should have ChangeKind::Added"
+            );
+        }
+    }
+}

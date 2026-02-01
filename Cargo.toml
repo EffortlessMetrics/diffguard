@@ -5,6 +5,7 @@ members = [
   "crates/diffguard-app",
   "crates/diffguard-diff",
   "crates/diffguard-domain",
+  "crates/diffguard-testkit",
   "crates/diffguard-types",
   "xtask",
 ]

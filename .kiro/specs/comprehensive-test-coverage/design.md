@@ -118,15 +118,17 @@ impl TestRepo {
 
 ### 4. Snapshot Test Organization
 
-Snapshot tests are organized by output type:
+Snapshot tests are placed in the `tests/snapshots/` directory within each crate:
 
 ```
-crates/diffguard-app/src/snapshots/
+crates/diffguard-app/tests/snapshots/
 ├── render__markdown_with_findings.snap
 ├── render__markdown_no_findings.snap
 ├── render__verdict_rendering.snap
 └── check__receipt_structure.snap
 ```
+
+The pattern `crates/diffguard-app/tests/snapshots/*.snap` is used for all app-layer snapshots.
 
 ## Data Models
 
@@ -189,6 +191,49 @@ struct GeneratedHunk {
     added_lines: Vec<String>,
 }
 ```
+
+### Generator Constraints
+
+To ensure property tests remain fast and deterministic, generators are constrained:
+
+| Constraint | Limit |
+|------------|-------|
+| Maximum files per diff | 5 |
+| Maximum hunks per file | 5 |
+| Maximum lines per hunk | 20 |
+| Maximum line length | 200 bytes |
+
+These constraints prevent combinatorial explosion while still exercising meaningful code paths.
+
+### Supported Language Modes
+
+v1 preprocessing supports the following syntax families:
+
+| Syntax Family | Comment Styles | String Literals | Languages |
+|---------------|----------------|-----------------|-----------|
+| Rust + C-like | `//`, `/* */` | `"..."`, `'...'` | Rust, C, C++, Java, JavaScript, TypeScript, Go, C#, Kotlin, Swift |
+
+**Notes:**
+- Language detection can identify many file extensions but preprocessing accuracy is best-effort
+- Languages with significantly different syntax (Python `#` comments, Ruby heredocs, etc.) may have limited preprocessing support
+- The detection mechanism maps extensions to language identifiers; preprocessing uses syntax family
+
+### Shared Test Strategies (diffguard-testkit)
+
+The `diffguard-testkit` crate provides shared proptest strategies and test utilities:
+
+```rust
+// crates/diffguard-testkit/src/lib.rs
+pub mod strategies {
+    pub fn arb_file_path() -> impl Strategy<Value = String>;
+    pub fn arb_unified_diff() -> impl Strategy<Value = String>;
+    pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig>;
+    pub fn arb_finding() -> impl Strategy<Value = Finding>;
+    // ... additional shared strategies
+}
+```
+
+All crates should import strategies from `diffguard-testkit` rather than duplicating generator logic.
 
 ## Correctness Properties
 
@@ -254,15 +299,15 @@ struct GeneratedHunk {
 
 **Validates: Requirements 3.4**
 
-### Property 11: Preprocessor Line Length Preservation
+### Property 11: Preprocessor Byte Length Preservation
 
-*For any* input string and any combination of PreprocessOptions and Language, `Preprocessor.sanitize_line` SHALL return a string with exactly the same byte length as the input.
+*For any* valid UTF-8 input string (&str) and any combination of PreprocessOptions and Language, `Preprocessor.sanitize_line` SHALL return a string with exactly the same byte length as the input. Masking replaces bytes with 0x20 (space character). Note: This property applies to byte length, not character (grapheme) length.
 
 **Validates: Requirements 3.5, 9.7, 9.8**
 
 ### Property 12: Preprocessing Masking Correctness
 
-*For any* source line containing comments or strings in the language's documented syntax, when the corresponding mask option is enabled, the preprocessor SHALL replace the comment/string content with spaces while preserving non-comment/string content.
+*For any* source line containing comments or strings in a supported syntax family (Rust + C-like: //, /* */ comments and string literals), when the corresponding mask option is enabled, the preprocessor SHALL replace the comment/string content with spaces on a best-effort basis while preserving non-comment/string content. Language detection can identify many extensions, but preprocessing accuracy is best-effort based on syntax family.
 
 **Validates: Requirements 3.6, 3.7**
 
@@ -316,7 +361,11 @@ struct GeneratedHunk {
 
 | Error Type | Condition | Handling |
 |------------|-----------|----------|
-| `DiffParseError::MalformedHunkHeader` | Hunk header doesn't match format | Skip hunk, continue parsing |
+| `DiffParseError::MalformedHunkHeader` | Hunk header doesn't match format | Return error; callers decide policy |
+
+**Caller-specific error handling:**
+- **Fuzz harness**: Ignore errors but never panic
+- **CLI**: Treat as tool error (exit code 1)
 
 ### Runtime Errors
 

@@ -51,9 +51,9 @@ This document defines requirements for achieving comprehensive test coverage acr
 2. THE Test_Suite SHALL include property tests verifying CompiledRule.applies_to correctly filters by path globs
 3. THE Test_Suite SHALL include property tests verifying CompiledRule.applies_to correctly filters by language
 4. THE Test_Suite SHALL include property tests verifying detect_language returns correct language for all known extensions
-5. THE Test_Suite SHALL include property tests verifying Preprocessor preserves line length for all inputs
-6. THE Test_Suite SHALL include property tests verifying comment masking works correctly for each supported language
-7. THE Test_Suite SHALL include property tests verifying string masking works correctly for each supported language
+5. THE Test_Suite SHALL include property tests verifying Preprocessor preserves byte length for all valid UTF-8 inputs (masking replaces bytes with 0x20 space)
+6. THE Test_Suite SHALL include property tests verifying comment masking works on a best-effort basis for each supported syntax family (Rust + C-like: //, /* */ style comments)
+7. THE Test_Suite SHALL include property tests verifying string literal masking works on a best-effort basis for each supported syntax family (Rust + C-like string literal syntax)
 8. THE Test_Suite SHALL include property tests verifying evaluate_lines produces correct finding counts
 
 ### Requirement 4: Property-Based Testing for diffguard-app
@@ -146,4 +146,5 @@ This document defines requirements for achieving comprehensive test coverage acr
 3. THE Test_Suite SHALL use tempfile for tests requiring filesystem operations
 4. THE Test_Suite SHALL use assert_cmd for CLI integration tests
 5. WHEN property tests fail, THE Test_Suite SHALL provide clear shrunk counterexamples
-6. THE Test_Suite SHALL complete in under 60 seconds for the full workspace (excluding fuzz)
+6. THE Test_Suite SHALL complete `cargo test --workspace` in under 60 seconds (excluding fuzz + mutation testing)
+7. Mutation testing and fuzz testing SHALL run in separate CI jobs

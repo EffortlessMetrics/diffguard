@@ -818,4 +818,422 @@ mod unit_tests {
             result.err().map(|e| e.collect::<Vec<_>>())
         );
     }
+
+    // ========================================================================
+    // JSON Round-Trip Tests
+    // ========================================================================
+
+    #[test]
+    fn config_file_json_round_trip() {
+        let config = ConfigFile::built_in();
+
+        // Serialize to JSON
+        let json_string =
+            serde_json::to_string(&config).expect("ConfigFile should serialize to JSON");
+
+        // Deserialize back from JSON
+        let deserialized: ConfigFile =
+            serde_json::from_str(&json_string).expect("ConfigFile should deserialize from JSON");
+
+        // Verify round-trip produces equivalent value
+        assert_eq!(
+            config, deserialized,
+            "ConfigFile JSON round-trip should produce equivalent value"
+        );
+    }
+
+    #[test]
+    fn check_receipt_json_round_trip() {
+        let receipt = CheckReceipt {
+            schema: CHECK_SCHEMA_V1.to_string(),
+            tool: ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: DiffMeta {
+                base: "origin/main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 3,
+                scope: Scope::Changed,
+                files_scanned: 5,
+                lines_scanned: 100,
+            },
+            findings: vec![Finding {
+                rule_id: "test.rule".to_string(),
+                severity: Severity::Warn,
+                message: "Test message".to_string(),
+                path: "src/test.rs".to_string(),
+                line: 10,
+                column: Some(5),
+                match_text: "match".to_string(),
+                snippet: "test snippet".to_string(),
+            }],
+            verdict: Verdict {
+                status: VerdictStatus::Warn,
+                counts: VerdictCounts {
+                    info: 0,
+                    warn: 1,
+                    error: 0,
+                },
+                reasons: vec!["1 warning".to_string()],
+            },
+        };
+
+        // Serialize to JSON
+        let json_string =
+            serde_json::to_string(&receipt).expect("CheckReceipt should serialize to JSON");
+
+        // Deserialize back from JSON
+        let deserialized: CheckReceipt =
+            serde_json::from_str(&json_string).expect("CheckReceipt should deserialize from JSON");
+
+        // Verify round-trip produces equivalent value
+        assert_eq!(
+            receipt, deserialized,
+            "CheckReceipt JSON round-trip should produce equivalent value"
+        );
+    }
+
+    // ========================================================================
+    // Schema Validation Negative Tests
+    // ========================================================================
+
+    #[test]
+    fn invalid_severity_rejected_by_schema() {
+        let schema = load_check_schema();
+
+        // Create invalid JSON with wrong severity value
+        let invalid_json = serde_json::json!({
+            "schema": "diffguard.check.v1",
+            "tool": {"name": "test", "version": "1.0"},
+            "diff": {
+                "base": "main",
+                "head": "HEAD",
+                "context_lines": 0,
+                "scope": "added",
+                "files_scanned": 1,
+                "lines_scanned": 1
+            },
+            "findings": [{
+                "rule_id": "test",
+                "severity": "critical",  // Invalid severity
+                "message": "msg",
+                "path": "test.rs",
+                "line": 1,
+                "match_text": "x",
+                "snippet": "x"
+            }],
+            "verdict": {
+                "status": "pass",
+                "counts": {"info": 0, "warn": 0, "error": 0},
+                "reasons": []
+            }
+        });
+
+        let result = schema.validate(&invalid_json);
+        assert!(
+            result.is_err(),
+            "Invalid severity should be rejected by schema"
+        );
+    }
+
+    #[test]
+    fn missing_required_field_rejected_by_schema() {
+        let schema = load_check_schema();
+
+        // Create invalid JSON missing required 'schema' field
+        let invalid_json = serde_json::json!({
+            // "schema" is missing
+            "tool": {"name": "test", "version": "1.0"},
+            "diff": {
+                "base": "main",
+                "head": "HEAD",
+                "context_lines": 0,
+                "scope": "added",
+                "files_scanned": 1,
+                "lines_scanned": 1
+            },
+            "findings": [],
+            "verdict": {
+                "status": "pass",
+                "counts": {"info": 0, "warn": 0, "error": 0},
+                "reasons": []
+            }
+        });
+
+        let result = schema.validate(&invalid_json);
+        assert!(
+            result.is_err(),
+            "Missing required field should be rejected by schema"
+        );
+    }
+
+    #[test]
+    fn invalid_scope_rejected_by_config_schema() {
+        let schema = load_config_schema();
+
+        // Create invalid JSON with wrong scope value
+        let invalid_json = serde_json::json!({
+            "defaults": {
+                "scope": "modified"  // Invalid scope (should be "added" or "changed")
+            },
+            "rule": []
+        });
+
+        let result = schema.validate(&invalid_json);
+        assert!(
+            result.is_err(),
+            "Invalid scope should be rejected by config schema"
+        );
+    }
+
+    #[test]
+    fn invalid_fail_on_rejected_by_config_schema() {
+        let schema = load_config_schema();
+
+        // Create invalid JSON with wrong fail_on value
+        let invalid_json = serde_json::json!({
+            "defaults": {
+                "fail_on": "always"  // Invalid (should be "error", "warn", or "never")
+            },
+            "rule": []
+        });
+
+        let result = schema.validate(&invalid_json);
+        assert!(
+            result.is_err(),
+            "Invalid fail_on should be rejected by config schema"
+        );
+    }
+
+    #[test]
+    fn rule_missing_patterns_rejected_by_config_schema() {
+        let schema = load_config_schema();
+
+        // Create invalid JSON with rule missing required 'patterns' field
+        let invalid_json = serde_json::json!({
+            "defaults": {},
+            "rule": [{
+                "id": "test.rule",
+                "severity": "warn",
+                "message": "Test",
+                // "patterns" is missing
+            }]
+        });
+
+        let result = schema.validate(&invalid_json);
+        assert!(
+            result.is_err(),
+            "Rule missing patterns should be rejected by config schema"
+        );
+    }
+
+    // ========================================================================
+    // Edge Case Tests
+    // ========================================================================
+
+    #[test]
+    fn config_with_all_optional_fields_null() {
+        let schema = load_config_schema();
+        let config = ConfigFile {
+            defaults: Defaults {
+                base: None,
+                head: None,
+                scope: None,
+                fail_on: None,
+                max_findings: None,
+                diff_context: None,
+            },
+            rule: vec![],
+        };
+
+        let json_value =
+            serde_json::to_value(&config).expect("ConfigFile should serialize to JSON");
+
+        let result = schema.validate(&json_value);
+        assert!(
+            result.is_ok(),
+            "ConfigFile with all optional fields null should validate. Errors: {:?}",
+            result.err().map(|e| e.collect::<Vec<_>>())
+        );
+    }
+
+    #[test]
+    fn finding_without_column_validates() {
+        let schema = load_check_schema();
+        let receipt = CheckReceipt {
+            schema: CHECK_SCHEMA_V1.to_string(),
+            tool: ToolMeta {
+                name: "test".to_string(),
+                version: "1.0".to_string(),
+            },
+            diff: DiffMeta {
+                base: "main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: Scope::Added,
+                files_scanned: 1,
+                lines_scanned: 1,
+            },
+            findings: vec![Finding {
+                rule_id: "test".to_string(),
+                severity: Severity::Info,
+                message: "info message".to_string(),
+                path: "test.txt".to_string(),
+                line: 1,
+                column: None, // Optional field is None
+                match_text: "x".to_string(),
+                snippet: "x".to_string(),
+            }],
+            verdict: Verdict {
+                status: VerdictStatus::Pass,
+                counts: VerdictCounts::default(),
+                reasons: vec![],
+            },
+        };
+
+        let json_value =
+            serde_json::to_value(&receipt).expect("CheckReceipt should serialize to JSON");
+
+        let result = schema.validate(&json_value);
+        assert!(
+            result.is_ok(),
+            "Finding without column should validate. Errors: {:?}",
+            result.err().map(|e| e.collect::<Vec<_>>())
+        );
+    }
+
+    #[test]
+    fn max_u32_values_validate() {
+        let schema = load_check_schema();
+        let receipt = CheckReceipt {
+            schema: CHECK_SCHEMA_V1.to_string(),
+            tool: ToolMeta {
+                name: "test".to_string(),
+                version: "1.0".to_string(),
+            },
+            diff: DiffMeta {
+                base: "main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: u32::MAX,
+                scope: Scope::Added,
+                files_scanned: u32::MAX,
+                lines_scanned: u32::MAX,
+            },
+            findings: vec![Finding {
+                rule_id: "test".to_string(),
+                severity: Severity::Info,
+                message: "msg".to_string(),
+                path: "test.txt".to_string(),
+                line: u32::MAX,
+                column: Some(u32::MAX),
+                match_text: "x".to_string(),
+                snippet: "x".to_string(),
+            }],
+            verdict: Verdict {
+                status: VerdictStatus::Pass,
+                counts: VerdictCounts {
+                    info: u32::MAX,
+                    warn: u32::MAX,
+                    error: u32::MAX,
+                },
+                reasons: vec![],
+            },
+        };
+
+        let json_value =
+            serde_json::to_value(&receipt).expect("CheckReceipt should serialize to JSON");
+
+        let result = schema.validate(&json_value);
+        assert!(
+            result.is_ok(),
+            "Max u32 values should validate. Errors: {:?}",
+            result.err().map(|e| e.collect::<Vec<_>>())
+        );
+    }
+
+    #[test]
+    fn unicode_content_validates() {
+        let schema = load_check_schema();
+        let receipt = CheckReceipt {
+            schema: CHECK_SCHEMA_V1.to_string(),
+            tool: ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: DiffMeta {
+                base: "main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: Scope::Added,
+                files_scanned: 1,
+                lines_scanned: 1,
+            },
+            findings: vec![Finding {
+                rule_id: "test.unicode".to_string(),
+                severity: Severity::Warn,
+                message: "Unicode message: \u{4e2d}\u{6587}".to_string(),
+                path: "src/\u{65e5}\u{672c}\u{8a9e}.rs".to_string(),
+                line: 1,
+                column: Some(1),
+                match_text: "\u{1f600}".to_string(),
+                snippet: "let emoji = \"\u{1f680}\";".to_string(),
+            }],
+            verdict: Verdict {
+                status: VerdictStatus::Warn,
+                counts: VerdictCounts {
+                    info: 0,
+                    warn: 1,
+                    error: 0,
+                },
+                reasons: vec!["\u{8b66}\u{544a}".to_string()],
+            },
+        };
+
+        let json_value =
+            serde_json::to_value(&receipt).expect("CheckReceipt should serialize to JSON");
+
+        let result = schema.validate(&json_value);
+        assert!(
+            result.is_ok(),
+            "Unicode content should validate. Errors: {:?}",
+            result.err().map(|e| e.collect::<Vec<_>>())
+        );
+    }
+
+    #[test]
+    fn empty_strings_validate() {
+        let schema = load_check_schema();
+        let receipt = CheckReceipt {
+            schema: "".to_string(), // Empty but still valid string
+            tool: ToolMeta {
+                name: "".to_string(),
+                version: "".to_string(),
+            },
+            diff: DiffMeta {
+                base: "".to_string(),
+                head: "".to_string(),
+                context_lines: 0,
+                scope: Scope::Added,
+                files_scanned: 0,
+                lines_scanned: 0,
+            },
+            findings: vec![],
+            verdict: Verdict {
+                status: VerdictStatus::Pass,
+                counts: VerdictCounts::default(),
+                reasons: vec![],
+            },
+        };
+
+        let json_value =
+            serde_json::to_value(&receipt).expect("CheckReceipt should serialize to JSON");
+
+        let result = schema.validate(&json_value);
+        assert!(
+            result.is_ok(),
+            "Empty strings should validate. Errors: {:?}",
+            result.err().map(|e| e.collect::<Vec<_>>())
+        );
+    }
 }

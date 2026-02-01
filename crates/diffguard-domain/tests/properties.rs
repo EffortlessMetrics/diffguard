@@ -8,26 +8,33 @@ use std::path::Path;
 use diffguard_domain::{detect_language, Language, PreprocessOptions, Preprocessor};
 
 // Known extensions and their expected language mappings
-// Based on Requirements 1.1-1.12
+// Based on Requirements 1.1-1.12 and actual detect_language implementation
 const KNOWN_EXTENSIONS: &[(&str, &str)] = &[
     // Rust (not in task list but in implementation)
     ("rs", "rust"),
     // Python - Requirement 1.1
     ("py", "python"),
+    ("pyw", "python"),
     // JavaScript - Requirements 1.2, 1.5
     ("js", "javascript"),
     ("jsx", "javascript"),
+    ("mjs", "javascript"),
+    ("cjs", "javascript"),
     // TypeScript - Requirements 1.3, 1.4
     ("ts", "typescript"),
     ("tsx", "typescript"),
+    ("mts", "typescript"),
+    ("cts", "typescript"),
     // Go - Requirement 1.6
     ("go", "go"),
     // Java - Requirement 1.7
     ("java", "java"),
     // Kotlin - Requirement 1.8
     ("kt", "kotlin"),
+    ("kts", "kotlin"),
     // Ruby - Requirement 1.9
     ("rb", "ruby"),
+    ("rake", "ruby"),
     // C - Requirement 1.10
     ("c", "c"),
     ("h", "c"),
@@ -36,6 +43,8 @@ const KNOWN_EXTENSIONS: &[(&str, &str)] = &[
     ("cc", "cpp"),
     ("cxx", "cpp"),
     ("hpp", "cpp"),
+    ("hxx", "cpp"),
+    ("hh", "cpp"),
     // C# - Requirement 1.12
     ("cs", "csharp"),
 ];
@@ -1395,4 +1404,376 @@ fn test_missing_patterns_error_message_format() {
         format!("rule '{}' has no patterns", rule_id),
         "Error message should match expected format"
     );
+}
+
+// ==================== Property: Evaluation Determinism ====================
+
+use diffguard_domain::{evaluate_lines, InputLine};
+
+/// Strategy to generate valid input lines for evaluation
+fn input_line_strategy() -> impl Strategy<Value = InputLine> {
+    (
+        prop::string::string_regex("[a-zA-Z_][a-zA-Z0-9_/]{0,30}\\.[a-z]{1,4}")
+            .expect("valid regex"),
+        1u32..1000,
+        prop::string::string_regex("[a-zA-Z0-9_ .(){}\\[\\];:,<>=+\\-*/&|!\"'#@$%^~`\\\\]{0,100}")
+            .expect("valid regex"),
+    )
+        .prop_map(|(path, line, content)| InputLine {
+            path,
+            line,
+            content,
+        })
+}
+
+/// Strategy to generate valid rule configs that will compile successfully
+fn valid_rule_config_strategy() -> impl Strategy<Value = RuleConfig> {
+    (
+        rule_id_strategy(),
+        prop::sample::select(&[Severity::Info, Severity::Warn, Severity::Error]),
+        prop::string::string_regex("[a-zA-Z ]{1,50}").expect("valid regex"),
+        // Use simple, valid regex patterns
+        prop::collection::vec(
+            prop::sample::select(&["test", "foo", "bar", "\\w+", "[a-z]+", "hello"]),
+            1..3,
+        ),
+    )
+        .prop_map(|(id, severity, message, patterns)| RuleConfig {
+            id,
+            severity,
+            message,
+            languages: vec![],
+            patterns: patterns.into_iter().map(|s| s.to_string()).collect(),
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        })
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(50))]
+
+    // Feature: comprehensive-test-coverage, Property: Evaluation Determinism
+    // For any given input (lines + rules), calling evaluate_lines twice
+    // SHALL produce identical results.
+    // **Validates: Requirements 7.1**
+    #[test]
+    fn property_evaluation_determinism(
+        lines in prop::collection::vec(input_line_strategy(), 1..10),
+        rule_config in valid_rule_config_strategy(),
+    ) {
+        // Compile the rule
+        let compiled = compile_rules(&[rule_config]);
+        prop_assume!(compiled.is_ok());
+        let rules = compiled.unwrap();
+
+        // Evaluate twice with the same input
+        let result1 = evaluate_lines(lines.clone(), &rules, 100);
+        let result2 = evaluate_lines(lines, &rules, 100);
+
+        // Property: Both evaluations should produce identical results
+        prop_assert_eq!(
+            result1.findings.len(),
+            result2.findings.len(),
+            "Findings count should be identical"
+        );
+        prop_assert_eq!(
+            result1.counts,
+            result2.counts,
+            "Verdict counts should be identical"
+        );
+        prop_assert_eq!(
+            result1.files_scanned,
+            result2.files_scanned,
+            "Files scanned should be identical"
+        );
+        prop_assert_eq!(
+            result1.lines_scanned,
+            result2.lines_scanned,
+            "Lines scanned should be identical"
+        );
+
+        // Compare each finding
+        for (f1, f2) in result1.findings.iter().zip(result2.findings.iter()) {
+            prop_assert_eq!(&f1.rule_id, &f2.rule_id, "Rule IDs should match");
+            prop_assert_eq!(f1.severity, f2.severity, "Severities should match");
+            prop_assert_eq!(&f1.path, &f2.path, "Paths should match");
+            prop_assert_eq!(f1.line, f2.line, "Line numbers should match");
+        }
+    }
+
+    // Feature: comprehensive-test-coverage, Property: Valid Configs Always Compile
+    // For any RuleConfig with valid regex patterns and globs,
+    // compile_rules SHALL succeed.
+    // **Validates: Requirements 7.2**
+    #[test]
+    fn property_valid_configs_compile(
+        rule_config in valid_rule_config_strategy(),
+    ) {
+        let result = compile_rules(&[rule_config]);
+        prop_assert!(
+            result.is_ok(),
+            "Valid rule configs should always compile, but got error: {:?}",
+            result.err()
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property: Counts Match Findings
+    // The verdict counts SHALL always match the actual severity distribution
+    // of the findings.
+    // **Validates: Requirements 7.3**
+    #[test]
+    fn property_counts_match_findings(
+        lines in prop::collection::vec(input_line_strategy(), 1..20),
+        rule_config in valid_rule_config_strategy(),
+    ) {
+        let compiled = compile_rules(&[rule_config]);
+        prop_assume!(compiled.is_ok());
+        let rules = compiled.unwrap();
+
+        let result = evaluate_lines(lines, &rules, 1000);
+
+        // Add truncated findings to the counts (they were counted but not stored)
+        // Note: truncated_findings are not broken down by severity,
+        // so we check that counts >= findings counts
+        let total_counted = result.counts.info + result.counts.warn + result.counts.error;
+        let total_findings = result.findings.len() as u32 + result.truncated_findings;
+
+        prop_assert_eq!(
+            total_counted,
+            total_findings,
+            "Total counts ({}) should equal findings ({}) + truncated ({})",
+            total_counted,
+            result.findings.len(),
+            result.truncated_findings
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property: Max Findings Respected
+    // The number of stored findings SHALL never exceed max_findings.
+    // **Validates: Requirements 7.4**
+    #[test]
+    fn property_max_findings_respected(
+        lines in prop::collection::vec(input_line_strategy(), 10..50),
+        max_findings in 1usize..20,
+    ) {
+        // Create a rule that matches many things
+        let rule = RuleConfig {
+            id: "test.any".to_string(),
+            severity: Severity::Warn,
+            message: "matched".to_string(),
+            languages: vec![],
+            patterns: vec![".*".to_string()], // Match everything
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+        };
+
+        let compiled = compile_rules(&[rule]).expect("rule should compile");
+        let result = evaluate_lines(lines, &compiled, max_findings);
+
+        // Property: findings.len() <= max_findings
+        prop_assert!(
+            result.findings.len() <= max_findings,
+            "Findings count ({}) should not exceed max_findings ({})",
+            result.findings.len(),
+            max_findings
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property: Lines Scanned Equals Input
+    // lines_scanned SHALL equal the number of input lines.
+    // **Validates: Requirements 7.5**
+    #[test]
+    fn property_lines_scanned_equals_input(
+        lines in prop::collection::vec(input_line_strategy(), 1..50),
+    ) {
+        let rules = vec![]; // No rules - just counting
+        let result = evaluate_lines(lines.clone(), &rules, 100);
+
+        prop_assert_eq!(
+            result.lines_scanned as usize,
+            lines.len(),
+            "lines_scanned ({}) should equal input lines count ({})",
+            result.lines_scanned,
+            lines.len()
+        );
+    }
+}
+
+// ==================== Property: Preprocessing Length Preservation ====================
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    // Feature: comprehensive-test-coverage, Property: Preprocessing Length Preservation
+    // For any valid UTF-8 input, the preprocessor output length SHALL equal
+    // the input length.
+    // **Validates: Requirements 8.1**
+    #[test]
+    fn property_preprocessing_preserves_length_all_languages(
+        line in prop::string::string_regex("[a-zA-Z0-9_\"'`#/ ]{0,100}").expect("valid regex"),
+        lang in prop::sample::select(&[
+            Language::Rust,
+            Language::Python,
+            Language::JavaScript,
+            Language::TypeScript,
+            Language::Go,
+            Language::Ruby,
+            Language::C,
+            Language::Cpp,
+            Language::CSharp,
+            Language::Java,
+            Language::Kotlin,
+            Language::Unknown,
+        ]),
+        mask_comments in prop::bool::ANY,
+        mask_strings in prop::bool::ANY,
+    ) {
+        let opts = PreprocessOptions {
+            mask_comments,
+            mask_strings,
+        };
+        let mut preprocessor = Preprocessor::with_language(opts, lang);
+        let result = preprocessor.sanitize_line(&line);
+
+        prop_assert_eq!(
+            result.len(),
+            line.len(),
+            "Output length ({}) should equal input length ({}) for language {:?}",
+            result.len(),
+            line.len(),
+            lang
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property: Preprocessing Stability
+    // Preprocessing with no options enabled SHALL return the original line unchanged.
+    // **Validates: Requirements 8.2**
+    #[test]
+    fn property_no_masking_returns_unchanged(
+        line in prop::string::string_regex("[a-zA-Z0-9_\"'`#/ ]{0,100}").expect("valid regex"),
+        lang in prop::sample::select(&[
+            Language::Rust,
+            Language::Python,
+            Language::JavaScript,
+            Language::TypeScript,
+            Language::Go,
+            Language::Ruby,
+            Language::Unknown,
+        ]),
+    ) {
+        let mut preprocessor = Preprocessor::with_language(PreprocessOptions::none(), lang);
+        let result = preprocessor.sanitize_line(&line);
+
+        prop_assert_eq!(
+            &result,
+            &line,
+            "With no masking, output should equal input"
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property: Preprocessing Idempotence (Comments)
+    // Applying comment masking twice to a line that contains only comments
+    // SHALL produce the same result (all spaces).
+    // **Validates: Requirements 8.3**
+    #[test]
+    fn property_comment_masking_idempotent(
+        comment_content in prop::string::string_regex("[a-zA-Z0-9_ ]{0,50}").expect("valid regex"),
+    ) {
+        // Create a line that is entirely a comment
+        let line = format!("// {}", comment_content);
+        let mut preprocessor = Preprocessor::with_language(
+            PreprocessOptions::comments_only(),
+            Language::Rust,
+        );
+
+        let result1 = preprocessor.sanitize_line(&line);
+        preprocessor.reset();
+        let result2 = preprocessor.sanitize_line(&result1);
+
+        // After first pass, line should be all spaces (comment masked)
+        // After second pass, result should be unchanged (already all spaces)
+        prop_assert_eq!(
+            &result1,
+            &result2,
+            "Comment masking should be idempotent"
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property: Preprocessing Consistency Across Resets
+    // After reset(), preprocessing the same line should produce the same result.
+    // **Validates: Requirements 8.4**
+    #[test]
+    fn property_reset_produces_consistent_results(
+        line in prop::string::string_regex("[a-zA-Z0-9_\"'`#/ ]{0,100}").expect("valid regex"),
+        lang in prop::sample::select(&[
+            Language::Python,
+            Language::JavaScript,
+            Language::Go,
+        ]),
+    ) {
+        let mut preprocessor = Preprocessor::with_language(
+            PreprocessOptions::comments_and_strings(),
+            lang,
+        );
+
+        let result1 = preprocessor.sanitize_line(&line);
+        preprocessor.reset();
+        let result2 = preprocessor.sanitize_line(&line);
+
+        prop_assert_eq!(
+            &result1,
+            &result2,
+            "After reset, same line should produce same result"
+        );
+    }
+}
+
+// ==================== Property: Rule Application Correctness ====================
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(50))]
+
+    // Feature: comprehensive-test-coverage, Property: Empty Rules Produce No Findings
+    // With no rules, evaluate_lines SHALL produce no findings.
+    // **Validates: Requirements 9.1**
+    #[test]
+    fn property_no_rules_no_findings(
+        lines in prop::collection::vec(input_line_strategy(), 1..20),
+    ) {
+        let rules: Vec<diffguard_domain::CompiledRule> = vec![];
+        let result = evaluate_lines(lines, &rules, 100);
+
+        prop_assert!(
+            result.findings.is_empty(),
+            "With no rules, there should be no findings"
+        );
+        prop_assert_eq!(result.counts.info, 0);
+        prop_assert_eq!(result.counts.warn, 0);
+        prop_assert_eq!(result.counts.error, 0);
+    }
+
+    // Feature: comprehensive-test-coverage, Property: Empty Lines Produce No Findings
+    // With no input lines, evaluate_lines SHALL produce no findings.
+    // **Validates: Requirements 9.2**
+    #[test]
+    fn property_no_lines_no_findings(
+        rule_config in valid_rule_config_strategy(),
+    ) {
+        let compiled = compile_rules(&[rule_config]);
+        prop_assume!(compiled.is_ok());
+        let rules = compiled.unwrap();
+
+        let lines: Vec<InputLine> = vec![];
+        let result = evaluate_lines(lines, &rules, 100);
+
+        prop_assert!(
+            result.findings.is_empty(),
+            "With no input lines, there should be no findings"
+        );
+        prop_assert_eq!(result.lines_scanned, 0);
+    }
 }
