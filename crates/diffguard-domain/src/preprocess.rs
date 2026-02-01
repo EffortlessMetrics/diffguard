@@ -61,7 +61,10 @@ impl Language {
         match self {
             Language::Rust => StringSyntax::Rust,
             Language::Python => StringSyntax::Python,
-            Language::JavaScript | Language::TypeScript => StringSyntax::JavaScript,
+            // Ruby uses single quotes for strings (not char literals like C)
+            Language::JavaScript | Language::TypeScript | Language::Ruby => {
+                StringSyntax::JavaScript
+            }
             Language::Go => StringSyntax::Go,
             _ => StringSyntax::CStyle,
         }
@@ -770,8 +773,13 @@ mod tests {
         assert_eq!(Language::CSharp.string_syntax(), StringSyntax::CStyle);
         assert_eq!(Language::Java.string_syntax(), StringSyntax::CStyle);
         assert_eq!(Language::Kotlin.string_syntax(), StringSyntax::CStyle);
-        assert_eq!(Language::Ruby.string_syntax(), StringSyntax::CStyle);
         assert_eq!(Language::Unknown.string_syntax(), StringSyntax::CStyle);
+    }
+
+    #[test]
+    fn string_syntax_ruby() {
+        // Ruby uses JavaScript-style string syntax (single quotes are strings, not char literals)
+        assert_eq!(Language::Ruby.string_syntax(), StringSyntax::JavaScript);
     }
 
     // ==================== Preprocessor constructor tests ====================
@@ -1053,6 +1061,26 @@ mod tests {
         let s = p.sanitize_line("x = \"# not a comment\"  # real comment");
         assert!(s.contains("# not a comment"));
         assert!(!s.contains("real comment"));
+    }
+
+    #[test]
+    fn ruby_masks_single_quoted_strings() {
+        // Ruby uses single quotes for strings (not char literals like C/Rust)
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Ruby);
+        let s = p.sanitize_line("puts 'hello world'");
+        assert!(s.contains("puts"));
+        // The content inside the single quotes should be masked
+        assert!(!s.contains("hello"));
+        assert!(!s.contains("world"));
+    }
+
+    #[test]
+    fn ruby_masks_double_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Ruby);
+        let s = p.sanitize_line("puts \"hello world\"");
+        assert!(s.contains("puts"));
+        assert!(!s.contains("hello"));
+        assert!(!s.contains("world"));
     }
 
     // ==================== Unknown/fallback language tests ====================

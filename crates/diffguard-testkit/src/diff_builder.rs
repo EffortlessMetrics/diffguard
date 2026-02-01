@@ -19,7 +19,7 @@
 //!
 //! let diff = DiffBuilder::new()
 //!     .file("src/lib.rs")
-//!         .hunk(1, 1, 2)
+//!         .hunk(1, 1, 1, 2)
 //!             .context("fn existing() {}")
 //!             .add_line("fn new_function() {}")
 //!             .done()
@@ -95,10 +95,16 @@ pub struct FileBuilderInProgress {
 
 impl FileBuilderInProgress {
     /// Add a hunk to the file.
-    pub fn hunk(self, old_start: u32, old_count: u32, new_count: u32) -> HunkBuilderInProgress {
+    pub fn hunk(
+        self,
+        old_start: u32,
+        old_count: u32,
+        new_start: u32,
+        new_count: u32,
+    ) -> HunkBuilderInProgress {
         HunkBuilderInProgress {
             file_in_progress: self,
-            hunk_builder: HunkBuilder::new(old_start, old_count, new_count),
+            hunk_builder: HunkBuilder::new(old_start, old_count, new_start, new_count),
         }
     }
 
@@ -319,6 +325,7 @@ impl FileBuilder {
 pub struct HunkBuilder {
     old_start: u32,
     old_count: u32,
+    new_start: u32,
     new_count: u32,
     lines: Vec<HunkLine>,
 }
@@ -332,10 +339,11 @@ enum HunkLine {
 
 impl HunkBuilder {
     /// Create a new hunk builder.
-    pub fn new(old_start: u32, old_count: u32, new_count: u32) -> Self {
+    pub fn new(old_start: u32, old_count: u32, new_start: u32, new_count: u32) -> Self {
         Self {
             old_start,
             old_count,
+            new_start,
             new_count,
             lines: Vec::new(),
         }
@@ -343,7 +351,7 @@ impl HunkBuilder {
 
     /// Create a hunk for adding lines to the end of a file.
     pub fn for_additions(start_line: u32, count: u32) -> Self {
-        Self::new(start_line.saturating_sub(1), 1, count + 1)
+        Self::new(start_line.saturating_sub(1), 1, start_line, count + 1)
     }
 
     /// Add a context line.
@@ -414,8 +422,8 @@ impl HunkBuilder {
 
         // Hunk header
         output.push(format!(
-            "@@ -{},{} +1,{} @@",
-            self.old_start, self.old_count, self.new_count
+            "@@ -{},{} +{},{} @@",
+            self.old_start, self.old_count, self.new_start, self.new_count
         ));
 
         // Lines
@@ -451,7 +459,7 @@ impl GeneratedDiff {
     pub fn with_additions(path: &str, lines: &[&str]) -> Self {
         let diff = DiffBuilder::new()
             .file(path)
-            .hunk(0, 0, lines.len() as u32)
+            .hunk(0, 0, 1, lines.len() as u32)
             .add_lines_from_slice(lines)
             .done()
             .done()
@@ -468,7 +476,7 @@ impl GeneratedDiff {
 
     /// Create a diff with changed lines (removed + added).
     pub fn with_changes(path: &str, removed: &[&str], added: &[&str]) -> Self {
-        let mut hunk = HunkBuilder::new(1, removed.len() as u32, added.len() as u32);
+        let mut hunk = HunkBuilder::new(1, removed.len() as u32, 1, added.len() as u32);
         for line in removed {
             hunk = hunk.remove(line);
         }
@@ -506,7 +514,7 @@ impl GeneratedDiff {
 
     /// Create a deleted file diff.
     pub fn deleted(path: &str, removed_lines: &[&str]) -> Self {
-        let mut hunk = HunkBuilder::new(1, removed_lines.len() as u32, 0);
+        let mut hunk = HunkBuilder::new(1, removed_lines.len() as u32, 1, 0);
         for line in removed_lines {
             hunk = hunk.remove(line);
         }
@@ -525,7 +533,7 @@ impl GeneratedDiff {
 
     /// Create a renamed file diff.
     pub fn renamed(old_path: &str, new_path: &str, added_lines: &[&str]) -> Self {
-        let hunk = HunkBuilder::new(1, 1, added_lines.len() as u32 + 1)
+        let hunk = HunkBuilder::new(1, 1, 1, added_lines.len() as u32 + 1)
             .context("fn existing() {}")
             .add_lines_from_slice(added_lines);
 
@@ -581,7 +589,7 @@ mod tests {
     fn build_simple_addition() {
         let diff = DiffBuilder::new()
             .file("src/lib.rs")
-            .hunk(1, 1, 2)
+            .hunk(1, 1, 1, 2)
             .context("fn existing() {}")
             .add_line("fn new_function() {}")
             .done()
@@ -604,7 +612,7 @@ mod tests {
     #[test]
     fn build_deleted_file() {
         let file = FileBuilder::new("old.rs").deleted().add_hunk(
-            HunkBuilder::new(1, 2, 0)
+            HunkBuilder::new(1, 2, 1, 0)
                 .remove("fn a() {}")
                 .remove("fn b() {}"),
         );
@@ -620,7 +628,7 @@ mod tests {
         let file = FileBuilder::new("new/path.rs")
             .rename_from("old/path.rs")
             .add_hunk(
-                HunkBuilder::new(1, 1, 2)
+                HunkBuilder::new(1, 1, 1, 2)
                     .context("fn existing() {}")
                     .add_line("fn added() {}"),
             );
@@ -647,12 +655,12 @@ mod tests {
     fn build_multiple_files() {
         let diff = DiffBuilder::new()
             .file("src/a.rs")
-            .hunk(1, 0, 1)
+            .hunk(1, 0, 1, 1)
             .add_line("fn a() {}")
             .done()
             .done()
             .file("src/b.rs")
-            .hunk(1, 0, 1)
+            .hunk(1, 0, 1, 1)
             .add_line("fn b() {}")
             .done()
             .done()
@@ -707,9 +715,27 @@ mod tests {
     #[test]
     #[should_panic(expected = "Cannot add more than")]
     fn enforces_max_lines_per_hunk() {
-        let mut hunk = HunkBuilder::new(1, 1, 1);
+        let mut hunk = HunkBuilder::new(1, 1, 1, 1);
         for i in 0..=MAX_LINES_PER_HUNK {
             hunk = hunk.add_line(&format!("line {}", i));
         }
+    }
+
+    #[test]
+    fn hunk_new_start_in_header() {
+        // Regression test: new_start should appear in the hunk header, not hardcoded +1
+        let hunk = HunkBuilder::new(10, 3, 42, 5).add_line("test line");
+        let output = hunk.build();
+
+        assert!(
+            output.contains("+42,"),
+            "Hunk header should contain '+42,' for new_start=42, got: {}",
+            output
+        );
+        assert!(
+            output.contains("@@ -10,3 +42,5 @@"),
+            "Full hunk header should be '@@ -10,3 +42,5 @@', got: {}",
+            output
+        );
     }
 }
