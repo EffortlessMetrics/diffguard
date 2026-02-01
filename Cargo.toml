@@ -17,6 +17,13 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 rust-version = "1.75"
+description = "Diff-scoped governance linter for PR automation"
+repository = "https://github.com/effortless-mgmt/diffguard"
+homepage = "https://github.com/effortless-mgmt/diffguard"
+documentation = "https://docs.rs/diffguard"
+keywords = ["linter", "diff", "git", "ci", "governance"]
+categories = ["development-tools", "command-line-utilities"]
+readme = "README.md"
 
 [workspace.dependencies]
 anyhow = "1.0"

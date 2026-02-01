@@ -61,14 +61,14 @@ fn arb_message() -> impl Strategy<Value = String> {
 /// Strategy for generating valid Finding.
 fn arb_finding() -> impl Strategy<Value = Finding> {
     (
-        arb_identifier(),                // rule_id
-        arb_severity(),                  // severity
-        arb_message(),                   // message
-        arb_identifier(),                // path (simplified)
-        1u32..1000,                      // line
-        prop::option::of(1u32..200),     // column
-        arb_identifier(),                // match_text
-        arb_message(),                   // snippet
+        arb_identifier(),            // rule_id
+        arb_severity(),              // severity
+        arb_message(),               // message
+        arb_identifier(),            // path (simplified)
+        1u32..1000,                  // line
+        prop::option::of(1u32..200), // column
+        arb_identifier(),            // match_text
+        arb_message(),               // snippet
     )
         .prop_map(
             |(rule_id, severity, message, path, line, column, match_text, snippet)| Finding {
