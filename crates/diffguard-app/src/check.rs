@@ -30,7 +30,10 @@ pub struct CheckRun {
 #[derive(Debug, thiserror::Error)]
 pub enum PathFilterError {
     #[error("invalid path filter glob '{glob}': {source}")]
-    InvalidGlob { glob: String, source: globset::Error },
+    InvalidGlob {
+        glob: String,
+        source: globset::Error,
+    },
 }
 
 pub fn run_check(

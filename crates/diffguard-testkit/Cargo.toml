@@ -1,27 +1,23 @@
 [package]
-name = "diffguard-app"
+name = "diffguard-testkit"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Application layer for diffguard governance linter"
-repository.workspace = true
-keywords.workspace = true
-categories.workspace = true
+publish = false
+description = "Shared test utilities for diffguard workspace"
 
 [dependencies]
-anyhow.workspace = true
-thiserror.workspace = true
+proptest.workspace = true
 serde_json.workspace = true
-toml.workspace = true
+jsonschema = "0.18"
+regex.workspace = true
 globset.workspace = true
 
-# local crates
-
+# Workspace crates for type access
 diffguard-types = { path = "../diffguard-types" }
 diffguard-diff = { path = "../diffguard-diff" }
 diffguard-domain = { path = "../diffguard-domain" }
 
 [dev-dependencies]
-insta.workspace = true
-proptest.workspace = true
+# For testing the testkit itself

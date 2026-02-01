@@ -1,5 +1,10 @@
 # diffguard
 
+[![Crates.io](https://img.shields.io/crates/v/diffguard.svg)](https://crates.io/crates/diffguard)
+[![Documentation](https://docs.rs/diffguard/badge.svg)](https://docs.rs/diffguard)
+[![CI](https://github.com/effortless-mgmt/diffguard/actions/workflows/ci.yml/badge.svg)](https://github.com/effortless-mgmt/diffguard/actions/workflows/ci.yml)
+[![License](https://img.shields.io/crates/l/diffguard.svg)](LICENSE-MIT)
+
 A diff-scoped governance linter: **rules applied to added/changed lines** in a Git diff.
 
 `diffguard` is designed for modern PR automation:
@@ -8,6 +13,18 @@ A diff-scoped governance linter: **rules applied to added/changed lines** in a G
 - Emits a stable **JSON receipt** for bots/automation
 - Can render a compact **Markdown summary** for PR comments
 - Can emit **GitHub Actions annotations** (`::error` / `::warning`)
+
+## Installation
+
+```bash
+# From crates.io
+cargo install diffguard
+
+# From source
+git clone https://github.com/effortless-mgmt/diffguard
+cd diffguard
+cargo install --path crates/diffguard
+```
 
 ## Quick start
 
@@ -102,6 +119,10 @@ A `fuzz/` directory is included (libFuzzer). Install `cargo-fuzz` and run:
 ```bash
 cargo fuzz run unified_diff_parser
 ```
+
+## Minimum Supported Rust Version (MSRV)
+
+Rust 1.75 or later.
 
 ## License
 
