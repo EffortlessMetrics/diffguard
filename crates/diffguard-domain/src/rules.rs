@@ -145,6 +145,7 @@ pub fn detect_language(path: &Path) -> Option<&'static str> {
         "c" | "h" => Some("c"),
         "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" => Some("cpp"),
         "cs" => Some("csharp"),
+        "sh" | "bash" | "zsh" | "ksh" | "fish" => Some("shell"),
         _ => None,
     }
 }
@@ -277,6 +278,15 @@ mod tests {
     #[test]
     fn detect_language_csharp() {
         assert_eq!(detect_language(Path::new("Program.cs")), Some("csharp"));
+    }
+
+    #[test]
+    fn detect_language_shell() {
+        assert_eq!(detect_language(Path::new("script.sh")), Some("shell"));
+        assert_eq!(detect_language(Path::new("script.bash")), Some("shell"));
+        assert_eq!(detect_language(Path::new("script.zsh")), Some("shell"));
+        assert_eq!(detect_language(Path::new("script.ksh")), Some("shell"));
+        assert_eq!(detect_language(Path::new("script.fish")), Some("shell"));
     }
 
     #[test]

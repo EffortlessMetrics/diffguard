@@ -18,6 +18,7 @@ pub enum Language {
     CSharp,
     Java,
     Kotlin,
+    Shell,
     #[default]
     Unknown,
 }
@@ -41,6 +42,7 @@ impl FromStr for Language {
             "csharp" => Language::CSharp,
             "java" => Language::Java,
             "kotlin" => Language::Kotlin,
+            "shell" | "bash" | "sh" | "zsh" | "ksh" | "fish" => Language::Shell,
             _ => Language::Unknown,
         })
     }
@@ -50,7 +52,7 @@ impl Language {
     /// Returns the comment syntax for this language.
     pub fn comment_syntax(self) -> CommentSyntax {
         match self {
-            Language::Python | Language::Ruby => CommentSyntax::Hash,
+            Language::Python | Language::Ruby | Language::Shell => CommentSyntax::Hash,
             Language::Rust => CommentSyntax::CStyleNested,
             _ => CommentSyntax::CStyle,
         }
@@ -66,6 +68,7 @@ impl Language {
                 StringSyntax::JavaScript
             }
             Language::Go => StringSyntax::Go,
+            Language::Shell => StringSyntax::Shell,
             _ => StringSyntax::CStyle,
         }
     }
@@ -95,6 +98,8 @@ pub enum StringSyntax {
     JavaScript,
     /// Go strings: `"..."`, `` `...` `` (raw strings)
     Go,
+    /// Shell strings: `'...'` (literal, no escapes), `"..."` (with escapes), `$'...'` (ANSI-C)
+    Shell,
 }
 
 /// Preprocessing options.
@@ -153,6 +158,10 @@ enum Mode {
     Char { escaped: bool },
     TemplateLiteral { escaped: bool },
     TripleQuotedString { escaped: bool, quote: u8 },
+    /// Shell literal string: '...' - no escapes at all
+    ShellLiteralString,
+    /// Shell ANSI-C string: $'...' - with escape sequences
+    ShellAnsiCString { escaped: bool },
 }
 
 impl fmt::Debug for Mode {
@@ -169,6 +178,10 @@ impl fmt::Debug for Mode {
             Mode::TemplateLiteral { escaped } => write!(f, "TemplateLiteral(escaped={escaped})"),
             Mode::TripleQuotedString { escaped, quote } => {
                 write!(f, "TripleQuotedString(escaped={escaped}, quote={quote})")
+            }
+            Mode::ShellLiteralString => write!(f, "ShellLiteralString"),
+            Mode::ShellAnsiCString { escaped } => {
+                write!(f, "ShellAnsiCString(escaped={escaped})")
             }
         }
     }
@@ -292,6 +305,30 @@ impl Preprocessor {
                             }
                             // Go raw strings don't support escapes, use RawString with 0 hashes
                             self.mode = Mode::RawString { hashes: 0 };
+                            i += 1;
+                            continue;
+                        }
+
+                        // Shell ANSI-C quoting: $'...'
+                        if string_syntax == StringSyntax::Shell
+                            && bytes[i] == b'$'
+                            && i + 1 < len
+                            && bytes[i + 1] == b'\''
+                        {
+                            if self.opts.mask_strings {
+                                mask_range(&mut out, i, i + 2);
+                            }
+                            self.mode = Mode::ShellAnsiCString { escaped: false };
+                            i += 2;
+                            continue;
+                        }
+
+                        // Shell single-quoted literal strings: '...' (no escapes!)
+                        if string_syntax == StringSyntax::Shell && bytes[i] == b'\'' {
+                            if self.opts.mask_strings {
+                                out[i] = b' ';
+                            }
+                            self.mode = Mode::ShellLiteralString;
                             i += 1;
                             continue;
                         }
@@ -580,6 +617,51 @@ impl Preprocessor {
                         }
                         self.mode = Mode::Normal;
                         i += 3;
+                        continue;
+                    }
+
+                    i += 1;
+                }
+
+                Mode::ShellLiteralString => {
+                    // Shell single-quoted strings: NO escapes at all!
+                    // The only way out is a closing single quote.
+                    if self.opts.mask_strings {
+                        out[i] = b' ';
+                    }
+
+                    if bytes[i] == b'\'' {
+                        // End of literal string
+                        self.mode = Mode::Normal;
+                        i += 1;
+                        continue;
+                    }
+
+                    i += 1;
+                }
+
+                Mode::ShellAnsiCString { escaped } => {
+                    // Shell ANSI-C strings: $'...' with escape sequences
+                    if self.opts.mask_strings {
+                        out[i] = b' ';
+                    }
+
+                    if escaped {
+                        self.mode = Mode::ShellAnsiCString { escaped: false };
+                        i += 1;
+                        continue;
+                    }
+
+                    if bytes[i] == b'\\' {
+                        self.mode = Mode::ShellAnsiCString { escaped: true };
+                        i += 1;
+                        continue;
+                    }
+
+                    if bytes[i] == b'\'' {
+                        // End of ANSI-C string
+                        self.mode = Mode::Normal;
+                        i += 1;
                         continue;
                     }
 
@@ -1551,5 +1633,163 @@ mod tests {
         let s3 = p.sanitize_line("close level 1 */ visible code");
         assert!(!s3.contains("close level 1"));
         assert!(s3.contains("visible code"));
+    }
+
+    // ==================== Shell/Bash-specific tests ====================
+
+    #[test]
+    fn shell_language_from_str() {
+        assert_eq!("shell".parse::<Language>().unwrap(), Language::Shell);
+        assert_eq!("bash".parse::<Language>().unwrap(), Language::Shell);
+        assert_eq!("sh".parse::<Language>().unwrap(), Language::Shell);
+        assert_eq!("zsh".parse::<Language>().unwrap(), Language::Shell);
+        assert_eq!("ksh".parse::<Language>().unwrap(), Language::Shell);
+        assert_eq!("fish".parse::<Language>().unwrap(), Language::Shell);
+    }
+
+    #[test]
+    fn shell_comment_syntax() {
+        assert_eq!(Language::Shell.comment_syntax(), CommentSyntax::Hash);
+    }
+
+    #[test]
+    fn shell_string_syntax() {
+        assert_eq!(Language::Shell.string_syntax(), StringSyntax::Shell);
+    }
+
+    #[test]
+    fn shell_masks_hash_comments() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Shell);
+        let s = p.sanitize_line("echo hello  # this is a comment");
+        assert!(s.contains("echo hello"));
+        assert!(!s.contains("this is a comment"));
+    }
+
+    #[test]
+    fn shell_does_not_mask_hash_in_string() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Shell);
+        let s = p.sanitize_line("echo \"# not a comment\"  # real comment");
+        assert!(s.contains("# not a comment"));
+        assert!(!s.contains("real comment"));
+    }
+
+    #[test]
+    fn shell_single_quoted_string_no_escapes() {
+        // Shell single quotes are literal - backslash has NO special meaning
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let s = p.sanitize_line("echo 'hello\\nworld'");
+        assert!(s.contains("echo"));
+        assert!(!s.contains("hello"));
+        assert!(!s.contains("world"));
+        // Verify the backslash is masked too
+        assert!(!s.contains("\\n"));
+    }
+
+    #[test]
+    fn shell_single_quoted_cannot_contain_single_quote() {
+        // In shell, you cannot escape a single quote inside single quotes
+        // 'hello' is a complete string, then world' is the next token
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let s = p.sanitize_line("echo 'hello' world");
+        assert!(s.contains("echo"));
+        assert!(!s.contains("hello"));
+        assert!(s.contains("world")); // world is outside the string
+    }
+
+    #[test]
+    fn shell_double_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let s = p.sanitize_line("echo \"hello world\"");
+        assert!(s.contains("echo"));
+        assert!(!s.contains("hello"));
+        assert!(!s.contains("world"));
+    }
+
+    #[test]
+    fn shell_double_quoted_with_escapes() {
+        // Shell double quotes support backslash escapes
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let s = p.sanitize_line("echo \"say \\\"hello\\\"\"");
+        assert!(s.contains("echo"));
+        assert!(!s.contains("say"));
+        assert!(!s.contains("hello"));
+    }
+
+    #[test]
+    fn shell_ansi_c_quoting() {
+        // Shell ANSI-C quoting: $'...'
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let s = p.sanitize_line("echo $'hello\\nworld'");
+        assert!(s.contains("echo"));
+        assert!(!s.contains("hello"));
+        assert!(!s.contains("world"));
+    }
+
+    #[test]
+    fn shell_ansi_c_quoting_with_escapes() {
+        // ANSI-C quoting supports escapes like \t, \n, \'
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let s = p.sanitize_line("echo $'tab\\there'");
+        assert!(s.contains("echo"));
+        assert!(!s.contains("tab"));
+        assert!(!s.contains("here"));
+    }
+
+    #[test]
+    fn shell_ansi_c_escaped_single_quote() {
+        // Unlike regular single quotes, $' allows \' to escape a quote
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let s = p.sanitize_line("echo $'it\\'s ok'");
+        assert!(s.contains("echo"));
+        assert!(!s.contains("it"));
+        assert!(!s.contains("ok"));
+    }
+
+    #[test]
+    fn shell_preserves_line_length() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Shell);
+        let line = "echo 'hello' # comment";
+        let s = p.sanitize_line(line);
+        assert_eq!(s.len(), line.len());
+    }
+
+    #[test]
+    fn shell_multiline_double_quoted_string() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+
+        // First line starts a double-quoted string with escaped newline
+        let s1 = p.sanitize_line("echo \"start\\");
+        assert!(s1.contains("echo"));
+        assert!(!s1.contains("start"));
+
+        // Second line continues the string
+        let s2 = p.sanitize_line("middle\" end");
+        // After escaped backslash, we're still in the string until closing quote
+        assert!(s2.contains("end"));
+    }
+
+    #[test]
+    fn shell_hash_not_comment_in_string() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Shell);
+        let s = p.sanitize_line("grep '#include' file.c  # search for includes");
+        assert!(!s.contains("#include")); // masked (in string)
+        assert!(!s.contains("search")); // masked (in comment)
+        assert!(s.contains("grep"));
+        assert!(s.contains("file.c"));
+    }
+
+    #[test]
+    fn shell_complex_mixed_quotes() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Shell);
+        // Mix of single, double, and $' quoting
+        let s = p.sanitize_line("echo 'single' \"double\" $'ansi' # comment");
+        assert!(s.contains("echo"));
+        assert!(!s.contains("single"));
+        assert!(!s.contains("double"));
+        assert!(!s.contains("ansi"));
+        assert!(!s.contains("comment"));
     }
 }

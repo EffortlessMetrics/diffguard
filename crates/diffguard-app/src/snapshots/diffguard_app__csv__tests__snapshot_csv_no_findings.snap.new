@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-app/src/csv.rs
+assertion_line: 370
+expression: csv
+---
+file,line,rule_id,severity,message,snippet

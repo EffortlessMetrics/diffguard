@@ -1,13 +1,17 @@
 [package]
 name = "diffguard-types"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 description = "Core types for diffguard governance linter"
 repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/diffguard-types"
 keywords.workspace = true
 categories.workspace = true
+readme = "README.md"
 
 [dependencies]
 serde.workspace = true

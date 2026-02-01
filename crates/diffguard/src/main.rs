@@ -5,7 +5,10 @@ use std::process::Command;
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 
-use diffguard_app::{render_sarif_json, run_check, CheckPlan};
+use diffguard_app::{
+    render_csv_for_receipt, render_junit_for_receipt, render_sarif_json, render_tsv_for_receipt,
+    run_check, CheckPlan,
+};
 use diffguard_types::{CheckReceipt, ConfigFile, FailOn, RuleConfig, Scope};
 
 mod presets;
@@ -32,6 +35,12 @@ enum Commands {
 
     /// Convert a JSON receipt to SARIF format (render-only mode).
     Sarif(SarifArgs),
+
+    /// Convert a JSON receipt to JUnit XML format (render-only mode).
+    Junit(JunitArgs),
+
+    /// Convert a JSON receipt to CSV or TSV format (render-only mode).
+    Csv(CsvArgs),
 
     /// Initialize a new diffguard.toml configuration file.
     Init(InitArgs),
@@ -66,6 +75,13 @@ struct CheckArgs {
     /// Head git ref (defaults to config defaults, else HEAD).
     #[arg(long)]
     head: Option<String>,
+
+    /// Check only staged changes (for pre-commit hooks).
+    ///
+    /// Uses `git diff --cached` instead of base...head range.
+    /// Mutually exclusive with --base and --head.
+    #[arg(long, conflicts_with_all = ["base", "head"])]
+    staged: bool,
 
     /// Path to a config file. If omitted, uses ./diffguard.toml if present.
     #[arg(long)]
@@ -124,6 +140,39 @@ struct CheckArgs {
         default_missing_value = "artifacts/diffguard/report.sarif.json"
     )]
     sarif: Option<PathBuf>,
+
+    /// Write a JUnit XML report.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/report.xml
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/report.xml"
+    )]
+    junit: Option<PathBuf>,
+
+    /// Write a CSV report.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/report.csv
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/report.csv"
+    )]
+    csv: Option<PathBuf>,
+
+    /// Write a TSV report.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/report.tsv
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/report.tsv"
+    )]
+    tsv: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
@@ -137,6 +186,36 @@ struct SarifArgs {
     /// If omitted, writes to stdout.
     #[arg(long, short)]
     output: Option<PathBuf>,
+}
+
+#[derive(Parser, Debug)]
+struct JunitArgs {
+    /// Path to a JSON receipt file to convert.
+    #[arg(long)]
+    report: PathBuf,
+
+    /// Output path for the JUnit XML file.
+    ///
+    /// If omitted, writes to stdout.
+    #[arg(long, short)]
+    output: Option<PathBuf>,
+}
+
+#[derive(Parser, Debug)]
+struct CsvArgs {
+    /// Path to a JSON receipt file to convert.
+    #[arg(long)]
+    report: PathBuf,
+
+    /// Output path for the CSV/TSV file.
+    ///
+    /// If omitted, writes to stdout.
+    #[arg(long, short)]
+    output: Option<PathBuf>,
+
+    /// Output as TSV instead of CSV.
+    #[arg(long)]
+    tsv: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -215,6 +294,8 @@ fn main() -> Result<()> {
         Commands::Rules(args) => cmd_rules(args),
         Commands::Explain(args) => cmd_explain(args),
         Commands::Sarif(args) => cmd_sarif(args),
+        Commands::Junit(args) => cmd_junit(args),
+        Commands::Csv(args) => cmd_csv(args),
         Commands::Init(args) => cmd_init(args),
     }
 }
@@ -388,17 +469,6 @@ fn simple_edit_distance(a: &str, b: &str) -> usize {
 fn cmd_check(args: CheckArgs) -> Result<()> {
     let cfg = load_config(args.config.clone(), args.no_default_rules)?;
 
-    // Merge defaults (CLI overrides config).
-    let base = args
-        .base
-        .or_else(|| cfg.defaults.base.clone())
-        .unwrap_or_else(|| "origin/main".to_string());
-
-    let head = args
-        .head
-        .or_else(|| cfg.defaults.head.clone())
-        .unwrap_or_else(|| "HEAD".to_string());
-
     let scope = args
         .scope
         .map(Into::into)
@@ -418,7 +488,25 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
 
     let diff_context = args.diff_context.or(cfg.defaults.diff_context).unwrap_or(0);
 
-    let diff_text = git_diff(&base, &head, diff_context)?;
+    // Handle --staged mode vs base/head mode
+    let (base, head, diff_text) = if args.staged {
+        let diff_text = git_staged_diff(diff_context)?;
+        ("(staged)".to_string(), "HEAD".to_string(), diff_text)
+    } else {
+        // Merge defaults (CLI overrides config).
+        let base = args
+            .base
+            .or_else(|| cfg.defaults.base.clone())
+            .unwrap_or_else(|| "origin/main".to_string());
+
+        let head = args
+            .head
+            .or_else(|| cfg.defaults.head.clone())
+            .unwrap_or_else(|| "HEAD".to_string());
+
+        let diff_text = git_diff(&base, &head, diff_context)?;
+        (base, head, diff_text)
+    };
 
     let plan = CheckPlan {
         base: base.clone(),
@@ -449,6 +537,21 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
         write_text(&sarif_path, &sarif)?;
     }
 
+    if let Some(junit_path) = args.junit {
+        let junit = render_junit_for_receipt(&run.receipt);
+        write_text(&junit_path, &junit)?;
+    }
+
+    if let Some(csv_path) = args.csv {
+        let csv = render_csv_for_receipt(&run.receipt);
+        write_text(&csv_path, &csv)?;
+    }
+
+    if let Some(tsv_path) = args.tsv {
+        let tsv = render_tsv_for_receipt(&run.receipt);
+        write_text(&tsv_path, &tsv)?;
+    }
+
     std::process::exit(run.exit_code);
 }
 
@@ -464,6 +567,44 @@ fn cmd_sarif(args: SarifArgs) -> Result<()> {
     match args.output {
         Some(path) => write_text(&path, &sarif)?,
         None => print!("{sarif}"),
+    }
+
+    Ok(())
+}
+
+fn cmd_junit(args: JunitArgs) -> Result<()> {
+    let receipt_text = std::fs::read_to_string(&args.report)
+        .with_context(|| format!("read report {}", args.report.display()))?;
+
+    let receipt: CheckReceipt = serde_json::from_str(&receipt_text)
+        .with_context(|| format!("parse report {}", args.report.display()))?;
+
+    let junit = render_junit_for_receipt(&receipt);
+
+    match args.output {
+        Some(path) => write_text(&path, &junit)?,
+        None => print!("{junit}"),
+    }
+
+    Ok(())
+}
+
+fn cmd_csv(args: CsvArgs) -> Result<()> {
+    let receipt_text = std::fs::read_to_string(&args.report)
+        .with_context(|| format!("read report {}", args.report.display()))?;
+
+    let receipt: CheckReceipt = serde_json::from_str(&receipt_text)
+        .with_context(|| format!("parse report {}", args.report.display()))?;
+
+    let output = if args.tsv {
+        render_tsv_for_receipt(&receipt)
+    } else {
+        render_csv_for_receipt(&receipt)
+    };
+
+    match args.output {
+        Some(path) => write_text(&path, &output)?,
+        None => print!("{output}"),
     }
 
     Ok(())
@@ -590,6 +731,25 @@ fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
     if !output.status.success() {
         bail!(
             "git diff failed (exit={}): {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+fn git_staged_diff(context_lines: u32) -> Result<String> {
+    let unified = format!("--unified={context_lines}");
+
+    let output = Command::new("git")
+        .args(["diff", "--cached", &unified])
+        .output()
+        .context("run git diff --cached")?;
+
+    if !output.status.success() {
+        bail!(
+            "git diff --cached failed (exit={}): {}",
             output.status,
             String::from_utf8_lossy(&output.stderr)
         );

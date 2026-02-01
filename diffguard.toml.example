@@ -1,3 +1,30 @@
+# diffguard configuration file
+# For more information, see: https://github.com/effortless-mgmt/diffguard
+
+# =============================================================================
+# Suppression Directives
+# =============================================================================
+# Suppress findings with inline comments in your code:
+#
+#   // diffguard: ignore rust.no_unwrap
+#   let x = y.unwrap();                     // <- this line is suppressed
+#
+#   let x = y.unwrap(); // diffguard: ignore rust.no_unwrap  // <- same line
+#
+#   // diffguard: ignore-next-line rust.no_dbg
+#   dbg!(value);                            // <- next line is suppressed
+#
+#   // diffguard: ignore rule1, rule2       // <- multiple rules
+#
+#   // diffguard: ignore *                  // <- wildcard: suppress all rules
+#   // diffguard: ignore-all                // <- same as ignore *
+#
+# Suppression comments work with any comment syntax:
+#   Python/Shell: # diffguard: ignore ...
+#   JS/Rust/Go:   // diffguard: ignore ...
+#
+# =============================================================================
+
 [defaults]
 base = "origin/main"
 scope = "added"         # added|changed
