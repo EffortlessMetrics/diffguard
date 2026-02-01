@@ -13,3 +13,4 @@ schemars.workspace = true
 [dev-dependencies]
 proptest.workspace = true
 jsonschema = "0.18"
+toml.workspace = true

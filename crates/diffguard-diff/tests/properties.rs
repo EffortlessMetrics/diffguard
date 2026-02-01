@@ -4,6 +4,10 @@
 //!
 //! These tests verify the enhanced diff parsing functionality for handling
 //! special cases like binary files, submodules, renames, and malformed content.
+//!
+//! Feature: comprehensive-test-coverage
+//!
+//! These tests also verify diff parsing consistency and correctness properties.
 
 use proptest::prelude::*;
 
@@ -162,6 +166,307 @@ fn make_rename_diff(old_path: &str, new_path: &str, added_lines: &[&str]) -> Str
         hunk = hunk,
         content = content
     )
+}
+
+// ============================================================================
+// Property 3: Diff Parsing Consistency
+// ============================================================================
+//
+// Feature: comprehensive-test-coverage, Property 3: Diff Parsing Consistency
+// For any well-formed unified diff string, calling `parse_unified_diff` twice
+// with the same scope SHALL return identical results (same DiffLines in same order).
+// **Validates: Requirements 2.1**
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    // Feature: comprehensive-test-coverage, Property 3: Diff Parsing Consistency
+    // Parsing the same diff twice with Scope::Added should return identical results
+    // **Validates: Requirements 2.1**
+    #[test]
+    fn property_parse_consistency_added_scope(
+        path in full_path_strategy(),
+        lines in prop::collection::vec(line_content_strategy(), 1..5),
+    ) {
+        // Filter out empty lines
+        let non_empty_lines: Vec<&str> = lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines.is_empty());
+
+        // Create a well-formed diff
+        let diff = make_diff_with_added_lines(&path, &non_empty_lines);
+
+        // Parse the diff twice with the same scope
+        let result1 = parse_unified_diff(&diff, Scope::Added);
+        let result2 = parse_unified_diff(&diff, Scope::Added);
+
+        // Both parses should succeed
+        prop_assert!(
+            result1.is_ok(),
+            "First parse should succeed, but got error: {:?}",
+            result1.err()
+        );
+        prop_assert!(
+            result2.is_ok(),
+            "Second parse should succeed, but got error: {:?}",
+            result2.err()
+        );
+
+        let (lines1, stats1) = result1.unwrap();
+        let (lines2, stats2) = result2.unwrap();
+
+        // Property: Both parses should return the same number of lines
+        prop_assert_eq!(
+            lines1.len(),
+            lines2.len(),
+            "Both parses should return the same number of lines, but got {} vs {}",
+            lines1.len(),
+            lines2.len()
+        );
+
+        // Property: Both parses should return identical DiffStats
+        prop_assert_eq!(
+            stats1.files,
+            stats2.files,
+            "Both parses should return the same file count, but got {} vs {}",
+            stats1.files,
+            stats2.files
+        );
+        prop_assert_eq!(
+            stats1.lines,
+            stats2.lines,
+            "Both parses should return the same line count, but got {} vs {}",
+            stats1.lines,
+            stats2.lines
+        );
+
+        // Property: Both parses should return lines in the same order with identical content
+        for (i, (line1, line2)) in lines1.iter().zip(lines2.iter()).enumerate() {
+            prop_assert_eq!(
+                &line1.path,
+                &line2.path,
+                "Line {} should have the same path, but got '{}' vs '{}'",
+                i,
+                line1.path,
+                line2.path
+            );
+            prop_assert_eq!(
+                line1.line,
+                line2.line,
+                "Line {} should have the same line number, but got {} vs {}",
+                i,
+                line1.line,
+                line2.line
+            );
+            prop_assert_eq!(
+                &line1.content,
+                &line2.content,
+                "Line {} should have the same content, but got '{}' vs '{}'",
+                i,
+                line1.content,
+                line2.content
+            );
+        }
+    }
+
+    // Feature: comprehensive-test-coverage, Property 3: Diff Parsing Consistency
+    // Parsing the same diff twice with Scope::Changed should return identical results
+    // **Validates: Requirements 2.1**
+    #[test]
+    fn property_parse_consistency_changed_scope(
+        path in full_path_strategy(),
+        lines in prop::collection::vec(line_content_strategy(), 1..5),
+    ) {
+        // Filter out empty lines
+        let non_empty_lines: Vec<&str> = lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines.is_empty());
+
+        // Create a well-formed diff
+        let diff = make_diff_with_added_lines(&path, &non_empty_lines);
+
+        // Parse the diff twice with the same scope
+        let result1 = parse_unified_diff(&diff, Scope::Changed);
+        let result2 = parse_unified_diff(&diff, Scope::Changed);
+
+        // Both parses should succeed
+        prop_assert!(
+            result1.is_ok(),
+            "First parse should succeed, but got error: {:?}",
+            result1.err()
+        );
+        prop_assert!(
+            result2.is_ok(),
+            "Second parse should succeed, but got error: {:?}",
+            result2.err()
+        );
+
+        let (lines1, stats1) = result1.unwrap();
+        let (lines2, stats2) = result2.unwrap();
+
+        // Property: Both parses should return the same number of lines
+        prop_assert_eq!(
+            lines1.len(),
+            lines2.len(),
+            "Both parses should return the same number of lines, but got {} vs {}",
+            lines1.len(),
+            lines2.len()
+        );
+
+        // Property: Both parses should return identical DiffStats
+        prop_assert_eq!(
+            stats1.files,
+            stats2.files,
+            "Both parses should return the same file count, but got {} vs {}",
+            stats1.files,
+            stats2.files
+        );
+        prop_assert_eq!(
+            stats1.lines,
+            stats2.lines,
+            "Both parses should return the same line count, but got {} vs {}",
+            stats1.lines,
+            stats2.lines
+        );
+
+        // Property: Both parses should return lines in the same order with identical content
+        for (i, (line1, line2)) in lines1.iter().zip(lines2.iter()).enumerate() {
+            prop_assert_eq!(
+                &line1.path,
+                &line2.path,
+                "Line {} should have the same path, but got '{}' vs '{}'",
+                i,
+                line1.path,
+                line2.path
+            );
+            prop_assert_eq!(
+                line1.line,
+                line2.line,
+                "Line {} should have the same line number, but got {} vs {}",
+                i,
+                line1.line,
+                line2.line
+            );
+            prop_assert_eq!(
+                &line1.content,
+                &line2.content,
+                "Line {} should have the same content, but got '{}' vs '{}'",
+                i,
+                line1.content,
+                line2.content
+            );
+        }
+    }
+
+    // Feature: comprehensive-test-coverage, Property 3: Diff Parsing Consistency
+    // Parsing a multi-file diff twice should return identical results
+    // **Validates: Requirements 2.1**
+    #[test]
+    fn property_parse_consistency_multi_file(
+        path1 in full_path_strategy(),
+        path2 in full_path_strategy(),
+        lines1 in prop::collection::vec(line_content_strategy(), 1..3),
+        lines2 in prop::collection::vec(line_content_strategy(), 1..3),
+    ) {
+        // Ensure paths are different
+        prop_assume!(path1 != path2);
+
+        // Filter out empty lines
+        let non_empty_lines1: Vec<&str> = lines1.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_lines2: Vec<&str> = lines2.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines1.is_empty());
+        prop_assume!(!non_empty_lines2.is_empty());
+
+        // Create a well-formed multi-file diff
+        let diff1 = make_diff_with_added_lines(&path1, &non_empty_lines1);
+        let diff2 = make_diff_with_added_lines(&path2, &non_empty_lines2);
+        let combined = format!("{}\n{}", diff1, diff2);
+
+        // Parse the diff twice with the same scope
+        let result1 = parse_unified_diff(&combined, Scope::Added);
+        let result2 = parse_unified_diff(&combined, Scope::Added);
+
+        // Both parses should succeed
+        prop_assert!(
+            result1.is_ok(),
+            "First parse should succeed, but got error: {:?}",
+            result1.err()
+        );
+        prop_assert!(
+            result2.is_ok(),
+            "Second parse should succeed, but got error: {:?}",
+            result2.err()
+        );
+
+        let (parsed_lines1, stats1) = result1.unwrap();
+        let (parsed_lines2, stats2) = result2.unwrap();
+
+        // Property: Both parses should return the same number of lines
+        prop_assert_eq!(
+            parsed_lines1.len(),
+            parsed_lines2.len(),
+            "Both parses should return the same number of lines, but got {} vs {}",
+            parsed_lines1.len(),
+            parsed_lines2.len()
+        );
+
+        // Property: Both parses should return identical DiffStats
+        prop_assert_eq!(
+            stats1.files,
+            stats2.files,
+            "Both parses should return the same file count, but got {} vs {}",
+            stats1.files,
+            stats2.files
+        );
+        prop_assert_eq!(
+            stats1.lines,
+            stats2.lines,
+            "Both parses should return the same line count, but got {} vs {}",
+            stats1.lines,
+            stats2.lines
+        );
+
+        // Property: Both parses should return lines in the same order with identical content
+        for (i, (line1, line2)) in parsed_lines1.iter().zip(parsed_lines2.iter()).enumerate() {
+            prop_assert_eq!(
+                &line1.path,
+                &line2.path,
+                "Line {} should have the same path, but got '{}' vs '{}'",
+                i,
+                line1.path,
+                line2.path
+            );
+            prop_assert_eq!(
+                line1.line,
+                line2.line,
+                "Line {} should have the same line number, but got {} vs {}",
+                i,
+                line1.line,
+                line2.line
+            );
+            prop_assert_eq!(
+                &line1.content,
+                &line2.content,
+                "Line {} should have the same content, but got '{}' vs '{}'",
+                i,
+                line1.content,
+                line2.content
+            );
+        }
+    }
 }
 
 // ============================================================================
@@ -817,6 +1122,482 @@ proptest! {
             2,
             "Stats should show 2 files, but got {}",
             stats.files
+        );
+    }
+}
+
+// ============================================================================
+// Property 4: Scope Filtering Correctness
+// ============================================================================
+//
+// Feature: comprehensive-test-coverage, Property 4: Scope Filtering Correctness
+// For any unified diff, the set of lines returned by `Scope::Changed` SHALL be
+// a subset of lines returned by `Scope::Added`, and for pure additions (no removed
+// lines), `Scope::Changed` SHALL return empty.
+// **Validates: Requirements 2.2, 2.3**
+
+/// Generate a diff with only added lines (no removed lines)
+fn make_pure_addition_diff(path: &str, lines: &[&str]) -> String {
+    let header = make_diff_header(path);
+    let hunk = hunk_header_strategy(1, lines.len() as u32);
+    let content: String = lines.iter().map(|l| format!("+{}\n", l)).collect();
+    format!("{}\n{}\n{}", header, hunk, content)
+}
+
+/// Generate a diff with changed lines (removed followed by added)
+fn make_changed_diff(path: &str, removed_lines: &[&str], added_lines: &[&str]) -> String {
+    let header = make_diff_header(path);
+    let total_new_lines = added_lines.len() as u32;
+    let total_old_lines = removed_lines.len() as u32;
+    let hunk = format!("@@ -1,{} +1,{} @@", total_old_lines, total_new_lines);
+    let removed: String = removed_lines.iter().map(|l| format!("-{}\n", l)).collect();
+    let added: String = added_lines.iter().map(|l| format!("+{}\n", l)).collect();
+    format!("{}\n{}\n{}{}", header, hunk, removed, added)
+}
+
+/// Generate a diff with mixed content: context, removed, and added lines
+fn make_mixed_diff(
+    path: &str,
+    context_before: &[&str],
+    removed_lines: &[&str],
+    added_lines: &[&str],
+    context_after: &[&str],
+) -> String {
+    let header = make_diff_header(path);
+    let old_count = context_before.len() + removed_lines.len() + context_after.len();
+    let new_count = context_before.len() + added_lines.len() + context_after.len();
+    let hunk = format!("@@ -1,{} +1,{} @@", old_count, new_count);
+
+    let ctx_before: String = context_before.iter().map(|l| format!(" {}\n", l)).collect();
+    let removed: String = removed_lines.iter().map(|l| format!("-{}\n", l)).collect();
+    let added: String = added_lines.iter().map(|l| format!("+{}\n", l)).collect();
+    let ctx_after: String = context_after.iter().map(|l| format!(" {}\n", l)).collect();
+
+    format!(
+        "{}\n{}\n{}{}{}{}",
+        header, hunk, ctx_before, removed, added, ctx_after
+    )
+}
+
+/// Generate a diff with interleaved additions (some after removals, some not)
+fn make_interleaved_diff(
+    path: &str,
+    pure_added: &[&str],
+    removed: &[&str],
+    changed_added: &[&str],
+) -> String {
+    let header = make_diff_header(path);
+    let old_count = removed.len();
+    let new_count = pure_added.len() + changed_added.len();
+    let hunk = format!("@@ -1,{} +1,{} @@", old_count, new_count);
+
+    // First add pure additions (not preceded by removals)
+    let pure: String = pure_added.iter().map(|l| format!("+{}\n", l)).collect();
+    // Then removals
+    let rem: String = removed.iter().map(|l| format!("-{}\n", l)).collect();
+    // Then changed additions (preceded by removals)
+    let changed: String = changed_added.iter().map(|l| format!("+{}\n", l)).collect();
+
+    format!("{}\n{}\n{}{}{}", header, hunk, pure, rem, changed)
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    // Feature: comprehensive-test-coverage, Property 4: Scope Filtering Correctness
+    // For pure additions (no removed lines), Scope::Changed SHALL return empty
+    // **Validates: Requirements 2.2**
+    #[test]
+    fn property_pure_additions_return_empty_changed(
+        path in full_path_strategy(),
+        lines in prop::collection::vec(line_content_strategy(), 1..5),
+    ) {
+        // Filter out empty lines
+        let non_empty_lines: Vec<&str> = lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines.is_empty());
+
+        // Create a diff with only added lines (no removals)
+        let diff = make_pure_addition_diff(&path, &non_empty_lines);
+
+        // Parse with Scope::Added - should return all lines
+        let result_added = parse_unified_diff(&diff, Scope::Added);
+        prop_assert!(
+            result_added.is_ok(),
+            "Parsing with Scope::Added should succeed, but got error: {:?}",
+            result_added.err()
+        );
+        let (added_lines, _) = result_added.unwrap();
+
+        // Parse with Scope::Changed - should return empty
+        let result_changed = parse_unified_diff(&diff, Scope::Changed);
+        prop_assert!(
+            result_changed.is_ok(),
+            "Parsing with Scope::Changed should succeed, but got error: {:?}",
+            result_changed.err()
+        );
+        let (changed_lines, _) = result_changed.unwrap();
+
+        // Property: Scope::Added should return all added lines
+        prop_assert!(
+            !added_lines.is_empty(),
+            "Scope::Added should return lines for pure additions, but got empty"
+        );
+
+        // Property: Scope::Changed should return empty for pure additions
+        prop_assert!(
+            changed_lines.is_empty(),
+            "Scope::Changed should return empty for pure additions (no removed lines), but got {} lines: {:?}",
+            changed_lines.len(),
+            changed_lines.iter().map(|l| &l.content).collect::<Vec<_>>()
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property 4: Scope Filtering Correctness
+    // Scope::Changed lines are always a subset of Scope::Added lines
+    // **Validates: Requirements 2.3**
+    #[test]
+    fn property_changed_is_subset_of_added(
+        path in full_path_strategy(),
+        removed_lines in prop::collection::vec(line_content_strategy(), 1..3),
+        added_lines in prop::collection::vec(line_content_strategy(), 1..5),
+    ) {
+        // Filter out empty lines
+        let non_empty_removed: Vec<&str> = removed_lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_added: Vec<&str> = added_lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_removed.is_empty());
+        prop_assume!(!non_empty_added.is_empty());
+
+        // Create a diff with removed and added lines (changed content)
+        let diff = make_changed_diff(&path, &non_empty_removed, &non_empty_added);
+
+        // Parse with both scopes
+        let result_added = parse_unified_diff(&diff, Scope::Added);
+        let result_changed = parse_unified_diff(&diff, Scope::Changed);
+
+        prop_assert!(result_added.is_ok(), "Parsing with Scope::Added should succeed");
+        prop_assert!(result_changed.is_ok(), "Parsing with Scope::Changed should succeed");
+
+        let (added_result, _) = result_added.unwrap();
+        let (changed_result, _) = result_changed.unwrap();
+
+        // Property: Every line in changed_result must also be in added_result
+        // We compare by (path, line number, content) tuple
+        let added_set: std::collections::HashSet<_> = added_result
+            .iter()
+            .map(|l| (&l.path, l.line, &l.content))
+            .collect();
+
+        for changed_line in &changed_result {
+            let key = (&changed_line.path, changed_line.line, &changed_line.content);
+            prop_assert!(
+                added_set.contains(&key),
+                "Changed line {:?} at line {} should be in Added results, but was not found",
+                changed_line.content,
+                changed_line.line
+            );
+        }
+
+        // Property: Changed count should be <= Added count
+        prop_assert!(
+            changed_result.len() <= added_result.len(),
+            "Changed count ({}) should be <= Added count ({})",
+            changed_result.len(),
+            added_result.len()
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property 4: Scope Filtering Correctness
+    // Multi-file diff: Changed is subset of Added across all files
+    // **Validates: Requirements 2.2, 2.3**
+    #[test]
+    fn property_changed_subset_multi_file(
+        path1 in full_path_strategy(),
+        path2 in full_path_strategy(),
+        lines1 in prop::collection::vec(line_content_strategy(), 1..3),
+        removed2 in prop::collection::vec(line_content_strategy(), 1..2),
+        added2 in prop::collection::vec(line_content_strategy(), 1..3),
+    ) {
+        // Ensure paths are different
+        prop_assume!(path1 != path2);
+
+        // Filter out empty lines
+        let non_empty_lines1: Vec<&str> = lines1.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_removed2: Vec<&str> = removed2.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_added2: Vec<&str> = added2.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_lines1.is_empty());
+        prop_assume!(!non_empty_removed2.is_empty());
+        prop_assume!(!non_empty_added2.is_empty());
+
+        // File 1: pure additions (no removals)
+        // File 2: changed content (removals + additions)
+        let diff1 = make_pure_addition_diff(&path1, &non_empty_lines1);
+        let diff2 = make_changed_diff(&path2, &non_empty_removed2, &non_empty_added2);
+        let combined = format!("{}\n{}", diff1, diff2);
+
+        // Parse with both scopes
+        let result_added = parse_unified_diff(&combined, Scope::Added);
+        let result_changed = parse_unified_diff(&combined, Scope::Changed);
+
+        prop_assert!(result_added.is_ok(), "Parsing with Scope::Added should succeed");
+        prop_assert!(result_changed.is_ok(), "Parsing with Scope::Changed should succeed");
+
+        let (added_result, _) = result_added.unwrap();
+        let (changed_result, _) = result_changed.unwrap();
+
+        // Property: Every line in changed_result must also be in added_result
+        let added_set: std::collections::HashSet<_> = added_result
+            .iter()
+            .map(|l| (&l.path, l.line, &l.content))
+            .collect();
+
+        for changed_line in &changed_result {
+            let key = (&changed_line.path, changed_line.line, &changed_line.content);
+            prop_assert!(
+                added_set.contains(&key),
+                "Changed line {:?} at line {} in file {} should be in Added results",
+                changed_line.content,
+                changed_line.line,
+                changed_line.path
+            );
+        }
+
+        // Property: File 1 (pure additions) should have no lines in Changed result
+        let file1_changed: Vec<_> = changed_result.iter().filter(|l| l.path == path1).collect();
+        prop_assert!(
+            file1_changed.is_empty(),
+            "File with pure additions ({}) should have no Changed lines, but found {:?}",
+            path1,
+            file1_changed
+        );
+
+        // Property: File 2 (with removals) may have Changed lines
+        // (This is just a sanity check - the main property is subset)
+        let file2_changed: Vec<_> = changed_result.iter().filter(|l| l.path == path2).collect();
+        let file2_added: Vec<_> = added_result.iter().filter(|l| l.path == path2).collect();
+        prop_assert!(
+            file2_changed.len() <= file2_added.len(),
+            "File 2 Changed count ({}) should be <= Added count ({})",
+            file2_changed.len(),
+            file2_added.len()
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property 4: Scope Filtering Correctness
+    // Mixed diff with context lines: Changed is still subset of Added
+    // **Validates: Requirements 2.2, 2.3**
+    #[test]
+    fn property_changed_subset_with_context(
+        path in full_path_strategy(),
+        ctx_before in prop::collection::vec(line_content_strategy(), 0..2),
+        removed in prop::collection::vec(line_content_strategy(), 1..3),
+        added in prop::collection::vec(line_content_strategy(), 1..3),
+        ctx_after in prop::collection::vec(line_content_strategy(), 0..2),
+    ) {
+        // Filter out empty lines
+        let non_empty_ctx_before: Vec<&str> = ctx_before.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_removed: Vec<&str> = removed.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_added: Vec<&str> = added.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_ctx_after: Vec<&str> = ctx_after.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_removed.is_empty());
+        prop_assume!(!non_empty_added.is_empty());
+
+        // Create a diff with context, removed, and added lines
+        let diff = make_mixed_diff(
+            &path,
+            &non_empty_ctx_before,
+            &non_empty_removed,
+            &non_empty_added,
+            &non_empty_ctx_after,
+        );
+
+        // Parse with both scopes
+        let result_added = parse_unified_diff(&diff, Scope::Added);
+        let result_changed = parse_unified_diff(&diff, Scope::Changed);
+
+        prop_assert!(result_added.is_ok(), "Parsing with Scope::Added should succeed");
+        prop_assert!(result_changed.is_ok(), "Parsing with Scope::Changed should succeed");
+
+        let (added_result, _) = result_added.unwrap();
+        let (changed_result, _) = result_changed.unwrap();
+
+        // Property: Every line in changed_result must also be in added_result
+        let added_set: std::collections::HashSet<_> = added_result
+            .iter()
+            .map(|l| (&l.path, l.line, &l.content))
+            .collect();
+
+        for changed_line in &changed_result {
+            let key = (&changed_line.path, changed_line.line, &changed_line.content);
+            prop_assert!(
+                added_set.contains(&key),
+                "Changed line {:?} at line {} should be in Added results",
+                changed_line.content,
+                changed_line.line
+            );
+        }
+
+        // Property: Changed count should be <= Added count
+        prop_assert!(
+            changed_result.len() <= added_result.len(),
+            "Changed count ({}) should be <= Added count ({})",
+            changed_result.len(),
+            added_result.len()
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property 4: Scope Filtering Correctness
+    // Interleaved additions: only additions after removals are in Changed
+    // **Validates: Requirements 2.2, 2.3**
+    #[test]
+    fn property_interleaved_additions_correct_scope(
+        path in full_path_strategy(),
+        pure_added in prop::collection::vec(line_content_strategy(), 1..3),
+        removed in prop::collection::vec(line_content_strategy(), 1..2),
+        changed_added in prop::collection::vec(line_content_strategy(), 1..3),
+    ) {
+        // Filter out empty lines
+        let non_empty_pure: Vec<&str> = pure_added.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_removed: Vec<&str> = removed.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_changed: Vec<&str> = changed_added.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_pure.is_empty());
+        prop_assume!(!non_empty_removed.is_empty());
+        prop_assume!(!non_empty_changed.is_empty());
+
+        // Create a diff with interleaved content:
+        // First pure additions, then removals, then changed additions
+        let diff = make_interleaved_diff(
+            &path,
+            &non_empty_pure,
+            &non_empty_removed,
+            &non_empty_changed,
+        );
+
+        // Parse with both scopes
+        let result_added = parse_unified_diff(&diff, Scope::Added);
+        let result_changed = parse_unified_diff(&diff, Scope::Changed);
+
+        prop_assert!(result_added.is_ok(), "Parsing with Scope::Added should succeed");
+        prop_assert!(result_changed.is_ok(), "Parsing with Scope::Changed should succeed");
+
+        let (added_result, _) = result_added.unwrap();
+        let (changed_result, _) = result_changed.unwrap();
+
+        // Property: Added should contain all added lines (pure + changed)
+        let expected_added_count = non_empty_pure.len() + non_empty_changed.len();
+        prop_assert_eq!(
+            added_result.len(),
+            expected_added_count,
+            "Scope::Added should return {} lines (pure + changed), but got {}",
+            expected_added_count,
+            added_result.len()
+        );
+
+        // Property: Changed should only contain lines that followed removals
+        prop_assert_eq!(
+            changed_result.len(),
+            non_empty_changed.len(),
+            "Scope::Changed should return {} lines (only those after removals), but got {}",
+            non_empty_changed.len(),
+            changed_result.len()
+        );
+
+        // Property: Every line in changed_result must also be in added_result
+        let added_set: std::collections::HashSet<_> = added_result
+            .iter()
+            .map(|l| (&l.path, l.line, &l.content))
+            .collect();
+
+        for changed_line in &changed_result {
+            let key = (&changed_line.path, changed_line.line, &changed_line.content);
+            prop_assert!(
+                added_set.contains(&key),
+                "Changed line {:?} at line {} should be in Added results",
+                changed_line.content,
+                changed_line.line
+            );
+        }
+    }
+
+    // Feature: comprehensive-test-coverage, Property 4: Scope Filtering Correctness
+    // Empty diff: both scopes return empty
+    // **Validates: Requirements 2.2, 2.3**
+    #[test]
+    fn property_empty_diff_both_scopes_empty(
+        path in full_path_strategy(),
+    ) {
+        // Create a diff header with no hunks
+        let diff = format!(
+            "diff --git a/{path} b/{path}\n\
+             index 0000000..1111111 100644\n\
+             --- a/{path}\n\
+             +++ b/{path}",
+            path = path
+        );
+
+        // Parse with both scopes
+        let result_added = parse_unified_diff(&diff, Scope::Added);
+        let result_changed = parse_unified_diff(&diff, Scope::Changed);
+
+        prop_assert!(result_added.is_ok(), "Parsing with Scope::Added should succeed");
+        prop_assert!(result_changed.is_ok(), "Parsing with Scope::Changed should succeed");
+
+        let (added_result, _) = result_added.unwrap();
+        let (changed_result, _) = result_changed.unwrap();
+
+        // Property: Both scopes should return empty for a diff with no hunks
+        prop_assert!(
+            added_result.is_empty(),
+            "Scope::Added should return empty for diff with no hunks, but got {} lines",
+            added_result.len()
+        );
+        prop_assert!(
+            changed_result.is_empty(),
+            "Scope::Changed should return empty for diff with no hunks, but got {} lines",
+            changed_result.len()
         );
     }
 }

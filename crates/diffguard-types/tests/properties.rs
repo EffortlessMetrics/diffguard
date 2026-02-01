@@ -234,11 +234,344 @@ fn arb_check_receipt() -> impl Strategy<Value = CheckReceipt> {
 }
 
 // ============================================================================
+// Helper Functions for Field Name Validation
+// ============================================================================
+
+/// Check if a string is in snake_case format.
+/// Snake case: lowercase letters, digits, and underscores only.
+/// Must not start or end with underscore, no consecutive underscores.
+fn is_snake_case(s: &str) -> bool {
+    if s.is_empty() {
+        return false;
+    }
+
+    // Must not start or end with underscore
+    if s.starts_with('_') || s.ends_with('_') {
+        return false;
+    }
+
+    // Must not contain consecutive underscores
+    if s.contains("__") {
+        return false;
+    }
+
+    // Must only contain lowercase letters, digits, and underscores
+    // Must not contain uppercase letters (which would indicate camelCase)
+    s.chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+}
+
+/// Recursively collect all field names from a JSON value.
+fn collect_field_names(value: &serde_json::Value, field_names: &mut Vec<String>) {
+    match value {
+        serde_json::Value::Object(map) => {
+            for (key, val) in map {
+                field_names.push(key.clone());
+                collect_field_names(val, field_names);
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for item in arr {
+                collect_field_names(item, field_names);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Verify all field names in a JSON value are snake_case.
+fn verify_snake_case_fields(value: &serde_json::Value) -> Result<(), Vec<String>> {
+    let mut field_names = Vec::new();
+    collect_field_names(value, &mut field_names);
+
+    let non_snake_case: Vec<String> = field_names
+        .into_iter()
+        .filter(|name| !is_snake_case(name))
+        .collect();
+
+    if non_snake_case.is_empty() {
+        Ok(())
+    } else {
+        Err(non_snake_case)
+    }
+}
+
+// ============================================================================
 // Property Tests
 // ============================================================================
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(100))]
+
+    // ========================================================================
+    // Property 2: Schema Validation (field names)
+    // Feature: comprehensive-test-coverage
+    // **Validates: Requirements 1.4**
+    // ========================================================================
+
+    /// **Property 2: Schema Validation (ConfigFile field names)**
+    ///
+    /// For any valid ConfigFile instance, serializing to JSON SHALL produce
+    /// field names that are all in snake_case format (e.g., "fail_on" not "failOn").
+    ///
+    /// Feature: comprehensive-test-coverage, Property 2: Schema Validation
+    /// **Validates: Requirements 1.4**
+    #[test]
+    fn config_file_field_names_are_snake_case(config in arb_config_file()) {
+        // Serialize the ConfigFile to JSON
+        let json_value = serde_json::to_value(&config)
+            .expect("ConfigFile should serialize to JSON");
+
+        // Verify all field names are snake_case
+        let result = verify_snake_case_fields(&json_value);
+        prop_assert!(
+            result.is_ok(),
+            "ConfigFile field names should be snake_case. Non-snake_case fields: {:?}",
+            result.err()
+        );
+    }
+
+    /// **Property 2: Schema Validation (CheckReceipt field names)**
+    ///
+    /// For any valid CheckReceipt instance, serializing to JSON SHALL produce
+    /// field names that are all in snake_case format (e.g., "rule_id" not "ruleId").
+    ///
+    /// Feature: comprehensive-test-coverage, Property 2: Schema Validation
+    /// **Validates: Requirements 1.4**
+    #[test]
+    fn check_receipt_field_names_are_snake_case(receipt in arb_check_receipt()) {
+        // Serialize the CheckReceipt to JSON
+        let json_value = serde_json::to_value(&receipt)
+            .expect("CheckReceipt should serialize to JSON");
+
+        // Verify all field names are snake_case
+        let result = verify_snake_case_fields(&json_value);
+        prop_assert!(
+            result.is_ok(),
+            "CheckReceipt field names should be snake_case. Non-snake_case fields: {:?}",
+            result.err()
+        );
+    }
+
+    /// **Property 2: Schema Validation (RuleConfig field names)**
+    ///
+    /// For any valid RuleConfig instance, serializing to JSON SHALL produce
+    /// field names that are all in snake_case format.
+    ///
+    /// Feature: comprehensive-test-coverage, Property 2: Schema Validation
+    /// **Validates: Requirements 1.4**
+    #[test]
+    fn rule_config_field_names_are_snake_case(rule in arb_rule_config()) {
+        // Serialize the RuleConfig to JSON
+        let json_value = serde_json::to_value(&rule)
+            .expect("RuleConfig should serialize to JSON");
+
+        // Verify all field names are snake_case
+        let result = verify_snake_case_fields(&json_value);
+        prop_assert!(
+            result.is_ok(),
+            "RuleConfig field names should be snake_case. Non-snake_case fields: {:?}",
+            result.err()
+        );
+    }
+
+    /// **Property 2: Schema Validation (Finding field names)**
+    ///
+    /// For any valid Finding instance, serializing to JSON SHALL produce
+    /// field names that are all in snake_case format.
+    ///
+    /// Feature: comprehensive-test-coverage, Property 2: Schema Validation
+    /// **Validates: Requirements 1.4**
+    #[test]
+    fn finding_field_names_are_snake_case(finding in arb_finding()) {
+        // Serialize the Finding to JSON
+        let json_value = serde_json::to_value(&finding)
+            .expect("Finding should serialize to JSON");
+
+        // Verify all field names are snake_case
+        let result = verify_snake_case_fields(&json_value);
+        prop_assert!(
+            result.is_ok(),
+            "Finding field names should be snake_case. Non-snake_case fields: {:?}",
+            result.err()
+        );
+    }
+
+    /// **Property 2: Schema Validation (Defaults field names)**
+    ///
+    /// For any valid Defaults instance, serializing to JSON SHALL produce
+    /// field names that are all in snake_case format.
+    ///
+    /// Feature: comprehensive-test-coverage, Property 2: Schema Validation
+    /// **Validates: Requirements 1.4**
+    #[test]
+    fn defaults_field_names_are_snake_case(defaults in arb_defaults()) {
+        // Serialize the Defaults to JSON
+        let json_value = serde_json::to_value(&defaults)
+            .expect("Defaults should serialize to JSON");
+
+        // Verify all field names are snake_case
+        let result = verify_snake_case_fields(&json_value);
+        prop_assert!(
+            result.is_ok(),
+            "Defaults field names should be snake_case. Non-snake_case fields: {:?}",
+            result.err()
+        );
+    }
+
+    /// **Property 2: Schema Validation (Verdict field names)**
+    ///
+    /// For any valid Verdict instance, serializing to JSON SHALL produce
+    /// field names that are all in snake_case format.
+    ///
+    /// Feature: comprehensive-test-coverage, Property 2: Schema Validation
+    /// **Validates: Requirements 1.4**
+    #[test]
+    fn verdict_field_names_are_snake_case(verdict in arb_verdict()) {
+        // Serialize the Verdict to JSON
+        let json_value = serde_json::to_value(&verdict)
+            .expect("Verdict should serialize to JSON");
+
+        // Verify all field names are snake_case
+        let result = verify_snake_case_fields(&json_value);
+        prop_assert!(
+            result.is_ok(),
+            "Verdict field names should be snake_case. Non-snake_case fields: {:?}",
+            result.err()
+        );
+    }
+
+    // ========================================================================
+    // Property 1: Serialization Round-Trip (enum variants)
+    // Feature: comprehensive-test-coverage
+    // **Validates: Requirements 1.5**
+    // ========================================================================
+
+    /// **Property 1: Serialization Round-Trip (Severity enum)**
+    ///
+    /// For any valid Severity variant, serializing to JSON and deserializing
+    /// back SHALL produce an equivalent value.
+    ///
+    /// Feature: comprehensive-test-coverage, Property 1: Serialization Round-Trip
+    /// **Validates: Requirements 1.5**
+    #[test]
+    fn severity_json_round_trip(severity in arb_severity()) {
+        // Serialize the Severity to JSON
+        let json_string = serde_json::to_string(&severity)
+            .expect("Severity should serialize to JSON");
+
+        // Deserialize back from JSON
+        let deserialized: Severity = serde_json::from_str(&json_string)
+            .expect("Severity should deserialize from JSON");
+
+        // Verify round-trip produces equivalent value
+        prop_assert_eq!(
+            severity, deserialized,
+            "Severity JSON round-trip should produce equivalent value"
+        );
+    }
+
+    /// **Property 1: Serialization Round-Trip (Scope enum)**
+    ///
+    /// For any valid Scope variant, serializing to JSON and deserializing
+    /// back SHALL produce an equivalent value.
+    ///
+    /// Feature: comprehensive-test-coverage, Property 1: Serialization Round-Trip
+    /// **Validates: Requirements 1.5**
+    #[test]
+    fn scope_json_round_trip(scope in arb_scope()) {
+        // Serialize the Scope to JSON
+        let json_string = serde_json::to_string(&scope)
+            .expect("Scope should serialize to JSON");
+
+        // Deserialize back from JSON
+        let deserialized: Scope = serde_json::from_str(&json_string)
+            .expect("Scope should deserialize from JSON");
+
+        // Verify round-trip produces equivalent value
+        prop_assert_eq!(
+            scope, deserialized,
+            "Scope JSON round-trip should produce equivalent value"
+        );
+    }
+
+    /// **Property 1: Serialization Round-Trip (FailOn enum)**
+    ///
+    /// For any valid FailOn variant, serializing to JSON and deserializing
+    /// back SHALL produce an equivalent value.
+    ///
+    /// Feature: comprehensive-test-coverage, Property 1: Serialization Round-Trip
+    /// **Validates: Requirements 1.5**
+    #[test]
+    fn fail_on_json_round_trip(fail_on in arb_fail_on()) {
+        // Serialize the FailOn to JSON
+        let json_string = serde_json::to_string(&fail_on)
+            .expect("FailOn should serialize to JSON");
+
+        // Deserialize back from JSON
+        let deserialized: FailOn = serde_json::from_str(&json_string)
+            .expect("FailOn should deserialize from JSON");
+
+        // Verify round-trip produces equivalent value
+        prop_assert_eq!(
+            fail_on, deserialized,
+            "FailOn JSON round-trip should produce equivalent value"
+        );
+    }
+
+    /// **Property 1: Serialization Round-Trip (VerdictStatus enum)**
+    ///
+    /// For any valid VerdictStatus variant, serializing to JSON and deserializing
+    /// back SHALL produce an equivalent value.
+    ///
+    /// Feature: comprehensive-test-coverage, Property 1: Serialization Round-Trip
+    /// **Validates: Requirements 1.5**
+    #[test]
+    fn verdict_status_json_round_trip(status in arb_verdict_status()) {
+        // Serialize the VerdictStatus to JSON
+        let json_string = serde_json::to_string(&status)
+            .expect("VerdictStatus should serialize to JSON");
+
+        // Deserialize back from JSON
+        let deserialized: VerdictStatus = serde_json::from_str(&json_string)
+            .expect("VerdictStatus should deserialize from JSON");
+
+        // Verify round-trip produces equivalent value
+        prop_assert_eq!(
+            status, deserialized,
+            "VerdictStatus JSON round-trip should produce equivalent value"
+        );
+    }
+
+    // ========================================================================
+    // Property 1: Serialization Round-Trip (ConfigFile TOML)
+    // Feature: comprehensive-test-coverage
+    // **Validates: Requirements 1.2**
+    // ========================================================================
+
+    /// **Property 1: Serialization Round-Trip (ConfigFile TOML)**
+    ///
+    /// For any valid ConfigFile instance, serializing to TOML and deserializing
+    /// back SHALL produce an equivalent value.
+    ///
+    /// Feature: comprehensive-test-coverage, Property 1: Serialization Round-Trip
+    /// **Validates: Requirements 1.2**
+    #[test]
+    fn config_file_toml_round_trip(config in arb_config_file()) {
+        // Serialize the ConfigFile to TOML
+        let toml_string = toml::to_string(&config)
+            .expect("ConfigFile should serialize to TOML");
+
+        // Deserialize back from TOML
+        let deserialized: ConfigFile = toml::from_str(&toml_string)
+            .expect("ConfigFile should deserialize from TOML");
+
+        // Verify round-trip produces equivalent value
+        prop_assert_eq!(
+            config, deserialized,
+            "ConfigFile TOML round-trip should produce equivalent value"
+        );
+    }
 
     /// **Property 9: Schema Validation Round-Trip (ConfigFile)**
     ///
@@ -296,6 +629,63 @@ proptest! {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+
+    // ========================================================================
+    // Unit tests for is_snake_case helper function
+    // ========================================================================
+
+    #[test]
+    fn is_snake_case_accepts_valid_snake_case() {
+        assert!(is_snake_case("hello"));
+        assert!(is_snake_case("hello_world"));
+        assert!(is_snake_case("rule_id"));
+        assert!(is_snake_case("fail_on"));
+        assert!(is_snake_case("max_findings"));
+        assert!(is_snake_case("context_lines"));
+        assert!(is_snake_case("files_scanned"));
+        assert!(is_snake_case("lines_scanned"));
+        assert!(is_snake_case("exclude_paths"));
+        assert!(is_snake_case("ignore_comments"));
+        assert!(is_snake_case("ignore_strings"));
+        assert!(is_snake_case("match_text"));
+        assert!(is_snake_case("diff_context"));
+        assert!(is_snake_case("a"));
+        assert!(is_snake_case("a1"));
+        assert!(is_snake_case("test123"));
+        assert!(is_snake_case("a_b_c"));
+    }
+
+    #[test]
+    fn is_snake_case_rejects_camel_case() {
+        assert!(!is_snake_case("helloWorld"));
+        assert!(!is_snake_case("ruleId"));
+        assert!(!is_snake_case("failOn"));
+        assert!(!is_snake_case("maxFindings"));
+        assert!(!is_snake_case("contextLines"));
+        assert!(!is_snake_case("filesScanned"));
+        assert!(!is_snake_case("linesScanned"));
+        assert!(!is_snake_case("excludePaths"));
+        assert!(!is_snake_case("ignoreComments"));
+        assert!(!is_snake_case("ignoreStrings"));
+        assert!(!is_snake_case("matchText"));
+        assert!(!is_snake_case("diffContext"));
+    }
+
+    #[test]
+    fn is_snake_case_rejects_invalid_formats() {
+        assert!(!is_snake_case("")); // empty
+        assert!(!is_snake_case("_hello")); // starts with underscore
+        assert!(!is_snake_case("hello_")); // ends with underscore
+        assert!(!is_snake_case("hello__world")); // consecutive underscores
+        assert!(!is_snake_case("Hello")); // uppercase
+        assert!(!is_snake_case("HELLO")); // all uppercase
+        assert!(!is_snake_case("hello-world")); // kebab-case
+        assert!(!is_snake_case("hello world")); // space
+    }
+
+    // ========================================================================
+    // Unit tests for schema validation
+    // ========================================================================
 
     #[test]
     fn built_in_config_validates_against_schema() {

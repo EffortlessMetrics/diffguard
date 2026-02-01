@@ -6,28 +6,28 @@ This plan implements comprehensive test coverage across the diffguard workspace 
 
 ## Tasks
 
-- [ ] 1. Enhance diffguard-types property tests
-  - [ ] 1.1 Add TOML serialization round-trip property test for ConfigFile
+- [x] 1. Enhance diffguard-types property tests
+  - [x] 1.1 Add TOML serialization round-trip property test for ConfigFile
     - Extend existing properties.rs with TOML round-trip test
     - Use toml crate for serialization/deserialization
     - _Requirements: 1.2_
-  - [ ] 1.2 Write property test for enum variant serialization round-trip
+  - [x] 1.2 Write property test for enum variant serialization round-trip
     - **Property 1: Serialization Round-Trip (enum variants)**
     - Test Severity, Scope, FailOn, VerdictStatus enums
     - **Validates: Requirements 1.5**
-  - [ ] 1.3 Write property test for serde field name validation
+  - [x] 1.3 Write property test for serde field name validation
     - **Property 2: Schema Validation (field names)**
     - Verify snake_case field names in serialized JSON
     - **Validates: Requirements 1.4**
 
-- [ ] 2. Checkpoint - Ensure all tests pass
+- [x] 2. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 3. Enhance diffguard-diff property tests
-  - [ ] 3.1 Add property test for diff parsing consistency
+  - [x] 3.1 Add property test for diff parsing consistency
     - Verify parse_unified_diff returns identical results on repeated calls
     - _Requirements: 2.1_
-  - [ ] 3.2 Write property test for scope filtering correctness
+  - [x] 3.2 Write property test for scope filtering correctness
     - **Property 4: Scope Filtering Correctness**
     - Verify Changed is subset of Added, pure additions return empty Changed
     - **Validates: Requirements 2.2, 2.3**
