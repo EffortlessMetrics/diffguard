@@ -86,10 +86,13 @@ fn arb_finding() -> impl Strategy<Value = Finding> {
 
 /// Strategy for generating valid VerdictCounts.
 fn arb_verdict_counts() -> impl Strategy<Value = VerdictCounts> {
-    (0u32..50, 0u32..50, 0u32..50).prop_map(|(info, warn, error)| VerdictCounts {
-        info,
-        warn,
-        error,
+    (0u32..50, 0u32..50, 0u32..50, 0u32..20).prop_map(|(info, warn, error, suppressed)| {
+        VerdictCounts {
+            info,
+            warn,
+            error,
+            suppressed,
+        }
     })
 }
 
@@ -466,6 +469,7 @@ proptest! {
                     info: 0,
                     warn: 1,
                     error: 0,
+                    suppressed: 0,
                 },
                 reasons: vec![],
             },
@@ -588,6 +592,7 @@ mod unit_tests {
                     info: 0,
                     warn: 1,
                     error: 0,
+                    suppressed: 0,
                 },
                 reasons: vec![],
             },

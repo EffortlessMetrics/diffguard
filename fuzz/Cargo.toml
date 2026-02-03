@@ -13,6 +13,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 arbitrary = { version = "1", features = ["derive"] }
+toml = "0.8"
 
 diffguard-diff = { path = "../crates/diffguard-diff" }
 diffguard-domain = { path = "../crates/diffguard-domain" }
@@ -33,5 +34,23 @@ doc = false
 [[bin]]
 name = "rule_matcher"
 path = "fuzz_targets/rule_matcher.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "config_parser"
+path = "fuzz_targets/config_parser.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "regex_pattern"
+path = "fuzz_targets/regex_pattern.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "glob_pattern"
+path = "fuzz_targets/glob_pattern.rs"
 test = false
 doc = false

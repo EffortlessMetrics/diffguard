@@ -1,0 +1,58 @@
+---
+source: crates/diffguard-app/src/sarif.rs
+expression: json
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "diffguard",
+          "version": "0.1.0",
+          "informationUri": "https://github.com/effortless-mgmt/diffguard",
+          "rules": [
+            {
+              "id": "info.todo",
+              "shortDescription": {
+                "text": "Found a TODO comment."
+              },
+              "defaultConfiguration": {
+                "level": "note"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "info.todo",
+          "level": "note",
+          "message": {
+            "text": "Found a TODO comment."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lib.rs",
+                  "uri_base_id": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 5,
+                  "snippet": {
+                    "text": "// TODO: refactor this"
+                  }
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "info.todo:src/lib.rs:5"
+          }
+        }
+      ]
+    }
+  ]
+}

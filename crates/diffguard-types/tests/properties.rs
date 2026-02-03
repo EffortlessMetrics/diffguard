@@ -128,6 +128,8 @@ fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     exclude_paths,
                     ignore_comments,
                     ignore_strings,
+                    help: None,
+                    url: None,
                 }
             },
         )
@@ -198,10 +200,13 @@ fn arb_finding() -> impl Strategy<Value = Finding> {
 
 /// Strategy for generating valid VerdictCounts.
 fn arb_verdict_counts() -> impl Strategy<Value = VerdictCounts> {
-    (0u32..100, 0u32..100, 0u32..100).prop_map(|(info, warn, error)| VerdictCounts {
-        info,
-        warn,
-        error,
+    (0u32..100, 0u32..100, 0u32..100, 0u32..50).prop_map(|(info, warn, error, suppressed)| {
+        VerdictCounts {
+            info,
+            warn,
+            error,
+            suppressed,
+        }
     })
 }
 
@@ -803,6 +808,7 @@ mod unit_tests {
                     info: 0,
                     warn: 1,
                     error: 1,
+                    suppressed: 0,
                 },
                 reasons: vec!["1 error-level finding".to_string()],
             },
@@ -874,6 +880,7 @@ mod unit_tests {
                     info: 0,
                     warn: 1,
                     error: 0,
+                    suppressed: 0,
                 },
                 reasons: vec!["1 warning".to_string()],
             },
@@ -1136,6 +1143,7 @@ mod unit_tests {
                     info: u32::MAX,
                     warn: u32::MAX,
                     error: u32::MAX,
+                    suppressed: 0,
                 },
                 reasons: vec![],
             },
@@ -1185,6 +1193,7 @@ mod unit_tests {
                     info: 0,
                     warn: 1,
                     error: 0,
+                    suppressed: 0,
                 },
                 reasons: vec!["\u{8b66}\u{544a}".to_string()],
             },

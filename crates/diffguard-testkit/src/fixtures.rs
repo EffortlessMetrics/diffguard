@@ -43,6 +43,8 @@ pub mod sample_configs {
                 exclude_paths: vec![],
                 ignore_comments: false,
                 ignore_strings: false,
+                help: None,
+                url: None,
             }],
         }
     }
@@ -69,6 +71,8 @@ pub mod sample_configs {
                     exclude_paths: vec!["**/tests/**".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: None,
+                    url: None,
                 },
                 RuleConfig {
                     id: "rust.no_dbg".to_string(),
@@ -80,6 +84,8 @@ pub mod sample_configs {
                     exclude_paths: vec!["**/tests/**".to_string(), "**/examples/**".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: None,
+                    url: None,
                 },
             ],
         }
@@ -109,6 +115,8 @@ pub mod sample_configs {
                     ],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: None,
+                    url: None,
                 },
                 RuleConfig {
                     id: "js.no_debugger".to_string(),
@@ -120,6 +128,8 @@ pub mod sample_configs {
                     exclude_paths: vec![],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: None,
+                    url: None,
                 },
             ],
         }
@@ -140,6 +150,8 @@ pub mod sample_configs {
                     exclude_paths: vec!["**/tests/**".to_string(), "**/test_*.py".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: None,
+                    url: None,
                 },
                 RuleConfig {
                     id: "python.no_pdb".to_string(),
@@ -155,6 +167,8 @@ pub mod sample_configs {
                     exclude_paths: vec![],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: None,
+                    url: None,
                 },
             ],
         }
@@ -188,6 +202,8 @@ pub mod sample_configs {
                     exclude_paths: vec![],
                     ignore_comments: false,
                     ignore_strings: false,
+                    help: None,
+                    url: None,
                 },
                 RuleConfig {
                     id: "test.warn".to_string(),
@@ -199,6 +215,8 @@ pub mod sample_configs {
                     exclude_paths: vec![],
                     ignore_comments: false,
                     ignore_strings: false,
+                    help: None,
+                    url: None,
                 },
                 RuleConfig {
                     id: "test.error".to_string(),
@@ -210,6 +228,8 @@ pub mod sample_configs {
                     exclude_paths: vec![],
                     ignore_comments: false,
                     ignore_strings: false,
+                    help: None,
+                    url: None,
                 },
             ],
         }
@@ -517,6 +537,7 @@ pub mod sample_receipts {
                     info: 0,
                     warn: 1,
                     error: 0,
+                    suppressed: 0,
                 },
                 reasons: vec!["1 warning-level finding".to_string()],
             },
@@ -555,6 +576,7 @@ pub mod sample_receipts {
                     info: 0,
                     warn: 0,
                     error: 1,
+                    suppressed: 0,
                 },
                 reasons: vec!["1 error-level finding".to_string()],
             },
@@ -615,6 +637,7 @@ pub mod sample_receipts {
                     info: 1,
                     warn: 1,
                     error: 1,
+                    suppressed: 0,
                 },
                 reasons: vec![
                     "1 error-level finding".to_string(),

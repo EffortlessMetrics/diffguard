@@ -153,19 +153,47 @@ pub fn detect_language(path: &Path) -> Option<&'static str> {
 mod tests {
     use super::*;
 
+    /// Helper to create a RuleConfig for testing with default help/url
+    #[allow(clippy::too_many_arguments)]
+    fn test_rule(
+        id: &str,
+        severity: Severity,
+        message: &str,
+        languages: Vec<&str>,
+        patterns: Vec<&str>,
+        paths: Vec<&str>,
+        exclude_paths: Vec<&str>,
+        ignore_comments: bool,
+        ignore_strings: bool,
+    ) -> RuleConfig {
+        RuleConfig {
+            id: id.to_string(),
+            severity,
+            message: message.to_string(),
+            languages: languages.into_iter().map(|s| s.to_string()).collect(),
+            patterns: patterns.into_iter().map(|s| s.to_string()).collect(),
+            paths: paths.into_iter().map(|s| s.to_string()).collect(),
+            exclude_paths: exclude_paths.into_iter().map(|s| s.to_string()).collect(),
+            ignore_comments,
+            ignore_strings,
+            help: None,
+            url: None,
+        }
+    }
+
     #[test]
     fn compile_and_match_basic_rule() {
-        let cfg = RuleConfig {
-            id: "x".to_string(),
-            severity: Severity::Warn,
-            message: "m".to_string(),
-            languages: vec!["rust".to_string()],
-            patterns: vec!["unwrap".to_string()],
-            paths: vec!["**/*.rs".to_string()],
-            exclude_paths: vec!["**/tests/**".to_string()],
-            ignore_comments: true,
-            ignore_strings: true,
-        };
+        let cfg = test_rule(
+            "x",
+            Severity::Warn,
+            "m",
+            vec!["rust"],
+            vec!["unwrap"],
+            vec!["**/*.rs"],
+            vec!["**/tests/**"],
+            true,
+            true,
+        );
 
         let rules = compile_rules(&[cfg]).unwrap();
         let r = &rules[0];
@@ -293,6 +321,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -329,6 +359,8 @@ mod tests {
                 exclude_paths: vec![],
                 ignore_comments: false,
                 ignore_strings: false,
+                help: None,
+                url: None,
             },
             RuleConfig {
                 id: "rule.second".to_string(),
@@ -340,6 +372,8 @@ mod tests {
                 exclude_paths: vec![],
                 ignore_comments: false,
                 ignore_strings: false,
+                help: None,
+                url: None,
             },
         ];
 
@@ -365,6 +399,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -392,6 +428,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -421,6 +459,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -450,6 +490,8 @@ mod tests {
             exclude_paths: vec!["**/test/**".to_string(), "**/tests/**".to_string()],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -486,6 +528,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -515,6 +559,8 @@ mod tests {
             exclude_paths: vec!["**/*.test.ts".to_string(), "**/*.spec.ts".to_string()],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -544,6 +590,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -570,6 +618,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -596,6 +646,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -622,6 +674,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -648,6 +702,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -672,6 +728,8 @@ mod tests {
             exclude_paths: vec!["**/tests/**".to_string()],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -707,6 +765,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -731,6 +791,8 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let rules = compile_rules(&[cfg]).unwrap();

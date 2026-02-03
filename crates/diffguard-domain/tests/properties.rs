@@ -1009,6 +1009,8 @@ fn make_rule_config(id: &str, patterns: Vec<String>) -> RuleConfig {
         exclude_paths: vec![],
         ignore_comments: false,
         ignore_strings: false,
+        help: None,
+        url: None,
     }
 }
 
@@ -1024,6 +1026,8 @@ fn make_rule_config_with_paths(id: &str, patterns: Vec<String>, paths: Vec<Strin
         exclude_paths: vec![],
         ignore_comments: false,
         ignore_strings: false,
+        help: None,
+        url: None,
     }
 }
 
@@ -1043,6 +1047,8 @@ fn make_rule_config_with_exclude_paths(
         exclude_paths,
         ignore_comments: false,
         ignore_strings: false,
+        help: None,
+        url: None,
     }
 }
 
@@ -1448,6 +1454,8 @@ fn valid_rule_config_strategy() -> impl Strategy<Value = RuleConfig> {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         })
 }
 
@@ -1569,6 +1577,8 @@ proptest! {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         };
 
         let compiled = compile_rules(&[rule]).expect("rule should compile");

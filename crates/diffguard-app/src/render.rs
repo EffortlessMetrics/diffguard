@@ -99,6 +99,7 @@ mod tests {
                     info: 0,
                     warn: 1,
                     error: 0,
+                    ..Default::default()
                 },
                 reasons: vec!["1 warning".to_string()],
             },
@@ -163,6 +164,7 @@ mod tests {
                     info: 0,
                     warn: 2,
                     error: 1,
+                    ..Default::default()
                 },
                 reasons: vec![
                     "1 error-level finding".to_string(),
@@ -195,6 +197,7 @@ mod tests {
                     info: 0,
                     warn: 0,
                     error: 0,
+                    suppressed: 0,
                 },
                 reasons: vec![],
             },
@@ -233,6 +236,7 @@ mod tests {
                     info: 0,
                     warn: 1,
                     error: 0,
+                    ..Default::default()
                 },
                 reasons: vec!["1 warning-level finding".to_string()],
             },

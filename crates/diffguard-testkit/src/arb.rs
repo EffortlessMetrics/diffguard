@@ -292,6 +292,8 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     exclude_paths,
                     ignore_comments,
                     ignore_strings,
+                    help: None,
+                    url: None,
                 }
             },
         )
@@ -310,6 +312,8 @@ pub fn arb_minimal_rule_config() -> impl Strategy<Value = RuleConfig> {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            help: None,
+            url: None,
         },
     )
 }
@@ -381,10 +385,13 @@ pub fn arb_finding() -> impl Strategy<Value = Finding> {
 
 /// Strategy for generating VerdictCounts.
 pub fn arb_verdict_counts() -> impl Strategy<Value = VerdictCounts> {
-    (0u32..100, 0u32..100, 0u32..100).prop_map(|(info, warn, error)| VerdictCounts {
-        info,
-        warn,
-        error,
+    (0u32..100, 0u32..100, 0u32..100, 0u32..50).prop_map(|(info, warn, error, suppressed)| {
+        VerdictCounts {
+            info,
+            warn,
+            error,
+            suppressed,
+        }
     })
 }
 
