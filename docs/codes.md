@@ -257,6 +257,42 @@ slog.Debug("Debug", "value", value)
 
 ---
 
+### Ruby Rules
+
+#### `ruby.no_puts`
+
+**Severity:** `warn`
+
+**Message:** Remove puts/p debug statements before merging.
+
+**Patterns:**
+- `\bputs\b`
+- `\bp\s+[^=]`
+
+**Applies to:** `**/*.rb`
+
+**Excludes:** `**/spec/**`, `**/test/**`
+
+**Preprocessing:** Ignores comments and strings
+
+**Rationale:** Debug output statements should not be committed to production code.
+Use a proper logging library like Ruby's built-in `Logger` or `Rails.logger`.
+
+**Example finding:**
+```ruby
+puts "Debug: #{value}"  # WARN: ruby.no_puts
+p user_data  # WARN: ruby.no_puts
+```
+
+**Suggested fix:**
+```ruby
+require 'logger'
+logger = Logger.new(STDOUT)
+logger.debug("Debug: #{value}")
+```
+
+---
+
 ## Custom Rules
 
 Add custom rules to your `diffguard.toml`:
@@ -293,6 +329,7 @@ ignore_strings = true
 | js.no_console | | | Yes | Yes | | | | | | |
 | js.no_debugger | | | Yes | Yes | | | | | | |
 | go.no_fmt_print | | | | | Yes | | | | | |
+| ruby.no_puts | | | | | | Yes | | | | |
 
 ## Exit Code Reference
 

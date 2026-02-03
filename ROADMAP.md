@@ -235,4 +235,4 @@ To propose additions to this roadmap:
 
 ---
 
-*Last updated: 2026-02-01*
+*Last updated: 2026-02-03*
