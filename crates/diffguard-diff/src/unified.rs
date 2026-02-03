@@ -574,16 +574,15 @@ diff --git a/a.txt b/a.txt
         assert_eq!(parse_rename_to("rename to"), None); // Empty path is still valid
         assert_eq!(parse_rename_to(""), None);
     }
-}
 
-// ========================================================================
-// Tests for parse_unified_diff special case handling (Requirements 4.1-4.6)
-// ========================================================================
+    // ========================================================================
+    // Tests for parse_unified_diff special case handling (Requirements 4.1-4.6)
+    // ========================================================================
 
-#[test]
-fn skips_binary_files() {
-    // Binary file should be skipped, but subsequent text file should be parsed
-    let diff = r#"
+    #[test]
+    fn skips_binary_files() {
+        // Binary file should be skipped, but subsequent text file should be parsed
+        let diff = r#"
 diff --git a/image.png b/image.png
 index 0000000..1111111 100644
 Binary files a/image.png and b/image.png differ
@@ -595,17 +594,17 @@ diff --git a/src/lib.rs b/src/lib.rs
 +fn b() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 1);
-    assert_eq!(lines[0].path, "src/lib.rs");
-    assert_eq!(lines[0].content, "fn b() {}");
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
+        assert_eq!(lines[0].path, "src/lib.rs");
+        assert_eq!(lines[0].content, "fn b() {}");
+    }
 
-#[test]
-fn skips_submodule_changes() {
-    // Submodule change should be skipped, but subsequent file should be parsed
-    let diff = r#"
+    #[test]
+    fn skips_submodule_changes() {
+        // Submodule change should be skipped, but subsequent file should be parsed
+        let diff = r#"
 diff --git a/vendor/lib b/vendor/lib
 index abc1234..def5678 160000
 --- a/vendor/lib
@@ -621,17 +620,17 @@ diff --git a/src/main.rs b/src/main.rs
 +fn helper() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 1);
-    assert_eq!(lines[0].path, "src/main.rs");
-    assert_eq!(lines[0].content, "fn helper() {}");
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
+        assert_eq!(lines[0].path, "src/main.rs");
+        assert_eq!(lines[0].content, "fn helper() {}");
+    }
 
-#[test]
-fn skips_deleted_files() {
-    // Deleted file should be skipped, but subsequent file should be parsed
-    let diff = r#"
+    #[test]
+    fn skips_deleted_files() {
+        // Deleted file should be skipped, but subsequent file should be parsed
+        let diff = r#"
 diff --git a/old_file.rs b/old_file.rs
 deleted file mode 100644
 index abc1234..0000000
@@ -649,17 +648,17 @@ new file mode 100644
 +fn new() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 1);
-    assert_eq!(lines[0].path, "new_file.rs");
-    assert_eq!(lines[0].content, "fn new() {}");
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
+        assert_eq!(lines[0].path, "new_file.rs");
+        assert_eq!(lines[0].content, "fn new() {}");
+    }
 
-#[test]
-fn skips_mode_only_changes() {
-    // Mode-only change (chmod) should be skipped, but subsequent file should be parsed
-    let diff = r#"
+    #[test]
+    fn skips_mode_only_changes() {
+        // Mode-only change (chmod) should be skipped, but subsequent file should be parsed
+        let diff = r#"
 diff --git a/script.sh b/script.sh
 old mode 100644
 new mode 100755
@@ -671,17 +670,17 @@ diff --git a/src/lib.rs b/src/lib.rs
 +fn b() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 1);
-    assert_eq!(lines[0].path, "src/lib.rs");
-    assert_eq!(lines[0].content, "fn b() {}");
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
+        assert_eq!(lines[0].path, "src/lib.rs");
+        assert_eq!(lines[0].content, "fn b() {}");
+    }
 
-#[test]
-fn uses_new_path_for_renamed_files() {
-    // Renamed file should use the new path
-    let diff = r#"
+    #[test]
+    fn uses_new_path_for_renamed_files() {
+        // Renamed file should use the new path
+        let diff = r#"
 diff --git a/old/path.rs b/new/path.rs
 similarity index 95%
 rename from old/path.rs
@@ -693,17 +692,17 @@ rename to new/path.rs
 +fn added() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 1);
-    assert_eq!(lines[0].path, "new/path.rs");
-    assert_eq!(lines[0].content, "fn added() {}");
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
+        assert_eq!(lines[0].path, "new/path.rs");
+        assert_eq!(lines[0].content, "fn added() {}");
+    }
 
-#[test]
-fn continues_after_malformed_hunk_header() {
-    // Malformed hunk header should not stop processing of subsequent files
-    let diff = r#"
+    #[test]
+    fn continues_after_malformed_hunk_header() {
+        // Malformed hunk header should not stop processing of subsequent files
+        let diff = r#"
 diff --git a/bad.rs b/bad.rs
 --- a/bad.rs
 +++ b/bad.rs
@@ -717,17 +716,17 @@ diff --git a/good.rs b/good.rs
 +fn b() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 1);
-    assert_eq!(lines[0].path, "good.rs");
-    assert_eq!(lines[0].content, "fn b() {}");
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
+        assert_eq!(lines[0].path, "good.rs");
+        assert_eq!(lines[0].content, "fn b() {}");
+    }
 
-#[test]
-fn handles_multiple_special_cases_in_one_diff() {
-    // Multiple special cases should all be handled correctly
-    let diff = r#"
+    #[test]
+    fn handles_multiple_special_cases_in_one_diff() {
+        // Multiple special cases should all be handled correctly
+        let diff = r#"
 diff --git a/image.png b/image.png
 Binary files a/image.png and b/image.png differ
 diff --git a/vendor/lib b/vendor/lib
@@ -761,25 +760,25 @@ diff --git a/normal.rs b/normal.rs
 +fn in_normal() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 2);
-    assert_eq!(stats.lines, 2);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 2);
+        assert_eq!(stats.lines, 2);
 
-    // Check renamed file uses new path
-    let renamed_line = lines.iter().find(|l| l.content == "fn in_renamed() {}");
-    assert!(renamed_line.is_some());
-    assert_eq!(renamed_line.unwrap().path, "newname.rs");
+        // Check renamed file uses new path
+        let renamed_line = lines.iter().find(|l| l.content == "fn in_renamed() {}");
+        assert!(renamed_line.is_some());
+        assert_eq!(renamed_line.unwrap().path, "newname.rs");
 
-    // Check normal file is parsed
-    let normal_line = lines.iter().find(|l| l.content == "fn in_normal() {}");
-    assert!(normal_line.is_some());
-    assert_eq!(normal_line.unwrap().path, "normal.rs");
-}
+        // Check normal file is parsed
+        let normal_line = lines.iter().find(|l| l.content == "fn in_normal() {}");
+        assert!(normal_line.is_some());
+        assert_eq!(normal_line.unwrap().path, "normal.rs");
+    }
 
-#[test]
-fn binary_file_added_from_dev_null() {
-    // New binary file should be skipped
-    let diff = r#"
+    #[test]
+    fn binary_file_added_from_dev_null() {
+        // New binary file should be skipped
+        let diff = r#"
 diff --git a/new_image.png b/new_image.png
 new file mode 100644
 Binary files /dev/null and b/new_image.png differ
@@ -791,37 +790,37 @@ diff --git a/src/lib.rs b/src/lib.rs
 +fn b() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(lines[0].path, "src/lib.rs");
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(lines[0].path, "src/lib.rs");
+    }
 
-#[test]
-fn renamed_file_with_no_content_changes() {
-    // Pure rename with no content changes should still use new path if there are hunks
-    let diff = r#"
+    #[test]
+    fn renamed_file_with_no_content_changes() {
+        // Pure rename with no content changes should still use new path if there are hunks
+        let diff = r#"
 diff --git a/old.rs b/new.rs
 similarity index 100%
 rename from old.rs
 rename to new.rs
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    // No content changes, so no lines extracted
-    assert_eq!(stats.files, 0);
-    assert_eq!(stats.lines, 0);
-    assert!(lines.is_empty());
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        // No content changes, so no lines extracted
+        assert_eq!(stats.files, 0);
+        assert_eq!(stats.lines, 0);
+        assert!(lines.is_empty());
+    }
 
-// ========================================================================
-// Edge case tests (Requirements 9.1, 9.2, 9.6)
-// ========================================================================
+    // ========================================================================
+    // Edge case tests (Requirements 9.1, 9.2, 9.6)
+    // ========================================================================
 
-/// Tests for empty hunks - hunks with no added/removed lines (Requirement 9.1)
-#[test]
-fn handles_empty_hunk_context_only() {
-    // A hunk with only context lines (no additions or removals)
-    let diff = r#"
+    /// Tests for empty hunks - hunks with no added/removed lines (Requirement 9.1)
+    #[test]
+    fn handles_empty_hunk_context_only() {
+        // A hunk with only context lines (no additions or removals)
+        let diff = r#"
 diff --git a/src/lib.rs b/src/lib.rs
 --- a/src/lib.rs
 +++ b/src/lib.rs
@@ -831,16 +830,16 @@ diff --git a/src/lib.rs b/src/lib.rs
  fn c() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 0);
-    assert_eq!(stats.lines, 0);
-    assert!(lines.is_empty());
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 0);
+        assert_eq!(stats.lines, 0);
+        assert!(lines.is_empty());
+    }
 
-#[test]
-fn handles_empty_hunk_zero_lines() {
-    // A hunk header indicating zero lines in the new file
-    let diff = r#"
+    #[test]
+    fn handles_empty_hunk_zero_lines() {
+        // A hunk header indicating zero lines in the new file
+        let diff = r#"
 diff --git a/empty.rs b/empty.rs
 new file mode 100644
 --- /dev/null
@@ -848,16 +847,16 @@ new file mode 100644
 @@ -0,0 +0,0 @@
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 0);
-    assert_eq!(stats.lines, 0);
-    assert!(lines.is_empty());
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 0);
+        assert_eq!(stats.lines, 0);
+        assert!(lines.is_empty());
+    }
 
-#[test]
-fn handles_multiple_empty_hunks() {
-    // Multiple hunks with only context lines
-    let diff = r#"
+    #[test]
+    fn handles_multiple_empty_hunks() {
+        // Multiple hunks with only context lines
+        let diff = r#"
 diff --git a/src/lib.rs b/src/lib.rs
 --- a/src/lib.rs
 +++ b/src/lib.rs
@@ -869,16 +868,16 @@ diff --git a/src/lib.rs b/src/lib.rs
  fn y() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 0);
-    assert_eq!(stats.lines, 0);
-    assert!(lines.is_empty());
-}
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 0);
+        assert_eq!(stats.lines, 0);
+        assert!(lines.is_empty());
+    }
 
-/// Tests for multiple files in a single diff (Requirement 9.2)
-#[test]
-fn parses_multiple_files_in_single_diff() {
-    let diff = r#"
+    /// Tests for multiple files in a single diff (Requirement 9.2)
+    #[test]
+    fn parses_multiple_files_in_single_diff() {
+        let diff = r#"
 diff --git a/src/first.rs b/src/first.rs
 --- a/src/first.rs
 +++ b/src/first.rs
@@ -899,30 +898,30 @@ diff --git a/src/third.rs b/src/third.rs
 +fn third_added() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 3);
-    assert_eq!(stats.lines, 3);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 3);
+        assert_eq!(stats.lines, 3);
 
-    // Verify each file is parsed correctly
-    let first = lines.iter().find(|l| l.path == "src/first.rs");
-    assert!(first.is_some());
-    assert_eq!(first.unwrap().content, "fn first_added() {}");
-    assert_eq!(first.unwrap().line, 2);
+        // Verify each file is parsed correctly
+        let first = lines.iter().find(|l| l.path == "src/first.rs");
+        assert!(first.is_some());
+        assert_eq!(first.unwrap().content, "fn first_added() {}");
+        assert_eq!(first.unwrap().line, 2);
 
-    let second = lines.iter().find(|l| l.path == "src/second.rs");
-    assert!(second.is_some());
-    assert_eq!(second.unwrap().content, "fn second_added() {}");
-    assert_eq!(second.unwrap().line, 2);
+        let second = lines.iter().find(|l| l.path == "src/second.rs");
+        assert!(second.is_some());
+        assert_eq!(second.unwrap().content, "fn second_added() {}");
+        assert_eq!(second.unwrap().line, 2);
 
-    let third = lines.iter().find(|l| l.path == "src/third.rs");
-    assert!(third.is_some());
-    assert_eq!(third.unwrap().content, "fn third_added() {}");
-    assert_eq!(third.unwrap().line, 2);
-}
+        let third = lines.iter().find(|l| l.path == "src/third.rs");
+        assert!(third.is_some());
+        assert_eq!(third.unwrap().content, "fn third_added() {}");
+        assert_eq!(third.unwrap().line, 2);
+    }
 
-#[test]
-fn parses_multiple_files_with_multiple_hunks_each() {
-    let diff = r#"
+    #[test]
+    fn parses_multiple_files_with_multiple_hunks_each() {
+        let diff = r#"
 diff --git a/src/a.rs b/src/a.rs
 --- a/src/a.rs
 +++ b/src/a.rs
@@ -943,34 +942,34 @@ diff --git a/src/b.rs b/src/b.rs
 +fn b21() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 2);
-    assert_eq!(stats.lines, 4);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 2);
+        assert_eq!(stats.lines, 4);
 
-    // Verify lines from file a
-    let a_lines: Vec<_> = lines.iter().filter(|l| l.path == "src/a.rs").collect();
-    assert_eq!(a_lines.len(), 2);
-    assert!(a_lines
-        .iter()
-        .any(|l| l.content == "fn a2() {}" && l.line == 2));
-    assert!(a_lines
-        .iter()
-        .any(|l| l.content == "fn a11() {}" && l.line == 12));
+        // Verify lines from file a
+        let a_lines: Vec<_> = lines.iter().filter(|l| l.path == "src/a.rs").collect();
+        assert_eq!(a_lines.len(), 2);
+        assert!(a_lines
+            .iter()
+            .any(|l| l.content == "fn a2() {}" && l.line == 2));
+        assert!(a_lines
+            .iter()
+            .any(|l| l.content == "fn a11() {}" && l.line == 12));
 
-    // Verify lines from file b
-    let b_lines: Vec<_> = lines.iter().filter(|l| l.path == "src/b.rs").collect();
-    assert_eq!(b_lines.len(), 2);
-    assert!(b_lines
-        .iter()
-        .any(|l| l.content == "fn b2() {}" && l.line == 2));
-    assert!(b_lines
-        .iter()
-        .any(|l| l.content == "fn b21() {}" && l.line == 22));
-}
+        // Verify lines from file b
+        let b_lines: Vec<_> = lines.iter().filter(|l| l.path == "src/b.rs").collect();
+        assert_eq!(b_lines.len(), 2);
+        assert!(b_lines
+            .iter()
+            .any(|l| l.content == "fn b2() {}" && l.line == 2));
+        assert!(b_lines
+            .iter()
+            .any(|l| l.content == "fn b21() {}" && l.line == 22));
+    }
 
-#[test]
-fn parses_multiple_files_preserves_order() {
-    let diff = r#"
+    #[test]
+    fn parses_multiple_files_preserves_order() {
+        let diff = r#"
 diff --git a/z.rs b/z.rs
 --- a/z.rs
 +++ b/z.rs
@@ -991,20 +990,20 @@ diff --git a/m.rs b/m.rs
 +fn m_added() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 3);
-    assert_eq!(stats.lines, 3);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 3);
+        assert_eq!(stats.lines, 3);
 
-    // Verify order is preserved (z, a, m - not alphabetically sorted)
-    assert_eq!(lines[0].path, "z.rs");
-    assert_eq!(lines[1].path, "a.rs");
-    assert_eq!(lines[2].path, "m.rs");
-}
+        // Verify order is preserved (z, a, m - not alphabetically sorted)
+        assert_eq!(lines[0].path, "z.rs");
+        assert_eq!(lines[1].path, "a.rs");
+        assert_eq!(lines[2].path, "m.rs");
+    }
 
-/// Tests for Unicode content in diff lines (Requirement 9.6)
-#[test]
-fn handles_unicode_in_added_lines() {
-    let diff = r#"
+    /// Tests for Unicode content in diff lines (Requirement 9.6)
+    #[test]
+    fn handles_unicode_in_added_lines() {
+        let diff = r#"
 diff --git a/src/i18n.rs b/src/i18n.rs
 --- a/src/i18n.rs
 +++ b/src/i18n.rs
@@ -1015,18 +1014,18 @@ diff --git a/src/i18n.rs b/src/i18n.rs
 +let hello_kr = "안녕하세요";
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 3);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 3);
 
-    assert_eq!(lines[0].content, "let hello_jp = \"こんにちは\";");
-    assert_eq!(lines[1].content, "let hello_cn = \"你好\";");
-    assert_eq!(lines[2].content, "let hello_kr = \"안녕하세요\";");
-}
+        assert_eq!(lines[0].content, "let hello_jp = \"こんにちは\";");
+        assert_eq!(lines[1].content, "let hello_cn = \"你好\";");
+        assert_eq!(lines[2].content, "let hello_kr = \"안녕하세요\";");
+    }
 
-#[test]
-fn handles_unicode_emojis_in_diff() {
-    let diff = r#"
+    #[test]
+    fn handles_unicode_emojis_in_diff() {
+        let diff = r#"
 diff --git a/src/emoji.rs b/src/emoji.rs
 --- a/src/emoji.rs
 +++ b/src/emoji.rs
@@ -1036,17 +1035,17 @@ diff --git a/src/emoji.rs b/src/emoji.rs
 +let thumbs_up = "👍🏽";
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 2);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 2);
 
-    assert_eq!(lines[0].content, "let rocket = \"🚀\";");
-    assert_eq!(lines[1].content, "let thumbs_up = \"👍🏽\";");
-}
+        assert_eq!(lines[0].content, "let rocket = \"🚀\";");
+        assert_eq!(lines[1].content, "let thumbs_up = \"👍🏽\";");
+    }
 
-#[test]
-fn handles_unicode_in_file_paths() {
-    let diff = r#"
+    #[test]
+    fn handles_unicode_in_file_paths() {
+        let diff = r#"
 diff --git a/src/日本語.rs b/src/日本語.rs
 --- a/src/日本語.rs
 +++ b/src/日本語.rs
@@ -1055,18 +1054,18 @@ diff --git a/src/日本語.rs b/src/日本語.rs
 +fn 新しい関数() {}
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 1);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
 
-    assert_eq!(lines[0].path, "src/日本語.rs");
-    assert_eq!(lines[0].content, "fn 新しい関数() {}");
-}
+        assert_eq!(lines[0].path, "src/日本語.rs");
+        assert_eq!(lines[0].content, "fn 新しい関数() {}");
+    }
 
-#[test]
-fn handles_unicode_special_characters() {
-    // Test various Unicode categories: math symbols, arrows, box drawing, etc.
-    let diff = r#"
+    #[test]
+    fn handles_unicode_special_characters() {
+        // Test various Unicode categories: math symbols, arrows, box drawing, etc.
+        let diff = r#"
 diff --git a/src/symbols.rs b/src/symbols.rs
 --- a/src/symbols.rs
 +++ b/src/symbols.rs
@@ -1078,19 +1077,19 @@ diff --git a/src/symbols.rs b/src/symbols.rs
 +let currency = "€£¥₹₽";
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 4);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 4);
 
-    assert_eq!(lines[0].content, "let math = \"∑∏∫∂∇\";");
-    assert_eq!(lines[1].content, "let arrows = \"→←↑↓↔\";");
-    assert_eq!(lines[2].content, "let box_drawing = \"┌─┐│└─┘\";");
-    assert_eq!(lines[3].content, "let currency = \"€£¥₹₽\";");
-}
+        assert_eq!(lines[0].content, "let math = \"∑∏∫∂∇\";");
+        assert_eq!(lines[1].content, "let arrows = \"→←↑↓↔\";");
+        assert_eq!(lines[2].content, "let box_drawing = \"┌─┐│└─┘\";");
+        assert_eq!(lines[3].content, "let currency = \"€£¥₹₽\";");
+    }
 
-#[test]
-fn handles_mixed_unicode_and_ascii() {
-    let diff = r#"
+    #[test]
+    fn handles_mixed_unicode_and_ascii() {
+        let diff = r#"
 diff --git a/src/mixed.rs b/src/mixed.rs
 --- a/src/mixed.rs
 +++ b/src/mixed.rs
@@ -1099,20 +1098,20 @@ diff --git a/src/mixed.rs b/src/mixed.rs
 +let message = "Hello 世界! Welcome to Rust 🦀";
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 1);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
 
-    assert_eq!(
-        lines[0].content,
-        "let message = \"Hello 世界! Welcome to Rust 🦀\";"
-    );
-}
+        assert_eq!(
+            lines[0].content,
+            "let message = \"Hello 世界! Welcome to Rust 🦀\";"
+        );
+    }
 
-#[test]
-fn handles_unicode_in_changed_lines() {
-    // Test that Unicode works correctly with Scope::Changed
-    let diff = r#"
+    #[test]
+    fn handles_unicode_in_changed_lines() {
+        // Test that Unicode works correctly with Scope::Changed
+        let diff = r#"
 diff --git a/src/i18n.rs b/src/i18n.rs
 --- a/src/i18n.rs
 +++ b/src/i18n.rs
@@ -1121,10 +1120,11 @@ diff --git a/src/i18n.rs b/src/i18n.rs
 +let greeting = "Привет";
 "#;
 
-    let (lines, stats) = parse_unified_diff(diff, Scope::Changed).unwrap();
-    assert_eq!(stats.files, 1);
-    assert_eq!(stats.lines, 1);
+        let (lines, stats) = parse_unified_diff(diff, Scope::Changed).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
 
-    assert_eq!(lines[0].content, "let greeting = \"Привет\";");
-    assert!(matches!(lines[0].kind, ChangeKind::Changed));
+        assert_eq!(lines[0].content, "let greeting = \"Привет\";");
+        assert!(matches!(lines[0].kind, ChangeKind::Changed));
+    }
 }

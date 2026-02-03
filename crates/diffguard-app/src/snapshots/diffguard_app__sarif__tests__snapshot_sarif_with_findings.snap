@@ -1,0 +1,130 @@
+---
+source: crates/diffguard-app/src/sarif.rs
+expression: json
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "diffguard",
+          "version": "0.1.0",
+          "informationUri": "https://github.com/effortless-mgmt/diffguard",
+          "rules": [
+            {
+              "id": "python.no_print",
+              "shortDescription": {
+                "text": "Remove print() before merging."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "rust.no_dbg",
+              "shortDescription": {
+                "text": "Remove dbg!/println! before merging."
+              },
+              "defaultConfiguration": {
+                "level": "warning"
+              }
+            },
+            {
+              "id": "rust.no_unwrap",
+              "shortDescription": {
+                "text": "Avoid unwrap/expect in production code."
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "rust.no_unwrap",
+          "level": "error",
+          "message": {
+            "text": "Avoid unwrap/expect in production code."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lib.rs",
+                  "uri_base_id": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 15,
+                  "startColumn": 10,
+                  "snippet": {
+                    "text": "let value = result.unwrap();"
+                  }
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "rust.no_unwrap:src/lib.rs:15"
+          }
+        },
+        {
+          "ruleId": "rust.no_dbg",
+          "level": "warning",
+          "message": {
+            "text": "Remove dbg!/println! before merging."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/main.rs",
+                  "uri_base_id": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 23,
+                  "startColumn": 5,
+                  "snippet": {
+                    "text": "    dbg!(config);"
+                  }
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "rust.no_dbg:src/main.rs:23"
+          }
+        },
+        {
+          "ruleId": "python.no_print",
+          "level": "warning",
+          "message": {
+            "text": "Remove print() before merging."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "scripts/deploy.py",
+                  "uri_base_id": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 8,
+                  "snippet": {
+                    "text": "print(\"Deploying...\")"
+                  }
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "python.no_print:scripts/deploy.py:8"
+          }
+        }
+      ]
+    }
+  ]
+}

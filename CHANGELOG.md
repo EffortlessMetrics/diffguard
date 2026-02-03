@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Ruby language support** in preprocessor:
+  - Hash comments (`#`) properly masked
+  - Single and double-quoted strings handled (Ruby uses both for strings, unlike C)
+- **Documentation improvements**:
+  - `docs/architecture.md` - Crate structure and dependency flow diagrams
+  - `docs/design.md` - Internal pipeline and dataflow documentation
+  - `docs/requirements.md` - Functional/non-functional requirements
+  - `docs/codes.md` - Complete rule ID reference with examples and suggested fixes
+- **Development roadmap** (`ROADMAP.md`) - Phased feature planning through v2.0
+
+### Changed
+
+- **Diff builder API** in `diffguard-testkit`:
+  - More ergonomic builder pattern for constructing test diffs
+  - Improved method chaining
+
 ## [0.1.0] - 2026-02-01
 
 ### Added

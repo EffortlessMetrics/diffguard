@@ -101,6 +101,13 @@ pub struct VerdictCounts {
     pub info: u32,
     pub warn: u32,
     pub error: u32,
+    /// Number of matches suppressed via inline directives.
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub suppressed: u32,
+}
+
+fn is_zero(n: &u32) -> bool {
+    *n == 0
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -147,6 +154,16 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: Some(
+                        "Use the ? operator to propagate errors, or use expect() with a \
+                        meaningful message that explains the invariant. Consider using \
+                        anyhow or thiserror for structured error handling."
+                            .to_string(),
+                    ),
+                    url: Some(
+                        "https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html"
+                            .to_string(),
+                    ),
                 },
                 RuleConfig {
                     id: "rust.no_dbg".to_string(),
@@ -166,6 +183,13 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: Some(
+                        "Remove debug output before merging. For logging, use the log or \
+                        tracing crate instead. If you need to keep the output, consider \
+                        using conditional compilation with #[cfg(debug_assertions)]."
+                            .to_string(),
+                    ),
+                    url: Some("https://doc.rust-lang.org/std/macro.dbg.html".to_string()),
                 },
                 // Python rules
                 RuleConfig {
@@ -178,6 +202,12 @@ impl ConfigFile {
                     exclude_paths: vec!["**/tests/**".to_string(), "**/test_*.py".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: Some(
+                        "Use the logging module instead of print() for production code. \
+                        Configure logging levels appropriately (DEBUG, INFO, WARNING, ERROR)."
+                            .to_string(),
+                    ),
+                    url: Some("https://docs.python.org/3/library/logging.html".to_string()),
                 },
                 RuleConfig {
                     id: "python.no_pdb".to_string(),
@@ -192,6 +222,12 @@ impl ConfigFile {
                     exclude_paths: vec![],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: Some(
+                        "Remove pdb debugger statements before merging. These will cause \
+                        the application to pause and wait for interactive input in production."
+                            .to_string(),
+                    ),
+                    url: Some("https://docs.python.org/3/library/pdb.html".to_string()),
                 },
                 // JavaScript/TypeScript rules
                 RuleConfig {
@@ -213,6 +249,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: Some(
+                        "Use a proper logging library (e.g., winston, pino, bunyan) instead \
+                        of console.log. For client-side code, consider using a logger that \
+                        can be disabled in production builds."
+                            .to_string(),
+                    ),
+                    url: Some(
+                        "https://developer.mozilla.org/en-US/docs/Web/API/console".to_string(),
+                    ),
                 },
                 RuleConfig {
                     id: "js.no_debugger".to_string(),
@@ -229,6 +274,16 @@ impl ConfigFile {
                     exclude_paths: vec![],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: Some(
+                        "Remove debugger statements before merging. These will pause \
+                        execution in the browser's developer tools, which is not intended \
+                        for production code."
+                            .to_string(),
+                    ),
+                    url: Some(
+                        "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger"
+                            .to_string(),
+                    ),
                 },
                 // Go rules
                 RuleConfig {
@@ -241,6 +296,12 @@ impl ConfigFile {
                     exclude_paths: vec!["**/*_test.go".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    help: Some(
+                        "Use the log package or a structured logging library (e.g., zap, \
+                        zerolog, logrus) instead of fmt.Print* for production code."
+                            .to_string(),
+                    ),
+                    url: Some("https://pkg.go.dev/log".to_string()),
                 },
             ],
         }
@@ -307,4 +368,12 @@ pub struct RuleConfig {
 
     #[serde(default)]
     pub ignore_strings: bool,
+
+    /// Optional help text explaining how to fix violations.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub help: Option<String>,
+
+    /// Optional URL with more information about the rule.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
 }

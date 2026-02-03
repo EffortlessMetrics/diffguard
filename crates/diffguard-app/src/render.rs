@@ -43,32 +43,6 @@ pub fn render_markdown_for_receipt(receipt: &CheckReceipt) -> String {
     out
 }
 
-pub fn render_markdown(findings: &[Finding]) -> String {
-    let r = CheckReceipt {
-        schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
-        tool: diffguard_types::ToolMeta {
-            name: "diffguard".to_string(),
-            version: "0.0.0".to_string(),
-        },
-        diff: diffguard_types::DiffMeta {
-            base: "".to_string(),
-            head: "".to_string(),
-            context_lines: 0,
-            scope: diffguard_types::Scope::Added,
-            files_scanned: 0,
-            lines_scanned: 0,
-        },
-        findings: findings.to_vec(),
-        verdict: diffguard_types::Verdict {
-            status: VerdictStatus::Pass,
-            counts: diffguard_types::VerdictCounts::default(),
-            reasons: Vec::new(),
-        },
-    };
-
-    render_markdown_for_receipt(&r)
-}
-
 fn render_finding_row(f: &Finding) -> String {
     let sev = f.severity.as_str();
     let loc = format!("{}:{}", escape_md(&f.path), f.line);
@@ -125,6 +99,7 @@ mod tests {
                     info: 0,
                     warn: 1,
                     error: 0,
+                    ..Default::default()
                 },
                 reasons: vec!["1 warning".to_string()],
             },
@@ -189,6 +164,7 @@ mod tests {
                     info: 0,
                     warn: 2,
                     error: 1,
+                    ..Default::default()
                 },
                 reasons: vec![
                     "1 error-level finding".to_string(),
@@ -221,6 +197,7 @@ mod tests {
                     info: 0,
                     warn: 0,
                     error: 0,
+                    suppressed: 0,
                 },
                 reasons: vec![],
             },
@@ -259,6 +236,7 @@ mod tests {
                     info: 0,
                     warn: 1,
                     error: 0,
+                    ..Default::default()
                 },
                 reasons: vec!["1 warning-level finding".to_string()],
             },

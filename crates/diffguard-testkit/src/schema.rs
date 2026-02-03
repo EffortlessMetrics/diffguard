@@ -256,6 +256,7 @@ mod tests {
                     info: 0,
                     warn: 0,
                     error: 1,
+                    suppressed: 0,
                 },
                 reasons: vec!["1 error-level finding".to_string()],
             },

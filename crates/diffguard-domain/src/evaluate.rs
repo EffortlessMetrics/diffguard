@@ -4,6 +4,7 @@ use diffguard_types::{Finding, Severity, VerdictCounts};
 
 use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
 use crate::rules::{detect_language, CompiledRule};
+use crate::suppression::SuppressionTracker;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InputLine {
@@ -42,6 +43,9 @@ pub fn evaluate_lines(
     let mut p_both =
         Preprocessor::with_language(PreprocessOptions::comments_and_strings(), current_lang);
 
+    // Suppression tracker for inline directives
+    let mut suppression_tracker = SuppressionTracker::new();
+
     for l in lines {
         lines_scanned = lines_scanned.saturating_add(1);
         files_seen.insert(l.path.clone());
@@ -60,7 +64,14 @@ pub fn evaluate_lines(
             p_comments.set_language(current_lang);
             p_strings.set_language(current_lang);
             p_both.set_language(current_lang);
+
+            // Reset suppression tracker when switching files
+            suppression_tracker.reset();
         }
+
+        // Parse suppressions from the RAW line BEFORE preprocessing
+        // This ensures directives in comments are still visible
+        let effective_suppressions = suppression_tracker.process_line(&l.content);
 
         let path = std::path::Path::new(&l.path);
         let lang = detect_language(path);
@@ -82,6 +93,12 @@ pub fn evaluate_lines(
             };
 
             if let Some((m_start, m_end)) = first_match(&r.patterns, candidate) {
+                // Check if this rule is suppressed for this line
+                if effective_suppressions.is_suppressed(&r.id) {
+                    counts.suppressed = counts.suppressed.saturating_add(1);
+                    continue;
+                }
+
                 bump_counts(&mut counts, r.severity);
 
                 if findings.len() < max_findings {
@@ -166,19 +183,47 @@ mod tests {
     use crate::rules::compile_rules;
     use diffguard_types::RuleConfig;
 
+    /// Helper to create a RuleConfig for testing with default help/url
+    #[allow(clippy::too_many_arguments)]
+    fn test_rule(
+        id: &str,
+        severity: Severity,
+        message: &str,
+        languages: Vec<&str>,
+        patterns: Vec<&str>,
+        paths: Vec<&str>,
+        exclude_paths: Vec<&str>,
+        ignore_comments: bool,
+        ignore_strings: bool,
+    ) -> RuleConfig {
+        RuleConfig {
+            id: id.to_string(),
+            severity,
+            message: message.to_string(),
+            languages: languages.into_iter().map(|s| s.to_string()).collect(),
+            patterns: patterns.into_iter().map(|s| s.to_string()).collect(),
+            paths: paths.into_iter().map(|s| s.to_string()).collect(),
+            exclude_paths: exclude_paths.into_iter().map(|s| s.to_string()).collect(),
+            ignore_comments,
+            ignore_strings,
+            help: None,
+            url: None,
+        }
+    }
+
     #[test]
     fn finds_unwrap_in_added_line() {
-        let rules = compile_rules(&[RuleConfig {
-            id: "rust.no_unwrap".to_string(),
-            severity: Severity::Error,
-            message: "no".to_string(),
-            languages: vec!["rust".to_string()],
-            patterns: vec!["\\.unwrap\\(".to_string()],
-            paths: vec!["**/*.rs".to_string()],
-            exclude_paths: vec![],
-            ignore_comments: true,
-            ignore_strings: true,
-        }])
+        let rules = compile_rules(&[test_rule(
+            "rust.no_unwrap",
+            Severity::Error,
+            "no",
+            vec!["rust"],
+            vec!["\\.unwrap\\("],
+            vec!["**/*.rs"],
+            vec![],
+            true,
+            true,
+        )])
         .unwrap();
 
         let eval = evaluate_lines(
@@ -199,17 +244,17 @@ mod tests {
 
     #[test]
     fn does_not_match_in_comment_when_ignored() {
-        let rules = compile_rules(&[RuleConfig {
-            id: "rust.no_unwrap".to_string(),
-            severity: Severity::Error,
-            message: "no".to_string(),
-            languages: vec!["rust".to_string()],
-            patterns: vec!["unwrap".to_string()],
-            paths: vec!["**/*.rs".to_string()],
-            exclude_paths: vec![],
-            ignore_comments: true,
-            ignore_strings: false,
-        }])
+        let rules = compile_rules(&[test_rule(
+            "rust.no_unwrap",
+            Severity::Error,
+            "no",
+            vec!["rust"],
+            vec!["unwrap"],
+            vec!["**/*.rs"],
+            vec![],
+            true,
+            false,
+        )])
         .unwrap();
 
         let eval = evaluate_lines(
@@ -227,17 +272,17 @@ mod tests {
 
     #[test]
     fn caps_findings_but_keeps_counts() {
-        let rules = compile_rules(&[RuleConfig {
-            id: "r".to_string(),
-            severity: Severity::Warn,
-            message: "m".to_string(),
-            languages: vec![],
-            patterns: vec!["x".to_string()],
-            paths: vec![],
-            exclude_paths: vec![],
-            ignore_comments: false,
-            ignore_strings: false,
-        }])
+        let rules = compile_rules(&[test_rule(
+            "r",
+            Severity::Warn,
+            "m",
+            vec![],
+            vec!["x"],
+            vec![],
+            vec![],
+            false,
+            false,
+        )])
         .unwrap();
 
         let lines = (0..5).map(|i| InputLine {
@@ -256,17 +301,17 @@ mod tests {
     fn python_hash_comment_ignored_with_language_aware_preprocessing() {
         // This test verifies that Python hash comments are properly ignored
         // when processing Python files (language-aware preprocessing)
-        let rules = compile_rules(&[RuleConfig {
-            id: "python.no_print".to_string(),
-            severity: Severity::Warn,
-            message: "no print".to_string(),
-            languages: vec!["python".to_string()],
-            patterns: vec![r"\bprint\s*\(".to_string()],
-            paths: vec!["**/*.py".to_string()],
-            exclude_paths: vec![],
-            ignore_comments: true,
-            ignore_strings: false,
-        }])
+        let rules = compile_rules(&[test_rule(
+            "python.no_print",
+            Severity::Warn,
+            "no print",
+            vec!["python"],
+            vec![r"\bprint\s*\("],
+            vec!["**/*.py"],
+            vec![],
+            true,
+            false,
+        )])
         .unwrap();
 
         let eval = evaluate_lines(
@@ -287,17 +332,17 @@ mod tests {
     #[test]
     fn python_print_detected_outside_comment() {
         // This test verifies that print() is detected when not in a comment
-        let rules = compile_rules(&[RuleConfig {
-            id: "python.no_print".to_string(),
-            severity: Severity::Warn,
-            message: "no print".to_string(),
-            languages: vec!["python".to_string()],
-            patterns: vec![r"\bprint\s*\(".to_string()],
-            paths: vec!["**/*.py".to_string()],
-            exclude_paths: vec![],
-            ignore_comments: true,
-            ignore_strings: false,
-        }])
+        let rules = compile_rules(&[test_rule(
+            "python.no_print",
+            Severity::Warn,
+            "no print",
+            vec!["python"],
+            vec![r"\bprint\s*\("],
+            vec!["**/*.py"],
+            vec![],
+            true,
+            false,
+        )])
         .unwrap();
 
         let eval = evaluate_lines(
@@ -317,17 +362,17 @@ mod tests {
     #[test]
     fn javascript_template_literal_ignored_with_language_aware_preprocessing() {
         // This test verifies that JavaScript template literals are properly ignored
-        let rules = compile_rules(&[RuleConfig {
-            id: "js.no_console".to_string(),
-            severity: Severity::Warn,
-            message: "no console".to_string(),
-            languages: vec!["javascript".to_string()],
-            patterns: vec![r"\bconsole\.log\s*\(".to_string()],
-            paths: vec!["**/*.js".to_string()],
-            exclude_paths: vec![],
-            ignore_comments: false,
-            ignore_strings: true,
-        }])
+        let rules = compile_rules(&[test_rule(
+            "js.no_console",
+            Severity::Warn,
+            "no console",
+            vec!["javascript"],
+            vec![r"\bconsole\.log\s*\("],
+            vec!["**/*.js"],
+            vec![],
+            false,
+            true,
+        )])
         .unwrap();
 
         let eval = evaluate_lines(
@@ -348,17 +393,17 @@ mod tests {
     #[test]
     fn go_backtick_raw_string_ignored_with_language_aware_preprocessing() {
         // This test verifies that Go backtick raw strings are properly ignored
-        let rules = compile_rules(&[RuleConfig {
-            id: "go.no_fmt_print".to_string(),
-            severity: Severity::Warn,
-            message: "no fmt.Println".to_string(),
-            languages: vec!["go".to_string()],
-            patterns: vec![r"\bfmt\.Println\s*\(".to_string()],
-            paths: vec!["**/*.go".to_string()],
-            exclude_paths: vec![],
-            ignore_comments: false,
-            ignore_strings: true,
-        }])
+        let rules = compile_rules(&[test_rule(
+            "go.no_fmt_print",
+            Severity::Warn,
+            "no fmt.Println",
+            vec!["go"],
+            vec![r"\bfmt\.Println\s*\("],
+            vec!["**/*.go"],
+            vec![],
+            false,
+            true,
+        )])
         .unwrap();
 
         let eval = evaluate_lines(
@@ -380,17 +425,17 @@ mod tests {
     fn language_changes_between_files() {
         // This test verifies that the preprocessor correctly switches languages
         // when processing files with different extensions
-        let rules = compile_rules(&[RuleConfig {
-            id: "detect_pattern".to_string(),
-            severity: Severity::Warn,
-            message: "found pattern".to_string(),
-            languages: vec![],
-            patterns: vec!["pattern".to_string()],
-            paths: vec![],
-            exclude_paths: vec![],
-            ignore_comments: true,
-            ignore_strings: false,
-        }])
+        let rules = compile_rules(&[test_rule(
+            "detect_pattern",
+            Severity::Warn,
+            "found pattern",
+            vec![],
+            vec!["pattern"],
+            vec![],
+            vec![],
+            true,
+            false,
+        )])
         .unwrap();
 
         let eval = evaluate_lines(
@@ -416,5 +461,310 @@ mod tests {
         assert_eq!(eval.counts.warn, 1);
         assert_eq!(eval.findings.len(), 1);
         assert_eq!(eval.findings[0].path, "src/lib.rs");
+    }
+
+    // ==================== Suppression tests ====================
+
+    #[test]
+    fn suppression_same_line_ignores_specific_rule() {
+        let rules = compile_rules(&[test_rule(
+            "rust.no_unwrap",
+            Severity::Error,
+            "no unwrap",
+            vec!["rust"],
+            vec!["\\.unwrap\\("],
+            vec!["**/*.rs"],
+            vec![],
+            true,
+            true,
+        )])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "src/lib.rs".to_string(),
+                line: 1,
+                content: "let x = y.unwrap(); // diffguard: ignore rust.no_unwrap".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        assert_eq!(eval.counts.error, 0);
+        assert_eq!(eval.counts.suppressed, 1);
+        assert!(eval.findings.is_empty());
+    }
+
+    #[test]
+    fn suppression_same_line_wildcard() {
+        let rules = compile_rules(&[test_rule(
+            "rust.no_unwrap",
+            Severity::Error,
+            "no unwrap",
+            vec!["rust"],
+            vec!["\\.unwrap\\("],
+            vec!["**/*.rs"],
+            vec![],
+            true,
+            true,
+        )])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "src/lib.rs".to_string(),
+                line: 1,
+                content: "let x = y.unwrap(); // diffguard: ignore *".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        assert_eq!(eval.counts.error, 0);
+        assert_eq!(eval.counts.suppressed, 1);
+        assert!(eval.findings.is_empty());
+    }
+
+    #[test]
+    fn suppression_next_line_ignores_rule() {
+        let rules = compile_rules(&[test_rule(
+            "rust.no_dbg",
+            Severity::Warn,
+            "no dbg",
+            vec!["rust"],
+            vec!["\\bdbg!\\("],
+            vec!["**/*.rs"],
+            vec![],
+            true,
+            true,
+        )])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [
+                InputLine {
+                    path: "src/lib.rs".to_string(),
+                    line: 1,
+                    content: "// diffguard: ignore-next-line rust.no_dbg".to_string(),
+                },
+                InputLine {
+                    path: "src/lib.rs".to_string(),
+                    line: 2,
+                    content: "dbg!(value);".to_string(),
+                },
+            ],
+            &rules,
+            100,
+        );
+
+        assert_eq!(eval.counts.warn, 0);
+        assert_eq!(eval.counts.suppressed, 1);
+        assert!(eval.findings.is_empty());
+    }
+
+    #[test]
+    fn suppression_next_line_does_not_affect_third_line() {
+        let rules = compile_rules(&[test_rule(
+            "rust.no_dbg",
+            Severity::Warn,
+            "no dbg",
+            vec!["rust"],
+            vec!["\\bdbg!\\("],
+            vec!["**/*.rs"],
+            vec![],
+            true,
+            true,
+        )])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [
+                InputLine {
+                    path: "src/lib.rs".to_string(),
+                    line: 1,
+                    content: "// diffguard: ignore-next-line rust.no_dbg".to_string(),
+                },
+                InputLine {
+                    path: "src/lib.rs".to_string(),
+                    line: 2,
+                    content: "dbg!(value);".to_string(),
+                },
+                InputLine {
+                    path: "src/lib.rs".to_string(),
+                    line: 3,
+                    content: "dbg!(other);".to_string(),
+                },
+            ],
+            &rules,
+            100,
+        );
+
+        // Line 2 is suppressed, line 3 is not
+        assert_eq!(eval.counts.warn, 1);
+        assert_eq!(eval.counts.suppressed, 1);
+        assert_eq!(eval.findings.len(), 1);
+        assert_eq!(eval.findings[0].line, 3);
+    }
+
+    #[test]
+    fn suppression_wrong_rule_does_not_suppress() {
+        let rules = compile_rules(&[test_rule(
+            "rust.no_unwrap",
+            Severity::Error,
+            "no unwrap",
+            vec!["rust"],
+            vec!["\\.unwrap\\("],
+            vec!["**/*.rs"],
+            vec![],
+            true,
+            true,
+        )])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "src/lib.rs".to_string(),
+                line: 1,
+                content: "let x = y.unwrap(); // diffguard: ignore wrong.rule".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        // The suppression is for a different rule, so unwrap is still flagged
+        assert_eq!(eval.counts.error, 1);
+        assert_eq!(eval.counts.suppressed, 0);
+        assert_eq!(eval.findings.len(), 1);
+    }
+
+    #[test]
+    fn suppression_resets_on_file_change() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Warn,
+            "test",
+            vec![],
+            vec!["pattern"],
+            vec![],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [
+                // File 1: set up next-line suppression
+                InputLine {
+                    path: "file1.txt".to_string(),
+                    line: 1,
+                    content: "// diffguard: ignore-next-line test.rule".to_string(),
+                },
+                // File 2: different file, suppression should NOT apply
+                InputLine {
+                    path: "file2.txt".to_string(),
+                    line: 1,
+                    content: "pattern".to_string(),
+                },
+            ],
+            &rules,
+            100,
+        );
+
+        // Pattern in file2 should be detected (suppression was for file1's next line)
+        assert_eq!(eval.counts.warn, 1);
+        assert_eq!(eval.counts.suppressed, 0);
+        assert_eq!(eval.findings.len(), 1);
+        assert_eq!(eval.findings[0].path, "file2.txt");
+    }
+
+    #[test]
+    fn suppression_multiple_rules_on_same_line() {
+        let rules = compile_rules(&[
+            test_rule(
+                "rule.one",
+                Severity::Warn,
+                "one",
+                vec![],
+                vec!["pattern"],
+                vec![],
+                vec![],
+                false,
+                false,
+            ),
+            test_rule(
+                "rule.two",
+                Severity::Error,
+                "two",
+                vec![],
+                vec!["pattern"],
+                vec![],
+                vec![],
+                false,
+                false,
+            ),
+        ])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "test.txt".to_string(),
+                line: 1,
+                content: "pattern // diffguard: ignore rule.one, rule.two".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        // Both rules should be suppressed
+        assert_eq!(eval.counts.warn, 0);
+        assert_eq!(eval.counts.error, 0);
+        assert_eq!(eval.counts.suppressed, 2);
+        assert!(eval.findings.is_empty());
+    }
+
+    #[test]
+    fn suppression_ignore_all_directive() {
+        let rules = compile_rules(&[
+            test_rule(
+                "rule.one",
+                Severity::Warn,
+                "one",
+                vec![],
+                vec!["pattern"],
+                vec![],
+                vec![],
+                false,
+                false,
+            ),
+            test_rule(
+                "rule.two",
+                Severity::Error,
+                "two",
+                vec![],
+                vec!["pattern"],
+                vec![],
+                vec![],
+                false,
+                false,
+            ),
+        ])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "test.txt".to_string(),
+                line: 1,
+                content: "pattern // diffguard: ignore-all".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        // Both rules should be suppressed with ignore-all
+        assert_eq!(eval.counts.warn, 0);
+        assert_eq!(eval.counts.error, 0);
+        assert_eq!(eval.counts.suppressed, 2);
+        assert!(eval.findings.is_empty());
     }
 }

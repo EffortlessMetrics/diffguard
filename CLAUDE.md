@@ -34,7 +34,7 @@ Dependency direction flows downward (CLI depends on app, app depends on domain/d
 diffguard (CLI)          I/O boundary: clap, file I/O, git subprocess, env vars
        │
        ▼
-diffguard-app            Use-cases: run_check(), render_markdown(), compute verdicts
+diffguard-app            Use-cases: run_check(), render_markdown_for_receipt(), compute verdicts
        │
        ├────────────────────────┐
        ▼                        ▼

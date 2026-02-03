@@ -1,11 +1,15 @@
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 
-use diffguard_app::{run_check, CheckPlan};
-use diffguard_types::{ConfigFile, FailOn, Scope};
+use diffguard_app::{render_sarif_json, run_check, CheckPlan};
+use diffguard_types::{CheckReceipt, ConfigFile, FailOn, RuleConfig, Scope};
+
+mod presets;
+use presets::Preset;
 
 #[derive(Parser)]
 #[command(name = "diffguard")]
@@ -22,6 +26,15 @@ enum Commands {
 
     /// Print the effective rules (built-in + optional config merge).
     Rules(RulesArgs),
+
+    /// Show detailed information about a specific rule.
+    Explain(ExplainArgs),
+
+    /// Convert a JSON receipt to SARIF format (render-only mode).
+    Sarif(SarifArgs),
+
+    /// Initialize a new diffguard.toml configuration file.
+    Init(InitArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -100,6 +113,66 @@ struct CheckArgs {
     /// Emit GitHub Actions annotations to stdout.
     #[arg(long)]
     github_annotations: bool,
+
+    /// Write a SARIF report.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/report.sarif.json
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/report.sarif.json"
+    )]
+    sarif: Option<PathBuf>,
+}
+
+#[derive(Parser, Debug)]
+struct SarifArgs {
+    /// Path to a JSON receipt file to convert.
+    #[arg(long)]
+    report: PathBuf,
+
+    /// Output path for the SARIF file.
+    ///
+    /// If omitted, writes to stdout.
+    #[arg(long, short)]
+    output: Option<PathBuf>,
+}
+
+#[derive(Parser, Debug)]
+struct ExplainArgs {
+    /// The rule ID to explain (e.g., "rust.no_unwrap").
+    rule_id: String,
+
+    /// Path to a config file. If omitted, uses ./diffguard.toml if present.
+    #[arg(long)]
+    config: Option<PathBuf>,
+
+    /// Disable built-in rules; only use the config file.
+    #[arg(long)]
+    no_default_rules: bool,
+}
+
+#[derive(Parser, Debug)]
+struct InitArgs {
+    /// Configuration preset to use.
+    ///
+    /// Available presets:
+    /// - minimal: Basic starter config (default)
+    /// - rust-quality: Rust best practices
+    /// - secrets: Secret/credential detection
+    /// - js-console: JavaScript/TypeScript debugging
+    /// - python-debug: Python debugging
+    #[arg(long, short, value_enum, default_value_t = Preset::Minimal)]
+    preset: Preset,
+
+    /// Output path for the configuration file.
+    #[arg(long, short, default_value = "diffguard.toml")]
+    output: PathBuf,
+
+    /// Overwrite existing configuration file without prompting.
+    #[arg(long, short)]
+    force: bool,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -140,6 +213,9 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Check(args) => cmd_check(args),
         Commands::Rules(args) => cmd_rules(args),
+        Commands::Explain(args) => cmd_explain(args),
+        Commands::Sarif(args) => cmd_sarif(args),
+        Commands::Init(args) => cmd_init(args),
     }
 }
 
@@ -158,6 +234,155 @@ fn cmd_rules(args: RulesArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn cmd_explain(args: ExplainArgs) -> Result<()> {
+    let cfg = load_config(args.config, args.no_default_rules)?;
+
+    // Find the rule by ID
+    let rule = cfg.rule.iter().find(|r| r.id == args.rule_id);
+
+    match rule {
+        Some(r) => {
+            print!("{}", format_rule_explanation(r));
+            Ok(())
+        }
+        None => {
+            // Rule not found - suggest similar rules
+            let suggestions = find_similar_rules(&args.rule_id, &cfg.rule);
+            let mut msg = format!("Rule '{}' not found.", args.rule_id);
+
+            if !suggestions.is_empty() {
+                msg.push_str("\n\nDid you mean one of these?\n");
+                for s in &suggestions {
+                    msg.push_str(&format!("  - {}\n", s));
+                }
+            }
+
+            msg.push_str("\nUse 'diffguard rules' to list all available rules.");
+
+            bail!("{}", msg);
+        }
+    }
+}
+
+/// Format rule explanation for display.
+fn format_rule_explanation(rule: &RuleConfig) -> String {
+    let mut out = String::new();
+
+    out.push_str(&format!("Rule: {}\n", rule.id));
+    out.push_str(&format!("Severity: {}\n", rule.severity.as_str()));
+    out.push_str(&format!("Message: {}\n", rule.message));
+
+    out.push_str("\nPatterns:\n");
+    for p in &rule.patterns {
+        out.push_str(&format!("  - {}\n", p));
+    }
+
+    out.push_str("\nApplies to:\n");
+
+    if !rule.languages.is_empty() {
+        out.push_str(&format!("  - Languages: {}\n", rule.languages.join(", ")));
+    }
+
+    if !rule.paths.is_empty() {
+        out.push_str(&format!("  - Paths: {}\n", rule.paths.join(", ")));
+    }
+
+    if !rule.exclude_paths.is_empty() {
+        out.push_str(&format!(
+            "  - Excludes: {}\n",
+            rule.exclude_paths.join(", ")
+        ));
+    }
+
+    out.push_str("\nPreprocessing:\n");
+    out.push_str(&format!(
+        "  - Ignore comments: {}\n",
+        if rule.ignore_comments { "yes" } else { "no" }
+    ));
+    out.push_str(&format!(
+        "  - Ignore strings: {}\n",
+        if rule.ignore_strings { "yes" } else { "no" }
+    ));
+
+    if let Some(help) = &rule.help {
+        out.push_str("\nRemediation:\n");
+        for line in help.lines() {
+            out.push_str(&format!("  {}\n", line));
+        }
+    }
+
+    if let Some(url) = &rule.url {
+        out.push_str(&format!("\nSee also: {}\n", url));
+    }
+
+    out
+}
+
+/// Find rules with similar IDs to the given rule_id.
+fn find_similar_rules(rule_id: &str, rules: &[RuleConfig]) -> Vec<String> {
+    let rule_id_lower = rule_id.to_lowercase();
+    let mut candidates: Vec<(String, usize)> = Vec::new();
+
+    for r in rules {
+        let id_lower = r.id.to_lowercase();
+
+        // Exact prefix match
+        if id_lower.starts_with(&rule_id_lower) || rule_id_lower.starts_with(&id_lower) {
+            candidates.push((r.id.clone(), 0));
+            continue;
+        }
+
+        // Contains the search term
+        if id_lower.contains(&rule_id_lower) || rule_id_lower.contains(&id_lower) {
+            candidates.push((r.id.clone(), 1));
+            continue;
+        }
+
+        // Simple Levenshtein-like distance for short strings
+        let distance = simple_edit_distance(&rule_id_lower, &id_lower);
+        if distance <= 3 {
+            candidates.push((r.id.clone(), distance + 2));
+        }
+    }
+
+    candidates.sort_by_key(|(_, score)| *score);
+    candidates.truncate(5);
+    candidates.into_iter().map(|(id, _)| id).collect()
+}
+
+/// Simple edit distance calculation.
+fn simple_edit_distance(a: &str, b: &str) -> usize {
+    let a_chars: Vec<char> = a.chars().collect();
+    let b_chars: Vec<char> = b.chars().collect();
+    let m = a_chars.len();
+    let n = b_chars.len();
+
+    if m == 0 {
+        return n;
+    }
+    if n == 0 {
+        return m;
+    }
+
+    let mut prev: Vec<usize> = (0..=n).collect();
+    let mut curr: Vec<usize> = vec![0; n + 1];
+
+    for i in 1..=m {
+        curr[0] = i;
+        for j in 1..=n {
+            let cost = if a_chars[i - 1] == b_chars[j - 1] {
+                0
+            } else {
+                1
+            };
+            curr[j] = (prev[j] + 1).min(curr[j - 1] + 1).min(prev[j - 1] + cost);
+        }
+        std::mem::swap(&mut prev, &mut curr);
+    }
+
+    prev[n]
 }
 
 fn cmd_check(args: CheckArgs) -> Result<()> {
@@ -219,7 +444,92 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
         }
     }
 
+    if let Some(sarif_path) = args.sarif {
+        let sarif = render_sarif_json(&run.receipt).context("render SARIF")?;
+        write_text(&sarif_path, &sarif)?;
+    }
+
     std::process::exit(run.exit_code);
+}
+
+fn cmd_sarif(args: SarifArgs) -> Result<()> {
+    let receipt_text = std::fs::read_to_string(&args.report)
+        .with_context(|| format!("read report {}", args.report.display()))?;
+
+    let receipt: CheckReceipt = serde_json::from_str(&receipt_text)
+        .with_context(|| format!("parse report {}", args.report.display()))?;
+
+    let sarif = render_sarif_json(&receipt).context("render SARIF")?;
+
+    match args.output {
+        Some(path) => write_text(&path, &sarif)?,
+        None => print!("{sarif}"),
+    }
+
+    Ok(())
+}
+
+fn cmd_init(args: InitArgs) -> Result<()> {
+    let output_path = &args.output;
+
+    // Check if file already exists
+    if output_path.exists() && !args.force {
+        // Prompt for confirmation
+        eprint!(
+            "Configuration file '{}' already exists. Overwrite? [y/N] ",
+            output_path.display()
+        );
+        io::stderr().flush().context("flush stderr")?;
+
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).context("read stdin")?;
+
+        let input = input.trim().to_lowercase();
+        if input != "y" && input != "yes" {
+            println!("Aborted.");
+            return Ok(());
+        }
+    }
+
+    // Generate the preset content
+    let content = args.preset.generate();
+
+    // Write the configuration file
+    if let Some(parent) = output_path.parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("create directory {}", parent.display()))?;
+        }
+    }
+
+    std::fs::write(output_path, &content)
+        .with_context(|| format!("write {}", output_path.display()))?;
+
+    // Print success message
+    println!(
+        "Created {} with '{}' preset.",
+        output_path.display(),
+        args.preset.name()
+    );
+    println!();
+    println!("Next steps:");
+    println!(
+        "  1. Review and customize the rules in {}",
+        output_path.display()
+    );
+    println!("  2. Run 'diffguard check' to lint your changes");
+    println!();
+    println!("Available presets:");
+    println!("  - minimal       Minimal starter configuration");
+    println!("  - rust-quality  Rust best practices");
+    println!("  - secrets       Secret/credential detection");
+    println!("  - js-console    JavaScript/TypeScript debugging");
+    println!("  - python-debug  Python debugging");
+    println!();
+    println!("To use a different preset, run:");
+    println!("  diffguard init --preset <PRESET> --force");
+
+    Ok(())
 }
 
 fn load_config(path: Option<PathBuf>, no_default_rules: bool) -> Result<ConfigFile> {
@@ -311,4 +621,131 @@ fn write_text(path: &Path, text: &str) -> Result<()> {
 
     std::fs::write(path, text).with_context(|| format!("write {}", path.display()))?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use diffguard_types::Severity;
+
+    #[test]
+    fn test_format_rule_explanation_basic() {
+        let rule = RuleConfig {
+            id: "test.rule".to_string(),
+            severity: Severity::Warn,
+            message: "Test message".to_string(),
+            languages: vec!["rust".to_string()],
+            patterns: vec![r"\.unwrap\(".to_string()],
+            paths: vec!["**/*.rs".to_string()],
+            exclude_paths: vec!["**/tests/**".to_string()],
+            ignore_comments: true,
+            ignore_strings: false,
+            help: Some("Use ? operator instead.".to_string()),
+            url: Some("https://example.com".to_string()),
+        };
+
+        let output = format_rule_explanation(&rule);
+
+        assert!(output.contains("Rule: test.rule"));
+        assert!(output.contains("Severity: warn"));
+        assert!(output.contains("Message: Test message"));
+        assert!(output.contains("Languages: rust"));
+        assert!(output.contains("Paths: **/*.rs"));
+        assert!(output.contains("Excludes: **/tests/**"));
+        assert!(output.contains("Ignore comments: yes"));
+        assert!(output.contains("Ignore strings: no"));
+        assert!(output.contains("Remediation:"));
+        assert!(output.contains("Use ? operator instead."));
+        assert!(output.contains("See also: https://example.com"));
+    }
+
+    #[test]
+    fn test_format_rule_explanation_minimal() {
+        let rule = RuleConfig {
+            id: "minimal.rule".to_string(),
+            severity: Severity::Error,
+            message: "Minimal rule".to_string(),
+            languages: vec![],
+            patterns: vec!["pattern".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            help: None,
+            url: None,
+        };
+
+        let output = format_rule_explanation(&rule);
+
+        assert!(output.contains("Rule: minimal.rule"));
+        assert!(output.contains("Severity: error"));
+        assert!(!output.contains("Languages:"));
+        assert!(!output.contains("Remediation:"));
+        assert!(!output.contains("See also:"));
+    }
+
+    #[test]
+    fn test_find_similar_rules_exact_prefix() {
+        let rules = vec![
+            RuleConfig {
+                id: "rust.no_unwrap".to_string(),
+                severity: Severity::Error,
+                message: "".to_string(),
+                languages: vec![],
+                patterns: vec![],
+                paths: vec![],
+                exclude_paths: vec![],
+                ignore_comments: false,
+                ignore_strings: false,
+                help: None,
+                url: None,
+            },
+            RuleConfig {
+                id: "rust.no_dbg".to_string(),
+                severity: Severity::Warn,
+                message: "".to_string(),
+                languages: vec![],
+                patterns: vec![],
+                paths: vec![],
+                exclude_paths: vec![],
+                ignore_comments: false,
+                ignore_strings: false,
+                help: None,
+                url: None,
+            },
+        ];
+
+        let suggestions = find_similar_rules("rust", &rules);
+        assert!(suggestions.contains(&"rust.no_unwrap".to_string()));
+        assert!(suggestions.contains(&"rust.no_dbg".to_string()));
+    }
+
+    #[test]
+    fn test_find_similar_rules_typo() {
+        let rules = vec![RuleConfig {
+            id: "rust.no_unwrap".to_string(),
+            severity: Severity::Error,
+            message: "".to_string(),
+            languages: vec![],
+            patterns: vec![],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            help: None,
+            url: None,
+        }];
+
+        let suggestions = find_similar_rules("rust.no_unwarp", &rules);
+        assert!(suggestions.contains(&"rust.no_unwrap".to_string()));
+    }
+
+    #[test]
+    fn test_simple_edit_distance() {
+        assert_eq!(simple_edit_distance("", ""), 0);
+        assert_eq!(simple_edit_distance("abc", "abc"), 0);
+        assert_eq!(simple_edit_distance("abc", "ab"), 1);
+        assert_eq!(simple_edit_distance("abc", "abd"), 1);
+        assert_eq!(simple_edit_distance("kitten", "sitting"), 3);
+    }
 }

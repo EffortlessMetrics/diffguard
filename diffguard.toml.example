@@ -26,3 +26,14 @@ paths = ["**/*.rs"]
 exclude_paths = ["**/tests/**", "**/benches/**", "**/examples/**"]
 ignore_comments = true
 ignore_strings = true
+
+[[rule]]
+id = "ruby.no_puts"
+severity = "warn"
+message = "Remove puts/p debug statements before merging."
+languages = ["ruby"]
+patterns = ["\\bputs\\b", "\\bp\\s+[^=]"]
+paths = ["**/*.rb"]
+exclude_paths = ["**/spec/**", "**/test/**"]
+ignore_comments = true
+ignore_strings = true
