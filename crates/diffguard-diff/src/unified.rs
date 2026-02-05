@@ -801,11 +801,8 @@ diff --git a/a.txt b/a.txt
     fn unescape_git_path_handles_octal_limits_and_control_chars() {
         assert_eq!(unescape_git_path(r#"\7"#).as_bytes(), &[7]);
         assert_eq!(unescape_git_path(r#"\1234"#), "S4");
-        assert_eq!(
-            unescape_git_path(r#"a\rb"#).as_bytes(),
-            &[b'a', b'\r', b'b']
-        );
-        assert_eq!(unescape_git_path(r#"\12x"#).as_bytes(), &[b'\n', b'x']);
+        assert_eq!(unescape_git_path(r#"a\rb"#).as_bytes(), b"a\rb");
+        assert_eq!(unescape_git_path(r#"\12x"#).as_bytes(), b"\nx");
     }
 
     // ========================================================================

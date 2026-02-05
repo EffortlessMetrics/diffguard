@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn compile_filter_globs_rejects_invalid() {
-        let err = compile_filter_globs(&vec!["[".to_string()]).unwrap_err();
+        let err = compile_filter_globs(&["[".to_string()]).unwrap_err();
         match err {
             PathFilterError::InvalidGlob { glob, .. } => assert_eq!(glob, "["),
         }

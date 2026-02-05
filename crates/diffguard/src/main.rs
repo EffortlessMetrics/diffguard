@@ -25,7 +25,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Evaluate rules against added/changed lines in a git diff.
-    Check(CheckArgs),
+    Check(Box<CheckArgs>),
 
     /// Print the effective rules (built-in + optional config merge).
     Rules(RulesArgs),
@@ -290,7 +290,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Check(args) => cmd_check(args),
+        Commands::Check(args) => cmd_check(*args),
         Commands::Rules(args) => cmd_rules(args),
         Commands::Explain(args) => cmd_explain(args),
         Commands::Sarif(args) => cmd_sarif(args),
