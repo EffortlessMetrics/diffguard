@@ -1018,6 +1018,45 @@ impl ConfigFile {
                     tags: vec!["security".to_string()],
                     test_cases: vec![],
                 },
+                // Go: no_panic (Phase 5.6)
+                RuleConfig {
+                    id: "go.no_panic".to_string(),
+                    severity: Severity::Warn,
+                    message: "Avoid panic() in production code.".to_string(),
+                    languages: vec!["go".to_string()],
+                    patterns: vec![r"\bpanic\s*\(".to_string()],
+                    paths: vec!["**/*.go".to_string()],
+                    exclude_paths: vec!["**/*_test.go".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "Return errors instead of panicking. Use panic only for truly \
+                        unrecoverable situations. Consider using errors.New() or fmt.Errorf() \
+                        to create descriptive error values that callers can handle gracefully."
+                            .to_string(),
+                    ),
+                    url: Some("https://go.dev/doc/effective_go#errors".to_string()),
+                },
+                // Kotlin rules
+                // Kotlin: no_println (Phase 5.7)
+                RuleConfig {
+                    id: "kotlin.no_println".to_string(),
+                    severity: Severity::Warn,
+                    message: "Remove println() before merging.".to_string(),
+                    languages: vec!["kotlin".to_string()],
+                    patterns: vec![r"\bprintln\s*\(".to_string()],
+                    paths: vec!["**/*.kt".to_string(), "**/*.kts".to_string()],
+                    exclude_paths: vec!["**/test/**".to_string(), "**/tests/**".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "Use a logging framework (e.g., SLF4J, Logback, kotlin-logging) instead \
+                        of println() for production code. Logging frameworks provide log levels, \
+                        structured output, and configurable destinations."
+                            .to_string(),
+                    ),
+                    url: Some("https://www.slf4j.org/".to_string()),
+                },
             ],
         }
     }
