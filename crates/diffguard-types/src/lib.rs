@@ -1373,3 +1373,99 @@ mod tests {
         assert_eq!(cfg.defaults, Defaults::default());
     }
 }
+
+// ============================================================================
+// sensor.report.v1 types (Cockpit ecosystem integration)
+// ============================================================================
+
+/// The `sensor.report.v1` envelope for Cockpit ecosystem integration.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema)]
+pub struct SensorReport {
+    /// Schema identifier, always "sensor.report.v1".
+    pub schema: String,
+    /// Tool metadata.
+    pub tool: ToolMeta,
+    /// Run timing and capability information.
+    pub run: RunMeta,
+    /// Overall verdict.
+    pub verdict: Verdict,
+    /// Findings in sensor format.
+    pub findings: Vec<SensorFinding>,
+    /// List of artifacts produced.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub artifacts: Vec<Artifact>,
+    /// Additional data payload (diff metadata, etc.).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+/// Run timing and capability status.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct RunMeta {
+    /// ISO 8601 timestamp when the run started.
+    pub started_at: String,
+    /// ISO 8601 timestamp when the run ended.
+    pub ended_at: String,
+    /// Duration in milliseconds.
+    pub duration_ms: u64,
+    /// Capability status map (e.g., "git" -> available/unavailable).
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub capabilities: HashMap<String, CapabilityStatus>,
+}
+
+/// Status of a capability (e.g., git availability).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct CapabilityStatus {
+    /// Status: "available", "unavailable", or "skipped".
+    pub status: String,
+    /// Optional reason for unavailability.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+/// A finding in sensor.report.v1 format.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct SensorFinding {
+    /// Check identifier (constant: "diffguard.pattern").
+    pub check_id: String,
+    /// Rule code (maps from rule_id, e.g., "rust.no_unwrap").
+    pub code: String,
+    /// Finding severity.
+    pub severity: Severity,
+    /// Human-readable message.
+    pub message: String,
+    /// Location in the source.
+    pub location: SensorLocation,
+    /// Stable fingerprint (SHA-256 truncated to 16 hex chars).
+    pub fingerprint: String,
+    /// Optional help text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub help: Option<String>,
+    /// Optional URL for more information.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    /// Additional data (match_text, snippet).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub data: Option<serde_json::Value>,
+}
+
+/// Location in sensor.report.v1 format.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct SensorLocation {
+    /// Repo-relative path with forward slashes.
+    pub path: String,
+    /// Line number (1-based).
+    pub line: u32,
+    /// Optional column number (1-based).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub column: Option<u32>,
+}
+
+/// An artifact produced by the sensor.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct Artifact {
+    /// Path to the artifact file.
+    pub path: String,
+    /// Format of the artifact (e.g., "json", "sarif", "markdown").
+    pub format: String,
+}
