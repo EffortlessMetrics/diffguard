@@ -1018,7 +1018,6 @@ impl ConfigFile {
                     tags: vec!["security".to_string()],
                     test_cases: vec![],
                 },
-                // Go: no_panic (Phase 5.6)
                 RuleConfig {
                     id: "go.no_panic".to_string(),
                     severity: Severity::Warn,
@@ -1036,9 +1035,11 @@ impl ConfigFile {
                             .to_string(),
                     ),
                     url: Some("https://go.dev/doc/effective_go#errors".to_string()),
+                    tags: vec!["safety".to_string()],
                 },
+                // ============================================================
                 // Kotlin rules
-                // Kotlin: no_println (Phase 5.7)
+                // ============================================================
                 RuleConfig {
                     id: "kotlin.no_println".to_string(),
                     severity: Severity::Warn,
@@ -1056,6 +1057,95 @@ impl ConfigFile {
                             .to_string(),
                     ),
                     url: Some("https://www.slf4j.org/".to_string()),
+                    tags: vec!["debug".to_string()],
+                },
+                // ============================================================
+                // Secret/Credential detection rules
+                // ============================================================
+                RuleConfig {
+                    id: "secrets.aws_access_key".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential AWS Access Key ID detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"AKIA[0-9A-Z]{16}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "AWS Access Key IDs should never be committed to source control. \
+                        Use environment variables, AWS IAM roles, or a secrets manager \
+                        (e.g., AWS Secrets Manager, HashiCorp Vault) to manage credentials."
+                            .to_string(),
+                    ),
+                    url: Some("https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html".to_string()),
+                    tags: vec!["security".to_string()],
+                },
+                RuleConfig {
+                    id: "secrets.github_token".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential GitHub token detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"(ghp_|gho_|ghu_|ghs_|ghr_)[a-zA-Z0-9]{36}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "GitHub tokens should never be committed to source control. \
+                        Use environment variables or GitHub Actions secrets to manage tokens. \
+                        If a token was accidentally committed, revoke it immediately."
+                            .to_string(),
+                    ),
+                    url: Some("https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens".to_string()),
+                    tags: vec!["security".to_string()],
+                },
+                RuleConfig {
+                    id: "secrets.generic_api_key".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential API key detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r#"(?i)(api[_-]?key|apikey)\s*[:=]\s*["'][^"']{16,}["']"#.to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                        "**/CHANGELOG*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "API keys should not be hardcoded in source files. \
+                        Use environment variables or a secrets manager to inject credentials \
+                        at runtime. Consider using .env files (excluded from version control) \
+                        for local development."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["security".to_string()],
+                },
+                RuleConfig {
+                    id: "secrets.private_key".to_string(),
+                    severity: Severity::Error,
+                    message: "Private key detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "Private keys must never be committed to source control. \
+                        Store private keys securely using a secrets manager, encrypted storage, \
+                        or environment variables. If a private key was accidentally committed, \
+                        consider it compromised and generate a new key pair."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["security".to_string()],
                 },
             ],
         }
