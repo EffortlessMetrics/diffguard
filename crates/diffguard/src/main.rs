@@ -630,6 +630,7 @@ fn build_skip_receipt(args: &CheckArgs, err: &anyhow::Error) -> CheckReceipt {
             counts: VerdictCounts::default(),
             reasons: vec![err.to_string()],
         },
+        timing: None,
     }
 }
 
@@ -1034,6 +1035,7 @@ mod tests {
             ignore_strings: false,
             help: Some("Use ? operator instead.".to_string()),
             url: Some("https://example.com".to_string()),
+            tags: vec![],
         };
 
         let output = format_rule_explanation(&rule);

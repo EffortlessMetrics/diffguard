@@ -1,0 +1,256 @@
+# Azure DevOps Pipeline Template for diffguard
+# Reusable template for running diffguard diff-scoped governance checks
+#
+# Usage:
+#   - template: azure-pipelines/diffguard.yml
+#     parameters:
+#       baseBranch: 'origin/main'
+#       failOn: 'error'
+#
+# For more information, see: https://github.com/effortless-mgmt/diffguard
+
+parameters:
+  # Base git ref for comparison
+  - name: baseBranch
+    type: string
+    default: 'origin/main'
+
+  # Path to diffguard configuration file
+  - name: configFile
+    type: string
+    default: 'diffguard.toml'
+
+  # Fail policy: error, warn, or never
+  # - error: fail on errors only (exit code 2)
+  # - warn: fail on errors or warnings (exit code 2 or 3)
+  # - never: never fail based on findings (always exit 0 or 1 for tool errors)
+  - name: failOn
+    type: string
+    default: 'error'
+    values:
+      - 'error'
+      - 'warn'
+      - 'never'
+
+  # Installation method: cargo or binary
+  # - cargo: build from source using cargo install
+  # - binary: download pre-built binary from GitHub releases
+  - name: installMethod
+    type: string
+    default: 'cargo'
+    values:
+      - 'cargo'
+      - 'binary'
+
+  # diffguard version to install (used with binary install method)
+  - name: version
+    type: string
+    default: 'latest'
+
+  # Whether to publish artifacts (JSON receipt, Markdown summary, SARIF)
+  - name: publishArtifacts
+    type: boolean
+    default: true
+
+  # Artifact name prefix
+  - name: artifactName
+    type: string
+    default: 'diffguard-report'
+
+  # Enable SARIF output for security integrations
+  - name: enableSarif
+    type: boolean
+    default: false
+
+  # Enable Markdown summary output
+  - name: enableMarkdown
+    type: boolean
+    default: true
+
+  # Enable JUnit XML output for test result integration
+  - name: enableJunit
+    type: boolean
+    default: false
+
+  # Additional diffguard arguments
+  - name: additionalArgs
+    type: string
+    default: ''
+
+  # Working directory (if diffguard should run in a subdirectory)
+  - name: workingDirectory
+    type: string
+    default: '$(Build.SourcesDirectory)'
+
+steps:
+  # Checkout with full history for diff comparison
+  - checkout: self
+    fetchDepth: 0
+    displayName: 'Checkout with full history'
+
+  # Install Rust toolchain (required for cargo install method)
+  - ${{ if eq(parameters.installMethod, 'cargo') }}:
+    - task: RustInstaller@1
+      inputs:
+        rustVersion: 'stable'
+        addToPath: true
+      displayName: 'Install Rust toolchain'
+      condition: succeeded()
+
+    - script: |
+        cargo install diffguard
+      displayName: 'Install diffguard via cargo'
+      condition: succeeded()
+
+  # Download pre-built binary
+  - ${{ if eq(parameters.installMethod, 'binary') }}:
+    - script: |
+        set -e
+        VERSION="${{ parameters.version }}"
+
+        # Determine OS and architecture
+        case "$(uname -s)" in
+          Linux*)  OS=linux;;
+          Darwin*) OS=darwin;;
+          MINGW*|MSYS*|CYGWIN*) OS=windows;;
+          *)       echo "Unsupported OS"; exit 1;;
+        esac
+
+        case "$(uname -m)" in
+          x86_64|amd64) ARCH=x86_64;;
+          arm64|aarch64) ARCH=aarch64;;
+          *)            echo "Unsupported architecture"; exit 1;;
+        esac
+
+        # Construct download URL
+        if [ "$VERSION" = "latest" ]; then
+          DOWNLOAD_URL="https://github.com/effortless-mgmt/diffguard/releases/latest/download/diffguard-${OS}-${ARCH}"
+        else
+          DOWNLOAD_URL="https://github.com/effortless-mgmt/diffguard/releases/download/${VERSION}/diffguard-${OS}-${ARCH}"
+        fi
+
+        # Add .exe suffix for Windows
+        if [ "$OS" = "windows" ]; then
+          DOWNLOAD_URL="${DOWNLOAD_URL}.exe"
+          BINARY_NAME="diffguard.exe"
+        else
+          BINARY_NAME="diffguard"
+        fi
+
+        # Download and install
+        echo "Downloading diffguard from: $DOWNLOAD_URL"
+        curl -sSL "$DOWNLOAD_URL" -o "$BINARY_NAME"
+        chmod +x "$BINARY_NAME"
+
+        # Move to a directory in PATH
+        mkdir -p "$HOME/.local/bin"
+        mv "$BINARY_NAME" "$HOME/.local/bin/"
+        echo "##vso[task.prependpath]$HOME/.local/bin"
+      displayName: 'Download diffguard binary'
+      condition: succeeded()
+
+  # Create artifacts directory
+  - script: |
+      mkdir -p artifacts/diffguard
+    workingDirectory: ${{ parameters.workingDirectory }}
+    displayName: 'Create artifacts directory'
+    condition: succeeded()
+
+  # Fetch base branch for comparison
+  - script: |
+      git fetch origin $(echo "${{ parameters.baseBranch }}" | sed 's|^origin/||') --depth=1 || true
+    workingDirectory: ${{ parameters.workingDirectory }}
+    displayName: 'Fetch base branch'
+    condition: succeeded()
+
+  # Build diffguard command
+  - script: |
+      set -e
+
+      # Build command arguments
+      ARGS="check"
+      ARGS="$ARGS --base ${{ parameters.baseBranch }}"
+      ARGS="$ARGS --head HEAD"
+      ARGS="$ARGS --fail-on ${{ parameters.failOn }}"
+
+      # Add config file if it exists
+      if [ -f "${{ parameters.configFile }}" ]; then
+        ARGS="$ARGS --config ${{ parameters.configFile }}"
+      fi
+
+      # Output options
+      ARGS="$ARGS --out artifacts/diffguard/report.json"
+
+      # Enable Markdown output
+      if [ "${{ parameters.enableMarkdown }}" = "True" ]; then
+        ARGS="$ARGS --md artifacts/diffguard/comment.md"
+      fi
+
+      # Enable SARIF output
+      if [ "${{ parameters.enableSarif }}" = "True" ]; then
+        ARGS="$ARGS --sarif artifacts/diffguard/report.sarif.json"
+      fi
+
+      # Enable JUnit output
+      if [ "${{ parameters.enableJunit }}" = "True" ]; then
+        ARGS="$ARGS --junit artifacts/diffguard/report.xml"
+      fi
+
+      # Additional arguments
+      if [ -n "${{ parameters.additionalArgs }}" ]; then
+        ARGS="$ARGS ${{ parameters.additionalArgs }}"
+      fi
+
+      echo "Running: diffguard $ARGS"
+      diffguard $ARGS
+
+      EXIT_CODE=$?
+
+      # Store exit code for later steps
+      echo "##vso[task.setvariable variable=diffguardExitCode]$EXIT_CODE"
+
+      # Handle exit codes
+      # 0 = pass, 1 = tool error, 2 = policy fail (errors), 3 = policy fail (warnings)
+      case $EXIT_CODE in
+        0) echo "diffguard check passed";;
+        1) echo "##vso[task.logissue type=error]diffguard encountered an error"; exit 1;;
+        2) echo "##vso[task.logissue type=error]diffguard found policy violations (errors)"; exit 2;;
+        3) echo "##vso[task.logissue type=warning]diffguard found policy violations (warnings)"; exit 3;;
+        *) echo "##vso[task.logissue type=error]diffguard exited with unexpected code: $EXIT_CODE"; exit $EXIT_CODE;;
+      esac
+    workingDirectory: ${{ parameters.workingDirectory }}
+    displayName: 'Run diffguard check'
+    condition: succeeded()
+    continueOnError: ${{ eq(parameters.failOn, 'never') }}
+
+  # Publish test results if JUnit is enabled
+  - ${{ if eq(parameters.enableJunit, true) }}:
+    - task: PublishTestResults@2
+      inputs:
+        testResultsFormat: 'JUnit'
+        testResultsFiles: 'artifacts/diffguard/report.xml'
+        searchFolder: ${{ parameters.workingDirectory }}
+        mergeTestResults: true
+        testRunTitle: 'diffguard Results'
+      displayName: 'Publish JUnit test results'
+      condition: always()
+
+  # Publish artifacts
+  - ${{ if eq(parameters.publishArtifacts, true) }}:
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '${{ parameters.workingDirectory }}/artifacts/diffguard'
+        artifact: '${{ parameters.artifactName }}'
+        publishLocation: 'pipeline'
+      displayName: 'Publish diffguard artifacts'
+      condition: always()
+
+  # Add build summary with Markdown content
+  - ${{ if eq(parameters.enableMarkdown, true) }}:
+    - script: |
+        if [ -f "artifacts/diffguard/comment.md" ]; then
+          echo "##vso[task.uploadsummary]$(pwd)/artifacts/diffguard/comment.md"
+        fi
+      workingDirectory: ${{ parameters.workingDirectory }}
+      displayName: 'Add diffguard summary to build'
+      condition: always()

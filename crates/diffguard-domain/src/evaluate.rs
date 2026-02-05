@@ -207,6 +207,7 @@ mod tests {
             ignore_strings,
             help: None,
             url: None,
+            tags: vec![],
         }
     }
 

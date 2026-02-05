@@ -105,6 +105,7 @@ fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
         arb_string_vec(),                                    // exclude_paths
         any::<bool>(),                                       // ignore_comments
         any::<bool>(),                                       // ignore_strings
+        arb_string_vec(),                                    // tags
     )
         .prop_map(
             |(
@@ -117,6 +118,7 @@ fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                 exclude_paths,
                 ignore_comments,
                 ignore_strings,
+                tags,
             )| {
                 RuleConfig {
                     id,
@@ -130,6 +132,7 @@ fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     ignore_strings,
                     help: None,
                     url: None,
+                    tags,
                 }
             },
         )
@@ -235,6 +238,7 @@ fn arb_check_receipt() -> impl Strategy<Value = CheckReceipt> {
             diff,
             findings,
             verdict,
+            timing: None,
         })
 }
 
@@ -750,6 +754,7 @@ mod unit_tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let json_value =
@@ -812,6 +817,7 @@ mod unit_tests {
                 },
                 reasons: vec!["1 error-level finding".to_string()],
             },
+            timing: None,
         };
 
         let json_value =
@@ -884,6 +890,7 @@ mod unit_tests {
                 },
                 reasons: vec!["1 warning".to_string()],
             },
+            timing: None,
         };
 
         // Serialize to JSON
@@ -1097,6 +1104,7 @@ mod unit_tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let json_value =
@@ -1147,6 +1155,7 @@ mod unit_tests {
                 },
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let json_value =
@@ -1197,6 +1206,7 @@ mod unit_tests {
                 },
                 reasons: vec!["\u{8b66}\u{544a}".to_string()],
             },
+            timing: None,
         };
 
         let json_value =
@@ -1233,6 +1243,7 @@ mod unit_tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let json_value =

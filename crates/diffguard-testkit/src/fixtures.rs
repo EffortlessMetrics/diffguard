@@ -45,6 +45,7 @@ pub mod sample_configs {
                 ignore_strings: false,
                 help: None,
                 url: None,
+                tags: vec![],
             }],
         }
     }
@@ -73,6 +74,7 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
                 },
                 RuleConfig {
                     id: "rust.no_dbg".to_string(),
@@ -86,6 +88,7 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
                 },
             ],
         }
@@ -117,6 +120,7 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
                 },
                 RuleConfig {
                     id: "js.no_debugger".to_string(),
@@ -130,6 +134,7 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
                 },
             ],
         }
@@ -152,6 +157,7 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
                 },
                 RuleConfig {
                     id: "python.no_pdb".to_string(),
@@ -169,6 +175,7 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
                 },
             ],
         }
@@ -204,6 +211,7 @@ pub mod sample_configs {
                     ignore_strings: false,
                     help: None,
                     url: None,
+                    tags: vec![],
                 },
                 RuleConfig {
                     id: "test.warn".to_string(),
@@ -217,6 +225,7 @@ pub mod sample_configs {
                     ignore_strings: false,
                     help: None,
                     url: None,
+                    tags: vec![],
                 },
                 RuleConfig {
                     id: "test.error".to_string(),
@@ -230,6 +239,7 @@ pub mod sample_configs {
                     ignore_strings: false,
                     help: None,
                     url: None,
+                    tags: vec![],
                 },
             ],
         }
@@ -502,6 +512,7 @@ pub mod sample_receipts {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         }
     }
 
@@ -541,6 +552,7 @@ pub mod sample_receipts {
                 },
                 reasons: vec!["1 warning-level finding".to_string()],
             },
+            timing: None,
         }
     }
 
@@ -580,6 +592,7 @@ pub mod sample_receipts {
                 },
                 reasons: vec!["1 error-level finding".to_string()],
             },
+            timing: None,
         }
     }
 
@@ -644,6 +657,7 @@ pub mod sample_receipts {
                     "1 warning-level finding".to_string(),
                 ],
             },
+            timing: None,
         }
     }
 }

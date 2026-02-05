@@ -100,6 +100,7 @@ pub fn run_check(
             counts: evaluation.counts.clone(),
             reasons,
         },
+        timing: None,
     };
 
     let markdown = crate::render::render_markdown_for_receipt(&receipt);
@@ -200,6 +201,7 @@ mod tests {
                 ignore_strings: false,
                 help: None,
                 url: None,
+                tags: vec![],
             }],
         }
     }

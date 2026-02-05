@@ -129,6 +129,17 @@ pub struct CheckReceipt {
     pub diff: DiffMeta,
     pub findings: Vec<Finding>,
     pub verdict: Verdict,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub timing: Option<TimingMetrics>,
+}
+
+/// Timing metrics for performance analysis.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+pub struct TimingMetrics {
+    pub total_ms: u64,
+    pub diff_parse_ms: u64,
+    pub rule_compile_ms: u64,
+    pub evaluation_ms: u64,
 }
 
 /// The on-disk configuration file.
@@ -145,6 +156,9 @@ impl ConfigFile {
         Self {
             defaults: Defaults::default(),
             rule: vec![
+                // ============================================================
+                // Rust rules
+                // ============================================================
                 RuleConfig {
                     id: "rust.no_unwrap".to_string(),
                     severity: Severity::Error,
@@ -169,6 +183,7 @@ impl ConfigFile {
                         "https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html"
                             .to_string(),
                     ),
+                    tags: vec!["safety".to_string()],
                 },
                 RuleConfig {
                     id: "rust.no_dbg".to_string(),
@@ -195,8 +210,35 @@ impl ConfigFile {
                             .to_string(),
                     ),
                     url: Some("https://doc.rust-lang.org/std/macro.dbg.html".to_string()),
+                    tags: vec!["debug".to_string()],
                 },
+                RuleConfig {
+                    id: "rust.no_todo".to_string(),
+                    severity: Severity::Warn,
+                    message: "Resolve TODO/FIXME comments before merging.".to_string(),
+                    languages: vec!["rust".to_string()],
+                    patterns: vec![
+                        r"\bTODO\b".to_string(),
+                        r"\bFIXME\b".to_string(),
+                        r"\btodo!\s*\(".to_string(),
+                        r"\bunimplemented!\s*\(".to_string(),
+                    ],
+                    paths: vec!["**/*.rs".to_string()],
+                    exclude_paths: vec![],
+                    ignore_comments: false,
+                    ignore_strings: true,
+                    help: Some(
+                        "Address TODO/FIXME comments before merging, or create tracking \
+                        issues for planned work. The todo! and unimplemented! macros will \
+                        panic at runtime."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["style".to_string()],
+                },
+                // ============================================================
                 // Python rules
+                // ============================================================
                 RuleConfig {
                     id: "python.no_print".to_string(),
                     severity: Severity::Warn,
@@ -213,6 +255,7 @@ impl ConfigFile {
                             .to_string(),
                     ),
                     url: Some("https://docs.python.org/3/library/logging.html".to_string()),
+                    tags: vec!["debug".to_string()],
                 },
                 RuleConfig {
                     id: "python.no_pdb".to_string(),
@@ -233,8 +276,29 @@ impl ConfigFile {
                             .to_string(),
                     ),
                     url: Some("https://docs.python.org/3/library/pdb.html".to_string()),
+                    tags: vec!["debug".to_string()],
                 },
+                RuleConfig {
+                    id: "python.no_breakpoint".to_string(),
+                    severity: Severity::Error,
+                    message: "Remove breakpoint() calls before merging.".to_string(),
+                    languages: vec!["python".to_string()],
+                    patterns: vec![r"\bbreakpoint\s*\(".to_string()],
+                    paths: vec!["**/*.py".to_string()],
+                    exclude_paths: vec![],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "Remove breakpoint() calls before merging. The breakpoint() function \
+                        (Python 3.7+) invokes the debugger and will pause execution in production."
+                            .to_string(),
+                    ),
+                    url: Some("https://docs.python.org/3/library/functions.html#breakpoint".to_string()),
+                    tags: vec!["debug".to_string()],
+                },
+                // ============================================================
                 // JavaScript/TypeScript rules
+                // ============================================================
                 RuleConfig {
                     id: "js.no_console".to_string(),
                     severity: Severity::Warn,
@@ -263,6 +327,7 @@ impl ConfigFile {
                     url: Some(
                         "https://developer.mozilla.org/en-US/docs/Web/API/console".to_string(),
                     ),
+                    tags: vec!["debug".to_string()],
                 },
                 RuleConfig {
                     id: "js.no_debugger".to_string(),
@@ -289,8 +354,94 @@ impl ConfigFile {
                         "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger"
                             .to_string(),
                     ),
+                    tags: vec!["debug".to_string()],
                 },
+                // ============================================================
+                // Ruby rules
+                // ============================================================
+                RuleConfig {
+                    id: "ruby.no_binding_pry".to_string(),
+                    severity: Severity::Error,
+                    message: "Remove binding.pry before merging.".to_string(),
+                    languages: vec!["ruby".to_string()],
+                    patterns: vec![r"\bbinding\.pry\b".to_string()],
+                    paths: vec!["**/*.rb".to_string(), "**/*.rake".to_string()],
+                    exclude_paths: vec!["**/test/**".to_string(), "**/spec/**".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "Remove binding.pry debugger statements before merging. These will \
+                        pause execution and open an interactive REPL in production."
+                            .to_string(),
+                    ),
+                    url: Some("https://github.com/pry/pry".to_string()),
+                    tags: vec!["debug".to_string()],
+                },
+                RuleConfig {
+                    id: "ruby.no_byebug".to_string(),
+                    severity: Severity::Error,
+                    message: "Remove byebug statements before merging.".to_string(),
+                    languages: vec!["ruby".to_string()],
+                    patterns: vec![r"\bbyebug\b".to_string()],
+                    paths: vec!["**/*.rb".to_string(), "**/*.rake".to_string()],
+                    exclude_paths: vec!["**/test/**".to_string(), "**/spec/**".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "Remove byebug debugger statements before merging. These will \
+                        pause execution and open an interactive debugger in production."
+                            .to_string(),
+                    ),
+                    url: Some("https://github.com/deivid-rodriguez/byebug".to_string()),
+                    tags: vec!["debug".to_string()],
+                },
+                // ============================================================
+                // Java rules
+                // ============================================================
+                RuleConfig {
+                    id: "java.no_sout".to_string(),
+                    severity: Severity::Warn,
+                    message: "Remove System.out.println before merging.".to_string(),
+                    languages: vec!["java".to_string()],
+                    patterns: vec![r"\bSystem\.out\.println\s*\(".to_string()],
+                    paths: vec!["**/*.java".to_string()],
+                    exclude_paths: vec!["**/test/**".to_string(), "**/tests/**".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "Use a logging framework (e.g., SLF4J, Log4j, java.util.logging) instead \
+                        of System.out.println for production code. Logging frameworks provide \
+                        log levels, formatting, and configurable output destinations."
+                            .to_string(),
+                    ),
+                    url: Some("https://www.slf4j.org/".to_string()),
+                    tags: vec!["debug".to_string()],
+                },
+                // ============================================================
+                // C# rules
+                // ============================================================
+                RuleConfig {
+                    id: "csharp.no_console".to_string(),
+                    severity: Severity::Warn,
+                    message: "Remove Console.WriteLine before merging.".to_string(),
+                    languages: vec!["csharp".to_string()],
+                    patterns: vec![r"\bConsole\.WriteLine\s*\(".to_string()],
+                    paths: vec!["**/*.cs".to_string()],
+                    exclude_paths: vec!["**/Tests/**".to_string(), "**/*.Tests/**".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "Use a logging framework (e.g., Serilog, NLog, Microsoft.Extensions.Logging) \
+                        instead of Console.WriteLine for production code. Logging frameworks provide \
+                        structured logging, log levels, and configurable sinks."
+                            .to_string(),
+                    ),
+                    url: Some("https://learn.microsoft.com/en-us/dotnet/core/extensions/logging".to_string()),
+                    tags: vec!["debug".to_string()],
+                },
+                // ============================================================
                 // Go rules
+                // ============================================================
                 RuleConfig {
                     id: "go.no_fmt_print".to_string(),
                     severity: Severity::Warn,
@@ -307,8 +458,8 @@ impl ConfigFile {
                             .to_string(),
                     ),
                     url: Some("https://pkg.go.dev/log".to_string()),
+                    tags: vec!["debug".to_string()],
                 },
-                // Go: no_panic (Phase 5.6)
                 RuleConfig {
                     id: "go.no_panic".to_string(),
                     severity: Severity::Warn,
@@ -326,9 +477,11 @@ impl ConfigFile {
                             .to_string(),
                     ),
                     url: Some("https://go.dev/doc/effective_go#errors".to_string()),
+                    tags: vec!["safety".to_string()],
                 },
+                // ============================================================
                 // Kotlin rules
-                // Kotlin: no_println (Phase 5.7)
+                // ============================================================
                 RuleConfig {
                     id: "kotlin.no_println".to_string(),
                     severity: Severity::Warn,
@@ -346,6 +499,95 @@ impl ConfigFile {
                             .to_string(),
                     ),
                     url: Some("https://www.slf4j.org/".to_string()),
+                    tags: vec!["debug".to_string()],
+                },
+                // ============================================================
+                // Secret/Credential detection rules
+                // ============================================================
+                RuleConfig {
+                    id: "secrets.aws_access_key".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential AWS Access Key ID detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"AKIA[0-9A-Z]{16}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "AWS Access Key IDs should never be committed to source control. \
+                        Use environment variables, AWS IAM roles, or a secrets manager \
+                        (e.g., AWS Secrets Manager, HashiCorp Vault) to manage credentials."
+                            .to_string(),
+                    ),
+                    url: Some("https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html".to_string()),
+                    tags: vec!["security".to_string()],
+                },
+                RuleConfig {
+                    id: "secrets.github_token".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential GitHub token detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"(ghp_|gho_|ghu_|ghs_|ghr_)[a-zA-Z0-9]{36}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "GitHub tokens should never be committed to source control. \
+                        Use environment variables or GitHub Actions secrets to manage tokens. \
+                        If a token was accidentally committed, revoke it immediately."
+                            .to_string(),
+                    ),
+                    url: Some("https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens".to_string()),
+                    tags: vec!["security".to_string()],
+                },
+                RuleConfig {
+                    id: "secrets.generic_api_key".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential API key detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r#"(?i)(api[_-]?key|apikey)\s*[:=]\s*["'][^"']{16,}["']"#.to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                        "**/CHANGELOG*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "API keys should not be hardcoded in source files. \
+                        Use environment variables or a secrets manager to inject credentials \
+                        at runtime. Consider using .env files (excluded from version control) \
+                        for local development."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["security".to_string()],
+                },
+                RuleConfig {
+                    id: "secrets.private_key".to_string(),
+                    severity: Severity::Error,
+                    message: "Private key detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "Private keys must never be committed to source control. \
+                        Store private keys securely using a secrets manager, encrypted storage, \
+                        or environment variables. If a private key was accidentally committed, \
+                        consider it compromised and generate a new key pair."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["security".to_string()],
                 },
             ],
         }
@@ -420,6 +662,10 @@ pub struct RuleConfig {
     /// Optional URL with more information about the rule.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
+
+    /// Tags for grouping/filtering rules (e.g., "debug", "security", "style").
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
 }
 
 // ============================================================================

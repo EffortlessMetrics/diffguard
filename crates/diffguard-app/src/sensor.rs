@@ -146,6 +146,7 @@ mod tests {
                 },
                 reasons: vec!["1 error(s)".to_string()],
             },
+            timing: None,
         }
     }
 

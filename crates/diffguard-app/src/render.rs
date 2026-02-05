@@ -111,6 +111,7 @@ mod tests {
                 },
                 reasons: vec!["1 warning".to_string()],
             },
+            timing: None,
         };
 
         let md = render_markdown_for_receipt(&receipt);
@@ -179,6 +180,7 @@ mod tests {
                     "2 warning-level findings".to_string(),
                 ],
             },
+            timing: None,
         }
     }
 
@@ -209,6 +211,7 @@ mod tests {
                 },
                 reasons: vec![],
             },
+            timing: None,
         }
     }
 
@@ -248,6 +251,7 @@ mod tests {
                 },
                 reasons: vec!["1 warning-level finding".to_string()],
             },
+            timing: None,
         }
     }
 
@@ -314,6 +318,7 @@ mod tests {
                 },
                 reasons: vec!["1 warning-level finding".to_string()],
             },
+            timing: None,
         }
     }
 

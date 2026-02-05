@@ -552,6 +552,7 @@ mod unit_tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let md = render_markdown_for_receipt(&receipt);
@@ -597,6 +598,7 @@ mod unit_tests {
                 },
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let md = render_markdown_for_receipt(&receipt);
@@ -628,6 +630,7 @@ mod unit_tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let md = render_markdown_for_receipt(&receipt);

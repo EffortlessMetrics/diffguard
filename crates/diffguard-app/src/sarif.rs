@@ -322,6 +322,7 @@ mod tests {
                     "2 warning-level findings".to_string(),
                 ],
             },
+            timing: None,
         }
     }
 
@@ -352,6 +353,7 @@ mod tests {
                 },
                 reasons: vec![],
             },
+            timing: None,
         }
     }
 
@@ -391,6 +393,7 @@ mod tests {
                 },
                 reasons: vec![],
             },
+            timing: None,
         }
     }
 

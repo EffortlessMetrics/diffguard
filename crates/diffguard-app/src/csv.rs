@@ -153,6 +153,7 @@ mod tests {
                     "1 warning-level finding".to_string(),
                 ],
             },
+            timing: None,
         }
     }
 
@@ -177,6 +178,7 @@ mod tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         }
     }
 
@@ -215,6 +217,7 @@ mod tests {
                 },
                 reasons: vec!["1 warning".to_string()],
             },
+            timing: None,
         }
     }
 

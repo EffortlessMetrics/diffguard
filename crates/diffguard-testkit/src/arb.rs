@@ -269,6 +269,7 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
         prop::collection::vec(arb_exclude_glob(), 0..MAX_PATHS_PER_RULE),     // exclude_paths
         any::<bool>(),                                                        // ignore_comments
         any::<bool>(),                                                        // ignore_strings
+        prop::collection::vec(arb_non_empty_string(), 0..3),                  // tags
     )
         .prop_map(
             |(
@@ -281,6 +282,7 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                 exclude_paths,
                 ignore_comments,
                 ignore_strings,
+                tags,
             )| {
                 RuleConfig {
                     id,
@@ -294,6 +296,7 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     ignore_strings,
                     help: None,
                     url: None,
+                    tags,
                 }
             },
         )
@@ -314,6 +317,7 @@ pub fn arb_minimal_rule_config() -> impl Strategy<Value = RuleConfig> {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         },
     )
 }

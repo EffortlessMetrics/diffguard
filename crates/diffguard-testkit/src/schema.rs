@@ -216,6 +216,7 @@ mod tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         assert!(
@@ -260,6 +261,7 @@ mod tests {
                 },
                 reasons: vec!["1 error-level finding".to_string()],
             },
+            timing: None,
         };
 
         assert!(

@@ -179,6 +179,7 @@ mod tests {
             ignore_strings,
             help: None,
             url: None,
+            tags: vec![],
         }
     }
 
@@ -333,6 +334,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -371,6 +373,7 @@ mod tests {
                 ignore_strings: false,
                 help: None,
                 url: None,
+                tags: vec![],
             },
             RuleConfig {
                 id: "rule.second".to_string(),
@@ -411,6 +414,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -440,6 +444,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -471,6 +476,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -502,6 +508,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -540,6 +547,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -571,6 +579,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -602,6 +611,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -630,6 +640,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -658,6 +669,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -686,6 +698,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -714,6 +727,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -740,6 +754,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -777,6 +792,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -803,6 +819,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();

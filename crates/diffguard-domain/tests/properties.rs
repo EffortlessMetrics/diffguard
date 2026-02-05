@@ -1017,6 +1017,7 @@ fn make_rule_config(id: &str, patterns: Vec<String>) -> RuleConfig {
         ignore_strings: false,
         help: None,
         url: None,
+        tags: vec![],
     }
 }
 
@@ -1034,6 +1035,7 @@ fn make_rule_config_with_paths(id: &str, patterns: Vec<String>, paths: Vec<Strin
         ignore_strings: false,
         help: None,
         url: None,
+        tags: vec![],
     }
 }
 
@@ -1055,6 +1057,7 @@ fn make_rule_config_with_exclude_paths(
         ignore_strings: false,
         help: None,
         url: None,
+        tags: vec![],
     }
 }
 
@@ -1462,6 +1465,7 @@ fn valid_rule_config_strategy() -> impl Strategy<Value = RuleConfig> {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         })
 }
 
