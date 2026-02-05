@@ -1913,3 +1913,135 @@ proptest! {
         }
     }
 }
+
+// ============================================================================
+// Edge Case Unit Tests
+// ============================================================================
+
+#[cfg(test)]
+mod edge_case_tests {
+    use super::*;
+
+    /// Empty string input returns empty results.
+    #[test]
+    fn empty_string_returns_empty() {
+        let result = parse_unified_diff("", Scope::Added);
+        assert!(result.is_ok());
+        let (lines, stats) = result.unwrap();
+        assert!(lines.is_empty());
+        assert_eq!(stats.files, 0);
+        assert_eq!(stats.lines, 0);
+    }
+
+    /// Diff header with no hunks returns empty.
+    #[test]
+    fn header_only_no_hunks_returns_empty() {
+        let diff = "diff --git a/file.rs b/file.rs\n\
+                    index abc1234..def5678 100644\n\
+                    --- a/file.rs\n\
+                    +++ b/file.rs";
+
+        let result = parse_unified_diff(diff, Scope::Added);
+        assert!(result.is_ok());
+        let (lines, _stats) = result.unwrap();
+        assert!(lines.is_empty(), "No hunks should produce no lines");
+    }
+
+    /// Context-only hunk returns no added lines.
+    #[test]
+    fn context_only_hunk_no_added_lines() {
+        let diff = "diff --git a/file.rs b/file.rs\n\
+                    index abc1234..def5678 100644\n\
+                    --- a/file.rs\n\
+                    +++ b/file.rs\n\
+                    @@ -1,3 +1,3 @@\n\
+                     fn existing() {}\n\
+                     fn another() {}\n\
+                     fn third() {}";
+
+        let result = parse_unified_diff(diff, Scope::Added);
+        assert!(result.is_ok());
+        let (lines, _stats) = result.unwrap();
+        assert!(
+            lines.is_empty(),
+            "Context-only hunk should produce no added lines"
+        );
+    }
+
+    /// DiffStats accuracy: files count equals unique paths.
+    #[test]
+    fn stats_files_equals_unique_paths() {
+        let diff = "diff --git a/file1.rs b/file1.rs\n\
+                    --- a/file1.rs\n\
+                    +++ b/file1.rs\n\
+                    @@ -1,1 +1,2 @@\n\
+                     existing\n\
+                    +added1\n\
+                    diff --git a/file2.rs b/file2.rs\n\
+                    --- a/file2.rs\n\
+                    +++ b/file2.rs\n\
+                    @@ -1,1 +1,2 @@\n\
+                     existing\n\
+                    +added2";
+
+        let result = parse_unified_diff(diff, Scope::Added);
+        assert!(result.is_ok());
+        let (lines, stats) = result.unwrap();
+
+        // Count unique paths
+        let unique_paths: std::collections::BTreeSet<_> =
+            lines.iter().map(|l| l.path.as_str()).collect();
+
+        assert_eq!(stats.files as usize, unique_paths.len());
+        assert_eq!(stats.files, 2);
+    }
+
+    /// DiffStats accuracy: lines count equals DiffLine items count.
+    #[test]
+    fn stats_lines_equals_diff_line_count() {
+        let diff = "diff --git a/file.rs b/file.rs\n\
+                    --- a/file.rs\n\
+                    +++ b/file.rs\n\
+                    @@ -1,1 +1,4 @@\n\
+                     existing\n\
+                    +line1\n\
+                    +line2\n\
+                    +line3";
+
+        let result = parse_unified_diff(diff, Scope::Added);
+        assert!(result.is_ok());
+        let (lines, stats) = result.unwrap();
+
+        assert_eq!(stats.lines as usize, lines.len());
+        assert_eq!(stats.lines, 3);
+    }
+
+    /// Whitespace-only content parses correctly.
+    #[test]
+    fn whitespace_only_input() {
+        let result = parse_unified_diff("   \n\n\t\t\n", Scope::Added);
+        assert!(result.is_ok());
+        let (lines, _) = result.unwrap();
+        assert!(lines.is_empty());
+    }
+
+    /// Diff with only deleted lines returns empty for Added scope.
+    #[test]
+    fn only_deleted_lines_returns_empty_for_added() {
+        let diff = "diff --git a/file.rs b/file.rs\n\
+                    --- a/file.rs\n\
+                    +++ b/file.rs\n\
+                    @@ -1,3 +1,1 @@\n\
+                    -removed1\n\
+                    -removed2\n\
+                     kept";
+
+        let result = parse_unified_diff(diff, Scope::Added);
+        assert!(result.is_ok());
+        let (lines, _) = result.unwrap();
+        assert!(
+            lines.is_empty(),
+            "Only deleted lines should return empty for Added scope"
+        );
+    }
+}

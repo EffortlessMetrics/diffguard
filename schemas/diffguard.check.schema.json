@@ -22,6 +22,16 @@
     "schema": {
       "type": "string"
     },
+    "timing": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/TimingMetrics"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "tool": {
       "$ref": "#/definitions/ToolMeta"
     },
@@ -126,6 +136,38 @@
         "warn",
         "error"
       ]
+    },
+    "TimingMetrics": {
+      "description": "Timing metrics for performance analysis.",
+      "type": "object",
+      "required": [
+        "diff_parse_ms",
+        "evaluation_ms",
+        "rule_compile_ms",
+        "total_ms"
+      ],
+      "properties": {
+        "diff_parse_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "evaluation_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "rule_compile_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "total_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
     },
     "ToolMeta": {
       "type": "object",

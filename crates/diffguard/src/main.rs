@@ -7,23 +7,36 @@ use std::time::Instant;
 use anyhow::{bail, Context, Result};
 use chrono::Utc;
 use clap::{Parser, Subcommand, ValueEnum};
+use tracing::{debug, info};
 
 use diffguard_app::{
     render_csv_for_receipt, render_junit_for_receipt, render_sarif_json, render_sensor_json,
     render_tsv_for_receipt, run_check, CheckPlan, RuleMetadata, SensorReportContext,
 };
+use diffguard_domain::compile_rules;
 use diffguard_types::{
     Artifact, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta, FailOn, RuleConfig, Scope,
     ToolMeta, Verdict, VerdictCounts, VerdictStatus,
 };
 
+mod config_loader;
 mod presets;
+
+use config_loader::load_config_with_includes;
 use presets::Preset;
 
 #[derive(Parser)]
 #[command(name = "diffguard")]
 #[command(about = "Diff-scoped governance lint", long_about = None)]
 struct Cli {
+    /// Enable verbose (info-level) logging to stderr.
+    #[arg(long, short = 'v', global = true)]
+    verbose: bool,
+
+    /// Enable debug-level logging to stderr.
+    #[arg(long, global = true)]
+    debug: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -39,6 +52,9 @@ enum Commands {
     /// Show detailed information about a specific rule.
     Explain(ExplainArgs),
 
+    /// Validate the configuration file (check regex patterns and globs).
+    Validate(ValidateArgs),
+
     /// Convert a JSON receipt to SARIF format (render-only mode).
     Sarif(SarifArgs),
 
@@ -50,6 +66,9 @@ enum Commands {
 
     /// Initialize a new diffguard.toml configuration file.
     Init(InitArgs),
+
+    /// Run test cases defined in rule configurations.
+    Test(TestArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -116,6 +135,24 @@ struct CheckArgs {
     /// Restrict to paths matching these glob patterns. Repeatable.
     #[arg(long, action = clap::ArgAction::Append)]
     paths: Vec<String>,
+
+    /// Only run rules that have at least one of these tags. Repeatable.
+    ///
+    /// When specified, rules without any matching tags are skipped.
+    /// Tags are matched case-insensitively.
+    #[arg(long, action = clap::ArgAction::Append)]
+    only_tags: Vec<String>,
+
+    /// Disable rules that have any of these tags. Repeatable.
+    ///
+    /// Rules with any matching tag are skipped. Applied after --only-tags.
+    /// Tags are matched case-insensitively.
+    #[arg(long, action = clap::ArgAction::Append)]
+    disable_tags: Vec<String>,
+
+    /// Enable rules with these tags (reserved for future use). Repeatable.
+    #[arg(long, action = clap::ArgAction::Append, hide = true)]
+    enable_tags: Vec<String>,
 
     /// Where to write the JSON receipt.
     #[arg(long, default_value = "artifacts/diffguard/report.json")]
@@ -198,6 +235,14 @@ struct CheckArgs {
         default_missing_value = "artifacts/diffguard/sensor.json"
     )]
     sensor: Option<PathBuf>,
+
+    /// Force all files to use the specified language for preprocessing.
+    ///
+    /// This overrides the auto-detected language from file extensions.
+    /// Valid values: rust, python, javascript, typescript, go, ruby, c, cpp,
+    /// csharp, java, kotlin, shell, swift, scala, sql, xml, php
+    #[arg(long, value_enum)]
+    language: Option<LanguageArg>,
 }
 
 #[derive(Parser, Debug)]
@@ -279,6 +324,52 @@ struct InitArgs {
     force: bool,
 }
 
+#[derive(Parser, Debug)]
+struct ValidateArgs {
+    /// Path to a config file. If omitted, uses ./diffguard.toml if present.
+    #[arg(long)]
+    config: Option<PathBuf>,
+
+    /// Enable strict mode: also report best-practice warnings.
+    #[arg(long)]
+    strict: bool,
+
+    /// Output format for validation results.
+    #[arg(long, value_enum, default_value_t = ValidateFormat::Text)]
+    format: ValidateFormat,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum ValidateFormat {
+    Text,
+    Json,
+}
+
+#[derive(Parser, Debug)]
+struct TestArgs {
+    /// Path to a config file. If omitted, uses ./diffguard.toml if present.
+    #[arg(long)]
+    config: Option<PathBuf>,
+
+    /// Only test rules matching this ID (can be a prefix like "rust.").
+    #[arg(long)]
+    rule: Option<String>,
+
+    /// Disable built-in rules; only use the config file.
+    #[arg(long)]
+    no_default_rules: bool,
+
+    /// Output format for test results.
+    #[arg(long, value_enum, default_value_t = TestFormat::Text)]
+    format: TestFormat,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum TestFormat {
+    Text,
+    Json,
+}
+
 /// Execution mode for the check command.
 #[derive(Clone, Copy, Debug, Default, ValueEnum)]
 enum Mode {
@@ -321,18 +412,92 @@ impl From<FailOnArg> for FailOn {
     }
 }
 
+/// Language for preprocessing override.
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum LanguageArg {
+    Rust,
+    Python,
+    Javascript,
+    Typescript,
+    Go,
+    Ruby,
+    C,
+    Cpp,
+    Csharp,
+    Java,
+    Kotlin,
+    Shell,
+    Swift,
+    Scala,
+    Sql,
+    Xml,
+    Php,
+}
+
+impl LanguageArg {
+    /// Convert to lowercase string for the domain layer.
+    fn as_str(self) -> &'static str {
+        match self {
+            LanguageArg::Rust => "rust",
+            LanguageArg::Python => "python",
+            LanguageArg::Javascript => "javascript",
+            LanguageArg::Typescript => "typescript",
+            LanguageArg::Go => "go",
+            LanguageArg::Ruby => "ruby",
+            LanguageArg::C => "c",
+            LanguageArg::Cpp => "cpp",
+            LanguageArg::Csharp => "csharp",
+            LanguageArg::Java => "java",
+            LanguageArg::Kotlin => "kotlin",
+            LanguageArg::Shell => "shell",
+            LanguageArg::Swift => "swift",
+            LanguageArg::Scala => "scala",
+            LanguageArg::Sql => "sql",
+            LanguageArg::Xml => "xml",
+            LanguageArg::Php => "php",
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    // Initialize logging based on flags
+    init_logging(cli.verbose, cli.debug);
 
     match cli.command {
         Commands::Check(args) => cmd_check(*args),
         Commands::Rules(args) => cmd_rules(args),
         Commands::Explain(args) => cmd_explain(args),
+        Commands::Validate(args) => cmd_validate(args),
         Commands::Sarif(args) => cmd_sarif(args),
         Commands::Junit(args) => cmd_junit(args),
         Commands::Csv(args) => cmd_csv(args),
         Commands::Init(args) => cmd_init(args),
+        Commands::Test(args) => cmd_test(args),
     }
+}
+
+/// Initialize tracing/logging based on CLI flags.
+fn init_logging(verbose: bool, debug: bool) {
+    use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+
+    let level = if debug {
+        "debug"
+    } else if verbose {
+        "info"
+    } else {
+        "warn"
+    };
+
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
+
+    tracing_subscriber::registry()
+        .with(fmt::layer().with_writer(std::io::stderr))
+        .with(filter)
+        .init();
+
+    debug!("Logging initialized at level: {}", level);
 }
 
 fn cmd_rules(args: RulesArgs) -> Result<()> {
@@ -350,6 +515,156 @@ fn cmd_rules(args: RulesArgs) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn cmd_validate(args: ValidateArgs) -> Result<()> {
+    info!("Validating configuration file");
+
+    // Determine config path
+    let config_path = args.config.clone().or_else(|| {
+        let p = PathBuf::from("diffguard.toml");
+        if p.exists() {
+            Some(p)
+        } else {
+            None
+        }
+    });
+
+    let Some(path) = config_path else {
+        bail!("No configuration file found. Specify --config or create diffguard.toml");
+    };
+
+    debug!("Loading config from: {}", path.display());
+
+    // Read and parse the config file (with env var expansion)
+    let text = std::fs::read_to_string(&path)
+        .with_context(|| format!("read config {}", path.display()))?;
+
+    let expanded = expand_env_vars(&text)?;
+
+    let cfg: ConfigFile =
+        toml::from_str(&expanded).with_context(|| format!("parse config {}", path.display()))?;
+
+    let mut errors: Vec<String> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
+
+    // Check for duplicate rule IDs
+    let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
+    for rule in &cfg.rule {
+        if !seen_ids.insert(&rule.id) {
+            errors.push(format!("Rule '{}': duplicate rule ID", rule.id));
+        }
+    }
+
+    // Validate each rule
+    for rule in &cfg.rule {
+        debug!("Validating rule: {}", rule.id);
+
+        // Check patterns are not empty
+        if rule.patterns.is_empty() {
+            errors.push(format!("Rule '{}': no patterns defined", rule.id));
+            continue;
+        }
+
+        // Validate regex patterns
+        for pattern in &rule.patterns {
+            if let Err(e) = regex::Regex::new(pattern) {
+                errors.push(format!(
+                    "Rule '{}': invalid regex pattern '{}': {}",
+                    rule.id, pattern, e
+                ));
+            }
+        }
+
+        // Validate path globs
+        for glob in &rule.paths {
+            if let Err(e) = globset::Glob::new(glob) {
+                errors.push(format!(
+                    "Rule '{}': invalid path glob '{}': {}",
+                    rule.id, glob, e
+                ));
+            }
+        }
+
+        // Validate exclude_paths globs
+        for glob in &rule.exclude_paths {
+            if let Err(e) = globset::Glob::new(glob) {
+                errors.push(format!(
+                    "Rule '{}': invalid exclude_paths glob '{}': {}",
+                    rule.id, glob, e
+                ));
+            }
+        }
+
+        // Strict mode: best-practice warnings
+        if args.strict {
+            if rule.message.is_empty() {
+                warnings.push(format!("Rule '{}': empty message", rule.id));
+            }
+            if rule.help.is_none() {
+                warnings.push(format!("Rule '{}': no help text provided", rule.id));
+            }
+            if rule.tags.is_empty() {
+                warnings.push(format!("Rule '{}': no tags defined", rule.id));
+            }
+            if rule.paths.is_empty() && rule.languages.is_empty() {
+                warnings.push(format!(
+                    "Rule '{}': no path or language filters (applies to all files)",
+                    rule.id
+                ));
+            }
+        }
+    }
+
+    // Also try to compile all rules to catch any other issues
+    if errors.is_empty() {
+        if let Err(e) = compile_rules(&cfg.rule) {
+            errors.push(format!("Rule compilation error: {}", e));
+        }
+    }
+
+    // Output results based on format
+    match args.format {
+        ValidateFormat::Json => {
+            let result = serde_json::json!({
+                "valid": errors.is_empty(),
+                "path": path.display().to_string(),
+                "rules_count": cfg.rule.len(),
+                "errors": errors,
+                "warnings": warnings,
+            });
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        ValidateFormat::Text => {
+            println!("Validating {}...", path.display());
+            println!();
+
+            if !warnings.is_empty() {
+                println!("Warnings ({}):", warnings.len());
+                for (i, warn) in warnings.iter().enumerate() {
+                    println!("  {}. {}", i + 1, warn);
+                }
+                println!();
+            }
+
+            if errors.is_empty() {
+                println!("Configuration is valid!");
+                println!("  {} rule(s) defined", cfg.rule.len());
+            } else {
+                println!("Configuration has {} error(s):", errors.len());
+                println!();
+                for (i, err) in errors.iter().enumerate() {
+                    println!("  {}. {}", i + 1, err);
+                }
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        std::process::exit(1);
+    }
 }
 
 fn cmd_explain(args: ExplainArgs) -> Result<()> {
@@ -640,6 +955,8 @@ fn cmd_check_inner(
     _mode: Mode,
     started_at: &chrono::DateTime<Utc>,
 ) -> Result<i32> {
+    info!("Starting diffguard check");
+
     let cfg = load_config(args.config.clone(), args.no_default_rules)?;
 
     let scope = args
@@ -661,8 +978,19 @@ fn cmd_check_inner(
 
     let diff_context = args.diff_context.or(cfg.defaults.diff_context).unwrap_or(0);
 
+    // Log language override if specified
+    if let Some(lang) = &args.language {
+        info!("Language override: {}", lang.as_str());
+    }
+
+    debug!(
+        "Check parameters: scope={:?}, fail_on={:?}, max_findings={}, diff_context={}",
+        scope, fail_on, max_findings, diff_context
+    );
+
     // Handle --staged mode vs base/head mode
     let (base, head, diff_text) = if args.staged {
+        info!("Checking staged changes");
         let diff_text = git_staged_diff(diff_context)?;
         ("(staged)".to_string(), "HEAD".to_string(), diff_text)
     } else {
@@ -679,9 +1007,12 @@ fn cmd_check_inner(
             .or_else(|| cfg.defaults.head.clone())
             .unwrap_or_else(|| "HEAD".to_string());
 
+        info!("Checking diff: {}...{}", base, head);
         let diff_text = git_diff(&base, &head, diff_context)?;
         (base, head, diff_text)
     };
+
+    debug!("Diff text length: {} bytes", diff_text.len());
 
     let plan = CheckPlan {
         base: base.clone(),
@@ -691,9 +1022,18 @@ fn cmd_check_inner(
         fail_on,
         max_findings,
         path_filters: args.paths.clone(),
+        only_tags: args.only_tags.clone(),
+        enable_tags: args.enable_tags.clone(),
+        disable_tags: args.disable_tags.clone(),
     };
 
     let run = run_check(&plan, &cfg, &diff_text)?;
+
+    info!(
+        "Check complete: {} findings, verdict={:?}",
+        run.receipt.findings.len(),
+        run.receipt.verdict.status
+    );
 
     // Collect artifacts
     let mut artifacts = vec![Artifact {
@@ -906,6 +1246,164 @@ fn cmd_init(args: InitArgs) -> Result<()> {
     Ok(())
 }
 
+fn cmd_test(args: TestArgs) -> Result<()> {
+    info!("Running rule test cases");
+
+    let cfg = load_config(args.config.clone(), args.no_default_rules)?;
+
+    // Filter rules if --rule is specified
+    let rules: Vec<_> = if let Some(ref rule_filter) = args.rule {
+        cfg.rule
+            .iter()
+            .filter(|r| r.id.starts_with(rule_filter) || r.id == *rule_filter)
+            .collect()
+    } else {
+        cfg.rule.iter().collect()
+    };
+
+    if rules.is_empty() {
+        if args.rule.is_some() {
+            bail!(
+                "No rules match filter '{}'",
+                args.rule.as_ref().unwrap()
+            );
+        } else {
+            bail!("No rules defined in configuration");
+        }
+    }
+
+    // Count total test cases
+    let total_tests: usize = rules.iter().map(|r| r.test_cases.len()).sum();
+
+    if total_tests == 0 {
+        match args.format {
+            TestFormat::Json => {
+                let result = serde_json::json!({
+                    "rules_checked": rules.len(),
+                    "test_cases": 0,
+                    "passed": 0,
+                    "failed": 0,
+                    "message": "No test cases defined"
+                });
+                println!("{}", serde_json::to_string_pretty(&result)?);
+            }
+            TestFormat::Text => {
+                println!("No test cases defined in {} rule(s).", rules.len());
+                println!("\nTo add test cases, add them to your rule definitions:");
+                println!("  [[rule]]");
+                println!("  id = \"my.rule\"");
+                println!("  patterns = [\"pattern\"]");
+                println!("  ...");
+                println!("  [[rule.test_cases]]");
+                println!("  input = \"code that should match\"");
+                println!("  should_match = true");
+            }
+        }
+        return Ok(());
+    }
+
+    let mut passed = 0;
+    let mut failed = 0;
+    let mut failures: Vec<serde_json::Value> = Vec::new();
+
+    for rule in &rules {
+        if rule.test_cases.is_empty() {
+            continue;
+        }
+
+        // Compile the rule
+        let compiled = match compile_rules(std::slice::from_ref(*rule)) {
+            Ok(c) => c,
+            Err(e) => {
+                for tc in &rule.test_cases {
+                    failed += 1;
+                    failures.push(serde_json::json!({
+                        "rule_id": rule.id,
+                        "input": tc.input,
+                        "error": format!("Rule compilation failed: {}", e),
+                    }));
+                }
+                continue;
+            }
+        };
+
+        let compiled_rule = &compiled[0];
+
+        for tc in &rule.test_cases {
+            // Check if any pattern matches the input
+            let matches = compiled_rule
+                .patterns
+                .iter()
+                .any(|p| p.is_match(&tc.input));
+
+            if matches == tc.should_match {
+                passed += 1;
+            } else {
+                failed += 1;
+                failures.push(serde_json::json!({
+                    "rule_id": rule.id,
+                    "input": tc.input,
+                    "should_match": tc.should_match,
+                    "actual_match": matches,
+                    "description": tc.description,
+                }));
+            }
+        }
+    }
+
+    // Output results
+    match args.format {
+        TestFormat::Json => {
+            let result = serde_json::json!({
+                "rules_checked": rules.len(),
+                "test_cases": total_tests,
+                "passed": passed,
+                "failed": failed,
+                "failures": failures,
+            });
+            println!("{}", serde_json::to_string_pretty(&result)?);
+        }
+        TestFormat::Text => {
+            println!("Rule tests:");
+            println!("  Rules checked: {}", rules.len());
+            println!("  Test cases: {}", total_tests);
+            println!("  Passed: {}", passed);
+            println!("  Failed: {}", failed);
+
+            if !failures.is_empty() {
+                println!("\nFailures:");
+                for (i, f) in failures.iter().enumerate() {
+                    println!(
+                        "\n  {}. Rule '{}': input \"{}\"",
+                        i + 1,
+                        f["rule_id"].as_str().unwrap_or(""),
+                        f["input"].as_str().unwrap_or("")
+                    );
+                    if let Some(desc) = f["description"].as_str() {
+                        if !desc.is_empty() {
+                            println!("     Description: {}", desc);
+                        }
+                    }
+                    if let Some(err) = f["error"].as_str() {
+                        println!("     Error: {}", err);
+                    } else {
+                        println!(
+                            "     Expected match: {}, got: {}",
+                            f["should_match"], f["actual_match"]
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    if failed > 0 {
+        std::process::exit(1);
+    }
+
+    Ok(())
+}
+
 fn load_config(path: Option<PathBuf>, no_default_rules: bool) -> Result<ConfigFile> {
     let user_path = path.or_else(|| {
         let p = PathBuf::from("diffguard.toml");
@@ -917,20 +1415,83 @@ fn load_config(path: Option<PathBuf>, no_default_rules: bool) -> Result<ConfigFi
     });
 
     let Some(path) = user_path else {
+        debug!("No config file found, using built-in rules");
         return Ok(ConfigFile::built_in());
     };
 
-    let text = std::fs::read_to_string(&path)
-        .with_context(|| format!("read config {}", path.display()))?;
+    info!("Loading config from: {}", path.display());
 
-    let parsed: ConfigFile =
-        toml::from_str(&text).with_context(|| format!("parse config {}", path.display()))?;
+    // Use config_loader to handle includes
+    let parsed = load_config_with_includes(&path, expand_env_vars)?;
+
+    debug!("Loaded {} rule(s) from config", parsed.rule.len());
 
     if no_default_rules {
         return Ok(parsed);
     }
 
     Ok(merge_with_built_in(parsed))
+}
+
+/// Expand environment variables in a string.
+///
+/// Supports two syntaxes:
+/// - `${VAR}` - expands to the value of VAR, errors if not set
+/// - `${VAR:-default}` - expands to the value of VAR, or "default" if not set
+///
+/// # Examples
+///
+/// ```ignore
+/// assert_eq!(expand_env_vars("hello ${USER}")?, "hello alice");
+/// assert_eq!(expand_env_vars("port ${PORT:-8080}")?, "port 8080"); // if PORT not set
+/// ```
+fn expand_env_vars(content: &str) -> Result<String> {
+    use regex::Regex;
+
+    // Match ${VAR} or ${VAR:-default}
+    let re = Regex::new(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
+        .expect("env var regex should compile");
+
+    let mut result = String::with_capacity(content.len());
+    let mut last_end = 0;
+
+    for cap in re.captures_iter(content) {
+        let full_match = cap.get(0).unwrap();
+        let var_name = cap.get(1).unwrap().as_str();
+        let default_value = cap.get(2).map(|m| m.as_str());
+
+        // Append text before this match
+        result.push_str(&content[last_end..full_match.start()]);
+
+        // Look up the environment variable
+        match std::env::var(var_name) {
+            Ok(value) => {
+                debug!("Expanded env var ${{{}}}", var_name);
+                result.push_str(&value);
+            }
+            Err(_) => {
+                if let Some(default) = default_value {
+                    debug!(
+                        "Env var ${{{0}}} not set, using default: {1}",
+                        var_name, default
+                    );
+                    result.push_str(default);
+                } else {
+                    bail!(
+                        "Environment variable '{}' is not set and no default provided",
+                        var_name
+                    );
+                }
+            }
+        }
+
+        last_end = full_match.end();
+    }
+
+    // Append remaining text after last match
+    result.push_str(&content[last_end..]);
+
+    Ok(result)
 }
 
 fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
@@ -1067,6 +1628,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let output = format_rule_explanation(&rule);
@@ -1093,6 +1655,7 @@ mod tests {
                 ignore_strings: false,
                 help: None,
                 url: None,
+                tags: vec![],
             },
             RuleConfig {
                 id: "rust.no_dbg".to_string(),
@@ -1106,6 +1669,7 @@ mod tests {
                 ignore_strings: false,
                 help: None,
                 url: None,
+                tags: vec![],
             },
         ];
 
@@ -1128,6 +1692,7 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         }];
 
         let suggestions = find_similar_rules("rust.no_unwarp", &rules);
@@ -1141,5 +1706,88 @@ mod tests {
         assert_eq!(simple_edit_distance("abc", "ab"), 1);
         assert_eq!(simple_edit_distance("abc", "abd"), 1);
         assert_eq!(simple_edit_distance("kitten", "sitting"), 3);
+    }
+
+    // --- Environment Variable Expansion Tests ---
+
+    #[test]
+    fn test_expand_env_vars_no_vars() {
+        let input = "hello world";
+        let result = expand_env_vars(input).unwrap();
+        assert_eq!(result, "hello world");
+    }
+
+    #[test]
+    fn test_expand_env_vars_with_default() {
+        // Use a variable that's unlikely to be set
+        let input = "port ${DIFFGUARD_TEST_UNLIKELY_VAR:-8080}";
+        let result = expand_env_vars(input).unwrap();
+        assert_eq!(result, "port 8080");
+    }
+
+    #[test]
+    fn test_expand_env_vars_multiple() {
+        let input = "${DIFFGUARD_TEST_A:-foo} and ${DIFFGUARD_TEST_B:-bar}";
+        let result = expand_env_vars(input).unwrap();
+        assert_eq!(result, "foo and bar");
+    }
+
+    #[test]
+    fn test_expand_env_vars_empty_default() {
+        let input = "value: ${DIFFGUARD_TEST_EMPTY:-}";
+        let result = expand_env_vars(input).unwrap();
+        assert_eq!(result, "value: ");
+    }
+
+    #[test]
+    fn test_expand_env_vars_missing_no_default() {
+        let input = "value: ${DIFFGUARD_TEST_MISSING_VAR}";
+        let result = expand_env_vars(input);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("DIFFGUARD_TEST_MISSING_VAR"));
+    }
+
+    #[test]
+    fn test_expand_env_vars_from_environment() {
+        // Set a test environment variable
+        std::env::set_var("DIFFGUARD_TEST_VAR", "test_value");
+        let input = "hello ${DIFFGUARD_TEST_VAR}!";
+        let result = expand_env_vars(input).unwrap();
+        assert_eq!(result, "hello test_value!");
+        std::env::remove_var("DIFFGUARD_TEST_VAR");
+    }
+
+    #[test]
+    fn test_expand_env_vars_preserves_other_syntax() {
+        // Make sure we don't expand $VAR (without braces) or other patterns
+        let input = "hello $VAR ${DIFFGUARD_TEST_X:-default} $OTHER";
+        let result = expand_env_vars(input).unwrap();
+        assert_eq!(result, "hello $VAR default $OTHER");
+    }
+
+    // --- Language Arg Tests ---
+
+    #[test]
+    fn test_language_arg_as_str() {
+        assert_eq!(LanguageArg::Rust.as_str(), "rust");
+        assert_eq!(LanguageArg::Python.as_str(), "python");
+        assert_eq!(LanguageArg::Javascript.as_str(), "javascript");
+        assert_eq!(LanguageArg::Typescript.as_str(), "typescript");
+        assert_eq!(LanguageArg::Go.as_str(), "go");
+        assert_eq!(LanguageArg::Ruby.as_str(), "ruby");
+        assert_eq!(LanguageArg::C.as_str(), "c");
+        assert_eq!(LanguageArg::Cpp.as_str(), "cpp");
+        assert_eq!(LanguageArg::Csharp.as_str(), "csharp");
+        assert_eq!(LanguageArg::Java.as_str(), "java");
+        assert_eq!(LanguageArg::Kotlin.as_str(), "kotlin");
+        assert_eq!(LanguageArg::Shell.as_str(), "shell");
+        assert_eq!(LanguageArg::Swift.as_str(), "swift");
+        assert_eq!(LanguageArg::Scala.as_str(), "scala");
+        assert_eq!(LanguageArg::Sql.as_str(), "sql");
+        assert_eq!(LanguageArg::Xml.as_str(), "xml");
+        assert_eq!(LanguageArg::Php.as_str(), "php");
     }
 }

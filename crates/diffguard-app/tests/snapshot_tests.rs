@@ -86,6 +86,7 @@ fn snapshot_json_receipt_no_findings() {
             },
             reasons: vec![],
         },
+        timing: None,
     };
 
     let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");
@@ -142,6 +143,7 @@ fn snapshot_json_receipt_warnings_only() {
             },
             reasons: vec!["2 warning(s)".to_string()],
         },
+        timing: None,
     };
 
     let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");
@@ -198,6 +200,7 @@ fn snapshot_json_receipt_errors_only() {
             },
             reasons: vec!["2 error(s)".to_string()],
         },
+        timing: None,
     };
 
     let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");
@@ -233,6 +236,7 @@ fn snapshot_json_receipt_mixed() {
             },
             reasons: vec!["1 error(s)".to_string(), "1 warning(s)".to_string()],
         },
+        timing: None,
     };
 
     let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");
@@ -277,6 +281,7 @@ fn snapshot_json_receipt_with_suppressions() {
             },
             reasons: vec!["1 warning(s)".to_string()],
         },
+        timing: None,
     };
 
     let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");
@@ -321,6 +326,7 @@ fn snapshot_json_receipt_info_only() {
             },
             reasons: vec![],
         },
+        timing: None,
     };
 
     let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");
@@ -365,6 +371,7 @@ fn snapshot_json_receipt_no_column() {
             },
             reasons: vec!["1 warning(s)".to_string()],
         },
+        timing: None,
     };
 
     let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");

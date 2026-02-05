@@ -16,21 +16,21 @@ Complete the remaining tasks from the comprehensive-test-coverage spec to ensure
 
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
-| 1.1 | DiffStats accuracy property test | P1 | S | planned |
-| 1.2 | Empty diff and context-only diff edge case tests | P1 | S | planned |
-| 1.3 | Rule compilation success property test | P1 | S | planned |
-| 1.4 | Rule applicability filtering property test | P1 | S | planned |
-| 1.5 | Preprocessor line length preservation property test | P1 | S | planned |
-| 1.6 | Evaluation count accuracy property test | P1 | S | planned |
-| 1.7 | Error condition tests (malformed config, bad patterns) | P1 | M | planned |
-| 1.8 | Exit code property tests for all fail_on combinations | P1 | S | planned |
-| 1.9 | Markdown rendering property tests | P1 | S | planned |
-| 1.10 | GitHub annotation format property tests | P1 | S | planned |
-| 1.11 | Config parse fuzz target | P1 | M | planned |
+| 1.1 | DiffStats accuracy property test | P1 | S | **complete** |
+| 1.2 | Empty diff and context-only diff edge case tests | P1 | S | **complete** |
+| 1.3 | Rule compilation success property test | P1 | S | **complete** |
+| 1.4 | Rule applicability filtering property test | P1 | S | **complete** |
+| 1.5 | Preprocessor line length preservation property test | P1 | S | **complete** |
+| 1.6 | Evaluation count accuracy property test | P1 | S | **complete** |
+| 1.7 | Error condition tests (malformed config, bad patterns) | P1 | M | **complete** |
+| 1.8 | Exit code property tests for all fail_on combinations | P1 | S | **complete** |
+| 1.9 | Markdown rendering property tests | P1 | S | **complete** |
+| 1.10 | GitHub annotation format property tests | P1 | S | **complete** |
+| 1.11 | Config parse fuzz target | P1 | M | **complete** |
 | 1.12 | evaluate_lines fuzz target | P1 | M | planned |
-| 1.13 | BDD integration tests for CLI workflows | P1 | M | planned |
-| 1.14 | Snapshot tests for JSON receipt output | P2 | S | planned |
-| 1.15 | Snapshot tests for GitHub annotation format | P2 | S | planned |
+| 1.13 | BDD integration tests for CLI workflows | P1 | M | **complete** |
+| 1.14 | Snapshot tests for JSON receipt output | P2 | S | **complete** |
+| 1.15 | Snapshot tests for GitHub annotation format | P2 | S | **complete** |
 | 1.16 | Mutation testing analysis across all crates | P2 | L | planned |
 
 ---
@@ -41,10 +41,10 @@ Add industry-standard output formats for broader CI/CD integration.
 
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
-| 2.1 | **SARIF output format** - Industry standard for static analysis results | P1 | L | planned |
-| 2.2 | JUnit XML output - Common CI format for test results | P2 | M | planned |
-| 2.3 | CSV/TSV export - Tabular format for spreadsheet analysis | P3 | S | planned |
-| 2.4 | SARIF upload GitHub Action integration | P2 | M | planned |
+| 2.1 | **SARIF output format** - Industry standard for static analysis results | P1 | L | **complete** |
+| 2.2 | JUnit XML output - Common CI format for test results | P2 | M | **complete** |
+| 2.3 | CSV/TSV export - Tabular format for spreadsheet analysis | P3 | S | **complete** |
+| 2.4 | SARIF upload GitHub Action integration | P2 | M | **complete** |
 
 **SARIF benefits:**
 - Native GitHub Security tab integration
@@ -60,13 +60,13 @@ Improve rule flexibility and user experience.
 
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
-| 3.1 | **Inline suppression comments** (`# diffguard:disable=rule.id`) | P1 | M | planned |
-| 3.2 | Rule tagging/grouping for selective enable/disable | P2 | M | planned |
-| 3.3 | Config file validation CLI command (`diffguard validate`) | P2 | S | planned |
-| 3.4 | Rule testing framework (example inputs with expected matches) | P2 | L | planned |
-| 3.5 | Environment variable expansion in config (`${VAR}`) | P3 | S | planned |
-| 3.6 | Config inheritance/composition (`includes = ["base.toml"]`) | P3 | M | planned |
-| 3.7 | Per-directory rule overrides (.diffguard.toml lookup) | P3 | M | planned |
+| 3.1 | **Inline suppression comments** (`# diffguard:disable=rule.id`) | P1 | M | **complete** |
+| 3.2 | Rule tagging/grouping for selective enable/disable | P2 | M | **complete** |
+| 3.3 | Config file validation CLI command (`diffguard validate`) | P2 | S | **complete** |
+| 3.4 | Rule testing framework (example inputs with expected matches) | P2 | L | **complete** |
+| 3.5 | Environment variable expansion in config (`${VAR}`) | P3 | S | **complete** |
+| 3.6 | Config inheritance/composition (`includes = ["base.toml"]`) | P3 | M | **complete** |
+| 3.7 | Per-directory rule overrides (.diffguard.toml lookup) | P3 | M | in-progress |
 
 **Inline suppression format:**
 ```rust
@@ -83,14 +83,14 @@ Extend preprocessing support to additional languages.
 
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
-| 4.1 | **Shell/Bash** preprocessing (# comments) | P1 | S | planned |
-| 4.2 | **PHP** preprocessing (// and # comments, various strings) | P2 | M | planned |
-| 4.3 | **Swift** preprocessing (// and /* */ comments) | P2 | S | planned |
-| 4.4 | **Scala** preprocessing (// and /* */ nested comments) | P3 | S | planned |
-| 4.5 | SQL preprocessing (-- comments, /* */ blocks) | P3 | M | planned |
-| 4.6 | XML/HTML comment preprocessing (<!-- -->) | P3 | M | planned |
+| 4.1 | **Shell/Bash** preprocessing (# comments) | P1 | S | **complete** |
+| 4.2 | **PHP** preprocessing (// and # comments, various strings) | P2 | M | **complete** |
+| 4.3 | **Swift** preprocessing (// and /* */ comments) | P2 | S | **complete** |
+| 4.4 | **Scala** preprocessing (// and /* */ nested comments) | P3 | S | **complete** |
+| 4.5 | SQL preprocessing (-- comments, /* */ blocks) | P3 | M | **complete** |
+| 4.6 | XML/HTML comment preprocessing (<!-- -->) | P3 | M | **complete** |
 | 4.7 | YAML/TOML/JSON comment handling | P3 | M | planned |
-| 4.8 | Language override flag (`--language=rust` for non-standard extensions) | P2 | S | planned |
+| 4.8 | Language override flag (`--language=rust` for non-standard extensions) | P2 | S | **complete** |
 
 ---
 
@@ -100,14 +100,14 @@ Add more built-in rules for common patterns.
 
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
-| 5.1 | **Security-focused rules pack** | P1 | L | planned |
-| 5.2 | Python: no_breakpoint (breakpoint() calls) | P2 | S | planned |
-| 5.3 | Ruby: no_binding_pry, no_byebug | P2 | S | planned |
-| 5.4 | Java: no_sout (System.out.println) | P2 | S | planned |
-| 5.5 | C#: no_console (Console.WriteLine) | P2 | S | planned |
-| 5.6 | Go: no_panic | P2 | S | planned |
-| 5.7 | Kotlin: no_println | P2 | S | planned |
-| 5.8 | **Credential detection rules** (API keys, tokens, secrets) | P1 | M | planned |
+| 5.1 | **Security-focused rules pack** | P1 | L | **complete** |
+| 5.2 | Python: no_breakpoint (breakpoint() calls) | P2 | S | **complete** |
+| 5.3 | Ruby: no_binding_pry, no_byebug | P2 | S | **complete** |
+| 5.4 | Java: no_sout (System.out.println) | P2 | S | **complete** |
+| 5.5 | C#: no_console (Console.WriteLine) | P2 | S | **complete** |
+| 5.6 | Go: no_panic | P2 | S | **complete** |
+| 5.7 | Kotlin: no_println | P2 | S | **complete** |
+| 5.8 | **Credential detection rules** (API keys, tokens, secrets) | P1 | M | **complete** |
 
 **Security rules pack (5.1) would include:**
 - Hardcoded IP addresses
@@ -123,11 +123,11 @@ Improve developer workflow integration.
 
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
-| 6.1 | **pre-commit hook integration** (pre-commit framework) | P1 | M | planned |
+| 6.1 | **pre-commit hook integration** (pre-commit framework) | P1 | M | **complete** |
 | 6.2 | Git commit-msg hook sample | P3 | S | planned |
-| 6.3 | GitHub Action reusable workflow | P1 | M | planned |
-| 6.4 | GitLab CI template | P2 | S | planned |
-| 6.5 | Azure DevOps pipeline template | P3 | S | planned |
+| 6.3 | GitHub Action reusable workflow | P1 | M | **complete** |
+| 6.4 | GitLab CI template | P2 | S | **complete** |
+| 6.5 | Azure DevOps pipeline template | P3 | S | **complete** |
 | 6.6 | VS Code extension (basic) | P3 | XL | planned |
 | 6.7 | LSP server for IDE integration | P3 | XL | planned |
 
@@ -149,8 +149,8 @@ Add visibility into rule performance and effectiveness.
 
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
-| 7.1 | Verbose/debug logging (`--verbose`, `--debug`) | P2 | S | planned |
-| 7.2 | Performance timing metrics in receipt | P3 | S | planned |
+| 7.1 | Verbose/debug logging (`--verbose`, `--debug`) | P2 | S | **complete** |
+| 7.2 | Performance timing metrics in receipt | P3 | S | **complete** |
 | 7.3 | Rule hit statistics aggregation | P3 | M | planned |
 | 7.4 | False positive tracking mechanism | P3 | L | planned |
 | 7.5 | Historical trend analysis (cross-run metrics) | P3 | XL | planned |
@@ -235,4 +235,4 @@ To propose additions to this roadmap:
 
 ---
 
-*Last updated: 2026-02-03*
+*Last updated: 2026-02-05*

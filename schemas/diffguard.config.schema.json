@@ -153,6 +153,13 @@
         "severity": {
           "$ref": "#/definitions/Severity"
         },
+        "tags": {
+          "description": "Tags for grouping/filtering rules (e.g., \"debug\", \"security\", \"style\").",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "url": {
           "description": "Optional URL with more information about the rule.",
           "type": [

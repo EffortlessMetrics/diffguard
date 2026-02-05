@@ -17,6 +17,15 @@ pub struct CheckPlan {
     pub fail_on: FailOn,
     pub max_findings: usize,
     pub path_filters: Vec<String>,
+    /// Only include rules that have at least one of these tags.
+    /// Empty means no filtering by this criterion.
+    pub only_tags: Vec<String>,
+    /// Include rules that have at least one of these tags (additive).
+    /// Empty means no filtering by this criterion.
+    pub enable_tags: Vec<String>,
+    /// Exclude rules that have any of these tags.
+    /// Empty means no filtering by this criterion.
+    pub disable_tags: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,7 +57,15 @@ pub fn run_check(
         diff_lines.retain(|l| filters.is_match(Path::new(&l.path)));
     }
 
-    let rules = compile_rules(&config.rule)?;
+    // Filter rules by tags
+    let filtered_rules: Vec<_> = config
+        .rule
+        .iter()
+        .filter(|r| filter_rule_by_tags(r, plan))
+        .cloned()
+        .collect();
+
+    let rules = compile_rules(&filtered_rules)?;
 
     let lines = diff_lines.into_iter().map(|l| InputLine {
         path: l.path,
@@ -128,6 +145,37 @@ fn compile_filter_globs(globs: &[String]) -> Result<GlobSet, PathFilterError> {
     Ok(b.build().expect("globset build should succeed"))
 }
 
+/// Filter a rule based on tag criteria in the plan.
+///
+/// - If `only_tags` is non-empty, the rule must have at least one matching tag.
+/// - If `disable_tags` is non-empty and the rule has any matching tag, it's excluded.
+/// - `enable_tags` is currently unused (reserved for future additive logic).
+fn filter_rule_by_tags(rule: &diffguard_types::RuleConfig, plan: &CheckPlan) -> bool {
+    // If only_tags is specified, rule must have at least one matching tag
+    if !plan.only_tags.is_empty() {
+        let has_matching_tag = rule
+            .tags
+            .iter()
+            .any(|t| plan.only_tags.iter().any(|ot| ot.eq_ignore_ascii_case(t)));
+        if !has_matching_tag {
+            return false;
+        }
+    }
+
+    // If disable_tags is specified, exclude rules that have any matching tag
+    if !plan.disable_tags.is_empty() {
+        let has_disabled_tag = rule
+            .tags
+            .iter()
+            .any(|t| plan.disable_tags.iter().any(|dt| dt.eq_ignore_ascii_case(t)));
+        if has_disabled_tag {
+            return false;
+        }
+    }
+
+    true
+}
+
 fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> i32 {
     if matches!(fail_on, FailOn::Never) {
         return 0;
@@ -188,6 +236,7 @@ mod tests {
         pattern: &str,
     ) -> diffguard_types::ConfigFile {
         diffguard_types::ConfigFile {
+            includes: vec![],
             defaults: diffguard_types::Defaults::default(),
             rule: vec![diffguard_types::RuleConfig {
                 id: "test.rule".to_string(),
@@ -202,6 +251,7 @@ mod tests {
                 help: None,
                 url: None,
                 tags: vec![],
+                test_cases: vec![],
             }],
         }
     }
@@ -215,6 +265,9 @@ mod tests {
             fail_on,
             max_findings,
             path_filters: path_filters.into_iter().map(|s| s.to_string()).collect(),
+            only_tags: vec![],
+            enable_tags: vec![],
+            disable_tags: vec![],
         }
     }
 
@@ -420,9 +473,106 @@ diff --git a/src/lib.rs b/src/lib.rs
                 },
                 reasons: vec!["1 error(s)".to_string(), "1 warning(s)".to_string()],
             },
+            timing: None,
         };
 
         let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");
         insta::assert_snapshot!(json);
+    }
+
+    // =========================================================================
+    // Tag filtering tests
+    // =========================================================================
+
+    fn make_rule_with_tags(id: &str, tags: Vec<&str>) -> diffguard_types::RuleConfig {
+        diffguard_types::RuleConfig {
+            id: id.to_string(),
+            severity: diffguard_types::Severity::Warn,
+            message: "Test message".to_string(),
+            languages: vec![],
+            patterns: vec!["test".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            help: None,
+            url: None,
+            tags: tags.into_iter().map(|s| s.to_string()).collect(),
+            test_cases: vec![],
+        }
+    }
+
+    #[test]
+    fn filter_rule_by_tags_no_filters() {
+        let rule = make_rule_with_tags("test.rule", vec!["debug"]);
+        let plan = test_plan(100, FailOn::Error, vec![]);
+        assert!(filter_rule_by_tags(&rule, &plan));
+    }
+
+    #[test]
+    fn filter_rule_by_tags_only_tags_matches() {
+        let rule = make_rule_with_tags("test.rule", vec!["debug", "safety"]);
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.only_tags = vec!["debug".to_string()];
+        assert!(filter_rule_by_tags(&rule, &plan));
+    }
+
+    #[test]
+    fn filter_rule_by_tags_only_tags_no_match() {
+        let rule = make_rule_with_tags("test.rule", vec!["security"]);
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.only_tags = vec!["debug".to_string()];
+        assert!(!filter_rule_by_tags(&rule, &plan));
+    }
+
+    #[test]
+    fn filter_rule_by_tags_only_tags_case_insensitive() {
+        let rule = make_rule_with_tags("test.rule", vec!["DEBUG"]);
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.only_tags = vec!["debug".to_string()];
+        assert!(filter_rule_by_tags(&rule, &plan));
+    }
+
+    #[test]
+    fn filter_rule_by_tags_disable_tags_excludes() {
+        let rule = make_rule_with_tags("test.rule", vec!["debug"]);
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.disable_tags = vec!["debug".to_string()];
+        assert!(!filter_rule_by_tags(&rule, &plan));
+    }
+
+    #[test]
+    fn filter_rule_by_tags_disable_tags_no_match() {
+        let rule = make_rule_with_tags("test.rule", vec!["safety"]);
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.disable_tags = vec!["debug".to_string()];
+        assert!(filter_rule_by_tags(&rule, &plan));
+    }
+
+    #[test]
+    fn filter_rule_by_tags_combined_filters() {
+        // Rule has both "security" and "debug" tags
+        let rule = make_rule_with_tags("test.rule", vec!["security", "debug"]);
+
+        // Only security rules, but exclude debug rules
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.only_tags = vec!["security".to_string()];
+        plan.disable_tags = vec!["debug".to_string()];
+
+        // Should be excluded because it has a disabled tag
+        assert!(!filter_rule_by_tags(&rule, &plan));
+    }
+
+    #[test]
+    fn filter_rule_by_tags_rule_without_tags() {
+        let rule = make_rule_with_tags("test.rule", vec![]);
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.only_tags = vec!["debug".to_string()];
+        // Rule without tags doesn't match only_tags filter
+        assert!(!filter_rule_by_tags(&rule, &plan));
+
+        // But with no filters, it should pass
+        plan.only_tags.clear();
+        assert!(filter_rule_by_tags(&rule, &plan));
     }
 }

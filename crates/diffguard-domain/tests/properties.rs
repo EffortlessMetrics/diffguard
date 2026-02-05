@@ -1589,6 +1589,7 @@ proptest! {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let compiled = compile_rules(&[rule]).expect("rule should compile");
@@ -1826,6 +1827,7 @@ proptest! {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
         };
 
         let compiled = compile_rules(&[config]).expect("rule should compile");

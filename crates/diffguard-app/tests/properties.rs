@@ -165,6 +165,7 @@ fn arb_check_receipt() -> impl Strategy<Value = CheckReceipt> {
                     counts,
                     reasons,
                 },
+                timing: None,
             }
         })
 }
@@ -474,6 +475,7 @@ proptest! {
                 },
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let md = render_markdown_for_receipt(&receipt);
