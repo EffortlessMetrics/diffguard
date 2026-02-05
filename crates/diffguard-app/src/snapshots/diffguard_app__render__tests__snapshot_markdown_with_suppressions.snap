@@ -1,0 +1,16 @@
+---
+source: crates/diffguard-app/src/render.rs
+expression: md
+---
+## diffguard — WARN
+
+Scanned **2** file(s), **30** line(s) (scope: `added`, base: `origin/main`, head: `HEAD`)
+
+**Verdict reasons:**
+- 1 warning-level finding
+
+**Note:** 3 finding(s) suppressed via inline directives.
+
+| Severity | Rule | Location | Message | Snippet |
+|---|---|---|---|---|
+| warn | `rust.no_dbg` | `src/main.rs:10` | Remove dbg!/println! before merging. | `    dbg!(value);` |

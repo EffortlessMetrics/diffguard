@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **SARIF 2.1.0 output** (`--sarif` flag, `diffguard sarif` subcommand) for integration with GitHub Code Scanning and other SARIF-compatible tools
+- **Inline suppression directives**:
+  - `diffguard: ignore <rule_id>` - suppress specific rule on the same line
+  - `diffguard: ignore-next-line <rule_id>` - suppress specific rule on the next line
+  - `diffguard: ignore *` / `diffguard: ignore-all` - suppress all rules (wildcard)
+  - Multiple rules can be comma-separated: `diffguard: ignore rule1, rule2`
+- **Config presets** (`diffguard init --preset <name>`):
+  - `minimal` - Basic starter configuration
+  - `rust-quality` - Rust best practices
+  - `secrets` - Secret/credential detection
+  - `js-console` - JavaScript/TypeScript debugging
+  - `python-debug` - Python debugging
+- **`diffguard explain <rule_id>`** command with fuzzy matching for rule lookup
+- **Rule `help` and `url` fields** for documentation in rule definitions
+- **JUnit XML output** (`--junit` flag, `diffguard junit` subcommand)
+- **CSV/TSV export** (`--csv`, `--tsv` flags, `diffguard csv` subcommand)
+- **Shell/Bash language support** in preprocessor:
+  - Hash comments (`#`) properly masked
+  - Single-quoted strings (no escape sequences, Bash-style)
+  - Double-quoted strings with standard escapes
+  - ANSI-C quoting (`$'...'`) with escape sequences
+- **`--staged` flag** for pre-commit hook integration (uses `git diff --cached`)
+- **Pre-commit hook configuration** (`.pre-commit-hooks.yaml`)
+- **GitHub Actions reusable workflow** (`.github/workflows/diffguard.yml`)
+- **GitLab CI template** (`gitlab/diffguard.gitlab-ci.yml`)
 - **Ruby language support** in preprocessor:
   - Hash comments (`#`) properly masked
   - Single and double-quoted strings handled (Ruby uses both for strings, unlike C)
@@ -21,6 +46,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`VerdictCounts`** includes `suppressed` field tracking suppressed findings
+- **Built-in rules** now include `help` text and `url` links for documentation
 - **Diff builder API** in `diffguard-testkit`:
   - More ergonomic builder pattern for constructing test diffs
   - Improved method chaining

@@ -1,13 +1,30 @@
 [package]
 name = "diffguard-app"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 description = "Application layer for diffguard governance linter"
 repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/diffguard-app"
 keywords.workspace = true
 categories.workspace = true
+readme = "README.md"
+include = [
+  "src/**",
+  "Cargo.toml",
+  "README.md",
+  "CLAUDE.md",
+  "../../LICENSE-*",
+]
+exclude = [
+  "**/*.snap.new",
+  "**/target/**",
+  "**/artifacts/**",
+  "**/fuzz/**",
+]
 
 [dependencies]
 anyhow.workspace = true
@@ -19,9 +36,9 @@ globset.workspace = true
 
 # local crates
 
-diffguard-types = { path = "../diffguard-types" }
-diffguard-diff = { path = "../diffguard-diff" }
-diffguard-domain = { path = "../diffguard-domain" }
+diffguard-types = { version = "0.1", path = "../diffguard-types" }
+diffguard-diff = { version = "0.1", path = "../diffguard-diff" }
+diffguard-domain = { version = "0.1", path = "../diffguard-domain" }
 
 [dev-dependencies]
 insta.workspace = true

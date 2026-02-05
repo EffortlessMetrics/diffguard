@@ -27,6 +27,13 @@ pub fn render_markdown_for_receipt(receipt: &CheckReceipt) -> String {
         out.push('\n');
     }
 
+    if receipt.verdict.counts.suppressed > 0 {
+        out.push_str(&format!(
+            "**Note:** {} finding(s) suppressed via inline directives.\n\n",
+            receipt.verdict.counts.suppressed
+        ));
+    }
+
     if receipt.findings.is_empty() {
         out.push_str("No findings.\n");
         return out;
@@ -266,6 +273,69 @@ mod tests {
     #[test]
     fn snapshot_verdict_rendering() {
         let receipt = create_test_receipt_warn_verdict();
+        let md = render_markdown_for_receipt(&receipt);
+        insta::assert_snapshot!(md);
+    }
+
+    /// Helper to create a test receipt with suppressed findings
+    fn create_test_receipt_with_suppressions() -> CheckReceipt {
+        CheckReceipt {
+            schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
+            tool: diffguard_types::ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: diffguard_types::DiffMeta {
+                base: "origin/main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: diffguard_types::Scope::Added,
+                files_scanned: 2,
+                lines_scanned: 30,
+            },
+            findings: vec![Finding {
+                rule_id: "rust.no_dbg".to_string(),
+                severity: diffguard_types::Severity::Warn,
+                message: "Remove dbg!/println! before merging.".to_string(),
+                path: "src/main.rs".to_string(),
+                line: 10,
+                column: Some(5),
+                match_text: "dbg!".to_string(),
+                snippet: "    dbg!(value);".to_string(),
+            }],
+            verdict: diffguard_types::Verdict {
+                status: VerdictStatus::Warn,
+                counts: diffguard_types::VerdictCounts {
+                    info: 0,
+                    warn: 1,
+                    error: 0,
+                    suppressed: 3,
+                },
+                reasons: vec!["1 warning-level finding".to_string()],
+            },
+        }
+    }
+
+    /// Test that suppressed findings are shown in markdown output.
+    #[test]
+    fn markdown_shows_suppressed_count() {
+        let receipt = create_test_receipt_with_suppressions();
+        let md = render_markdown_for_receipt(&receipt);
+        assert!(md.contains("3 finding(s) suppressed via inline directives"));
+    }
+
+    /// Test that suppression note is not shown when count is zero.
+    #[test]
+    fn markdown_hides_suppressed_when_zero() {
+        let receipt = create_test_receipt_empty();
+        let md = render_markdown_for_receipt(&receipt);
+        assert!(!md.contains("suppressed"));
+    }
+
+    /// Snapshot test for markdown output with suppressed findings.
+    #[test]
+    fn snapshot_markdown_with_suppressions() {
+        let receipt = create_test_receipt_with_suppressions();
         let md = render_markdown_for_receipt(&receipt);
         insta::assert_snapshot!(md);
     }

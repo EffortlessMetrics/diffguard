@@ -210,3 +210,75 @@ fn given_unwrap_in_trailing_comment_when_check_then_not_flagged() {
     let receipt = result.parse_receipt();
     assert_eq!(receipt.findings_count(), 0);
 }
+
+/// Scenario: Suppression directive in a comment suppresses the finding.
+///
+/// Given: A file with unwrap and an inline suppression comment
+/// When: diffguard check runs
+/// Then: The unwrap finding is suppressed
+#[test]
+fn given_suppression_comment_when_check_then_finding_suppressed() {
+    let repo = TestRepo::new();
+
+    repo.write_file(
+        "src/lib.rs",
+        "pub fn f() -> u32 { Some(1).unwrap() } // diffguard: ignore rust.no_unwrap\n",
+    );
+    let head_sha = repo.commit("add unwrap with suppression");
+
+    let result = repo.run_check(&head_sha);
+    result.assert_exit_code(0);
+
+    let receipt = result.parse_receipt();
+    assert_eq!(receipt.findings_count(), 0);
+    assert_eq!(receipt.error_count(), 0);
+}
+
+/// Scenario: Suppression directive inside a string does not suppress.
+///
+/// Given: A line containing a string with a directive and an unwrap call
+/// When: diffguard check runs
+/// Then: The unwrap finding is still reported
+#[test]
+fn given_directive_in_string_when_check_then_not_suppressed() {
+    let repo = TestRepo::new();
+
+    repo.write_file(
+        "src/lib.rs",
+        r#"pub fn f() -> u32 { let _ = "diffguard: ignore rust.no_unwrap"; Some(1).unwrap() }
+"#,
+    );
+    let head_sha = repo.commit("directive in string");
+
+    let result = repo.run_check(&head_sha);
+    result.assert_exit_code(2);
+
+    let receipt = result.parse_receipt();
+    assert!(receipt.has_finding_with_rule("rust.no_unwrap"));
+}
+
+/// Scenario: ignore-next-line directive inside a string does not suppress.
+///
+/// Given: A line with a string containing ignore-next-line
+/// When: The next line has unwrap
+/// Then: The unwrap is still reported
+#[test]
+fn given_ignore_next_line_in_string_when_check_then_not_suppressed() {
+    let repo = TestRepo::new();
+
+    repo.write_file(
+        "src/lib.rs",
+        r#"pub fn f() -> u32 {
+    let _ = "diffguard: ignore-next-line rust.no_unwrap";
+    Some(1).unwrap()
+}
+"#,
+    );
+    let head_sha = repo.commit("ignore-next-line in string");
+
+    let result = repo.run_check(&head_sha);
+    result.assert_exit_code(2);
+
+    let receipt = result.parse_receipt();
+    assert!(receipt.has_finding_with_rule("rust.no_unwrap"));
+}

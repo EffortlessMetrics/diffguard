@@ -35,6 +35,12 @@ const KNOWN_EXTENSIONS: &[(&str, &str)] = &[
     // Ruby - Requirement 1.9
     ("rb", "ruby"),
     ("rake", "ruby"),
+    // Shell - Requirement 1.13
+    ("sh", "shell"),
+    ("bash", "shell"),
+    ("zsh", "shell"),
+    ("ksh", "shell"),
+    ("fish", "shell"),
     // C - Requirement 1.10
     ("c", "c"),
     ("h", "c"),
@@ -1743,6 +1749,120 @@ proptest! {
 }
 
 // ==================== Property: Rule Application Correctness ====================
+
+/// Strategy for generating valid include/exclude glob patterns.
+fn applicability_glob_strategy() -> impl Strategy<Value = String> {
+    prop::sample::select(vec![
+        "**/*.rs",
+        "**/*.py",
+        "**/*.js",
+        "src/**/*.rs",
+        "src/**",
+        "tests/**/*.rs",
+        "**/tests/**",
+        "**/examples/**",
+        "**/*.test.*",
+        "**/*.spec.*",
+    ])
+    .prop_map(|s| s.to_string())
+}
+
+/// Strategy for generating language identifiers (mixed case).
+fn applicability_language_strategy() -> impl Strategy<Value = String> {
+    prop::sample::select(vec![
+        "rust",
+        "RUST",
+        "python",
+        "PYTHON",
+        "javascript",
+        "JavaScript",
+        "typescript",
+        "TypeScript",
+        "go",
+        "GO",
+    ])
+    .prop_map(|s| s.to_string())
+}
+
+/// Strategy for generating file paths that may match include/exclude globs.
+fn applicability_path_strategy() -> impl Strategy<Value = String> {
+    (
+        prop::collection::vec(
+            prop::sample::select(vec!["src", "tests", "examples", "lib", "app", "utils"]),
+            1..4,
+        ),
+        prop::sample::select(vec!["rs", "py", "js", "ts", "txt"]),
+    )
+        .prop_map(|(dirs, ext)| format!("{}/file.{}", dirs.join("/"), ext))
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    // Feature: comprehensive-test-coverage, Property: Rule Applicability Filtering
+    // CompiledRule::applies_to should match include/exclude/language logic.
+    // **Validates: Requirements 3.2, 3.3**
+    #[test]
+    fn property_rule_applicability_filters(
+        paths in prop::collection::vec(applicability_glob_strategy(), 0..3),
+        exclude_paths in prop::collection::vec(applicability_glob_strategy(), 0..3),
+        languages in prop::collection::vec(applicability_language_strategy(), 0..3),
+        file_path in applicability_path_strategy(),
+        language in prop_oneof![Just(None), applicability_language_strategy().prop_map(Some)],
+    ) {
+        let config = RuleConfig {
+            id: "test.rule".to_string(),
+            severity: Severity::Warn,
+            message: "test".to_string(),
+            languages: languages.clone(),
+            patterns: vec!["test".to_string()],
+            paths: paths.clone(),
+            exclude_paths: exclude_paths.clone(),
+            ignore_comments: false,
+            ignore_strings: false,
+            help: None,
+            url: None,
+        };
+
+        let compiled = compile_rules(&[config]).expect("rule should compile");
+        let rule = &compiled[0];
+
+        let path = Path::new(&file_path);
+
+        let include_match = match &rule.include {
+            Some(include) => include.is_match(path),
+            None => true,
+        };
+
+        let exclude_match = match &rule.exclude {
+            Some(exclude) => exclude.is_match(path),
+            None => false,
+        };
+
+        let lang_match = if rule.languages.is_empty() {
+            true
+        } else {
+            match &language {
+                Some(lang) => rule.languages.contains(&lang.to_ascii_lowercase()),
+                None => false,
+            }
+        };
+
+        let expected = include_match && !exclude_match && lang_match;
+        let actual = rule.applies_to(path, language.as_deref());
+
+        prop_assert_eq!(
+            actual,
+            expected,
+            "applies_to mismatch for path '{}' lang {:?} include {:?} exclude {:?} languages {:?}",
+            file_path,
+            language,
+            paths,
+            exclude_paths,
+            languages
+        );
+    }
+}
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(50))]

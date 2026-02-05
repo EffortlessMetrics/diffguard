@@ -1,19 +1,36 @@
 [package]
 name = "diffguard-diff"
 version.workspace = true
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 description = "Unified diff parser for diffguard"
 repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/diffguard-diff"
 keywords.workspace = true
 categories.workspace = true
+readme = "README.md"
+include = [
+  "src/**",
+  "Cargo.toml",
+  "README.md",
+  "CLAUDE.md",
+  "../../LICENSE-*",
+]
+exclude = [
+  "**/*.snap.new",
+  "**/target/**",
+  "**/artifacts/**",
+  "**/fuzz/**",
+]
 
 [dependencies]
 anyhow.workspace = true
 thiserror.workspace = true
 
-diffguard-types = { path = "../diffguard-types" }
+diffguard-types = { version = "0.1", path = "../diffguard-types" }
 
 [dev-dependencies]
 insta.workspace = true
