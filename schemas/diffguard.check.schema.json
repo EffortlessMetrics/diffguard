@@ -182,6 +182,12 @@
           "format": "uint32",
           "minimum": 0.0
         },
+        "suppressed": {
+          "description": "Number of matches suppressed via inline directives.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
         "warn": {
           "type": "integer",
           "format": "uint32",
@@ -190,11 +196,22 @@
       }
     },
     "VerdictStatus": {
-      "type": "string",
-      "enum": [
-        "pass",
-        "warn",
-        "fail"
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "pass",
+            "warn",
+            "fail"
+          ]
+        },
+        {
+          "description": "For cockpit mode when inputs are missing or check cannot run.",
+          "type": "string",
+          "enum": [
+            "skip"
+          ]
+        }
       ]
     }
   }

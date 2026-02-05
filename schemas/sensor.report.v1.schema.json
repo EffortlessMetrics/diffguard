@@ -1,0 +1,319 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SensorReport",
+  "description": "The `sensor.report.v1` envelope for Cockpit ecosystem integration.",
+  "type": "object",
+  "required": [
+    "findings",
+    "run",
+    "schema",
+    "tool",
+    "verdict"
+  ],
+  "properties": {
+    "artifacts": {
+      "description": "List of artifacts produced.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Artifact"
+      }
+    },
+    "data": {
+      "description": "Additional data payload (diff metadata, etc.)."
+    },
+    "findings": {
+      "description": "Findings in sensor format.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/SensorFinding"
+      }
+    },
+    "run": {
+      "description": "Run timing and capability information.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RunMeta"
+        }
+      ]
+    },
+    "schema": {
+      "description": "Schema identifier, always \"sensor.report.v1\".",
+      "type": "string"
+    },
+    "tool": {
+      "description": "Tool metadata.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ToolMeta"
+        }
+      ]
+    },
+    "verdict": {
+      "description": "Overall verdict.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Verdict"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Artifact": {
+      "description": "An artifact produced by the sensor.",
+      "type": "object",
+      "required": [
+        "format",
+        "path"
+      ],
+      "properties": {
+        "format": {
+          "description": "Format of the artifact (e.g., \"json\", \"sarif\", \"markdown\").",
+          "type": "string"
+        },
+        "path": {
+          "description": "Path to the artifact file.",
+          "type": "string"
+        }
+      }
+    },
+    "CapabilityStatus": {
+      "description": "Status of a capability (e.g., git availability).",
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "reason": {
+          "description": "Optional reason for unavailability.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "description": "Status: \"available\", \"unavailable\", or \"skipped\".",
+          "type": "string"
+        }
+      }
+    },
+    "RunMeta": {
+      "description": "Run timing and capability status.",
+      "type": "object",
+      "required": [
+        "duration_ms",
+        "ended_at",
+        "started_at"
+      ],
+      "properties": {
+        "capabilities": {
+          "description": "Capability status map (e.g., \"git\" -> available/unavailable).",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/CapabilityStatus"
+          }
+        },
+        "duration_ms": {
+          "description": "Duration in milliseconds.",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "ended_at": {
+          "description": "ISO 8601 timestamp when the run ended.",
+          "type": "string"
+        },
+        "started_at": {
+          "description": "ISO 8601 timestamp when the run started.",
+          "type": "string"
+        }
+      }
+    },
+    "SensorFinding": {
+      "description": "A finding in sensor.report.v1 format.",
+      "type": "object",
+      "required": [
+        "check_id",
+        "code",
+        "fingerprint",
+        "location",
+        "message",
+        "severity"
+      ],
+      "properties": {
+        "check_id": {
+          "description": "Check identifier (constant: \"diffguard.pattern\").",
+          "type": "string"
+        },
+        "code": {
+          "description": "Rule code (maps from rule_id, e.g., \"rust.no_unwrap\").",
+          "type": "string"
+        },
+        "data": {
+          "description": "Additional data (match_text, snippet)."
+        },
+        "fingerprint": {
+          "description": "Stable fingerprint (SHA-256 truncated to 16 hex chars).",
+          "type": "string"
+        },
+        "help": {
+          "description": "Optional help text.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "location": {
+          "description": "Location in the source.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/SensorLocation"
+            }
+          ]
+        },
+        "message": {
+          "description": "Human-readable message.",
+          "type": "string"
+        },
+        "severity": {
+          "description": "Finding severity.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Severity"
+            }
+          ]
+        },
+        "url": {
+          "description": "Optional URL for more information.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "SensorLocation": {
+      "description": "Location in sensor.report.v1 format.",
+      "type": "object",
+      "required": [
+        "line",
+        "path"
+      ],
+      "properties": {
+        "column": {
+          "description": "Optional column number (1-based).",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "line": {
+          "description": "Line number (1-based).",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "path": {
+          "description": "Repo-relative path with forward slashes.",
+          "type": "string"
+        }
+      }
+    },
+    "Severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "warn",
+        "error"
+      ]
+    },
+    "ToolMeta": {
+      "type": "object",
+      "required": [
+        "name",
+        "version"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "Verdict": {
+      "type": "object",
+      "required": [
+        "counts",
+        "reasons",
+        "status"
+      ],
+      "properties": {
+        "counts": {
+          "$ref": "#/definitions/VerdictCounts"
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "status": {
+          "$ref": "#/definitions/VerdictStatus"
+        }
+      }
+    },
+    "VerdictCounts": {
+      "type": "object",
+      "required": [
+        "error",
+        "info",
+        "warn"
+      ],
+      "properties": {
+        "error": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "info": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "suppressed": {
+          "description": "Number of matches suppressed via inline directives.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "warn": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    },
+    "VerdictStatus": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "pass",
+            "warn",
+            "fail"
+          ]
+        },
+        {
+          "description": "For cockpit mode when inputs are missing or check cannot run.",
+          "type": "string",
+          "enum": [
+            "skip"
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+---
+source: crates/diffguard-app/tests/snapshot_tests.rs
+expression: "annotations.join(\"\\n\")"
+---
+::error file=src/lib.rs,line=25::rust.no_unwrap Avoid unwrap in production code
+::warning file=src/main.rs,line=42::rust.no_dbg Remove dbg! macro before merging
+::warning file=scripts/deploy.py,line=8::python.no_print Remove print statement

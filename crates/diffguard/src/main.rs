@@ -1,15 +1,21 @@
+use std::collections::HashMap;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::Instant;
 
 use anyhow::{bail, Context, Result};
+use chrono::Utc;
 use clap::{Parser, Subcommand, ValueEnum};
 
 use diffguard_app::{
-    render_csv_for_receipt, render_junit_for_receipt, render_sarif_json, render_tsv_for_receipt,
-    run_check, CheckPlan,
+    render_csv_for_receipt, render_junit_for_receipt, render_sarif_json, render_sensor_json,
+    render_tsv_for_receipt, run_check, CheckPlan, RuleMetadata, SensorReportContext,
 };
-use diffguard_types::{CheckReceipt, ConfigFile, FailOn, RuleConfig, Scope};
+use diffguard_types::{
+    Artifact, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta, FailOn, RuleConfig, Scope,
+    ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+};
 
 mod presets;
 use presets::Preset;
@@ -173,6 +179,25 @@ struct CheckArgs {
         default_missing_value = "artifacts/diffguard/report.tsv"
     )]
     tsv: Option<PathBuf>,
+
+    /// Execution mode.
+    ///
+    /// In standard mode, exit codes reflect the verdict (0=pass, 2=fail, 3=warn-fail).
+    /// In cockpit mode, exit 0 if a receipt was written, exit 1 only on catastrophic failure.
+    /// Can also be set via DIFFGUARD_MODE environment variable.
+    #[arg(long, value_enum, default_value_t = Mode::Standard)]
+    mode: Mode,
+
+    /// Write a sensor.report.v1 JSON file for Cockpit integration.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/sensor.json
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/sensor.json"
+    )]
+    sensor: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]
@@ -252,6 +277,16 @@ struct InitArgs {
     /// Overwrite existing configuration file without prompting.
     #[arg(long, short)]
     force: bool,
+}
+
+/// Execution mode for the check command.
+#[derive(Clone, Copy, Debug, Default, ValueEnum)]
+enum Mode {
+    /// Standard mode: exit codes 0=pass, 1=error, 2=fail, 3=warn-fail.
+    #[default]
+    Standard,
+    /// Cockpit mode: exit 0 if receipt written, exit 1 only on catastrophic failure.
+    Cockpit,
 }
 
 #[derive(Clone, Copy, Debug, ValueEnum)]
@@ -466,7 +501,144 @@ fn simple_edit_distance(a: &str, b: &str) -> usize {
     prev[n]
 }
 
+/// Resolves the execution mode from CLI args and environment variable.
+fn resolve_mode(args: &CheckArgs) -> Mode {
+    std::env::var("DIFFGUARD_MODE")
+        .ok()
+        .and_then(|v| match v.to_lowercase().as_str() {
+            "cockpit" => Some(Mode::Cockpit),
+            "standard" => Some(Mode::Standard),
+            _ => None,
+        })
+        .unwrap_or(args.mode)
+}
+
+/// Builds rule metadata map from config for sensor report.
+fn build_rule_metadata(cfg: &ConfigFile) -> HashMap<String, RuleMetadata> {
+    cfg.rule
+        .iter()
+        .map(|r| {
+            (
+                r.id.clone(),
+                RuleMetadata {
+                    help: r.help.clone(),
+                    url: r.url.clone(),
+                },
+            )
+        })
+        .collect()
+}
+
 fn cmd_check(args: CheckArgs) -> Result<()> {
+    let mode = resolve_mode(&args);
+
+    // Start timing
+    let started_at = Utc::now();
+    let start_time = Instant::now();
+
+    // In cockpit mode, wrap everything in error handling
+    let result = cmd_check_inner(&args, mode, &started_at);
+
+    // End timing
+    let ended_at = Utc::now();
+    let duration_ms = start_time.elapsed().as_millis() as u64;
+
+    match mode {
+        Mode::Standard => {
+            // Standard mode: propagate errors and use normal exit codes
+            let exit_code = result?;
+            std::process::exit(exit_code);
+        }
+        Mode::Cockpit => {
+            // Cockpit mode: always try to write a receipt, exit 0 if successful
+            match result {
+                Ok(_exit_code) => {
+                    // Check ran successfully, exit 0 (receipt was written)
+                    std::process::exit(0);
+                }
+                Err(err) => {
+                    // Check failed - build a skip receipt
+                    let skip_receipt = build_skip_receipt(&args, &err);
+                    let mut capabilities = HashMap::new();
+                    capabilities.insert(
+                        "git".to_string(),
+                        CapabilityStatus {
+                            status: "unavailable".to_string(),
+                            reason: Some(err.to_string()),
+                        },
+                    );
+
+                    let ctx = SensorReportContext {
+                        started_at: started_at.to_rfc3339(),
+                        ended_at: ended_at.to_rfc3339(),
+                        duration_ms,
+                        capabilities,
+                        artifacts: vec![],
+                        rule_metadata: HashMap::new(),
+                    };
+
+                    // Try to write the sensor report
+                    if let Some(sensor_path) = &args.sensor {
+                        if let Ok(json) = render_sensor_json(&skip_receipt, &ctx) {
+                            if write_text(sensor_path, &json).is_ok() {
+                                eprintln!("diffguard: check skipped: {err}");
+                                std::process::exit(0);
+                            }
+                        }
+                    }
+
+                    // Also write the regular receipt
+                    if write_json(&args.out, &skip_receipt).is_ok() {
+                        eprintln!("diffguard: check skipped: {err}");
+                        std::process::exit(0);
+                    }
+
+                    // Could not write any receipt - catastrophic failure
+                    eprintln!("diffguard: catastrophic failure: {err}");
+                    std::process::exit(1);
+                }
+            }
+        }
+    }
+}
+
+/// Builds a skip receipt when the check cannot run.
+fn build_skip_receipt(args: &CheckArgs, err: &anyhow::Error) -> CheckReceipt {
+    let base = args
+        .base
+        .clone()
+        .unwrap_or_else(|| "origin/main".to_string());
+    let head = args.head.clone().unwrap_or_else(|| "HEAD".to_string());
+
+    CheckReceipt {
+        schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
+        tool: ToolMeta {
+            name: "diffguard".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+        },
+        diff: DiffMeta {
+            base,
+            head,
+            context_lines: args.diff_context.unwrap_or(0),
+            scope: args.scope.map(Into::into).unwrap_or(Scope::Added),
+            files_scanned: 0,
+            lines_scanned: 0,
+        },
+        findings: vec![],
+        verdict: Verdict {
+            status: VerdictStatus::Skip,
+            counts: VerdictCounts::default(),
+            reasons: vec![err.to_string()],
+        },
+    }
+}
+
+/// Inner check function that does the actual work.
+fn cmd_check_inner(
+    args: &CheckArgs,
+    _mode: Mode,
+    started_at: &chrono::DateTime<Utc>,
+) -> Result<i32> {
     let cfg = load_config(args.config.clone(), args.no_default_rules)?;
 
     let scope = args
@@ -496,11 +668,13 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
         // Merge defaults (CLI overrides config).
         let base = args
             .base
+            .clone()
             .or_else(|| cfg.defaults.base.clone())
             .unwrap_or_else(|| "origin/main".to_string());
 
         let head = args
             .head
+            .clone()
             .or_else(|| cfg.defaults.head.clone())
             .unwrap_or_else(|| "HEAD".to_string());
 
@@ -515,15 +689,25 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
         diff_context,
         fail_on,
         max_findings,
-        path_filters: args.paths,
+        path_filters: args.paths.clone(),
     };
 
     let run = run_check(&plan, &cfg, &diff_text)?;
 
+    // Collect artifacts
+    let mut artifacts = vec![Artifact {
+        path: args.out.display().to_string().replace('\\', "/"),
+        format: "json".to_string(),
+    }];
+
     write_json(&args.out, &run.receipt)?;
 
-    if let Some(md_path) = args.md {
-        write_text(&md_path, &run.markdown)?;
+    if let Some(md_path) = &args.md {
+        write_text(md_path, &run.markdown)?;
+        artifacts.push(Artifact {
+            path: md_path.display().to_string().replace('\\', "/"),
+            format: "markdown".to_string(),
+        });
     }
 
     if args.github_annotations {
@@ -532,27 +716,75 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
         }
     }
 
-    if let Some(sarif_path) = args.sarif {
+    if let Some(sarif_path) = &args.sarif {
         let sarif = render_sarif_json(&run.receipt).context("render SARIF")?;
-        write_text(&sarif_path, &sarif)?;
+        write_text(sarif_path, &sarif)?;
+        artifacts.push(Artifact {
+            path: sarif_path.display().to_string().replace('\\', "/"),
+            format: "sarif".to_string(),
+        });
     }
 
-    if let Some(junit_path) = args.junit {
+    if let Some(junit_path) = &args.junit {
         let junit = render_junit_for_receipt(&run.receipt);
-        write_text(&junit_path, &junit)?;
+        write_text(junit_path, &junit)?;
+        artifacts.push(Artifact {
+            path: junit_path.display().to_string().replace('\\', "/"),
+            format: "junit".to_string(),
+        });
     }
 
-    if let Some(csv_path) = args.csv {
+    if let Some(csv_path) = &args.csv {
         let csv = render_csv_for_receipt(&run.receipt);
-        write_text(&csv_path, &csv)?;
+        write_text(csv_path, &csv)?;
+        artifacts.push(Artifact {
+            path: csv_path.display().to_string().replace('\\', "/"),
+            format: "csv".to_string(),
+        });
     }
 
-    if let Some(tsv_path) = args.tsv {
+    if let Some(tsv_path) = &args.tsv {
         let tsv = render_tsv_for_receipt(&run.receipt);
-        write_text(&tsv_path, &tsv)?;
+        write_text(tsv_path, &tsv)?;
+        artifacts.push(Artifact {
+            path: tsv_path.display().to_string().replace('\\', "/"),
+            format: "tsv".to_string(),
+        });
     }
 
-    std::process::exit(run.exit_code);
+    // Write sensor report if requested
+    if let Some(sensor_path) = &args.sensor {
+        let ended_at = Utc::now();
+        let duration_ms = (ended_at - *started_at).num_milliseconds().max(0) as u64;
+
+        let mut capabilities = HashMap::new();
+        capabilities.insert(
+            "git".to_string(),
+            CapabilityStatus {
+                status: "available".to_string(),
+                reason: None,
+            },
+        );
+
+        artifacts.push(Artifact {
+            path: sensor_path.display().to_string().replace('\\', "/"),
+            format: "json".to_string(),
+        });
+
+        let ctx = SensorReportContext {
+            started_at: started_at.to_rfc3339(),
+            ended_at: ended_at.to_rfc3339(),
+            duration_ms,
+            capabilities,
+            artifacts,
+            rule_metadata: build_rule_metadata(&cfg),
+        };
+
+        let sensor_json = render_sensor_json(&run.receipt, &ctx).context("render sensor report")?;
+        write_text(sensor_path, &sensor_json)?;
+    }
+
+    Ok(run.exit_code)
 }
 
 fn cmd_sarif(args: SarifArgs) -> Result<()> {

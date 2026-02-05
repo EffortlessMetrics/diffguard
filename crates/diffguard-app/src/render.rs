@@ -5,6 +5,7 @@ pub fn render_markdown_for_receipt(receipt: &CheckReceipt) -> String {
         VerdictStatus::Pass => "PASS",
         VerdictStatus::Warn => "WARN",
         VerdictStatus::Fail => "FAIL",
+        VerdictStatus::Skip => "SKIP",
     };
 
     let mut out = String::new();

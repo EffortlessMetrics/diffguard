@@ -1,0 +1,52 @@
+---
+source: crates/diffguard-app/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "schema": "diffguard.check.v1",
+  "tool": {
+    "name": "diffguard",
+    "version": "0.1.0"
+  },
+  "diff": {
+    "base": "origin/main",
+    "head": "HEAD",
+    "context_lines": 0,
+    "scope": "added",
+    "files_scanned": 2,
+    "lines_scanned": 30
+  },
+  "findings": [
+    {
+      "rule_id": "security.no_hardcoded_secret",
+      "severity": "error",
+      "message": "Hardcoded secret detected",
+      "path": "src/config.rs",
+      "line": 8,
+      "column": 15,
+      "match_text": "API_KEY",
+      "snippet": "const API_KEY: &str = \"sk-secret123\";"
+    },
+    {
+      "rule_id": "rust.no_unwrap",
+      "severity": "error",
+      "message": "Avoid unwrap in production code",
+      "path": "src/lib.rs",
+      "line": 25,
+      "column": 20,
+      "match_text": ".unwrap()",
+      "snippet": "    let value = result.unwrap();"
+    }
+  ],
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 2
+    },
+    "reasons": [
+      "2 error(s)"
+    ]
+  }
+}

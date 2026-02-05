@@ -222,10 +222,7 @@ fn snapshot_json_receipt_mixed() {
             files_scanned: 1,
             lines_scanned: 2,
         },
-        findings: vec![
-            test_finding(Severity::Warn),
-            test_finding(Severity::Error),
-        ],
+        findings: vec![test_finding(Severity::Warn), test_finding(Severity::Error)],
         verdict: Verdict {
             status: VerdictStatus::Fail,
             counts: VerdictCounts {

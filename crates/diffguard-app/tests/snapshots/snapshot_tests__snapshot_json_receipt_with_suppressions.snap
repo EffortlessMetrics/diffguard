@@ -1,0 +1,43 @@
+---
+source: crates/diffguard-app/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "schema": "diffguard.check.v1",
+  "tool": {
+    "name": "diffguard",
+    "version": "0.1.0"
+  },
+  "diff": {
+    "base": "origin/main",
+    "head": "HEAD",
+    "context_lines": 0,
+    "scope": "added",
+    "files_scanned": 4,
+    "lines_scanned": 80
+  },
+  "findings": [
+    {
+      "rule_id": "rust.no_dbg",
+      "severity": "warn",
+      "message": "Remove dbg! macro before merging",
+      "path": "src/debug.rs",
+      "line": 10,
+      "column": 5,
+      "match_text": "dbg!",
+      "snippet": "    dbg!(value);"
+    }
+  ],
+  "verdict": {
+    "status": "warn",
+    "counts": {
+      "info": 0,
+      "warn": 1,
+      "error": 0,
+      "suppressed": 3
+    },
+    "reasons": [
+      "1 warning(s)"
+    ]
+  }
+}

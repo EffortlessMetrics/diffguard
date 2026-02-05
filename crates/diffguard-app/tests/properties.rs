@@ -362,6 +362,7 @@ proptest! {
             VerdictStatus::Pass => "PASS",
             VerdictStatus::Warn => "WARN",
             VerdictStatus::Fail => "FAIL",
+            VerdictStatus::Skip => "SKIP",
         };
 
         prop_assert!(

@@ -5,6 +5,8 @@ use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
 use schemars::schema_for;
 
+mod conform;
+
 #[derive(Parser)]
 #[command(name = "xtask")]
 #[command(about = "Repo automation tasks", long_about = None)]
@@ -23,6 +25,13 @@ enum Cmd {
         #[arg(long, default_value = "schemas")]
         out_dir: PathBuf,
     },
+
+    /// Run Cockpit conformance tests.
+    Conform {
+        /// Skip slow determinism test.
+        #[arg(long)]
+        quick: bool,
+    },
 }
 
 fn main() -> Result<()> {
@@ -31,6 +40,7 @@ fn main() -> Result<()> {
     match cli.cmd {
         Cmd::Ci => ci(),
         Cmd::Schema { out_dir } => schema(out_dir),
+        Cmd::Conform { quick } => conform::run_conformance(quick),
     }
 }
 
@@ -56,15 +66,19 @@ fn schema(out_dir: PathBuf) -> Result<()> {
 
     let cfg_schema = schema_for!(diffguard_types::ConfigFile);
     let receipt_schema = schema_for!(diffguard_types::CheckReceipt);
+    let sensor_schema = schema_for!(diffguard_types::SensorReport);
 
     let cfg_path = out_dir.join("diffguard.config.schema.json");
     let receipt_path = out_dir.join("diffguard.check.schema.json");
+    let sensor_path = out_dir.join("sensor.report.v1.schema.json");
 
     write_pretty_json(&cfg_path, &cfg_schema)?;
     write_pretty_json(&receipt_path, &receipt_schema)?;
+    write_pretty_json(&sensor_path, &sensor_schema)?;
 
     eprintln!("wrote {}", cfg_path.display());
     eprintln!("wrote {}", receipt_path.display());
+    eprintln!("wrote {}", sensor_path.display());
     Ok(())
 }
 

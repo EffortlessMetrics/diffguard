@@ -106,6 +106,13 @@
             "type": "string"
           }
         },
+        "help": {
+          "description": "Optional help text explaining how to fix violations.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "id": {
           "type": "string"
         },
@@ -145,6 +152,13 @@
         },
         "severity": {
           "$ref": "#/definitions/Severity"
+        },
+        "url": {
+          "description": "Optional URL with more information about the rule.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       }
     },

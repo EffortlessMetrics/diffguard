@@ -12,5 +12,6 @@ clap.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 schemars.workspace = true
+tempfile.workspace = true
 
 diffguard-types = { path = "../crates/diffguard-types" }
