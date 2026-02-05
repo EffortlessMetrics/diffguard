@@ -36,18 +36,13 @@ This crate provides serializable DTOs (Data Transfer Objects) used throughout th
 
 - Full `serde` support for JSON/TOML serialization
 - JSON Schema generation via `schemars`
-- Built-in rule presets for common languages
+- Built-in rule set for common languages (via `ConfigFile::built_in()` in the CLI/app pipeline)
 
-## Built-in Presets
+## Built-in Rules
 
-```rust
-use diffguard_types::presets;
-
-let rust_rules = presets::rust_quality();      // unwrap, expect, todo!, etc.
-let python_rules = presets::python_debug();    // print(), breakpoint(), pdb
-let js_rules = presets::js_console();          // console.log, debugger
-let go_rules = presets::go_quality();          // fmt.Print, panic
-```
+diffguard ships a built-in rule set for common languages. Use `ConfigFile::built_in()` to access
+the defaults in the CLI/app pipeline. Presets are exposed through the CLI
+(`diffguard init --preset ...`) rather than a `diffguard-types` Rust API.
 
 ## Usage
 
@@ -68,7 +63,6 @@ let rule = RuleConfig {
     languages: vec![],
     ignore_comments: false,  // We want to find TODOs in comments!
     ignore_strings: true,
-    scope: None,  // Inherit from defaults
 };
 
 // Serialize to TOML for config file

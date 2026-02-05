@@ -29,8 +29,7 @@ Options:
 - `--scope <SCOPE>` — `added` or `changed` (default: from config)
 - `--fail-on <LEVEL>` — `error`, `warn`, or `never` (default: from config)
 - `--max-findings <N>` — Limit number of findings
-- `--include <GLOB>` — Only check matching paths
-- `--exclude <GLOB>` — Skip matching paths
+- `--paths <GLOB>` — Only check matching paths (repeatable)
 - `--out <PATH>` — Write JSON receipt to file
 - `--md <PATH>` — Write Markdown summary to file
 - `--sarif <PATH>` — Write SARIF report to file

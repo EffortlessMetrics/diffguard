@@ -1,6 +1,5 @@
 ---
 source: crates/diffguard-app/src/junit.rs
-assertion_line: 292
 expression: xml
 ---
 <?xml version="1.0" encoding="UTF-8"?>

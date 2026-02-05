@@ -73,8 +73,9 @@ pub fn is_mode_change_only(line: &str) -> bool {
 /// Returns the path after "rename from " if the line matches, None otherwise.
 ///
 /// Requirements: 4.3
-pub fn parse_rename_from(line: &str) -> Option<&str> {
-    line.strip_prefix("rename from ")
+pub fn parse_rename_from(line: &str) -> Option<String> {
+    let rest = line.strip_prefix("rename from ")?;
+    parse_rename_path(rest)
 }
 
 /// Parses a rename line and extracts the destination path.
@@ -85,8 +86,9 @@ pub fn parse_rename_from(line: &str) -> Option<&str> {
 /// Returns the path after "rename to " if the line matches, None otherwise.
 ///
 /// Requirements: 4.3
-pub fn parse_rename_to(line: &str) -> Option<&str> {
-    line.strip_prefix("rename to ")
+pub fn parse_rename_to(line: &str) -> Option<String> {
+    let rest = line.strip_prefix("rename to ")?;
+    parse_rename_path(rest)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -180,7 +182,7 @@ pub fn parse_unified_diff(
 
         // Detect renamed files (Requirements 4.3)
         if let Some(to_path) = parse_rename_to(raw) {
-            rename_to_path = Some(to_path.to_string());
+            rename_to_path = Some(to_path);
             continue;
         }
 
@@ -337,26 +339,23 @@ fn parse_hunk_header(line: &str) -> Result<HunkHeader, DiffParseError> {
 
 fn parse_diff_git_line(line: &str) -> Option<String> {
     // diff --git a/foo b/foo
-    let mut it = line.split_whitespace();
-    if it.next()? != "diff" {
+    let rest = line.strip_prefix("diff --git ")?;
+    let tokens = tokenize_git_paths(rest, 2);
+    if tokens.len() < 2 {
         return None;
     }
-    if it.next()? != "--git" {
-        return None;
-    }
-    let _a = it.next()?;
-    let b = it.next()?;
-    strip_prefix_path(b)
+    let b = unquote_git_token(&tokens[1]);
+    strip_prefix_path(&b)
 }
 
 fn parse_plus_plus_plus(line: &str) -> Option<String> {
     // +++ b/foo
     let rest = line.strip_prefix("+++ ")?;
-    let first = rest.split('\t').next().unwrap_or(rest);
-    if first == "/dev/null" {
+    let token = parse_single_git_path(rest)?;
+    if token == "/dev/null" {
         return None;
     }
-    strip_prefix_path(first)
+    strip_prefix_path(&token)
 }
 
 fn strip_prefix_path(p: &str) -> Option<String> {
@@ -379,6 +378,142 @@ fn strip_prefix_path(p: &str) -> Option<String> {
     } else {
         Some(normalized)
     }
+}
+
+#[derive(Debug, Clone)]
+struct GitPathToken {
+    value: String,
+    quoted: bool,
+}
+
+fn tokenize_git_paths(input: &str, limit: usize) -> Vec<GitPathToken> {
+    let mut tokens = Vec::new();
+    let mut buf = String::new();
+    let mut quoted = false;
+    let mut in_quote = false;
+    let mut chars = input.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if in_quote {
+            if ch == '\\' {
+                if let Some(next) = chars.next() {
+                    buf.push('\\');
+                    buf.push(next);
+                } else {
+                    buf.push('\\');
+                }
+                continue;
+            }
+
+            if ch == '"' {
+                in_quote = false;
+                continue;
+            }
+
+            buf.push(ch);
+            continue;
+        }
+
+        if ch.is_whitespace() {
+            if !buf.is_empty() {
+                tokens.push(GitPathToken {
+                    value: buf.clone(),
+                    quoted,
+                });
+                buf.clear();
+                quoted = false;
+                if tokens.len() >= limit {
+                    return tokens;
+                }
+            }
+            continue;
+        }
+
+        if ch == '"' {
+            in_quote = true;
+            quoted = true;
+            continue;
+        }
+
+        buf.push(ch);
+    }
+
+    if !buf.is_empty() && tokens.len() < limit {
+        tokens.push(GitPathToken { value: buf, quoted });
+    }
+
+    tokens
+}
+
+fn parse_single_git_path(input: &str) -> Option<String> {
+    let tokens = tokenize_git_paths(input, 1);
+    tokens.first().map(unquote_git_token)
+}
+
+fn parse_rename_path(input: &str) -> Option<String> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+
+    if trimmed.starts_with('"') {
+        return parse_single_git_path(trimmed);
+    }
+
+    Some(trimmed.to_string())
+}
+
+fn unquote_git_token(token: &GitPathToken) -> String {
+    if token.quoted {
+        unescape_git_path(&token.value)
+    } else {
+        token.value.clone()
+    }
+}
+
+fn unescape_git_path(s: &str) -> String {
+    let mut out: Vec<u8> = Vec::with_capacity(s.len());
+    let mut iter = s.as_bytes().iter().copied().peekable();
+
+    while let Some(b) = iter.next() {
+        if b != b'\\' {
+            out.push(b);
+            continue;
+        }
+
+        let Some(next) = iter.next() else {
+            out.push(b'\\');
+            break;
+        };
+
+        match next {
+            b'\\' => out.push(b'\\'),
+            b'"' => out.push(b'"'),
+            b'n' => out.push(b'\n'),
+            b't' => out.push(b'\t'),
+            b'r' => out.push(b'\r'),
+            b' ' => out.push(b' '),
+            b'0'..=b'7' => {
+                let mut val = (next - b'0') as u32;
+                for _ in 0..2 {
+                    match iter.peek().copied() {
+                        Some(d) if (b'0'..=b'7').contains(&d) => {
+                            val = val * 8 + (d - b'0') as u32;
+                            iter.next();
+                        }
+                        _ => break,
+                    }
+                }
+                out.push((val & 0xFF) as u8);
+            }
+            _ => {
+                out.push(b'\\');
+                out.push(next);
+            }
+        }
+    }
+
+    String::from_utf8_lossy(&out).into_owned()
 }
 
 #[cfg(test)]
@@ -537,12 +672,19 @@ diff --git a/a.txt b/a.txt
     fn parse_rename_from_extracts_source_path() {
         assert_eq!(
             parse_rename_from("rename from src/old/path.rs"),
-            Some("src/old/path.rs")
+            Some("src/old/path.rs".to_string())
         );
-        assert_eq!(parse_rename_from("rename from file.txt"), Some("file.txt"));
+        assert_eq!(
+            parse_rename_from("rename from file.txt"),
+            Some("file.txt".to_string())
+        );
         assert_eq!(
             parse_rename_from("rename from path/with spaces/file.rs"),
-            Some("path/with spaces/file.rs")
+            Some("path/with spaces/file.rs".to_string())
+        );
+        assert_eq!(
+            parse_rename_from("rename from \"path/with spaces/file.rs\""),
+            Some("path/with spaces/file.rs".to_string())
         );
     }
 
@@ -558,12 +700,19 @@ diff --git a/a.txt b/a.txt
     fn parse_rename_to_extracts_destination_path() {
         assert_eq!(
             parse_rename_to("rename to src/new/path.rs"),
-            Some("src/new/path.rs")
+            Some("src/new/path.rs".to_string())
         );
-        assert_eq!(parse_rename_to("rename to file.txt"), Some("file.txt"));
+        assert_eq!(
+            parse_rename_to("rename to file.txt"),
+            Some("file.txt".to_string())
+        );
         assert_eq!(
             parse_rename_to("rename to path/with spaces/file.rs"),
-            Some("path/with spaces/file.rs")
+            Some("path/with spaces/file.rs".to_string())
+        );
+        assert_eq!(
+            parse_rename_to("rename to \"path/with spaces/file.rs\""),
+            Some("path/with spaces/file.rs".to_string())
         );
     }
 
@@ -573,6 +722,90 @@ diff --git a/a.txt b/a.txt
         assert_eq!(parse_rename_to("diff --git a/foo b/foo"), None);
         assert_eq!(parse_rename_to("rename to"), None); // Empty path is still valid
         assert_eq!(parse_rename_to(""), None);
+    }
+
+    #[test]
+    fn parse_diff_git_line_parses_paths() {
+        assert_eq!(
+            parse_diff_git_line("diff --git a/src/lib.rs b/src/lib.rs"),
+            Some("src/lib.rs".to_string())
+        );
+        assert_eq!(
+            parse_diff_git_line(r#"diff --git "a/dir name/file.rs" "b/dir name/file.rs""#),
+            Some("dir name/file.rs".to_string())
+        );
+        assert_eq!(
+            parse_diff_git_line(
+                r#"diff --git "a/dir\ name/\"file\".rs" "b/dir\ name/\"file\".rs""#
+            ),
+            Some("dir name/\"file\".rs".to_string())
+        );
+        assert_eq!(parse_diff_git_line("diff --git a/only"), None);
+    }
+
+    #[test]
+    fn parse_plus_plus_plus_parses_paths() {
+        assert_eq!(
+            parse_plus_plus_plus("+++ b/src/lib.rs"),
+            Some("src/lib.rs".to_string())
+        );
+        assert_eq!(parse_plus_plus_plus("+++ /dev/null"), None);
+        assert_eq!(
+            parse_plus_plus_plus(r#"+++ "b/dir name/file.rs""#),
+            Some("dir name/file.rs".to_string())
+        );
+        assert_eq!(
+            parse_plus_plus_plus(r#"+++ "b/dir\ name/\"file\".rs""#),
+            Some("dir name/\"file\".rs".to_string())
+        );
+    }
+
+    #[test]
+    fn tokenize_git_paths_respects_quotes_and_limits() {
+        let tokens = tokenize_git_paths(r#"a/one "b/two two" c/three"#, 2);
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].value, "a/one");
+        assert!(!tokens[0].quoted);
+        assert_eq!(tokens[1].value, "b/two two");
+        assert!(tokens[1].quoted);
+
+        let tokens = tokenize_git_paths("   a b", 2);
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens[0].value, "a");
+        assert_eq!(tokens[1].value, "b");
+
+        let tokens = tokenize_git_paths("a ", 2);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].value, "a");
+
+        let tokens = tokenize_git_paths("a", 0);
+        assert!(tokens.is_empty());
+
+        let tokens = tokenize_git_paths("a b c", 1);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].value, "a");
+    }
+
+    #[test]
+    fn unescape_git_path_handles_common_escapes() {
+        assert_eq!(
+            unescape_git_path(r#"dir\ name\"quote\"\\tab\tnewline\ncarriage\rend"#),
+            "dir name\"quote\"\\tab\tnewline\ncarriage\rend"
+        );
+        assert_eq!(unescape_git_path(r#"octal\141\040space"#), "octala space");
+        assert_eq!(unescape_git_path(r#"weird\q"#), "weird\\q");
+        assert_eq!(unescape_git_path("endswith\\"), "endswith\\");
+    }
+
+    #[test]
+    fn unescape_git_path_handles_octal_limits_and_control_chars() {
+        assert_eq!(unescape_git_path(r#"\7"#).as_bytes(), &[7]);
+        assert_eq!(unescape_git_path(r#"\1234"#), "S4");
+        assert_eq!(
+            unescape_git_path(r#"a\rb"#).as_bytes(),
+            &[b'a', b'\r', b'b']
+        );
+        assert_eq!(unescape_git_path(r#"\12x"#).as_bytes(), &[b'\n', b'x']);
     }
 
     // ========================================================================
@@ -697,6 +930,60 @@ rename to new/path.rs
         assert_eq!(stats.lines, 1);
         assert_eq!(lines[0].path, "new/path.rs");
         assert_eq!(lines[0].content, "fn added() {}");
+    }
+
+    #[test]
+    fn parses_quoted_paths_in_headers() {
+        let diff = r#"
+diff --git "a/dir name/file.rs" "b/dir name/file.rs"
+--- "a/dir name/file.rs"
++++ "b/dir name/file.rs"
+@@ -1,1 +1,2 @@
+ fn a() {}
++fn b() {}
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
+        assert_eq!(lines[0].path, "dir name/file.rs");
+        assert_eq!(lines[0].content, "fn b() {}");
+    }
+
+    #[test]
+    fn ignores_lines_outside_hunks() {
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
++fn should_not_be_seen()
+@@ -1,1 +1,2 @@
+ fn a() {}
++fn b() {}
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
+        assert_eq!(lines[0].content, "fn b() {}");
+    }
+
+    #[test]
+    fn skips_file_markers_inside_hunks() {
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,3 @@
+ fn a() {}
+++++not_a_marker
++fn b() {}
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 1);
+        assert_eq!(lines[0].content, "fn b() {}");
     }
 
     #[test]

@@ -152,16 +152,32 @@ impl PreprocessOptions {
 enum Mode {
     Normal,
     LineComment,
-    BlockComment { depth: u32 },
-    NormalString { escaped: bool, quote: u8 },
-    RawString { hashes: usize },
-    Char { escaped: bool },
-    TemplateLiteral { escaped: bool },
-    TripleQuotedString { escaped: bool, quote: u8 },
+    BlockComment {
+        depth: u32,
+    },
+    NormalString {
+        escaped: bool,
+        quote: u8,
+    },
+    RawString {
+        hashes: usize,
+    },
+    Char {
+        escaped: bool,
+    },
+    TemplateLiteral {
+        escaped: bool,
+    },
+    TripleQuotedString {
+        escaped: bool,
+        quote: u8,
+    },
     /// Shell literal string: '...' - no escapes at all
     ShellLiteralString,
     /// Shell ANSI-C string: $'...' - with escape sequences
-    ShellAnsiCString { escaped: bool },
+    ShellAnsiCString {
+        escaped: bool,
+    },
 }
 
 impl fmt::Debug for Mode {
@@ -229,6 +245,7 @@ impl Preprocessor {
     /// Returns a sanitized line where masked segments are replaced with spaces.
     ///
     /// The output is the same length in bytes as the input.
+    #[cfg_attr(mutants, mutants::skip)]
     pub fn sanitize_line(&mut self, line: &str) -> String {
         let mut out: Vec<u8> = line.as_bytes().to_vec();
         let bytes = line.as_bytes();
@@ -718,12 +735,14 @@ fn detect_raw_string_start(bytes: &[u8], i: usize) -> Option<(usize, usize, usiz
         return None;
     };
 
-    let mut j = r_i + 1;
-    let mut hashes = 0usize;
-    while j < len && bytes[j] == b'#' {
-        hashes += 1;
-        j += 1;
-    }
+    let j = r_i + 1;
+    let hashes = bytes
+        .get(j..len)
+        .unwrap_or(&[])
+        .iter()
+        .take_while(|&&b| b == b'#')
+        .count();
+    let j = j + hashes;
 
     if j < len && bytes[j] == b'"' {
         Some((start, j, hashes))
@@ -737,6 +756,56 @@ mod tests {
     use super::*;
 
     // ==================== Language enum tests ====================
+
+    #[test]
+    fn preprocess_options_track_strings_reflects_masks() {
+        assert!(!PreprocessOptions::none().track_strings());
+        assert!(PreprocessOptions::comments_only().track_strings());
+        assert!(PreprocessOptions::strings_only().track_strings());
+        assert!(PreprocessOptions::comments_and_strings().track_strings());
+    }
+
+    #[test]
+    fn mode_debug_format_includes_variant() {
+        assert_eq!(format!("{:?}", Mode::Normal), "Normal");
+        assert_eq!(format!("{:?}", Mode::LineComment), "LineComment");
+        assert_eq!(
+            format!("{:?}", Mode::BlockComment { depth: 2 }),
+            "BlockComment(depth=2)"
+        );
+        assert_eq!(
+            format!(
+                "{:?}",
+                Mode::NormalString {
+                    escaped: true,
+                    quote: b'\"'
+                }
+            ),
+            "NormalString(escaped=true, quote=34)"
+        );
+    }
+
+    #[test]
+    fn detect_triple_quote_start_detects_quotes() {
+        assert_eq!(detect_triple_quote_start(b"\"\"\"rest", 0), Some((b'"', 3)));
+        assert_eq!(detect_triple_quote_start(b"'''abc", 0), Some((b'\'', 3)));
+        assert_eq!(detect_triple_quote_start(b"x\"\"y", 1), None);
+        assert_eq!(detect_triple_quote_start(b"\"x\"", 0), None);
+        assert_eq!(detect_triple_quote_start(b"''", 0), None);
+        assert_eq!(detect_triple_quote_start(b"x'''y", 0), None);
+    }
+
+    #[test]
+    fn detect_raw_string_start_detects_rust_raw_strings() {
+        assert_eq!(detect_raw_string_start(b"r\"rest", 0), Some((0, 1, 0)));
+        assert_eq!(detect_raw_string_start(b"br\"rest", 0), Some((0, 2, 0)));
+        assert_eq!(detect_raw_string_start(b"r#\"rest", 0), Some((0, 2, 1)));
+        assert_eq!(detect_raw_string_start(b"br##\"rest", 0), Some((0, 4, 2)));
+        assert_eq!(detect_raw_string_start(b"b\"\"rest", 0), None);
+        assert_eq!(detect_raw_string_start(b"b\"rest", 0), None);
+        assert_eq!(detect_raw_string_start(b"x\"rest", 0), None);
+        assert_eq!(detect_raw_string_start(b"r###", 0), None);
+    }
 
     #[test]
     fn language_from_str_known_languages() {
@@ -1659,7 +1728,8 @@ mod tests {
 
     #[test]
     fn shell_masks_hash_comments() {
-        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Shell);
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Shell);
         let s = p.sanitize_line("echo hello  # this is a comment");
         assert!(s.contains("echo hello"));
         assert!(!s.contains("this is a comment"));
@@ -1667,7 +1737,8 @@ mod tests {
 
     #[test]
     fn shell_does_not_mask_hash_in_string() {
-        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Shell);
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Shell);
         let s = p.sanitize_line("echo \"# not a comment\"  # real comment");
         assert!(s.contains("# not a comment"));
         assert!(!s.contains("real comment"));

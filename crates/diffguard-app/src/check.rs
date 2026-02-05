@@ -167,11 +167,60 @@ fn render_annotations(findings: &[Finding]) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
+
+    fn test_finding(severity: diffguard_types::Severity) -> Finding {
+        Finding {
+            rule_id: "test.rule".to_string(),
+            severity,
+            message: "Test message".to_string(),
+            path: "src/lib.rs".to_string(),
+            line: 42,
+            column: Some(3),
+            match_text: "match".to_string(),
+            snippet: "let x = match;".to_string(),
+        }
+    }
+
+    fn test_rule_config(
+        severity: diffguard_types::Severity,
+        pattern: &str,
+    ) -> diffguard_types::ConfigFile {
+        diffguard_types::ConfigFile {
+            defaults: diffguard_types::Defaults::default(),
+            rule: vec![diffguard_types::RuleConfig {
+                id: "test.rule".to_string(),
+                severity,
+                message: "Test message".to_string(),
+                languages: vec!["rust".to_string()],
+                patterns: vec![pattern.to_string()],
+                paths: vec!["**/*.rs".to_string()],
+                exclude_paths: vec![],
+                ignore_comments: false,
+                ignore_strings: false,
+                help: None,
+                url: None,
+            }],
+        }
+    }
+
+    fn test_plan(max_findings: usize, fail_on: FailOn, path_filters: Vec<&str>) -> CheckPlan {
+        CheckPlan {
+            base: "base".to_string(),
+            head: "head".to_string(),
+            scope: diffguard_types::Scope::Added,
+            diff_context: 0,
+            fail_on,
+            max_findings,
+            path_filters: path_filters.into_iter().map(|s| s.to_string()).collect(),
+        }
+    }
 
     #[test]
     fn exit_code_semantics() {
         let mut counts = VerdictCounts::default();
         assert_eq!(compute_exit_code(FailOn::Error, &counts), 0);
+        assert_eq!(compute_exit_code(FailOn::Warn, &counts), 0);
 
         counts.warn = 1;
         assert_eq!(compute_exit_code(FailOn::Error, &counts), 0);
@@ -181,5 +230,197 @@ mod tests {
         assert_eq!(compute_exit_code(FailOn::Error, &counts), 2);
         assert_eq!(compute_exit_code(FailOn::Warn, &counts), 2);
         assert_eq!(compute_exit_code(FailOn::Never, &counts), 0);
+    }
+
+    #[test]
+    fn compile_filter_globs_rejects_invalid() {
+        let err = compile_filter_globs(&vec!["[".to_string()]).unwrap_err();
+        match err {
+            PathFilterError::InvalidGlob { glob, .. } => assert_eq!(glob, "["),
+        }
+    }
+
+    #[test]
+    fn run_check_without_path_filters_keeps_findings() {
+        let plan = test_plan(100, FailOn::Error, vec![]);
+        let config = test_rule_config(diffguard_types::Severity::Warn, "warn_me");
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,2 @@
+ fn a() {}
++let x = warn_me();
+"#;
+
+        let run = run_check(&plan, &config, diff).expect("run_check");
+        assert_eq!(run.receipt.findings.len(), 1);
+    }
+
+    #[test]
+    fn run_check_sets_warn_verdict_and_reasons() {
+        let plan = test_plan(100, FailOn::Warn, vec![]);
+        let config = test_rule_config(diffguard_types::Severity::Warn, "warn_me");
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,2 @@
+ fn a() {}
++let x = warn_me();
+"#;
+
+        let run = run_check(&plan, &config, diff).expect("run_check");
+        assert_eq!(run.receipt.verdict.status, VerdictStatus::Warn);
+        assert!(run
+            .receipt
+            .verdict
+            .reasons
+            .iter()
+            .any(|r| r.contains("warning")));
+    }
+
+    #[test]
+    fn run_check_sets_error_verdict_and_reasons() {
+        let plan = test_plan(100, FailOn::Error, vec![]);
+        let config = test_rule_config(diffguard_types::Severity::Error, "error_me");
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,2 @@
+ fn a() {}
++let x = error_me();
+"#;
+
+        let run = run_check(&plan, &config, diff).expect("run_check");
+        assert_eq!(run.receipt.verdict.status, VerdictStatus::Fail);
+        assert!(run
+            .receipt
+            .verdict
+            .reasons
+            .iter()
+            .any(|r| r.contains("error")));
+    }
+
+    #[test]
+    fn run_check_includes_truncation_reason() {
+        let plan = test_plan(1, FailOn::Warn, vec![]);
+        let config = test_rule_config(diffguard_types::Severity::Warn, "warn_me");
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,3 @@
+ fn a() {}
++let x = warn_me();
++let y = warn_me();
+"#;
+
+        let run = run_check(&plan, &config, diff).expect("run_check");
+        assert!(run
+            .receipt
+            .verdict
+            .reasons
+            .iter()
+            .any(|r| r.contains("additional findings omitted")));
+    }
+
+    #[test]
+    fn run_check_passes_with_no_findings() {
+        let plan = test_plan(100, FailOn::Warn, vec![]);
+        let config = test_rule_config(diffguard_types::Severity::Warn, "warn_me");
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,2 @@
+ fn a() {}
++let x = clean();
+"#;
+
+        let run = run_check(&plan, &config, diff).expect("run_check");
+        assert_eq!(run.receipt.verdict.status, VerdictStatus::Pass);
+        assert!(run.receipt.verdict.reasons.is_empty());
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn property_annotations_format_matches_expected(
+            severity in prop_oneof![Just(diffguard_types::Severity::Info), Just(diffguard_types::Severity::Warn), Just(diffguard_types::Severity::Error)],
+            line in 1u32..1000,
+        ) {
+            let mut finding = test_finding(severity);
+            finding.line = line;
+
+            let annotations = render_annotations(&[finding.clone()]);
+            prop_assert_eq!(annotations.len(), 1);
+
+            let level = match severity {
+                diffguard_types::Severity::Info => "notice",
+                diffguard_types::Severity::Warn => "warning",
+                diffguard_types::Severity::Error => "error",
+            };
+
+            let expected = format!(
+                "::{level} file={path},line={line}::{rule} {msg}",
+                level = level,
+                path = finding.path,
+                line = finding.line,
+                rule = finding.rule_id,
+                msg = finding.message
+            );
+
+            prop_assert_eq!(annotations[0].as_str(), expected.as_str());
+        }
+    }
+
+    #[test]
+    fn snapshot_annotations_with_multiple_severities() {
+        let findings = vec![
+            test_finding(diffguard_types::Severity::Info),
+            test_finding(diffguard_types::Severity::Warn),
+            test_finding(diffguard_types::Severity::Error),
+        ];
+        let annotations = render_annotations(&findings);
+        insta::assert_snapshot!(annotations.join("\n"));
+    }
+
+    #[test]
+    fn snapshot_json_receipt_pretty() {
+        let receipt = CheckReceipt {
+            schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
+            tool: ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: DiffMeta {
+                base: "origin/main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: diffguard_types::Scope::Added,
+                files_scanned: 1,
+                lines_scanned: 2,
+            },
+            findings: vec![
+                test_finding(diffguard_types::Severity::Warn),
+                test_finding(diffguard_types::Severity::Error),
+            ],
+            verdict: Verdict {
+                status: VerdictStatus::Fail,
+                counts: VerdictCounts {
+                    info: 0,
+                    warn: 1,
+                    error: 1,
+                    suppressed: 0,
+                },
+                reasons: vec!["1 error(s)".to_string(), "1 warning(s)".to_string()],
+            },
+        };
+
+        let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");
+        insta::assert_snapshot!(json);
     }
 }

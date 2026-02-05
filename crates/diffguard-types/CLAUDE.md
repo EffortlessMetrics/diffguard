@@ -32,13 +32,11 @@ All types derive:
 
 The `CHECK_SCHEMA_V1` constant provides schema versioning for receipts.
 
-## Built-in Presets
+## Built-in Rules
 
-The `presets` module contains predefined rule collections:
-- `rust_quality()` - Rust best practices
-- `python_debug()` - Python debugging artifacts
-- `js_console()` - JavaScript console statements
-- `go_quality()` - Go quality rules
+Built-in rules are provided via `ConfigFile::built_in()` for the CLI/app pipeline.
+CLI presets live in the `diffguard` crate (`diffguard init --preset ...`); there is
+no `presets` module in `diffguard-types`.
 
 ## Common Tasks
 

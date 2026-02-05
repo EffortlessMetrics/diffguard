@@ -1,8 +1,0 @@
----
-source: crates/diffguard-app/src/csv.rs
-assertion_line: 391
-expression: csv
----
-file,line,rule_id,severity,message,snippet
-src/file.rs,5,test.rule,warn,"Message with ""quotes"" and, commas","let s = ""hello
-world"";"

@@ -81,8 +81,8 @@ pub fn is_submodule(line: &str) -> bool
 pub fn is_new_file(line: &str) -> bool
 pub fn is_deleted_file(line: &str) -> bool
 pub fn is_mode_change_only(line: &str) -> bool
-pub fn parse_rename_from(line: &str) -> Option<&str>
-pub fn parse_rename_to(line: &str) -> Option<&str>
+pub fn parse_rename_from(line: &str) -> Option<String>
+pub fn parse_rename_to(line: &str) -> Option<String>
 ```
 
 ## Robustness

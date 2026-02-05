@@ -1,6 +1,5 @@
 ---
 source: crates/diffguard-app/src/csv.rs
-assertion_line: 377
 expression: tsv
 ---
 file	line	rule_id	severity	message	snippet

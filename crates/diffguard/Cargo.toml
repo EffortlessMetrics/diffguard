@@ -12,6 +12,27 @@ documentation.workspace = true
 keywords.workspace = true
 categories.workspace = true
 readme.workspace = true
+include = [
+  "src/**",
+  "Cargo.toml",
+  "README.md",
+  "CLAUDE.md",
+  "../../README.md",
+  "../../CLAUDE.md",
+  "../../LICENSE-*",
+  "../../CHANGELOG.md",
+  "../../diffguard.toml.example",
+  "../../docs/**",
+  "../../schemas/**",
+  "../../.kiro/specs/**",
+]
+exclude = [
+  "**/*.snap.new",
+  "**/target/**",
+  "**/artifacts/**",
+  "**/fuzz/corpus/**",
+  "**/fuzz/artifacts/**",
+]
 
 [dependencies]
 anyhow.workspace = true

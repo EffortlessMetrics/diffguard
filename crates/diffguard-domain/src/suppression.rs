@@ -67,12 +67,43 @@ const DIRECTIVE_PREFIX: &str = "diffguard:";
 /// This function should be called on the raw line BEFORE preprocessing
 /// (so that comment content is visible).
 pub fn parse_suppression(line: &str) -> Option<Suppression> {
-    // Find the directive prefix (case-insensitive search)
     let lower = line.to_ascii_lowercase();
-    let prefix_start = lower.find(DIRECTIVE_PREFIX)?;
+    lower
+        .match_indices(DIRECTIVE_PREFIX)
+        .next()
+        .and_then(|(idx, _)| parse_suppression_at(line, idx))
+}
 
-    // Extract the directive content after the prefix
-    let after_prefix = &line[prefix_start + DIRECTIVE_PREFIX.len()..];
+/// Parse a line for suppression directives, but only if the directive
+/// occurs inside a masked comment span.
+///
+/// `masked_comments` should be the output of the comments-only preprocessor
+/// for the same line and language. The directive is accepted only if the
+/// directive prefix is fully masked (spaces) in `masked_comments`.
+pub fn parse_suppression_in_comments(line: &str, masked_comments: &str) -> Option<Suppression> {
+    if line.len() != masked_comments.len() {
+        return None;
+    }
+
+    let lower = line.to_ascii_lowercase();
+    let needle = DIRECTIVE_PREFIX.as_bytes();
+    let masked = masked_comments.as_bytes();
+
+    for (idx, _) in lower.match_indices(DIRECTIVE_PREFIX) {
+        let in_comment = masked[idx..idx + needle.len()].iter().all(|b| *b == b' ');
+        if in_comment {
+            if let Some(suppression) = parse_suppression_at(line, idx) {
+                return Some(suppression);
+            }
+        }
+    }
+
+    None
+}
+
+/// Parse a suppression directive at a known prefix offset.
+fn parse_suppression_at(line: &str, prefix_start: usize) -> Option<Suppression> {
+    let after_prefix = line.get(prefix_start + DIRECTIVE_PREFIX.len()..)?;
     let after_prefix = after_prefix.trim_start();
 
     // Check for "ignore-next-line" first (longer match)
@@ -180,7 +211,7 @@ impl SuppressionTracker {
     /// 3. Updates the pending state for the next line
     ///
     /// Returns the combined set of suppressions that apply to this line.
-    pub fn process_line(&mut self, line: &str) -> EffectiveSuppressions {
+    pub fn process_line(&mut self, line: &str, masked_comments: &str) -> EffectiveSuppressions {
         // Collect pending suppressions for this line
         let mut same_line_suppressions: Vec<Suppression> = Vec::new();
         let mut next_line_suppressions: Vec<Suppression> = Vec::new();
@@ -189,7 +220,7 @@ impl SuppressionTracker {
         same_line_suppressions.append(&mut self.pending_next_line);
 
         // Parse the current line for directives
-        if let Some(suppression) = parse_suppression(line) {
+        if let Some(suppression) = parse_suppression_in_comments(line, masked_comments) {
             match suppression.kind {
                 SuppressionKind::SameLine => {
                     same_line_suppressions.push(suppression);
@@ -249,6 +280,12 @@ impl EffectiveSuppressions {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
+
+    fn masked_comments(line: &str, lang: Language) -> String {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), lang);
+        p.sanitize_line(line)
+    }
 
     // ==================== parse_suppression tests ====================
 
@@ -390,6 +427,39 @@ mod tests {
     }
 
     #[test]
+    fn parse_in_string_is_ignored_when_not_in_comment() {
+        let line = "let x = \"diffguard: ignore rust.no_unwrap\";";
+        let masked = masked_comments(line, Language::Rust);
+        assert!(parse_suppression_in_comments(line, &masked).is_none());
+    }
+
+    #[test]
+    fn parse_in_comment_is_detected() {
+        let line = "let x = 1; // diffguard: ignore rust.no_unwrap";
+        let masked = masked_comments(line, Language::Rust);
+        let suppression = parse_suppression_in_comments(line, &masked).expect("should parse");
+        assert!(suppression.suppresses("rust.no_unwrap"));
+    }
+
+    #[test]
+    fn parse_in_python_hash_comment_is_detected() {
+        let line = "x = 1  # diffguard: ignore python.no_print";
+        let masked = masked_comments(line, Language::Python);
+        let suppression = parse_suppression_in_comments(line, &masked).expect("should parse");
+        assert!(suppression.suppresses("python.no_print"));
+    }
+
+    #[test]
+    fn parse_string_then_comment_prefers_comment_directive() {
+        let line =
+            r#"let x = "diffguard: ignore rust.no_unwrap"; // diffguard: ignore rust.no_dbg"#;
+        let masked = masked_comments(line, Language::Rust);
+        let suppression = parse_suppression_in_comments(line, &masked).expect("should parse");
+        assert!(suppression.suppresses("rust.no_dbg"));
+        assert!(!suppression.suppresses("rust.no_unwrap"));
+    }
+
+    #[test]
     fn parse_directive_with_extra_whitespace() {
         let line = "//   diffguard:   ignore   rule.id  ";
         let suppression = parse_suppression(line).expect("should parse");
@@ -424,8 +494,9 @@ mod tests {
     fn tracker_same_line_suppression() {
         let mut tracker = SuppressionTracker::new();
 
-        let effective =
-            tracker.process_line("let x = y.unwrap(); // diffguard: ignore rust.no_unwrap");
+        let line = "let x = y.unwrap(); // diffguard: ignore rust.no_unwrap";
+        let masked = masked_comments(line, Language::Rust);
+        let effective = tracker.process_line(line, &masked);
 
         assert!(effective.is_suppressed("rust.no_unwrap"));
         assert!(!effective.is_suppressed("other.rule"));
@@ -436,15 +507,21 @@ mod tests {
         let mut tracker = SuppressionTracker::new();
 
         // First line has the directive
-        let effective1 = tracker.process_line("// diffguard: ignore-next-line rust.no_dbg");
+        let line1 = "// diffguard: ignore-next-line rust.no_dbg";
+        let masked1 = masked_comments(line1, Language::Rust);
+        let effective1 = tracker.process_line(line1, &masked1);
         assert!(!effective1.is_suppressed("rust.no_dbg")); // Not suppressed on directive line
 
         // Second line should be suppressed
-        let effective2 = tracker.process_line("dbg!(value);");
+        let line2 = "dbg!(value);";
+        let masked2 = masked_comments(line2, Language::Rust);
+        let effective2 = tracker.process_line(line2, &masked2);
         assert!(effective2.is_suppressed("rust.no_dbg"));
 
         // Third line should not be suppressed
-        let effective3 = tracker.process_line("dbg!(other);");
+        let line3 = "dbg!(other);";
+        let masked3 = masked_comments(line3, Language::Rust);
+        let effective3 = tracker.process_line(line3, &masked3);
         assert!(!effective3.is_suppressed("rust.no_dbg"));
     }
 
@@ -453,10 +530,14 @@ mod tests {
         let mut tracker = SuppressionTracker::new();
 
         // Line with both same-line and next-line suppressions
-        let effective1 = tracker.process_line("// diffguard: ignore-next-line rule1");
+        let line1 = "// diffguard: ignore-next-line rule1";
+        let masked1 = masked_comments(line1, Language::Rust);
+        let effective1 = tracker.process_line(line1, &masked1);
         assert!(!effective1.is_suppressed("rule1"));
 
-        let effective2 = tracker.process_line("x = 1 // diffguard: ignore rule2");
+        let line2 = "x = 1 // diffguard: ignore rule2";
+        let masked2 = masked_comments(line2, Language::Rust);
+        let effective2 = tracker.process_line(line2, &masked2);
         assert!(effective2.is_suppressed("rule1")); // From previous line
         assert!(effective2.is_suppressed("rule2")); // From same line
     }
@@ -465,7 +546,9 @@ mod tests {
     fn tracker_wildcard_suppression() {
         let mut tracker = SuppressionTracker::new();
 
-        let effective = tracker.process_line("// diffguard: ignore *");
+        let line = "// diffguard: ignore *";
+        let masked = masked_comments(line, Language::Rust);
+        let effective = tracker.process_line(line, &masked);
         assert!(effective.is_suppressed("any.rule"));
         assert!(effective.is_suppressed("other.rule"));
         assert!(effective.suppress_all);
@@ -476,13 +559,17 @@ mod tests {
         let mut tracker = SuppressionTracker::new();
 
         // Set up a pending next-line suppression
-        tracker.process_line("// diffguard: ignore-next-line rule1");
+        let line1 = "// diffguard: ignore-next-line rule1";
+        let masked1 = masked_comments(line1, Language::Rust);
+        tracker.process_line(line1, &masked1);
 
         // Reset (simulates file change)
         tracker.reset();
 
         // Next line should NOT be suppressed
-        let effective = tracker.process_line("some code");
+        let line2 = "some code";
+        let masked2 = masked_comments(line2, Language::Rust);
+        let effective = tracker.process_line(line2, &masked2);
         assert!(!effective.is_suppressed("rule1"));
     }
 
@@ -491,15 +578,21 @@ mod tests {
         let mut tracker = SuppressionTracker::new();
 
         // Two consecutive next-line directives
-        tracker.process_line("// diffguard: ignore-next-line rule1");
-        let effective1 = tracker.process_line("// diffguard: ignore-next-line rule2");
+        let line1 = "// diffguard: ignore-next-line rule1";
+        let masked1 = masked_comments(line1, Language::Rust);
+        tracker.process_line(line1, &masked1);
+        let line2 = "// diffguard: ignore-next-line rule2";
+        let masked2 = masked_comments(line2, Language::Rust);
+        let effective1 = tracker.process_line(line2, &masked2);
 
         // First directive was "consumed" by the second line,
         // so rule1 applies to line 2
         assert!(effective1.is_suppressed("rule1"));
 
         // Second directive applies to line 3
-        let effective2 = tracker.process_line("actual code");
+        let line3 = "actual code";
+        let masked3 = masked_comments(line3, Language::Rust);
+        let effective2 = tracker.process_line(line3, &masked3);
         assert!(effective2.is_suppressed("rule2"));
         assert!(!effective2.is_suppressed("rule1"));
     }
