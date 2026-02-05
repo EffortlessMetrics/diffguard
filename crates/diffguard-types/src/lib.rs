@@ -1036,6 +1036,7 @@ impl ConfigFile {
                     ),
                     url: Some("https://go.dev/doc/effective_go#errors".to_string()),
                     tags: vec!["safety".to_string()],
+                    test_cases: vec![],
                 },
                 // ============================================================
                 // Kotlin rules
@@ -1058,6 +1059,7 @@ impl ConfigFile {
                     ),
                     url: Some("https://www.slf4j.org/".to_string()),
                     tags: vec!["debug".to_string()],
+                    test_cases: vec![],
                 },
                 // ============================================================
                 // Secret/Credential detection rules
@@ -1080,6 +1082,7 @@ impl ConfigFile {
                     ),
                     url: Some("https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html".to_string()),
                     tags: vec!["security".to_string()],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "secrets.github_token".to_string(),
@@ -1099,6 +1102,7 @@ impl ConfigFile {
                     ),
                     url: Some("https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens".to_string()),
                     tags: vec!["security".to_string()],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "secrets.generic_api_key".to_string(),
@@ -1123,6 +1127,7 @@ impl ConfigFile {
                     ),
                     url: None,
                     tags: vec!["security".to_string()],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "secrets.private_key".to_string(),
@@ -1146,6 +1151,380 @@ impl ConfigFile {
                     ),
                     url: None,
                     tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "secrets.slack_token".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential Slack token detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"xox[baprs]-[0-9a-zA-Z]{10,}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "Slack tokens should never be committed to source control. \
+                        Use environment variables or a secrets manager. If a token was \
+                        accidentally committed, revoke it in your Slack workspace settings."
+                            .to_string(),
+                    ),
+                    url: Some("https://api.slack.com/authentication/token-types".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "secrets.stripe_key".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential Stripe API key detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"(sk|rk)_live_[0-9a-zA-Z]{24,}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "Stripe live API keys should never be committed to source control. \
+                        Use environment variables or a secrets manager. If a key was \
+                        accidentally committed, rotate it immediately in your Stripe dashboard."
+                            .to_string(),
+                    ),
+                    url: Some("https://stripe.com/docs/keys".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "secrets.google_api_key".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential Google API key detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"AIza[0-9A-Za-z\-_]{35}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "Google API keys should not be committed to source control. \
+                        Use environment variables or Google Cloud Secret Manager. \
+                        Restrict the key's allowed APIs and referrers in the Google Cloud Console."
+                            .to_string(),
+                    ),
+                    url: Some("https://cloud.google.com/docs/authentication/api-keys".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "secrets.twilio_key".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential Twilio API key detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"SK[0-9a-fA-F]{32}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "Twilio API keys should not be committed to source control. \
+                        Use environment variables or a secrets manager. If compromised, \
+                        revoke the key in your Twilio console."
+                            .to_string(),
+                    ),
+                    url: Some("https://www.twilio.com/docs/iam/api-keys".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "secrets.npm_token".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential npm token detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"npm_[0-9a-zA-Z]{36}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "npm tokens should not be committed to source control. \
+                        Use environment variables or npm's built-in .npmrc configuration. \
+                        If compromised, revoke the token on npmjs.com."
+                            .to_string(),
+                    ),
+                    url: Some("https://docs.npmjs.com/about-access-tokens".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "secrets.pypi_token".to_string(),
+                    severity: Severity::Error,
+                    message: "Potential PyPI token detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"pypi-[0-9a-zA-Z_-]{50,}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                    ],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: Some(
+                        "PyPI tokens should not be committed to source control. \
+                        Use environment variables or a secrets manager. \
+                        If compromised, revoke the token on pypi.org."
+                            .to_string(),
+                    ),
+                    url: Some("https://pypi.org/help/#apitoken".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "secrets.password_assignment".to_string(),
+                    severity: Severity::Warn,
+                    message: "Potential hardcoded password detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r#"(?i)(password|passwd|pwd)\s*[:=]\s*["'][^"']{8,}["']"#.to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                        "**/*.example*".to_string(),
+                        "**/*test*".to_string(),
+                    ],
+                    ignore_comments: true,
+                    ignore_strings: false,
+                    help: Some(
+                        "Passwords should not be hardcoded in source files. \
+                        Use environment variables, a secrets manager, or secure configuration \
+                        files excluded from version control."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "secrets.jwt_token".to_string(),
+                    severity: Severity::Warn,
+                    message: "Potential JWT token detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                        "**/*test*".to_string(),
+                    ],
+                    ignore_comments: true,
+                    ignore_strings: false,
+                    help: Some(
+                        "JWT tokens should not be hardcoded in source files. \
+                        They may contain sensitive claims or grant unauthorized access. \
+                        Generate tokens dynamically at runtime."
+                            .to_string(),
+                    ),
+                    url: Some("https://jwt.io/introduction".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                // ============================================================
+                // Security-focused rules
+                // ============================================================
+                RuleConfig {
+                    id: "security.hardcoded_ipv4".to_string(),
+                    severity: Severity::Warn,
+                    message: "Hardcoded IPv4 address detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                        "**/*test*".to_string(),
+                        "**/Dockerfile*".to_string(),
+                    ],
+                    ignore_comments: true,
+                    ignore_strings: false,
+                    help: Some(
+                        "Hardcoded IP addresses make code inflexible and can expose internal \
+                        network topology. Use configuration files, environment variables, \
+                        or DNS names instead."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "security.http_url".to_string(),
+                    severity: Severity::Warn,
+                    message: "Non-HTTPS URL detected.".to_string(),
+                    languages: vec![],
+                    patterns: vec![r#"["']http://[^"']+["']"#.to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*.md".to_string(),
+                        "**/README*".to_string(),
+                        "**/*test*".to_string(),
+                        "**/localhost*".to_string(),
+                    ],
+                    ignore_comments: true,
+                    ignore_strings: false,
+                    help: Some(
+                        "Use HTTPS instead of HTTP for secure communication. \
+                        HTTP transmits data in plaintext, making it vulnerable to \
+                        man-in-the-middle attacks."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "js.no_eval".to_string(),
+                    severity: Severity::Error,
+                    message: "Avoid eval() - potential code injection risk.".to_string(),
+                    languages: vec!["javascript".to_string(), "typescript".to_string()],
+                    patterns: vec![r"\beval\s*\(".to_string(), r"\bFunction\s*\(".to_string()],
+                    paths: vec![
+                        "**/*.js".to_string(),
+                        "**/*.ts".to_string(),
+                        "**/*.jsx".to_string(),
+                        "**/*.tsx".to_string(),
+                    ],
+                    exclude_paths: vec!["**/*test*".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "eval() and the Function constructor execute arbitrary code, \
+                        creating severe security risks. Use safer alternatives like \
+                        JSON.parse() for data or template literals for strings."
+                            .to_string(),
+                    ),
+                    url: Some("https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#never_use_direct_eval!".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "python.no_eval".to_string(),
+                    severity: Severity::Error,
+                    message: "Avoid eval()/exec() - potential code injection risk.".to_string(),
+                    languages: vec!["python".to_string()],
+                    patterns: vec![r"\beval\s*\(".to_string(), r"\bexec\s*\(".to_string()],
+                    paths: vec!["**/*.py".to_string()],
+                    exclude_paths: vec!["**/*test*".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "eval() and exec() execute arbitrary Python code, creating severe \
+                        security risks. Use ast.literal_eval() for safe literal evaluation \
+                        or find alternative approaches."
+                            .to_string(),
+                    ),
+                    url: Some("https://docs.python.org/3/library/functions.html#eval".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "ruby.no_eval".to_string(),
+                    severity: Severity::Error,
+                    message: "Avoid eval/instance_eval - potential code injection risk.".to_string(),
+                    languages: vec!["ruby".to_string()],
+                    patterns: vec![r"\beval\s*[\(\s]".to_string(), r"\binstance_eval\s*[\(\s{]".to_string()],
+                    paths: vec!["**/*.rb".to_string(), "**/*.rake".to_string()],
+                    exclude_paths: vec!["**/*test*".to_string(), "**/spec/**".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "eval and instance_eval execute arbitrary Ruby code, creating severe \
+                        security risks. Use safer metaprogramming techniques like \
+                        define_method or public_send."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "php.no_eval".to_string(),
+                    severity: Severity::Error,
+                    message: "Avoid eval()/create_function() - potential code injection risk.".to_string(),
+                    languages: vec!["php".to_string()],
+                    patterns: vec![r"\beval\s*\(".to_string(), r"\bcreate_function\s*\(".to_string()],
+                    paths: vec!["**/*.php".to_string()],
+                    exclude_paths: vec!["**/*test*".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "eval() and create_function() execute arbitrary PHP code, creating \
+                        severe security risks. Use anonymous functions or other safe alternatives."
+                            .to_string(),
+                    ),
+                    url: Some("https://www.php.net/manual/en/function.eval.php".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "shell.no_eval".to_string(),
+                    severity: Severity::Error,
+                    message: "Avoid eval in shell scripts - potential code injection risk.".to_string(),
+                    languages: vec!["shell".to_string()],
+                    patterns: vec![r"\beval\s+".to_string()],
+                    paths: vec![
+                        "**/*.sh".to_string(),
+                        "**/*.bash".to_string(),
+                        "**/*.zsh".to_string(),
+                    ],
+                    exclude_paths: vec!["**/*test*".to_string()],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: Some(
+                        "eval in shell scripts executes arbitrary commands, creating \
+                        severe security risks especially with user input. Use safer \
+                        alternatives like arrays or direct command execution."
+                            .to_string(),
+                    ),
+                    url: None,
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "security.sql_concat".to_string(),
+                    severity: Severity::Warn,
+                    message: "Potential SQL injection - avoid string concatenation in queries.".to_string(),
+                    languages: vec![],
+                    patterns: vec![
+                        r#"(?i)(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*\+.*["']"#.to_string(),
+                        r#"(?i)(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*["'].*\+"#.to_string(),
+                    ],
+                    paths: vec![],
+                    exclude_paths: vec![
+                        "**/*test*".to_string(),
+                        "**/*.md".to_string(),
+                    ],
+                    ignore_comments: true,
+                    ignore_strings: false,
+                    help: Some(
+                        "String concatenation in SQL queries can lead to SQL injection attacks. \
+                        Use parameterized queries or prepared statements instead."
+                            .to_string(),
+                    ),
+                    url: Some("https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html".to_string()),
+                    tags: vec!["security".to_string()],
+                    test_cases: vec![],
                 },
             ],
         }
