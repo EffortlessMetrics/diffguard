@@ -1905,7 +1905,7 @@ pub struct SensorFinding {
     pub message: String,
     /// Location in the source.
     pub location: SensorLocation,
-    /// Stable fingerprint (SHA-256 truncated to 16 hex chars).
+    /// Stable fingerprint (full SHA-256, 64 hex chars).
     pub fingerprint: String,
     /// Optional help text.
     #[serde(default, skip_serializing_if = "Option::is_none")]

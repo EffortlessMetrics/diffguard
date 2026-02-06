@@ -1098,7 +1098,10 @@ fn cmd_check(mut args: CheckArgs) -> Result<i32> {
                                 return Ok(0);
                             }
                         }
-                    }
+                        None => {
+                            // Unexpected runtime error → fail receipt with tool_error
+                            let detail = err.to_string();
+                            let fail_receipt = build_tool_error_receipt(&args, &detail);
 
                     // Could not write any receipt - catastrophic failure
                     eprintln!("diffguard: catastrophic failure: {err}");

@@ -40,7 +40,7 @@ expression: json
         "line": 42,
         "column": 10
       },
-      "fingerprint": "d559ee3767f8ccda",
+      "fingerprint": "d559ee3767f8ccda27b477039711c881d44c366e3bd8ea119649746bdff1a0b8",
       "help": "Use ? operator instead",
       "url": "https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html",
       "data": {
