@@ -9,14 +9,16 @@ use chrono::Utc;
 use clap::{Parser, Subcommand, ValueEnum};
 use tracing::{debug, info};
 
-use diffguard_app::{
+use diffguard_core::{
     render_csv_for_receipt, render_junit_for_receipt, render_sarif_json, render_sensor_json,
     render_tsv_for_receipt, run_check, CheckPlan, RuleMetadata, SensorReportContext,
 };
 use diffguard_domain::compile_rules;
 use diffguard_types::{
     Artifact, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta, FailOn, RuleConfig, Scope,
-    ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+    ToolMeta, Verdict, VerdictCounts, VerdictStatus, CAP_GIT, CAP_STATUS_AVAILABLE,
+    CAP_STATUS_UNAVAILABLE, CHECK_ID_INTERNAL, CODE_TOOL_RUNTIME_ERROR, REASON_MISSING_BASE,
+    REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR,
 };
 
 mod config_loader;
@@ -903,9 +905,9 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
                             let skip_receipt = build_skip_receipt(&args, reason_token, &detail);
                             let mut capabilities = HashMap::new();
                             capabilities.insert(
-                                "git".to_string(),
+                                CAP_GIT.to_string(),
                                 CapabilityStatus {
-                                    status: "unavailable".to_string(),
+                                    status: CAP_STATUS_UNAVAILABLE.to_string(),
                                     reason: Some(detail.clone()),
                                 },
                             );
@@ -1036,7 +1038,7 @@ fn build_tool_error_receipt(args: &CheckArgs, detail: &str) -> CheckReceipt {
             lines_scanned: 0,
         },
         findings: vec![diffguard_types::Finding {
-            rule_id: "diffguard.internal".to_string(),
+            rule_id: CHECK_ID_INTERNAL.to_string(),
             severity: diffguard_types::Severity::Error,
             message: detail.to_string(),
             path: String::new(),
@@ -1051,7 +1053,7 @@ fn build_tool_error_receipt(args: &CheckArgs, detail: &str) -> CheckReceipt {
                 error: 1,
                 ..VerdictCounts::default()
             },
-            reasons: vec!["tool_error".to_string()],
+            reasons: vec![REASON_TOOL_ERROR.to_string()],
         },
         timing: None,
     }
@@ -1066,9 +1068,9 @@ fn build_tool_error_sensor_context(
 ) -> SensorReportContext {
     let mut capabilities = HashMap::new();
     capabilities.insert(
-        "git".to_string(),
+        CAP_GIT.to_string(),
         CapabilityStatus {
-            status: "unavailable".to_string(),
+            status: CAP_STATUS_UNAVAILABLE.to_string(),
             reason: Some(detail.to_string()),
         },
     );
@@ -1089,7 +1091,7 @@ fn build_tool_error_sensor_report(
     detail: &str,
     ctx: &SensorReportContext,
 ) -> diffguard_types::SensorReport {
-    use diffguard_app::compute_fingerprint_raw;
+    use diffguard_core::compute_fingerprint_raw;
 
     let base = args
         .base
@@ -1097,7 +1099,7 @@ fn build_tool_error_sensor_report(
         .unwrap_or_else(|| "origin/main".to_string());
     let head = args.head.clone().unwrap_or_else(|| "HEAD".to_string());
 
-    let fingerprint_input = format!("diffguard.internal:runtime_error:{detail}");
+    let fingerprint_input = format!("{CHECK_ID_INTERNAL}:{CODE_TOOL_RUNTIME_ERROR}:{detail}");
     let fingerprint = compute_fingerprint_raw(&fingerprint_input);
 
     diffguard_types::SensorReport {
@@ -1118,11 +1120,11 @@ fn build_tool_error_sensor_report(
                 error: 1,
                 ..VerdictCounts::default()
             },
-            reasons: vec!["tool_error".to_string()],
+            reasons: vec![REASON_TOOL_ERROR.to_string()],
         },
         findings: vec![diffguard_types::SensorFinding {
-            check_id: "diffguard.internal".to_string(),
-            code: "runtime_error".to_string(),
+            check_id: CHECK_ID_INTERNAL.to_string(),
+            code: CODE_TOOL_RUNTIME_ERROR.to_string(),
             severity: diffguard_types::Severity::Error,
             message: detail.to_string(),
             location: diffguard_types::SensorLocation {
@@ -1223,7 +1225,7 @@ fn cmd_check_inner(
     let (base, head, diff_text) = if args.staged {
         info!("Checking staged changes");
         let diff_text =
-            git_staged_diff(diff_context).context(CockpitSkipReason("no_diff_input"))?;
+            git_staged_diff(diff_context).context(CockpitSkipReason(REASON_NO_DIFF_INPUT))?;
         ("(staged)".to_string(), "HEAD".to_string(), diff_text)
     } else {
         // Merge defaults (CLI overrides config).
@@ -1241,7 +1243,7 @@ fn cmd_check_inner(
 
         info!("Checking diff: {}...{}", base, head);
         let diff_text =
-            git_diff(&base, &head, diff_context).context(CockpitSkipReason("missing_base"))?;
+            git_diff(&base, &head, diff_context).context(CockpitSkipReason(REASON_MISSING_BASE))?;
         (base, head, diff_text)
     };
 
@@ -1333,9 +1335,9 @@ fn cmd_check_inner(
 
         let mut capabilities = HashMap::new();
         capabilities.insert(
-            "git".to_string(),
+            CAP_GIT.to_string(),
             CapabilityStatus {
-                status: "available".to_string(),
+                status: CAP_STATUS_AVAILABLE.to_string(),
                 reason: None,
             },
         );
@@ -1495,8 +1497,8 @@ fn cmd_test(args: TestArgs) -> Result<()> {
     };
 
     if rules.is_empty() {
-        if args.rule.is_some() {
-            bail!("No rules match filter '{}'", args.rule.as_ref().unwrap());
+        if let Some(filter) = &args.rule {
+            bail!("No rules match filter '{}'", filter);
         } else {
             bail!("No rules defined in configuration");
         }
@@ -1824,6 +1826,7 @@ mod tests {
             help: Some("Use ? operator instead.".to_string()),
             url: Some("https://example.com".to_string()),
             tags: vec![],
+            test_cases: vec![],
         };
 
         let output = format_rule_explanation(&rule);
@@ -1856,6 +1859,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let output = format_rule_explanation(&rule);
@@ -1883,6 +1887,7 @@ mod tests {
                 help: None,
                 url: None,
                 tags: vec![],
+                test_cases: vec![],
             },
             RuleConfig {
                 id: "rust.no_dbg".to_string(),
@@ -1897,6 +1902,7 @@ mod tests {
                 help: None,
                 url: None,
                 tags: vec![],
+                test_cases: vec![],
             },
         ];
 
@@ -1920,6 +1926,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         }];
 
         let suggestions = find_similar_rules("rust.no_unwarp", &rules);

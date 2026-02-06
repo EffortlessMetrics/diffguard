@@ -56,7 +56,7 @@ This document defines requirements for achieving comprehensive test coverage acr
 7. THE Test_Suite SHALL include property tests verifying string literal masking works on a best-effort basis for each supported syntax family (Rust + C-like string literal syntax)
 8. THE Test_Suite SHALL include property tests verifying evaluate_lines produces correct finding counts
 
-### Requirement 4: Property-Based Testing for diffguard-app
+### Requirement 4: Property-Based Testing for diffguard-core
 
 **User Story:** As a developer, I want comprehensive property-based tests for the application layer, so that check orchestration is guaranteed correct.
 
@@ -89,7 +89,7 @@ This document defines requirements for achieving comprehensive test coverage acr
 1. THE Test_Suite SHALL kill all mutants in diffguard-types crate
 2. THE Test_Suite SHALL kill all mutants in diffguard-diff crate
 3. THE Test_Suite SHALL kill all mutants in diffguard-domain crate
-4. THE Test_Suite SHALL kill all mutants in diffguard-app crate
+4. THE Test_Suite SHALL kill all mutants in diffguard-core crate
 5. WHEN cargo-mutants identifies surviving mutants, THE Test_Suite SHALL be extended to kill them
 6. THE mutants.toml configuration SHALL exclude only CLI and xtask crates
 

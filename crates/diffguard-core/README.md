@@ -1,4 +1,4 @@
-# diffguard-app
+# diffguard-core
 
 Application layer for the [diffguard](https://crates.io/crates/diffguard) governance linter.
 
@@ -19,7 +19,7 @@ This crate orchestrates the full check workflow: diff parsing → rule compilati
 ## Usage
 
 ```rust
-use diffguard_app::{run_check, CheckPlan, render_markdown_for_receipt};
+use diffguard_core::{run_check, CheckPlan, render_markdown_for_receipt};
 use diffguard_types::{ConfigFile, Scope, FailOn};
 
 // Set up the check plan
@@ -63,7 +63,7 @@ The `CheckRun.exit_code` follows a stable contract:
 ### Markdown
 
 ```rust
-use diffguard_app::render_markdown_for_receipt;
+use diffguard_core::render_markdown_for_receipt;
 
 let md = render_markdown_for_receipt(&receipt);
 // Renders a table with: Severity | Rule | Location | Message | Snippet
@@ -72,7 +72,7 @@ let md = render_markdown_for_receipt(&receipt);
 ### SARIF
 
 ```rust
-use diffguard_app::{render_sarif_for_receipt, SarifReport};
+use diffguard_core::{render_sarif_for_receipt, SarifReport};
 
 let sarif: SarifReport = render_sarif_for_receipt(&receipt);
 let json = serde_json::to_string_pretty(&sarif)?;
@@ -82,7 +82,7 @@ let json = serde_json::to_string_pretty(&sarif)?;
 ### JUnit XML
 
 ```rust
-use diffguard_app::render_junit_for_receipt;
+use diffguard_core::render_junit_for_receipt;
 
 let xml = render_junit_for_receipt(&receipt);
 // JUnit XML for CI/CD systems (Jenkins, GitLab CI, etc.)
@@ -91,7 +91,7 @@ let xml = render_junit_for_receipt(&receipt);
 ### CSV/TSV
 
 ```rust
-use diffguard_app::{render_csv_for_receipt, render_tsv_for_receipt};
+use diffguard_core::{render_csv_for_receipt, render_tsv_for_receipt};
 
 let csv = render_csv_for_receipt(&receipt);
 let tsv = render_tsv_for_receipt(&receipt);

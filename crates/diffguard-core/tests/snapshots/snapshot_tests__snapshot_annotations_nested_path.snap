@@ -1,5 +1,5 @@
 ---
-source: crates/diffguard-app/tests/snapshot_tests.rs
+source: crates/diffguard-core/tests/snapshot_tests.rs
 expression: "annotations.join(\"\\n\")"
 ---
 ::error file=internal/pkg/handlers/auth/middleware/rate_limiter.go,line=157::go.no_panic Avoid panic in library code

@@ -1,40 +1,38 @@
-# CLAUDE.md - diffguard-app
+# CLAUDE.md - diffguard-core
 
 ## Crate Purpose
 
-Application layer that orchestrates the full check workflow: diff parsing → rule evaluation → output rendering. This is the use-case layer between the CLI and domain logic.
+Core engine that orchestrates the full check workflow: diff parsing → rule evaluation → output rendering. This is the linkable engine layer between the CLI and domain logic.
 
 ## Module Structure
 
 | Module | Purpose |
 |--------|---------|
 | `check.rs` | Main orchestration: `run_check()` |
+| `sensor_api.rs` | R2 Library Contract: `run_sensor()` for Cockpit integration |
+| `sensor.rs` | Sensor report rendering (`sensor.report.v1`) |
 | `render.rs` | Markdown table output |
 | `sarif.rs` | SARIF 2.1.0 output for code scanning |
 | `junit.rs` | JUnit XML for CI/CD integration |
 | `csv.rs` | CSV/TSV tabular output |
+| `fingerprint.rs` | SHA-256 fingerprint computation |
 
 ## Key APIs
 
-### Check Orchestration (`check.rs`)
+### Check Orchestration (`check.rs`) — CLI entry point
 
 ```rust
-pub fn run_check(plan: CheckPlan) -> Result<CheckRun>
+pub fn run_check(plan: &CheckPlan, config: &ConfigFile, diff_text: &str) -> Result<CheckRun>
 ```
 
-`CheckPlan` input:
-- `diff: String` - Raw unified diff
-- `rules: Vec<RuleConfig>` - Rule definitions
-- `scope: Scope` - Added or Changed
-- `fail_on: FailOn` - Failure threshold
-- `max_findings: Option<usize>` - Limit findings
-- `include_paths` / `exclude_paths` - Path filtering
+### Sensor API (`sensor_api.rs`) — R2 Library Contract
 
-`CheckRun` output:
-- `receipt: CheckReceipt` - Full JSON-serializable result
-- `markdown: String` - Rendered markdown
-- `annotations: Vec<Annotation>` - GitHub Actions format
-- `exit_code: u8` - Process exit code
+```rust
+pub fn run_sensor(settings: &Settings, substrate: Option<&dyn Substrate>) -> Result<SensorReport>
+```
+
+This is the entry point for BusyBox/integrated cockpit usage.
+The CLI continues using `run_check()` directly.
 
 ### Rendering Functions
 
@@ -79,13 +77,13 @@ These are stable API - do not change:
 ## Testing
 
 ```bash
-cargo test -p diffguard-app             # Unit tests
-cargo insta test -p diffguard-app       # Snapshot tests with review
+cargo test -p diffguard-core             # Unit tests
+cargo insta test -p diffguard-core       # Snapshot tests with review
 ```
 
 ## Dependencies
 
-This crate depends on all three core crates:
+This crate depends on all three domain crates:
 - `diffguard-types` - DTOs
 - `diffguard-diff` - Diff parsing
 - `diffguard-domain` - Rule evaluation

@@ -1,4 +1,4 @@
-//! Property-based tests for diffguard-app
+//! Property-based tests for diffguard-core
 //!
 //! Feature: comprehensive-test-coverage
 //!
@@ -7,7 +7,7 @@
 
 use proptest::prelude::*;
 
-use diffguard_app::render_markdown_for_receipt;
+use diffguard_core::render_markdown_for_receipt;
 use diffguard_types::{
     CheckReceipt, DiffMeta, FailOn, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
     VerdictStatus, CHECK_SCHEMA_V1,

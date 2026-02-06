@@ -1,5 +1,5 @@
 ---
-source: crates/diffguard-app/src/sarif.rs
+source: crates/diffguard-core/src/sarif.rs
 expression: json
 ---
 {

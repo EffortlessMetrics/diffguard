@@ -20,8 +20,8 @@ diffguard follows clean architecture principles with dependency inversion:
                                     | depends on
                                     v
     +-----------------------------------------------------------------+
-    |                      diffguard-app                              |
-    |  - Use-case orchestration (run_check)                          |
+    |                      diffguard-core                             |
+    |  - Use-case orchestration (run_check, run_sensor)              |
     |  - Verdict computation                                          |
     |  - Markdown/annotation rendering                                |
     +-----------------------------------------------------------------+
@@ -53,8 +53,8 @@ diffguard follows clean architecture principles with dependency inversion:
 
 Dependencies flow **downward only**:
 
-- CLI depends on app, domain, diff, types
-- App depends on domain, diff, types
+- CLI depends on core, domain, diff, types
+- Core depends on domain, diff, types
 - Domain depends on types
 - Diff depends on types
 - Types depends on nothing (except serde/schemars)
@@ -125,9 +125,9 @@ This ensures:
 
 **I/O:** None (operates on in-memory data)
 
-### `diffguard-app`
+### `diffguard-core`
 
-**Purpose:** Application-level orchestration.
+**Purpose:** Core engine and application-level orchestration.
 
 **Modules:**
 
@@ -136,18 +136,40 @@ This ensures:
    - Coordinates parsing, evaluation, verdict
    - Computes exit codes
 
-2. **render.rs** - Output formatting
+2. **sensor_api.rs** - R2 Library Contract
+   - `run_sensor(settings, substrate) -> SensorReport`
+   - Entry point for Cockpit/BusyBox integration
+
+3. **sensor.rs** - Sensor report rendering
+   - `render_sensor_report(receipt, context) -> SensorReport`
+   - Produces `sensor.report.v1` envelope
+
+4. **render.rs** - Output formatting
    - `render_markdown_for_receipt(receipt) -> String`
    - GitHub annotation formatting
 
-3. **sarif.rs** - SARIF output
+5. **sarif.rs** - SARIF output
    - `render_sarif_for_receipt(receipt) -> SarifReport`
+
+6. **junit.rs** - JUnit XML output
+   - `render_junit_for_receipt(receipt) -> String`
+
+7. **csv.rs** - CSV/TSV output
+   - `render_csv_for_receipt(receipt) -> String`
+   - `render_tsv_for_receipt(receipt) -> String`
+
+8. **fingerprint.rs** - Finding fingerprints
+   - `compute_fingerprint(finding) -> String` (SHA-256, 64 hex chars)
+   - Stable identifier for deduplication and tracking
 
 **Key types:**
 - `CheckPlan` - Input parameters for a check run
 - `CheckRun` - Output including receipt, markdown, annotations, exit code
+- `Settings` - Consolidated input for `run_sensor()`
+- `Substrate` - Optional shared substrate trait from Cockpit runtime
+- `SensorReportContext` - Timing, capabilities, artifacts for sensor envelope
 
-**Dependencies:** All domain crates, `globset` for path filtering
+**Dependencies:** All domain crates, `globset` for path filtering, `sha2`/`hex` for fingerprinting
 
 **I/O:** None (returns data for CLI to write)
 
@@ -157,19 +179,27 @@ This ensures:
 
 **Responsibilities:**
 - Parse CLI arguments with `clap`
-- Load and merge configuration files
+- Load and merge configuration files (with include resolution and env expansion)
 - Invoke `git diff` subprocess
-- Write output files (JSON, Markdown)
+- Write output files (JSON, Markdown, SARIF, JUnit, CSV/TSV)
 - Print GitHub annotations to stdout
 - Set exit code
+- Structured logging via `tracing` (`--verbose`, `--debug`)
+
+**Key modules:**
+- `main.rs` - CLI definition, command handlers
+- `config_loader.rs` - Config loading with include resolution and circular detection
+- `env_expand.rs` - Environment variable expansion (`${VAR}`, `${VAR:-default}`)
+- `presets.rs` - Starter configuration generators
 
 **Key functions:**
 - `cmd_check(args)` - Main check workflow
 - `cmd_rules(args)` - Print effective rules
-- `load_config(path, no_default_rules)` - Config loading with merging
+- `load_config_with_includes(path, expand_fn)` - Config loading with include merge
+- `expand_env_vars(text)` - Environment variable expansion
 - `git_diff(base, head, context)` - Git subprocess
 
-**Dependencies:** All crates, `clap`, `anyhow`, `toml`, `serde_json`
+**Dependencies:** All crates, `clap`, `anyhow`, `toml`, `serde_json`, `tracing`, `chrono`
 
 **I/O:** Yes (this is the I/O boundary)
 
@@ -186,6 +216,7 @@ This ensures:
 **Commands:**
 - `cargo run -p xtask -- ci` - Full CI suite
 - `cargo run -p xtask -- schema` - Generate JSON schemas
+- `cargo run -p xtask -- conform` - Run conformance tests (schema validation for all output formats)
 
 ## Ports and Adapters Pattern
 
@@ -249,11 +280,11 @@ Each crate has appropriate test coverage:
 
 | Crate | Unit Tests | Integration | Snapshot | Property | Fuzz |
 |-------|------------|-------------|----------|----------|------|
-| types | Yes | - | - | - | - |
+| types | Yes | - | - | Yes | - |
 | diff | Yes | - | Yes | Yes | Yes |
 | domain | Yes | - | - | Yes | Yes |
-| app | Yes | Yes | Yes | - | - |
-| CLI | - | Yes | - | - | - |
+| core | Yes | Yes | Yes | Yes | - |
+| CLI | Yes | Yes (BDD) | - | - | - |
 
 **Test locations:**
 - Unit tests: `#[cfg(test)]` modules in source files

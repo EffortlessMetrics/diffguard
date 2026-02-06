@@ -1,14 +1,14 @@
 [package]
-name = "diffguard-app"
+name = "diffguard-core"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Application layer for diffguard governance linter"
+description = "Core engine for diffguard governance linter"
 repository.workspace = true
 homepage.workspace = true
-documentation = "https://docs.rs/diffguard-app"
+documentation = "https://docs.rs/diffguard-core"
 keywords.workspace = true
 categories.workspace = true
 readme = "README.md"

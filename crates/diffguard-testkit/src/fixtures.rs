@@ -19,6 +19,7 @@ pub mod sample_configs {
     /// An empty configuration with default values.
     pub fn empty() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![],
         }
@@ -32,6 +33,7 @@ pub mod sample_configs {
     /// A minimal configuration with one rule.
     pub fn minimal() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![RuleConfig {
                 id: "test.rule".to_string(),
@@ -46,6 +48,7 @@ pub mod sample_configs {
                 help: None,
                 url: None,
                 tags: vec![],
+                test_cases: vec![],
             }],
         }
     }
@@ -53,6 +56,7 @@ pub mod sample_configs {
     /// A Rust-focused configuration.
     pub fn rust_focused() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults {
                 base: Some("origin/main".to_string()),
                 head: Some("HEAD".to_string()),
@@ -75,6 +79,7 @@ pub mod sample_configs {
                     help: None,
                     url: None,
                     tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "rust.no_dbg".to_string(),
@@ -89,6 +94,7 @@ pub mod sample_configs {
                     help: None,
                     url: None,
                     tags: vec![],
+                    test_cases: vec![],
                 },
             ],
         }
@@ -97,6 +103,7 @@ pub mod sample_configs {
     /// A JavaScript/TypeScript-focused configuration.
     pub fn javascript_focused() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![
                 RuleConfig {
@@ -121,6 +128,7 @@ pub mod sample_configs {
                     help: None,
                     url: None,
                     tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "js.no_debugger".to_string(),
@@ -135,6 +143,7 @@ pub mod sample_configs {
                     help: None,
                     url: None,
                     tags: vec![],
+                    test_cases: vec![],
                 },
             ],
         }
@@ -143,6 +152,7 @@ pub mod sample_configs {
     /// A Python-focused configuration.
     pub fn python_focused() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![
                 RuleConfig {
@@ -158,6 +168,7 @@ pub mod sample_configs {
                     help: None,
                     url: None,
                     tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "python.no_pdb".to_string(),
@@ -176,6 +187,7 @@ pub mod sample_configs {
                     help: None,
                     url: None,
                     tags: vec![],
+                    test_cases: vec![],
                 },
             ],
         }
@@ -189,6 +201,7 @@ pub mod sample_configs {
         rules.extend(python_focused().rule);
 
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: rules,
         }
@@ -197,6 +210,7 @@ pub mod sample_configs {
     /// A configuration with all severity levels.
     pub fn all_severities() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![
                 RuleConfig {
@@ -212,6 +226,7 @@ pub mod sample_configs {
                     help: None,
                     url: None,
                     tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "test.warn".to_string(),
@@ -226,6 +241,7 @@ pub mod sample_configs {
                     help: None,
                     url: None,
                     tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "test.error".to_string(),
@@ -240,6 +256,7 @@ pub mod sample_configs {
                     help: None,
                     url: None,
                     tags: vec![],
+                    test_cases: vec![],
                 },
             ],
         }

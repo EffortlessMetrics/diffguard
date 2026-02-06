@@ -8,7 +8,7 @@ The testing architecture follows the crate dependency hierarchy:
 - **diffguard-types**: DTO serialization and schema validation
 - **diffguard-diff**: Unified diff parsing
 - **diffguard-domain**: Rule compilation, evaluation, and preprocessing
-- **diffguard-app**: Check orchestration and rendering
+- **diffguard-core**: Check orchestration and rendering
 - **diffguard (CLI)**: End-to-end integration tests
 
 ## Architecture
@@ -121,14 +121,14 @@ impl TestRepo {
 Snapshot tests are placed in the `tests/snapshots/` directory within each crate:
 
 ```
-crates/diffguard-app/tests/snapshots/
+crates/diffguard-core/tests/snapshots/
 ├── render__markdown_with_findings.snap
 ├── render__markdown_no_findings.snap
 ├── render__verdict_rendering.snap
 └── check__receipt_structure.snap
 ```
 
-The pattern `crates/diffguard-app/tests/snapshots/*.snap` is used for all app-layer snapshots.
+The pattern `crates/diffguard-core/tests/snapshots/*.snap` is used for all app-layer snapshots.
 
 ## Data Models
 
@@ -472,6 +472,6 @@ fn given_unwrap_in_diff_when_check_then_exit_2() {
 | diffguard-types | 2 (round-trip, schema) | 1 (toml parse) | Enum tests | - |
 | diffguard-diff | 5 (parse, scope, stats, detect, rename) | 1 (unified_diff_parser) | Edge cases | - |
 | diffguard-domain | 6 (compile, applies_to, detect, preprocess) | 2 (preprocess, rule_matcher) | Language tests | - |
-| diffguard-app | 4 (check, exit, markdown, annotations) | 1 (evaluate_lines) | Render tests | - |
+| diffguard-core | 4 (check, exit, markdown, annotations) | 1 (evaluate_lines) | Render tests | - |
 | diffguard (CLI) | - | - | - | BDD tests |
 

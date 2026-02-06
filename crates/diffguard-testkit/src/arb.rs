@@ -297,6 +297,7 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     help: None,
                     url: None,
                     tags,
+                    test_cases: vec![],
                 }
             },
         )
@@ -318,6 +319,7 @@ pub fn arb_minimal_rule_config() -> impl Strategy<Value = RuleConfig> {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         },
     )
 }
@@ -354,7 +356,11 @@ pub fn arb_config_file() -> impl Strategy<Value = ConfigFile> {
         arb_defaults(),
         prop::collection::vec(arb_rule_config(), 0..MAX_FILES),
     )
-        .prop_map(|(defaults, rule)| ConfigFile { defaults, rule })
+        .prop_map(|(defaults, rule)| ConfigFile {
+            includes: vec![],
+            defaults,
+            rule,
+        })
 }
 
 // =============================================================================

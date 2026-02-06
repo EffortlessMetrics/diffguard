@@ -208,6 +208,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         }
     }
 

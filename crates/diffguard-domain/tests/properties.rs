@@ -1018,6 +1018,7 @@ fn make_rule_config(id: &str, patterns: Vec<String>) -> RuleConfig {
         help: None,
         url: None,
         tags: vec![],
+        test_cases: vec![],
     }
 }
 
@@ -1036,6 +1037,7 @@ fn make_rule_config_with_paths(id: &str, patterns: Vec<String>, paths: Vec<Strin
         help: None,
         url: None,
         tags: vec![],
+        test_cases: vec![],
     }
 }
 
@@ -1058,6 +1060,7 @@ fn make_rule_config_with_exclude_paths(
         help: None,
         url: None,
         tags: vec![],
+        test_cases: vec![],
     }
 }
 
@@ -1466,6 +1469,7 @@ fn valid_rule_config_strategy() -> impl Strategy<Value = RuleConfig> {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         })
 }
 
@@ -1590,6 +1594,7 @@ proptest! {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let compiled = compile_rules(&[rule]).expect("rule should compile");
@@ -1828,6 +1833,7 @@ proptest! {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let compiled = compile_rules(&[config]).expect("rule should compile");

@@ -1,5 +1,5 @@
 ---
-source: crates/diffguard-app/src/sensor.rs
+source: crates/diffguard-core/src/sensor.rs
 expression: json
 ---
 {

@@ -77,6 +77,31 @@ You can point `diffguard` at a config file:
 diffguard check --config diffguard.toml
 ```
 
+### Environment Variables
+
+Config files support environment variable expansion:
+
+```toml
+[[rule]]
+id = "custom.check"
+paths = ["${PROJECT_ROOT}/src/**/*.rs"]
+message = "Check for ${PROJECT_NAME:-myproject}"
+```
+
+### Config Includes
+
+Compose configs from multiple files:
+
+```toml
+includes = ["base-rules.toml", "team-overrides.toml"]
+
+[[rule]]
+id = "project.specific"
+severity = "error"
+message = "Project-specific check"
+patterns = ["FIXME"]
+```
+
 ### Inline Suppressions
 
 Suppress specific findings with inline comments:
@@ -107,6 +132,7 @@ diffguard supports multiple output formats for different use cases:
 | SARIF | `--sarif` | GitHub Advanced Security, code scanning |
 | JUnit | `--junit` | CI/CD integration (Jenkins, GitLab CI) |
 | CSV/TSV | `--csv` / `--tsv` | Spreadsheet import, data analysis |
+| Sensor | `--sensor` | R2 Library Contract envelope (`sensor.report.v1`) |
 
 ## GitHub Actions example
 
@@ -136,7 +162,7 @@ This repo uses a clean, microcrate workspace layout with strict dependency direc
 diffguard (CLI)          I/O boundary: clap, file I/O, git subprocess
        │
        ▼
-diffguard-app            Orchestration: run_check(), render outputs
+diffguard-core           Engine: run_check(), run_sensor(), render outputs
        │
        ├────────────────────────┐
        ▼                        ▼
@@ -154,10 +180,10 @@ diffguard-domain         diffguard-diff
 | `diffguard-types` | Serializable DTOs, severity/scope enums, built-in presets |
 | `diffguard-diff` | Parse unified diff format, detect binary/submodule/rename |
 | `diffguard-domain` | Compile rules, evaluate lines, preprocess comments/strings |
-| `diffguard-app` | Orchestrate checks, compute verdicts, render outputs |
+| `diffguard-core` | Engine: check runs, sensor reports, verdicts, render outputs |
 | `diffguard` | CLI binary: arg parsing, config loading, git invocation |
 | `diffguard-testkit` | Shared test utilities (proptest strategies, fixtures) |
-| `xtask` | Repo automation (`ci`, `schema`) |
+| `xtask` | Repo automation (`ci`, `schema`, `conform`) |
 
 ## Development
 
@@ -173,6 +199,9 @@ cargo run -p xtask -- ci
 
 # Generate JSON schemas
 cargo run -p xtask -- schema
+
+# Run conformance tests
+cargo run -p xtask -- conform
 ```
 
 ### Testing

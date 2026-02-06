@@ -2,7 +2,7 @@
 resolver = "2"
 members = [
   "crates/diffguard",
-  "crates/diffguard-app",
+  "crates/diffguard-core",
   "crates/diffguard-diff",
   "crates/diffguard-domain",
   "crates/diffguard-testkit",

@@ -185,6 +185,7 @@ mod tests {
     #[test]
     fn validates_empty_config() {
         let config = ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![],
         };

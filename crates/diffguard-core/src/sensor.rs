@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use diffguard_types::{
     Artifact, CapabilityStatus, CheckReceipt, RunMeta, SensorFinding, SensorLocation, SensorReport,
-    SENSOR_REPORT_SCHEMA_V1,
+    CHECK_ID_PATTERN, SENSOR_REPORT_SCHEMA_V1,
 };
 
 use crate::fingerprint::compute_fingerprint;
@@ -43,7 +43,7 @@ pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -
         .map(|f| {
             let metadata = ctx.rule_metadata.get(&f.rule_id);
             SensorFinding {
-                check_id: "diffguard.pattern".to_string(),
+                check_id: CHECK_ID_PATTERN.to_string(),
                 code: f.rule_id.clone(),
                 severity: f.severity,
                 message: f.message.clone(),

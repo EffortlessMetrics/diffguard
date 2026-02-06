@@ -1,5 +1,5 @@
 ---
-source: crates/diffguard-app/tests/snapshot_tests.rs
+source: crates/diffguard-core/tests/snapshot_tests.rs
 expression: "annotations.join(\"\\n\")"
 ---
 

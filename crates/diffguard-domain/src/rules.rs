@@ -186,6 +186,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         }
     }
 
@@ -383,6 +384,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -422,6 +424,7 @@ mod tests {
                 help: None,
                 url: None,
                 tags: vec![],
+                test_cases: vec![],
             },
             RuleConfig {
                 id: "rule.second".to_string(),
@@ -436,6 +439,7 @@ mod tests {
                 help: None,
                 url: None,
                 tags: vec![],
+                test_cases: vec![],
             },
         ];
 
@@ -464,6 +468,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -494,6 +499,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -526,6 +532,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -558,6 +565,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -597,6 +605,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -629,6 +638,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -661,6 +671,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -690,6 +701,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -719,6 +731,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -748,6 +761,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -777,6 +791,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -804,6 +819,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -842,6 +858,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -869,6 +886,7 @@ mod tests {
             help: None,
             url: None,
             tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();

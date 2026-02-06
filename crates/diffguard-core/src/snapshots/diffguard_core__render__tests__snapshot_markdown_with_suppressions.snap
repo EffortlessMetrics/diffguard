@@ -1,5 +1,5 @@
 ---
-source: crates/diffguard-app/src/render.rs
+source: crates/diffguard-core/src/render.rs
 expression: md
 ---
 ## diffguard — WARN

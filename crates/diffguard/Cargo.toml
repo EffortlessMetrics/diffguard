@@ -49,7 +49,7 @@ globset.workspace = true
 # local
 
 diffguard-types = { version = "0.1", path = "../diffguard-types" }
-diffguard-app = { version = "0.1", path = "../diffguard-app" }
+diffguard-core = { version = "0.1", path = "../diffguard-core" }
 diffguard-domain = { version = "0.1", path = "../diffguard-domain" }
 
 [dev-dependencies]

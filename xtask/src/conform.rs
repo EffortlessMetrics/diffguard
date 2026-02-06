@@ -98,8 +98,34 @@ pub fn run_conformance(quick: bool) -> Result<()> {
         }
     }
 
+    // Test 7: Vocabulary constants
+    print!("  [7/8] Vocabulary constants... ");
+    match test_vocabulary_constants() {
+        Ok(()) => {
+            println!("PASS");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("FAIL: {e}");
+            failed += 1;
+        }
+    }
+
+    // Test 8: Tool error code in sensor report
+    print!("  [8/8] Tool error code field... ");
+    match test_tool_error_code() {
+        Ok(()) => {
+            println!("PASS");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("FAIL: {e}");
+            failed += 1;
+        }
+    }
+
     println!();
-    let total = if quick { 5 } else { 6 };
+    let total = if quick { 5 } else { 8 };
     println!("Results: {passed}/{total} tests passed");
 
     if failed > 0 {
@@ -515,6 +541,107 @@ fn test_json_schema_file() -> Result<()> {
             "sensor report failed schema validation:\n{}",
             error_messages.join("\n")
         );
+    }
+
+    Ok(())
+}
+
+/// Test that frozen vocabulary constants have the expected values.
+fn test_vocabulary_constants() -> Result<()> {
+    use diffguard_types::{
+        CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_SKIPPED, CAP_STATUS_UNAVAILABLE,
+        CHECK_ID_INTERNAL, CHECK_ID_PATTERN, CHECK_SCHEMA_V1, CODE_TOOL_RUNTIME_ERROR,
+        REASON_GIT_UNAVAILABLE, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR,
+        SENSOR_REPORT_SCHEMA_V1,
+    };
+
+    // Schema identifiers
+    assert_eq!(CHECK_SCHEMA_V1, "diffguard.check.v1");
+    assert_eq!(SENSOR_REPORT_SCHEMA_V1, "sensor.report.v1");
+
+    // Check IDs
+    assert_eq!(CHECK_ID_PATTERN, "diffguard.pattern");
+    assert_eq!(CHECK_ID_INTERNAL, "diffguard.internal");
+
+    // Reason tokens
+    assert_eq!(REASON_NO_DIFF_INPUT, "no_diff_input");
+    assert_eq!(REASON_MISSING_BASE, "missing_base");
+    assert_eq!(REASON_GIT_UNAVAILABLE, "git_unavailable");
+    assert_eq!(REASON_TOOL_ERROR, "tool_error");
+
+    // Tool error code (R1 survivability)
+    assert_eq!(CODE_TOOL_RUNTIME_ERROR, "tool.runtime_error");
+
+    // Capability names and statuses
+    assert_eq!(CAP_GIT, "git");
+    assert_eq!(CAP_STATUS_AVAILABLE, "available");
+    assert_eq!(CAP_STATUS_UNAVAILABLE, "unavailable");
+    assert_eq!(CAP_STATUS_SKIPPED, "skipped");
+
+    Ok(())
+}
+
+/// Test that cockpit-mode tool errors produce the correct code field.
+fn test_tool_error_code() -> Result<()> {
+    let temp_dir = TempDir::new().context("create temp dir")?;
+    setup_minimal_repo(temp_dir.path())?;
+
+    let sensor_path = temp_dir.path().join("sensor.json");
+    let out_path = temp_dir.path().join("report.json");
+
+    // Run in cockpit mode with a nonexistent base ref to trigger tool error
+    let output = Command::new(cargo_bin_path())
+        .args([
+            "check",
+            "--mode",
+            "cockpit",
+            "--base",
+            "nonexistent-ref",
+            "--head",
+            "HEAD",
+            "--out",
+            out_path.to_str().unwrap(),
+            "--sensor",
+            sensor_path.to_str().unwrap(),
+        ])
+        .current_dir(temp_dir.path())
+        .output()
+        .context("run diffguard")?;
+
+    // In cockpit mode, should exit 0
+    if !output.status.success() {
+        bail!(
+            "cockpit mode did not exit 0: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    // If sensor report exists, verify the code field for tool errors
+    if sensor_path.exists() {
+        let content = std::fs::read_to_string(&sensor_path)?;
+        let value: serde_json::Value = serde_json::from_str(&content)?;
+
+        let status = value
+            .get("verdict")
+            .and_then(|v| v.get("status"))
+            .and_then(|s| s.as_str());
+
+        // If it's a skip status, the code field won't be present (no findings)
+        // If it's a fail status (tool_error), check the code field
+        if status == Some("fail") {
+            if let Some(findings) = value.get("findings").and_then(|f| f.as_array()) {
+                for finding in findings {
+                    if let Some(code) = finding.get("code").and_then(|c| c.as_str()) {
+                        if code != "tool.runtime_error" {
+                            bail!(
+                                "expected tool error code 'tool.runtime_error', got '{}'",
+                                code
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     Ok(())

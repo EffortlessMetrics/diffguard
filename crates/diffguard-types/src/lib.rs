@@ -7,8 +7,31 @@ use std::collections::HashMap;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+// ── Schema Identifiers ─────────────────────────────────────────
 pub const CHECK_SCHEMA_V1: &str = "diffguard.check.v1";
 pub const SENSOR_REPORT_SCHEMA_V1: &str = "sensor.report.v1";
+
+// ── Frozen Vocabulary ──────────────────────────────────────────
+// Check IDs
+pub const CHECK_ID_PATTERN: &str = "diffguard.pattern";
+pub const CHECK_ID_INTERNAL: &str = "diffguard.internal";
+
+// Reason tokens (snake_case)
+pub const REASON_NO_DIFF_INPUT: &str = "no_diff_input";
+pub const REASON_MISSING_BASE: &str = "missing_base";
+pub const REASON_GIT_UNAVAILABLE: &str = "git_unavailable";
+pub const REASON_TOOL_ERROR: &str = "tool_error";
+
+// Tool error code (R1 survivability)
+pub const CODE_TOOL_RUNTIME_ERROR: &str = "tool.runtime_error";
+
+// Capability names
+pub const CAP_GIT: &str = "git";
+
+// Capability statuses
+pub const CAP_STATUS_AVAILABLE: &str = "available";
+pub const CAP_STATUS_UNAVAILABLE: &str = "unavailable";
+pub const CAP_STATUS_SKIPPED: &str = "skipped";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]

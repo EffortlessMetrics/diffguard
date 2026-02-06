@@ -32,7 +32,7 @@ This document describes the technical design and internal workings of diffguard.
             | Vec<Finding>
             v
     +---------------+
-    | Verdict       |  diffguard-app (aggregate, compute exit code)
+    | Verdict       |  diffguard-core (aggregate, compute exit code)
     +---------------+
             |
             v
@@ -125,7 +125,7 @@ applies = path_in_include_globs(path)
        && (rule.languages.is_empty() || language in rule.languages)
 ```
 
-### 5. Verdict Computation (`diffguard-app/check.rs`)
+### 5. Verdict Computation (`diffguard-core/check.rs`)
 
 The verdict aggregates findings into counts and determines the final status:
 
@@ -152,9 +152,9 @@ exit 0
 
 ## Suppression Model
 
-*(Planned for future release)*
-
-Suppressions allow developers to acknowledge findings without fixing them:
+Suppressions allow developers to acknowledge findings without fixing them.
+Suppressed findings are tracked in `VerdictCounts.suppressed` but do not affect
+the exit code or verdict status.
 
 ```rust
 let x = risky_call().unwrap(); // diffguard: ignore rust.no_unwrap
@@ -163,7 +163,57 @@ let x = risky_call().unwrap(); // diffguard: ignore rust.no_unwrap
 Suppression patterns:
 - `diffguard: ignore <rule_id>` - Suppress specific rule on this line
 - `diffguard: ignore-next-line <rule_id>` - Suppress on the following line
+- `diffguard: ignore *` / `diffguard: ignore-all` - Suppress all rules (wildcard)
+- Multiple rules can be comma-separated: `diffguard: ignore rule1, rule2`
 - Suppressions MUST appear in the diff to take effect (no legacy suppressions)
+
+## Configuration System
+
+### Environment Variable Expansion
+
+Config file content is expanded before TOML parsing. Two forms are supported:
+
+- `${VAR}` - Replaced with the value of `VAR`; errors if unset
+- `${VAR:-default}` - Replaced with the value of `VAR`, or `"default"` if unset/empty
+
+```toml
+[[rule]]
+id = "custom.check"
+paths = ["${PROJECT_ROOT}/src/**/*.rs"]
+message = "Custom check for ${PROJECT_NAME:-myproject}"
+```
+
+### Config Includes
+
+Config files can include other config files via the `includes` directive:
+
+```toml
+includes = ["base-rules.toml", "team-overrides.toml"]
+
+[[rule]]
+id = "project.specific"
+# ...
+```
+
+Include resolution:
+- Paths are relative to the including file's directory
+- Rules are merged by ID (later definitions override earlier ones)
+- Circular includes are detected and rejected
+- Maximum nesting depth: 10 levels
+
+### Rule Tagging
+
+Rules can be tagged for selective filtering:
+
+```toml
+[[rule]]
+id = "rust.no_unwrap"
+tags = ["safety", "production"]
+```
+
+CLI filtering:
+- `--only-tags safety` - Only run rules tagged `safety`
+- `--enable-tags debug` / `--disable-tags style` - Toggle rules by tag
 
 ## Language Detection
 
@@ -218,8 +268,14 @@ Unknown extensions return `None`, which:
   ],
   "verdict": {
     "status": "fail",
-    "counts": { "info": 0, "warn": 0, "error": 1 },
+    "counts": { "info": 0, "warn": 0, "error": 1, "suppressed": 0 },
     "reasons": ["1 error(s)"]
+  },
+  "timing": {
+    "total_ms": 12,
+    "diff_parse_ms": 2,
+    "rule_compile_ms": 3,
+    "evaluation_ms": 7
   }
 }
 ```
@@ -251,6 +307,46 @@ Annotations use the workflow command format recognized by GitHub Actions:
 ::error file=src/lib.rs,line=42::rust.no_unwrap Avoid unwrap/expect in production code.
 ::warning file=src/main.rs,line=10::rust.no_dbg Remove dbg!/println! before merging.
 ```
+
+## Sensor Report
+
+The sensor report (`sensor.report.v1`) is the R2 Library Contract output envelope
+for integrated Cockpit/BusyBox usage. It wraps the check receipt with additional
+metadata:
+
+```json
+{
+  "schema": "sensor.report.v1",
+  "tool": { "name": "diffguard", "version": "0.2.0" },
+  "run": {
+    "check_id": "diffguard.pattern",
+    "status": "fail",
+    "started_at": "2026-02-06T10:00:00Z",
+    "ended_at": "2026-02-06T10:00:01Z",
+    "duration_ms": 1200
+  },
+  "capabilities": {
+    "git": { "status": "available" }
+  },
+  "findings": [ ... ],
+  "artifacts": [ ... ]
+}
+```
+
+The `run_sensor()` entry point in `sensor_api.rs` accepts a `Settings` struct
+and optional `Substrate` trait object, returning a `SensorReport`.
+
+## Finding Fingerprints
+
+Each finding receives a stable SHA-256 fingerprint computed from
+`rule_id:path:line:match_text`. This 64-character hex string enables:
+
+- Deduplication across runs
+- Tracking finding lifecycle (new, existing, resolved)
+- Correlation between sensor reports
+
+The fingerprint is intentionally independent of severity, message, and snippet
+so that cosmetic changes to rule metadata do not alter identity.
 
 ## Budgets and Noise Control
 
