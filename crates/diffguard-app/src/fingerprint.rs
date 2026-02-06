@@ -8,12 +8,19 @@ use sha2::{Digest, Sha256};
 
 /// Computes a stable fingerprint for a finding.
 ///
-/// The fingerprint is a SHA-256 hash of `rule_id:path:line:match_text`,
-/// truncated to 16 hex characters (8 bytes).
+/// The fingerprint is a full SHA-256 hash of `rule_id:path:line:match_text`
+/// (64 hex characters / 32 bytes).
 pub fn compute_fingerprint(f: &Finding) -> String {
     let input = format!("{}:{}:{}:{}", f.rule_id, f.path, f.line, f.match_text);
+    compute_fingerprint_raw(&input)
+}
+
+/// Computes a full SHA-256 fingerprint from an arbitrary input string.
+///
+/// Returns 64 hex characters (32 bytes).
+pub fn compute_fingerprint_raw(input: &str) -> String {
     let hash = Sha256::digest(input.as_bytes());
-    hex::encode(&hash[..8])
+    hex::encode(hash)
 }
 
 #[cfg(test)]
@@ -35,10 +42,10 @@ mod tests {
     }
 
     #[test]
-    fn fingerprint_is_16_hex_chars() {
+    fn fingerprint_is_64_hex_chars() {
         let f = test_finding();
         let fp = compute_fingerprint(&f);
-        assert_eq!(fp.len(), 16);
+        assert_eq!(fp.len(), 64);
         assert!(fp.chars().all(|c| c.is_ascii_hexdigit()));
     }
 
@@ -111,6 +118,13 @@ mod tests {
         let f = test_finding();
         let fp = compute_fingerprint(&f);
         // This ensures the fingerprint algorithm doesn't change unexpectedly
-        insta::assert_snapshot!(fp, @"d559ee3767f8ccda");
+        insta::assert_snapshot!(fp, @"d559ee3767f8ccda27b477039711c881d44c366e3bd8ea119649746bdff1a0b8");
+    }
+
+    #[test]
+    fn compute_fingerprint_raw_produces_64_hex() {
+        let fp = super::compute_fingerprint_raw("test:input");
+        assert_eq!(fp.len(), 64);
+        assert!(fp.chars().all(|c| c.is_ascii_hexdigit()));
     }
 }

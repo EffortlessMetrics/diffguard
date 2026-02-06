@@ -164,10 +164,11 @@ fn filter_rule_by_tags(rule: &diffguard_types::RuleConfig, plan: &CheckPlan) -> 
 
     // If disable_tags is specified, exclude rules that have any matching tag
     if !plan.disable_tags.is_empty() {
-        let has_disabled_tag = rule
-            .tags
-            .iter()
-            .any(|t| plan.disable_tags.iter().any(|dt| dt.eq_ignore_ascii_case(t)));
+        let has_disabled_tag = rule.tags.iter().any(|t| {
+            plan.disable_tags
+                .iter()
+                .any(|dt| dt.eq_ignore_ascii_case(t))
+        });
         if has_disabled_tag {
             return false;
         }

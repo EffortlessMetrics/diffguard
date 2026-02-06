@@ -60,11 +60,7 @@ where
         bail!("Circular include detected: '{}'", path.display());
     }
 
-    debug!(
-        "Loading config from '{}' (depth {})",
-        path.display(),
-        depth
-    );
+    debug!("Loading config from '{}' (depth {})", path.display(), depth);
 
     // Read and parse the config file
     let text = std::fs::read_to_string(path)
@@ -72,8 +68,8 @@ where
 
     let expanded = expand_env(&text)?;
 
-    let config: ConfigFile = toml::from_str(&expanded)
-        .with_context(|| format!("parse config '{}'", path.display()))?;
+    let config: ConfigFile =
+        toml::from_str(&expanded).with_context(|| format!("parse config '{}'", path.display()))?;
 
     // If no includes, return as-is
     if config.includes.is_empty() {

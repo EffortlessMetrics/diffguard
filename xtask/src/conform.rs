@@ -16,8 +16,8 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     let mut passed = 0;
     let mut failed = 0;
 
-    // Test 1: Schema validation
-    print!("  [1/5] Schema validation... ");
+    // Test 1: Schema validation (serde round-trip)
+    print!("  [1/6] Schema validation (serde)... ");
     match test_schema_validation() {
         Ok(()) => {
             println!("PASS");
@@ -31,9 +31,9 @@ pub fn run_conformance(quick: bool) -> Result<()> {
 
     // Test 2: Determinism (skip if quick mode)
     if quick {
-        println!("  [2/5] Determinism... SKIP (quick mode)");
+        println!("  [2/6] Determinism... SKIP (quick mode)");
     } else {
-        print!("  [2/5] Determinism... ");
+        print!("  [2/6] Determinism... ");
         match test_determinism() {
             Ok(()) => {
                 println!("PASS");
@@ -47,7 +47,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 3: Survivability (cockpit mode with bad input)
-    print!("  [3/5] Survivability... ");
+    print!("  [3/6] Survivability... ");
     match test_survivability() {
         Ok(()) => {
             println!("PASS");
@@ -60,7 +60,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 4: Required fields
-    print!("  [4/5] Required fields... ");
+    print!("  [4/6] Required fields... ");
     match test_required_fields() {
         Ok(()) => {
             println!("PASS");
@@ -73,7 +73,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 5: Vocabulary compliance
-    print!("  [5/5] Vocabulary compliance... ");
+    print!("  [5/6] Vocabulary compliance... ");
     match test_vocabulary() {
         Ok(()) => {
             println!("PASS");
@@ -85,8 +85,21 @@ pub fn run_conformance(quick: bool) -> Result<()> {
         }
     }
 
+    // Test 6: JSON schema file validation
+    print!("  [6/6] JSON schema file validation... ");
+    match test_json_schema_file() {
+        Ok(()) => {
+            println!("PASS");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("FAIL: {e}");
+            failed += 1;
+        }
+    }
+
     println!();
-    let total = if quick { 4 } else { 5 };
+    let total = if quick { 5 } else { 6 };
     println!("Results: {passed}/{total} tests passed");
 
     if failed > 0 {
@@ -436,6 +449,72 @@ fn test_vocabulary() -> Result<()> {
                 );
             }
         }
+    }
+
+    Ok(())
+}
+
+/// Test that the sensor report output validates against the shipped JSON schema file.
+fn test_json_schema_file() -> Result<()> {
+    let temp_dir = TempDir::new().context("create temp dir")?;
+    setup_test_repo_with_finding(temp_dir.path())?;
+
+    let sensor_path = temp_dir.path().join("sensor.json");
+    let out_path = temp_dir.path().join("report.json");
+
+    // Run diffguard with sensor output
+    let _output = run_diffguard(
+        temp_dir.path(),
+        &[
+            "check",
+            "--base",
+            "HEAD~1",
+            "--head",
+            "HEAD",
+            "--out",
+            out_path.to_str().unwrap(),
+            "--sensor",
+            sensor_path.to_str().unwrap(),
+        ],
+    )?;
+
+    if !sensor_path.exists() {
+        bail!("sensor.json not created");
+    }
+
+    // Load the schema file from disk (proving the shipped file is the source of truth)
+    let schema_path = std::env::current_dir()?
+        .join("schemas")
+        .join("sensor.report.v1.schema.json");
+
+    if !schema_path.exists() {
+        bail!(
+            "schema file not found at {}. Run `cargo run -p xtask -- schema` first.",
+            schema_path.display()
+        );
+    }
+
+    let schema_text = std::fs::read_to_string(&schema_path).context("read schema file")?;
+    let schema_value: serde_json::Value =
+        serde_json::from_str(&schema_text).context("parse schema file")?;
+
+    let compiled_schema =
+        jsonschema::JSONSchema::compile(&schema_value).map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    // Validate the sensor report output against the schema
+    let sensor_json = std::fs::read_to_string(&sensor_path).context("read sensor.json")?;
+    let sensor_value: serde_json::Value =
+        serde_json::from_str(&sensor_json).context("parse sensor.json")?;
+
+    let result = compiled_schema.validate(&sensor_value);
+    if let Err(errors) = result {
+        let error_messages: Vec<String> = errors
+            .map(|e| format!("  - {e} at {}", e.instance_path))
+            .collect();
+        bail!(
+            "sensor report failed schema validation:\n{}",
+            error_messages.join("\n")
+        );
     }
 
     Ok(())

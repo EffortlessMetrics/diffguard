@@ -231,7 +231,7 @@ mod tests {
         let receipt = test_receipt();
         let ctx = test_context();
         let report = render_sensor_report(&receipt, &ctx);
-        assert_eq!(report.findings[0].fingerprint.len(), 16);
+        assert_eq!(report.findings[0].fingerprint.len(), 64);
     }
 
     #[test]

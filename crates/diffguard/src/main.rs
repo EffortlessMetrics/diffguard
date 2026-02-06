@@ -155,8 +155,12 @@ struct CheckArgs {
     enable_tags: Vec<String>,
 
     /// Where to write the JSON receipt.
-    #[arg(long, default_value = "artifacts/diffguard/report.json")]
-    out: PathBuf,
+    ///
+    /// In standard mode, defaults to artifacts/diffguard/report.json.
+    /// In cockpit mode with --sensor, defaults to artifacts/diffguard/extras/check.json
+    /// (the canonical report.json path is used by the sensor envelope).
+    #[arg(long)]
+    out: Option<PathBuf>,
 
     /// Write a Markdown summary.
     ///
@@ -227,12 +231,12 @@ struct CheckArgs {
 
     /// Write a sensor.report.v1 JSON file for Cockpit integration.
     ///
-    /// If provided with no value, defaults to artifacts/diffguard/sensor.json
+    /// If provided with no value, defaults to artifacts/diffguard/report.json
     #[arg(
         long,
         value_name = "PATH",
         num_args = 0..=1,
-        default_missing_value = "artifacts/diffguard/sensor.json"
+        default_missing_value = "artifacts/diffguard/report.json"
     )]
     sensor: Option<PathBuf>,
 
@@ -828,6 +832,24 @@ fn resolve_mode(args: &CheckArgs) -> Mode {
         .unwrap_or(args.mode)
 }
 
+/// Resolves the output path for the JSON receipt.
+///
+/// - If `--out` was explicitly provided, use that path.
+/// - In cockpit mode when `--sensor` is active, default to `artifacts/diffguard/extras/check.json`
+///   (the canonical `report.json` path is reserved for the sensor envelope).
+/// - Otherwise, default to `artifacts/diffguard/report.json`.
+fn resolve_out_path(args: &CheckArgs, mode: Mode) -> PathBuf {
+    if let Some(ref out) = args.out {
+        return out.clone();
+    }
+    match mode {
+        Mode::Cockpit if args.sensor.is_some() => {
+            PathBuf::from("artifacts/diffguard/extras/check.json")
+        }
+        _ => PathBuf::from("artifacts/diffguard/report.json"),
+    }
+}
+
 /// Builds rule metadata map from config for sensor report.
 fn build_rule_metadata(cfg: &ConfigFile) -> HashMap<String, RuleMetadata> {
     cfg.rule
@@ -846,13 +868,14 @@ fn build_rule_metadata(cfg: &ConfigFile) -> HashMap<String, RuleMetadata> {
 
 fn cmd_check(args: CheckArgs) -> Result<()> {
     let mode = resolve_mode(&args);
+    let out_path = resolve_out_path(&args, mode);
 
     // Start timing
     let started_at = Utc::now();
     let start_time = Instant::now();
 
     // In cockpit mode, wrap everything in error handling
-    let result = cmd_check_inner(&args, mode, &started_at);
+    let result = cmd_check_inner(&args, mode, &started_at, &out_path);
 
     // End timing
     let ended_at = Utc::now();
@@ -872,40 +895,76 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
                     std::process::exit(0);
                 }
                 Err(err) => {
-                    // Check failed - build a skip receipt
-                    let skip_receipt = build_skip_receipt(&args, &err);
-                    let mut capabilities = HashMap::new();
-                    capabilities.insert(
-                        "git".to_string(),
-                        CapabilityStatus {
-                            status: "unavailable".to_string(),
-                            reason: Some(err.to_string()),
-                        },
-                    );
+                    // Classify the error to determine skip vs fail
+                    match classify_cockpit_error(&err) {
+                        Some(reason_token) => {
+                            // Known prerequisite-missing error → skip receipt
+                            let detail = cockpit_error_detail(&err);
+                            let skip_receipt = build_skip_receipt(&args, reason_token, &detail);
+                            let mut capabilities = HashMap::new();
+                            capabilities.insert(
+                                "git".to_string(),
+                                CapabilityStatus {
+                                    status: "unavailable".to_string(),
+                                    reason: Some(detail.clone()),
+                                },
+                            );
 
-                    let ctx = SensorReportContext {
-                        started_at: started_at.to_rfc3339(),
-                        ended_at: ended_at.to_rfc3339(),
-                        duration_ms,
-                        capabilities,
-                        artifacts: vec![],
-                        rule_metadata: HashMap::new(),
-                    };
+                            let ctx = SensorReportContext {
+                                started_at: started_at.to_rfc3339(),
+                                ended_at: ended_at.to_rfc3339(),
+                                duration_ms,
+                                capabilities,
+                                artifacts: vec![],
+                                rule_metadata: HashMap::new(),
+                            };
 
-                    // Try to write the sensor report
-                    if let Some(sensor_path) = &args.sensor {
-                        if let Ok(json) = render_sensor_json(&skip_receipt, &ctx) {
-                            if write_text(sensor_path, &json).is_ok() {
-                                eprintln!("diffguard: check skipped: {err}");
+                            // Try to write the sensor report
+                            if let Some(sensor_path) = &args.sensor {
+                                if let Ok(json) = render_sensor_json(&skip_receipt, &ctx) {
+                                    if write_text(sensor_path, &json).is_ok() {
+                                        eprintln!("diffguard: check skipped: {detail}");
+                                        std::process::exit(0);
+                                    }
+                                }
+                            }
+
+                            // Also write the regular receipt
+                            if write_json(&out_path, &skip_receipt).is_ok() {
+                                eprintln!("diffguard: check skipped: {detail}");
                                 std::process::exit(0);
                             }
                         }
-                    }
+                        None => {
+                            // Unexpected runtime error → fail receipt with tool_error
+                            let detail = err.to_string();
+                            let fail_receipt = build_tool_error_receipt(&args, &detail);
 
-                    // Also write the regular receipt
-                    if write_json(&args.out, &skip_receipt).is_ok() {
-                        eprintln!("diffguard: check skipped: {err}");
-                        std::process::exit(0);
+                            let ctx = build_tool_error_sensor_context(
+                                &started_at,
+                                &ended_at,
+                                duration_ms,
+                                &detail,
+                            );
+
+                            // Try to write the sensor report
+                            if let Some(sensor_path) = &args.sensor {
+                                let sensor_report =
+                                    build_tool_error_sensor_report(&args, &detail, &ctx);
+                                if let Ok(json) = serde_json::to_string_pretty(&sensor_report) {
+                                    if write_text(sensor_path, &json).is_ok() {
+                                        eprintln!("diffguard: tool error: {detail}");
+                                        std::process::exit(0);
+                                    }
+                                }
+                            }
+
+                            // Also write the regular receipt
+                            if write_json(&out_path, &fail_receipt).is_ok() {
+                                eprintln!("diffguard: tool error: {detail}");
+                                std::process::exit(0);
+                            }
+                        }
                     }
 
                     // Could not write any receipt - catastrophic failure
@@ -917,8 +976,179 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
     }
 }
 
-/// Builds a skip receipt when the check cannot run.
-fn build_skip_receipt(args: &CheckArgs, err: &anyhow::Error) -> CheckReceipt {
+/// Marker error type for cockpit skip classification.
+///
+/// When wrapped via `.context(CockpitSkipReason("token"))`, the classifier can
+/// distinguish prerequisite-missing errors (→ Skip) from runtime errors (→ Fail).
+#[derive(Debug)]
+struct CockpitSkipReason(&'static str);
+
+impl std::fmt::Display for CockpitSkipReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for CockpitSkipReason {}
+
+/// Checks if the error chain contains a `CockpitSkipReason` marker and returns
+/// the reason token if found. Untagged errors are treated as tool errors.
+fn classify_cockpit_error(err: &anyhow::Error) -> Option<&'static str> {
+    for cause in err.chain() {
+        if let Some(reason) = cause.downcast_ref::<CockpitSkipReason>() {
+            return Some(reason.0);
+        }
+    }
+    None
+}
+
+/// Extracts the original error detail, skipping the `CockpitSkipReason` marker layer.
+fn cockpit_error_detail(err: &anyhow::Error) -> String {
+    // Walk the chain and collect messages, skipping the CockpitSkipReason marker itself
+    let messages: Vec<String> = err
+        .chain()
+        .filter(|cause| cause.downcast_ref::<CockpitSkipReason>().is_none())
+        .map(|cause| cause.to_string())
+        .collect();
+    messages.join(": ")
+}
+
+/// Builds a fail receipt for tool/runtime errors in cockpit mode.
+fn build_tool_error_receipt(args: &CheckArgs, detail: &str) -> CheckReceipt {
+    let base = args
+        .base
+        .clone()
+        .unwrap_or_else(|| "origin/main".to_string());
+    let head = args.head.clone().unwrap_or_else(|| "HEAD".to_string());
+
+    CheckReceipt {
+        schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
+        tool: ToolMeta {
+            name: "diffguard".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+        },
+        diff: DiffMeta {
+            base,
+            head,
+            context_lines: args.diff_context.unwrap_or(0),
+            scope: args.scope.map(Into::into).unwrap_or(Scope::Added),
+            files_scanned: 0,
+            lines_scanned: 0,
+        },
+        findings: vec![diffguard_types::Finding {
+            rule_id: "diffguard.internal".to_string(),
+            severity: diffguard_types::Severity::Error,
+            message: detail.to_string(),
+            path: String::new(),
+            line: 0,
+            column: None,
+            match_text: String::new(),
+            snippet: String::new(),
+        }],
+        verdict: Verdict {
+            status: VerdictStatus::Fail,
+            counts: VerdictCounts {
+                error: 1,
+                ..VerdictCounts::default()
+            },
+            reasons: vec!["tool_error".to_string()],
+        },
+        timing: None,
+    }
+}
+
+/// Builds the SensorReportContext for a tool error.
+fn build_tool_error_sensor_context(
+    started_at: &chrono::DateTime<Utc>,
+    ended_at: &chrono::DateTime<Utc>,
+    duration_ms: u64,
+    detail: &str,
+) -> SensorReportContext {
+    let mut capabilities = HashMap::new();
+    capabilities.insert(
+        "git".to_string(),
+        CapabilityStatus {
+            status: "unavailable".to_string(),
+            reason: Some(detail.to_string()),
+        },
+    );
+    SensorReportContext {
+        started_at: started_at.to_rfc3339(),
+        ended_at: ended_at.to_rfc3339(),
+        duration_ms,
+        capabilities,
+        artifacts: vec![],
+        rule_metadata: HashMap::new(),
+    }
+}
+
+/// Builds a sensor.report.v1 directly for tool errors (without going through
+/// the normal render pipeline, since the error may have prevented check setup).
+fn build_tool_error_sensor_report(
+    args: &CheckArgs,
+    detail: &str,
+    ctx: &SensorReportContext,
+) -> diffguard_types::SensorReport {
+    use diffguard_app::compute_fingerprint_raw;
+
+    let base = args
+        .base
+        .clone()
+        .unwrap_or_else(|| "origin/main".to_string());
+    let head = args.head.clone().unwrap_or_else(|| "HEAD".to_string());
+
+    let fingerprint_input = format!("diffguard.internal:runtime_error:{detail}");
+    let fingerprint = compute_fingerprint_raw(&fingerprint_input);
+
+    diffguard_types::SensorReport {
+        schema: diffguard_types::SENSOR_REPORT_SCHEMA_V1.to_string(),
+        tool: ToolMeta {
+            name: "diffguard".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
+        },
+        run: diffguard_types::RunMeta {
+            started_at: ctx.started_at.clone(),
+            ended_at: ctx.ended_at.clone(),
+            duration_ms: ctx.duration_ms,
+            capabilities: ctx.capabilities.clone(),
+        },
+        verdict: Verdict {
+            status: VerdictStatus::Fail,
+            counts: VerdictCounts {
+                error: 1,
+                ..VerdictCounts::default()
+            },
+            reasons: vec!["tool_error".to_string()],
+        },
+        findings: vec![diffguard_types::SensorFinding {
+            check_id: "diffguard.internal".to_string(),
+            code: "runtime_error".to_string(),
+            severity: diffguard_types::Severity::Error,
+            message: detail.to_string(),
+            location: diffguard_types::SensorLocation {
+                path: String::new(),
+                line: 0,
+                column: None,
+            },
+            fingerprint,
+            help: None,
+            url: None,
+            data: Some(serde_json::json!({
+                "error": detail,
+            })),
+        }],
+        artifacts: vec![],
+        data: Some(serde_json::json!({
+            "diff": {
+                "base": base,
+                "head": head,
+            }
+        })),
+    }
+}
+
+/// Builds a skip receipt when the check cannot run due to missing prerequisites.
+fn build_skip_receipt(args: &CheckArgs, reason_token: &str, _detail: &str) -> CheckReceipt {
     let base = args
         .base
         .clone()
@@ -943,7 +1173,7 @@ fn build_skip_receipt(args: &CheckArgs, err: &anyhow::Error) -> CheckReceipt {
         verdict: Verdict {
             status: VerdictStatus::Skip,
             counts: VerdictCounts::default(),
-            reasons: vec![err.to_string()],
+            reasons: vec![reason_token.to_string()],
         },
         timing: None,
     }
@@ -954,6 +1184,7 @@ fn cmd_check_inner(
     args: &CheckArgs,
     _mode: Mode,
     started_at: &chrono::DateTime<Utc>,
+    out_path: &Path,
 ) -> Result<i32> {
     info!("Starting diffguard check");
 
@@ -991,7 +1222,8 @@ fn cmd_check_inner(
     // Handle --staged mode vs base/head mode
     let (base, head, diff_text) = if args.staged {
         info!("Checking staged changes");
-        let diff_text = git_staged_diff(diff_context)?;
+        let diff_text =
+            git_staged_diff(diff_context).context(CockpitSkipReason("no_diff_input"))?;
         ("(staged)".to_string(), "HEAD".to_string(), diff_text)
     } else {
         // Merge defaults (CLI overrides config).
@@ -1008,7 +1240,8 @@ fn cmd_check_inner(
             .unwrap_or_else(|| "HEAD".to_string());
 
         info!("Checking diff: {}...{}", base, head);
-        let diff_text = git_diff(&base, &head, diff_context)?;
+        let diff_text =
+            git_diff(&base, &head, diff_context).context(CockpitSkipReason("missing_base"))?;
         (base, head, diff_text)
     };
 
@@ -1037,11 +1270,11 @@ fn cmd_check_inner(
 
     // Collect artifacts
     let mut artifacts = vec![Artifact {
-        path: args.out.display().to_string().replace('\\', "/"),
+        path: out_path.display().to_string().replace('\\', "/"),
         format: "json".to_string(),
     }];
 
-    write_json(&args.out, &run.receipt)?;
+    write_json(out_path, &run.receipt)?;
 
     if let Some(md_path) = &args.md {
         write_text(md_path, &run.markdown)?;
@@ -1263,10 +1496,7 @@ fn cmd_test(args: TestArgs) -> Result<()> {
 
     if rules.is_empty() {
         if args.rule.is_some() {
-            bail!(
-                "No rules match filter '{}'",
-                args.rule.as_ref().unwrap()
-            );
+            bail!("No rules match filter '{}'", args.rule.as_ref().unwrap());
         } else {
             bail!("No rules defined in configuration");
         }
@@ -1331,10 +1561,7 @@ fn cmd_test(args: TestArgs) -> Result<()> {
 
         for tc in &rule.test_cases {
             // Check if any pattern matches the input
-            let matches = compiled_rule
-                .patterns
-                .iter()
-                .any(|p| p.is_match(&tc.input));
+            let matches = compiled_rule.patterns.iter().any(|p| p.is_match(&tc.input));
 
             if matches == tc.should_match {
                 passed += 1;

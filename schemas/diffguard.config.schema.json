@@ -19,6 +19,13 @@
         }
       ]
     },
+    "includes": {
+      "description": "Include other config files. Paths are relative to this config file's directory. Rules are merged: later definitions override earlier ones by rule ID.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "rule": {
       "default": [],
       "type": "array",
@@ -160,12 +167,65 @@
             "type": "string"
           }
         },
+        "test_cases": {
+          "description": "Test cases for validating this rule.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RuleTestCase"
+          }
+        },
         "url": {
           "description": "Optional URL with more information about the rule.",
           "type": [
             "string",
             "null"
           ]
+        }
+      }
+    },
+    "RuleTestCase": {
+      "description": "A test case for validating a rule's behavior.",
+      "type": "object",
+      "required": [
+        "input",
+        "should_match"
+      ],
+      "properties": {
+        "description": {
+          "description": "Optional: description of what this test case validates.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "ignore_comments": {
+          "description": "Optional: override ignore_comments for this test case.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "ignore_strings": {
+          "description": "Optional: override ignore_strings for this test case.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "input": {
+          "description": "The input line to test against the rule.",
+          "type": "string"
+        },
+        "language": {
+          "description": "Optional: specify a language for preprocessing (e.g., \"rust\", \"python\").",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "should_match": {
+          "description": "Whether the rule should match this input.",
+          "type": "boolean"
         }
       }
     },
