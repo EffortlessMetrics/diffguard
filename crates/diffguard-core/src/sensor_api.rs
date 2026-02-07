@@ -136,6 +136,7 @@ mod tests {
             CapabilityStatus {
                 status: CAP_STATUS_AVAILABLE.to_string(),
                 reason: None,
+                detail: None,
             },
         );
         SensorReportContext {

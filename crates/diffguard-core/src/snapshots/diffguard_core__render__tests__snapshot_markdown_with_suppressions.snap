@@ -6,9 +6,6 @@ expression: md
 
 Scanned **2** file(s), **30** line(s) (scope: `added`, base: `origin/main`, head: `HEAD`)
 
-**Verdict reasons:**
-- 1 warning-level finding
-
 **Note:** 3 finding(s) suppressed via inline directives.
 
 | Severity | Rule | Location | Message | Snippet |

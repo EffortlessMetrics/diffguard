@@ -21,6 +21,13 @@ pub const REASON_NO_DIFF_INPUT: &str = "no_diff_input";
 pub const REASON_MISSING_BASE: &str = "missing_base";
 pub const REASON_GIT_UNAVAILABLE: &str = "git_unavailable";
 pub const REASON_TOOL_ERROR: &str = "tool_error";
+/// Deprecated: no longer emitted in verdict.reasons (redundant with verdict.counts).
+/// Retained for backward-compatible vocabulary validation.
+pub const REASON_HAS_ERROR: &str = "has_error";
+/// Deprecated: no longer emitted in verdict.reasons (redundant with verdict.counts).
+/// Retained for backward-compatible vocabulary validation.
+pub const REASON_HAS_WARNING: &str = "has_warning";
+pub const REASON_TRUNCATED: &str = "truncated";
 
 // Tool error code (R1 survivability)
 pub const CODE_TOOL_RUNTIME_ERROR: &str = "tool.runtime_error";
@@ -1198,9 +1205,12 @@ pub struct RunMeta {
 pub struct CapabilityStatus {
     /// Status: "available", "unavailable", or "skipped".
     pub status: String,
-    /// Optional reason for unavailability.
+    /// Stable token reason (e.g., "missing_base", "tool_error").
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Human-readable detail for diagnostics.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
 }
 
 /// A finding in sensor.report.v1 format.

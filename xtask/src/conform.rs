@@ -17,7 +17,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     let mut failed = 0;
 
     // Test 1: Schema validation (serde round-trip)
-    print!("  [1/6] Schema validation (serde)... ");
+    print!("  [1/9] Schema validation (serde)... ");
     match test_schema_validation() {
         Ok(()) => {
             println!("PASS");
@@ -31,9 +31,9 @@ pub fn run_conformance(quick: bool) -> Result<()> {
 
     // Test 2: Determinism (skip if quick mode)
     if quick {
-        println!("  [2/6] Determinism... SKIP (quick mode)");
+        println!("  [2/9] Determinism... SKIP (quick mode)");
     } else {
-        print!("  [2/6] Determinism... ");
+        print!("  [2/9] Determinism... ");
         match test_determinism() {
             Ok(()) => {
                 println!("PASS");
@@ -47,7 +47,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 3: Survivability (cockpit mode with bad input)
-    print!("  [3/6] Survivability... ");
+    print!("  [3/9] Survivability... ");
     match test_survivability() {
         Ok(()) => {
             println!("PASS");
@@ -60,7 +60,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 4: Required fields
-    print!("  [4/6] Required fields... ");
+    print!("  [4/9] Required fields... ");
     match test_required_fields() {
         Ok(()) => {
             println!("PASS");
@@ -73,7 +73,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 5: Vocabulary compliance
-    print!("  [5/6] Vocabulary compliance... ");
+    print!("  [5/9] Vocabulary compliance... ");
     match test_vocabulary() {
         Ok(()) => {
             println!("PASS");
@@ -86,7 +86,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 6: JSON schema file validation
-    print!("  [6/6] JSON schema file validation... ");
+    print!("  [6/9] JSON schema file validation... ");
     match test_json_schema_file() {
         Ok(()) => {
             println!("PASS");
@@ -98,8 +98,21 @@ pub fn run_conformance(quick: bool) -> Result<()> {
         }
     }
 
-    // Test 7: Vocabulary constants
-    print!("  [7/8] Vocabulary constants... ");
+    // Test 7: Schema drift detection
+    print!("  [7/9] Schema drift detection... ");
+    match test_schema_drift() {
+        Ok(()) => {
+            println!("PASS");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("FAIL: {e}");
+            failed += 1;
+        }
+    }
+
+    // Test 8: Vocabulary constants
+    print!("  [8/9] Vocabulary constants... ");
     match test_vocabulary_constants() {
         Ok(()) => {
             println!("PASS");
@@ -111,8 +124,8 @@ pub fn run_conformance(quick: bool) -> Result<()> {
         }
     }
 
-    // Test 8: Tool error code in sensor report
-    print!("  [8/8] Tool error code field... ");
+    // Test 9: Tool error code in sensor report
+    print!("  [9/9] Tool error code field... ");
     match test_tool_error_code() {
         Ok(()) => {
             println!("PASS");
@@ -125,7 +138,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     println!();
-    let total = if quick { 5 } else { 8 };
+    let total = if quick { 8 } else { 9 };
     println!("Results: {passed}/{total} tests passed");
 
     if failed > 0 {
@@ -508,14 +521,15 @@ fn test_json_schema_file() -> Result<()> {
         bail!("sensor.json not created");
     }
 
-    // Load the schema file from disk (proving the shipped file is the source of truth)
+    // Load the vendored contract schema (fleet anchor)
     let schema_path = std::env::current_dir()?
+        .join("contracts")
         .join("schemas")
         .join("sensor.report.v1.schema.json");
 
     if !schema_path.exists() {
         bail!(
-            "schema file not found at {}. Run `cargo run -p xtask -- schema` first.",
+            "contract schema file not found at {}. Ensure contracts/schemas/ is committed.",
             schema_path.display()
         );
     }
@@ -546,13 +560,58 @@ fn test_json_schema_file() -> Result<()> {
     Ok(())
 }
 
+/// Test that the generated schema has not drifted from the vendored contract.
+fn test_schema_drift() -> Result<()> {
+    let generated_path = std::env::current_dir()?
+        .join("schemas")
+        .join("sensor.report.v1.schema.json");
+    let contract_path = std::env::current_dir()?
+        .join("contracts")
+        .join("schemas")
+        .join("sensor.report.v1.schema.json");
+
+    if !generated_path.exists() {
+        bail!(
+            "generated schema not found at {}. Run `cargo run -p xtask -- schema` first.",
+            generated_path.display()
+        );
+    }
+    if !contract_path.exists() {
+        bail!(
+            "contract schema not found at {}. Ensure contracts/schemas/ is committed.",
+            contract_path.display()
+        );
+    }
+
+    let generated_text =
+        std::fs::read_to_string(&generated_path).context("read generated schema")?;
+    let contract_text = std::fs::read_to_string(&contract_path).context("read contract schema")?;
+
+    let generated_value: serde_json::Value =
+        serde_json::from_str(&generated_text).context("parse generated schema")?;
+    let contract_value: serde_json::Value =
+        serde_json::from_str(&contract_text).context("parse contract schema")?;
+
+    if generated_value != contract_value {
+        bail!(
+            "schema drift detected!\n\
+             Generated: schemas/sensor.report.v1.schema.json\n\
+             Contract:  contracts/schemas/sensor.report.v1.schema.json\n\n\
+             If the schema change is intentional, update the contract:\n\
+             cp schemas/sensor.report.v1.schema.json contracts/schemas/sensor.report.v1.schema.json"
+        );
+    }
+
+    Ok(())
+}
+
 /// Test that frozen vocabulary constants have the expected values.
 fn test_vocabulary_constants() -> Result<()> {
     use diffguard_types::{
         CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_SKIPPED, CAP_STATUS_UNAVAILABLE,
         CHECK_ID_INTERNAL, CHECK_ID_PATTERN, CHECK_SCHEMA_V1, CODE_TOOL_RUNTIME_ERROR,
-        REASON_GIT_UNAVAILABLE, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR,
-        SENSOR_REPORT_SCHEMA_V1,
+        REASON_GIT_UNAVAILABLE, REASON_HAS_ERROR, REASON_HAS_WARNING, REASON_MISSING_BASE,
+        REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, REASON_TRUNCATED, SENSOR_REPORT_SCHEMA_V1,
     };
 
     // Schema identifiers
@@ -568,6 +627,9 @@ fn test_vocabulary_constants() -> Result<()> {
     assert_eq!(REASON_MISSING_BASE, "missing_base");
     assert_eq!(REASON_GIT_UNAVAILABLE, "git_unavailable");
     assert_eq!(REASON_TOOL_ERROR, "tool_error");
+    assert_eq!(REASON_HAS_ERROR, "has_error");
+    assert_eq!(REASON_HAS_WARNING, "has_warning");
+    assert_eq!(REASON_TRUNCATED, "truncated");
 
     // Tool error code (R1 survivability)
     assert_eq!(CODE_TOOL_RUNTIME_ERROR, "tool.runtime_error");

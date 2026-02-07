@@ -6,10 +6,6 @@ expression: md
 
 Scanned **3** file(s), **42** line(s) (scope: `added`, base: `origin/main`, head: `HEAD`)
 
-**Verdict reasons:**
-- 1 error-level finding
-- 2 warning-level findings
-
 | Severity | Rule | Location | Message | Snippet |
 |---|---|---|---|---|
 | error | `rust.no_unwrap` | `src/lib.rs:15` | Avoid unwrap/expect in production code. | `let value = result.unwrap();` |

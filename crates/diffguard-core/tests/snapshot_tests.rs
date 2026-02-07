@@ -141,7 +141,7 @@ fn snapshot_json_receipt_warnings_only() {
                 error: 0,
                 suppressed: 0,
             },
-            reasons: vec!["2 warning(s)".to_string()],
+            reasons: vec![],
         },
         timing: None,
     };
@@ -198,7 +198,7 @@ fn snapshot_json_receipt_errors_only() {
                 error: 2,
                 suppressed: 0,
             },
-            reasons: vec!["2 error(s)".to_string()],
+            reasons: vec![],
         },
         timing: None,
     };
@@ -234,7 +234,7 @@ fn snapshot_json_receipt_mixed() {
                 error: 1,
                 suppressed: 0,
             },
-            reasons: vec!["1 error(s)".to_string(), "1 warning(s)".to_string()],
+            reasons: vec![],
         },
         timing: None,
     };
@@ -279,7 +279,7 @@ fn snapshot_json_receipt_with_suppressions() {
                 error: 0,
                 suppressed: 3,
             },
-            reasons: vec!["1 warning(s)".to_string()],
+            reasons: vec![],
         },
         timing: None,
     };
@@ -369,7 +369,7 @@ fn snapshot_json_receipt_no_column() {
                 error: 0,
                 suppressed: 0,
             },
-            reasons: vec!["1 warning(s)".to_string()],
+            reasons: vec![],
         },
         timing: None,
     };

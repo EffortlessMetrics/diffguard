@@ -1,5 +1,15 @@
 use diffguard_types::{CheckReceipt, Finding, VerdictStatus};
 
+/// Reasons that are meaningful to render in markdown output.
+/// Only meta conditions (truncation, skip reasons, tool errors) should appear.
+const RENDERABLE_META_REASONS: &[&str] = &[
+    "truncated",
+    "missing_base",
+    "no_diff_input",
+    "git_unavailable",
+    "tool_error",
+];
+
 pub fn render_markdown_for_receipt(receipt: &CheckReceipt) -> String {
     let status = match receipt.verdict.status {
         VerdictStatus::Pass => "PASS",
@@ -20,9 +30,15 @@ pub fn render_markdown_for_receipt(receipt: &CheckReceipt) -> String {
         receipt.diff.head
     ));
 
-    if !receipt.verdict.reasons.is_empty() {
+    let meta_reasons: Vec<&String> = receipt
+        .verdict
+        .reasons
+        .iter()
+        .filter(|r| RENDERABLE_META_REASONS.contains(&r.as_str()))
+        .collect();
+    if !meta_reasons.is_empty() {
         out.push_str("**Verdict reasons:**\n");
-        for r in &receipt.verdict.reasons {
+        for r in &meta_reasons {
             out.push_str(&format!("- {r}\n"));
         }
         out.push('\n');
@@ -109,7 +125,7 @@ mod tests {
                     error: 0,
                     ..Default::default()
                 },
-                reasons: vec!["1 warning".to_string()],
+                reasons: vec![],
             },
             timing: None,
         };
@@ -175,10 +191,7 @@ mod tests {
                     error: 1,
                     ..Default::default()
                 },
-                reasons: vec![
-                    "1 error-level finding".to_string(),
-                    "2 warning-level findings".to_string(),
-                ],
+                reasons: vec![],
             },
             timing: None,
         }
@@ -249,7 +262,7 @@ mod tests {
                     error: 0,
                     ..Default::default()
                 },
-                reasons: vec!["1 warning-level finding".to_string()],
+                reasons: vec![],
             },
             timing: None,
         }
@@ -316,7 +329,7 @@ mod tests {
                     error: 0,
                     suppressed: 3,
                 },
-                reasons: vec!["1 warning-level finding".to_string()],
+                reasons: vec![],
             },
             timing: None,
         }
@@ -344,5 +357,91 @@ mod tests {
         let receipt = create_test_receipt_with_suppressions();
         let md = render_markdown_for_receipt(&receipt);
         insta::assert_snapshot!(md);
+    }
+
+    /// Test that non-meta reasons (e.g. has_error, has_warning) are filtered out.
+    #[test]
+    fn markdown_filters_non_meta_reasons() {
+        let receipt = CheckReceipt {
+            schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
+            tool: diffguard_types::ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: diffguard_types::DiffMeta {
+                base: "origin/main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: diffguard_types::Scope::Added,
+                files_scanned: 1,
+                lines_scanned: 1,
+            },
+            findings: vec![],
+            verdict: diffguard_types::Verdict {
+                status: VerdictStatus::Fail,
+                counts: diffguard_types::VerdictCounts {
+                    info: 0,
+                    warn: 0,
+                    error: 1,
+                    suppressed: 0,
+                },
+                reasons: vec![
+                    "has_error".to_string(),
+                    "has_warning".to_string(),
+                    "unknown_future_reason".to_string(),
+                ],
+            },
+            timing: None,
+        };
+
+        let md = render_markdown_for_receipt(&receipt);
+        assert!(
+            !md.contains("Verdict reasons"),
+            "non-meta reasons should not render"
+        );
+        assert!(!md.contains("has_error"));
+        assert!(!md.contains("has_warning"));
+        assert!(!md.contains("unknown_future_reason"));
+    }
+
+    /// Test that all 5 meta reasons pass through the filter.
+    #[test]
+    fn markdown_renders_all_meta_reasons() {
+        let receipt = CheckReceipt {
+            schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
+            tool: diffguard_types::ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: diffguard_types::DiffMeta {
+                base: "origin/main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: diffguard_types::Scope::Added,
+                files_scanned: 0,
+                lines_scanned: 0,
+            },
+            findings: vec![],
+            verdict: diffguard_types::Verdict {
+                status: VerdictStatus::Skip,
+                counts: diffguard_types::VerdictCounts::default(),
+                reasons: vec![
+                    "truncated".to_string(),
+                    "missing_base".to_string(),
+                    "no_diff_input".to_string(),
+                    "git_unavailable".to_string(),
+                    "tool_error".to_string(),
+                ],
+            },
+            timing: None,
+        };
+
+        let md = render_markdown_for_receipt(&receipt);
+        assert!(md.contains("Verdict reasons"), "meta reasons should render");
+        assert!(md.contains("- truncated"));
+        assert!(md.contains("- missing_base"));
+        assert!(md.contains("- no_diff_input"));
+        assert!(md.contains("- git_unavailable"));
+        assert!(md.contains("- tool_error"));
     }
 }

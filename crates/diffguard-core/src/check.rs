@@ -6,6 +6,7 @@ use diffguard_diff::parse_unified_diff;
 use diffguard_domain::{compile_rules, evaluate_lines, InputLine};
 use diffguard_types::{
     CheckReceipt, DiffMeta, FailOn, Finding, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+    REASON_TRUNCATED,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -84,17 +85,8 @@ pub fn run_check(
     };
 
     let mut reasons: Vec<String> = Vec::new();
-    if evaluation.counts.error > 0 {
-        reasons.push(format!("{} error(s)", evaluation.counts.error));
-    }
-    if evaluation.counts.warn > 0 {
-        reasons.push(format!("{} warning(s)", evaluation.counts.warn));
-    }
     if evaluation.truncated_findings > 0 {
-        reasons.push(format!(
-            "{} additional findings omitted (max_findings)",
-            evaluation.truncated_findings
-        ));
+        reasons.push(REASON_TRUNCATED.to_string());
     }
 
     let receipt = CheckReceipt {
@@ -328,12 +320,7 @@ diff --git a/src/lib.rs b/src/lib.rs
 
         let run = run_check(&plan, &config, diff).expect("run_check");
         assert_eq!(run.receipt.verdict.status, VerdictStatus::Warn);
-        assert!(run
-            .receipt
-            .verdict
-            .reasons
-            .iter()
-            .any(|r| r.contains("warning")));
+        assert!(run.receipt.verdict.reasons.is_empty());
     }
 
     #[test]
@@ -351,12 +338,7 @@ diff --git a/src/lib.rs b/src/lib.rs
 
         let run = run_check(&plan, &config, diff).expect("run_check");
         assert_eq!(run.receipt.verdict.status, VerdictStatus::Fail);
-        assert!(run
-            .receipt
-            .verdict
-            .reasons
-            .iter()
-            .any(|r| r.contains("error")));
+        assert!(run.receipt.verdict.reasons.is_empty());
     }
 
     #[test]
@@ -374,12 +356,7 @@ diff --git a/src/lib.rs b/src/lib.rs
 "#;
 
         let run = run_check(&plan, &config, diff).expect("run_check");
-        assert!(run
-            .receipt
-            .verdict
-            .reasons
-            .iter()
-            .any(|r| r.contains("additional findings omitted")));
+        assert!(run.receipt.verdict.reasons.iter().any(|r| r == "truncated"));
     }
 
     #[test]
@@ -472,7 +449,7 @@ diff --git a/src/lib.rs b/src/lib.rs
                     error: 1,
                     suppressed: 0,
                 },
-                reasons: vec!["1 error(s)".to_string(), "1 warning(s)".to_string()],
+                reasons: vec![],
             },
             timing: None,
         };

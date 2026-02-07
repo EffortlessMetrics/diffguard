@@ -45,8 +45,6 @@ expression: json
       "warn": 0,
       "error": 2
     },
-    "reasons": [
-      "2 error(s)"
-    ]
+    "reasons": []
   }
 }

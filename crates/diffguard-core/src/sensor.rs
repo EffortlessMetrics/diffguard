@@ -144,7 +144,7 @@ mod tests {
                     error: 1,
                     suppressed: 0,
                 },
-                reasons: vec!["1 error(s)".to_string()],
+                reasons: vec![],
             },
             timing: None,
         }
@@ -167,6 +167,7 @@ mod tests {
             CapabilityStatus {
                 status: "available".to_string(),
                 reason: None,
+                detail: None,
             },
         );
         ctx.rule_metadata.insert(
@@ -306,7 +307,8 @@ mod tests {
             "git".to_string(),
             CapabilityStatus {
                 status: "unavailable".to_string(),
-                reason: Some("git command not found".to_string()),
+                reason: Some("git_unavailable".to_string()),
+                detail: Some("git command not found".to_string()),
             },
         );
         let json = render_sensor_json(&receipt, &ctx).unwrap();

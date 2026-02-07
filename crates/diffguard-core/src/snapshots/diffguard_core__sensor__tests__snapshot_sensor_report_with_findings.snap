@@ -25,9 +25,7 @@ expression: json
       "warn": 0,
       "error": 1
     },
-    "reasons": [
-      "1 error(s)"
-    ]
+    "reasons": []
   },
   "findings": [
     {

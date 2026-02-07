@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 01a0145872f779292f8aa5452115af4b20cba2155c645a1b56358aff72c047ab # shrinks to receipt = CheckReceipt { schema: "diffguard.check.v1", tool: ToolMeta { name: "diffguard", version: "0.1.0" }, diff: DiffMeta { base: "a", head: "A", context_lines: 0, scope: Added, files_scanned: 0, lines_scanned: 0 }, findings: [], verdict: Verdict { status: Pass, counts: VerdictCounts { info: 0, warn: 0, error: 0, suppressed: 0 }, reasons: ["A"] }, timing: None }

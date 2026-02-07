@@ -6,9 +6,6 @@ expression: md
 
 Scanned **2** file(s), **35** line(s) (scope: `changed`, base: `feature/branch`, head: `HEAD`)
 
-**Verdict reasons:**
-- 1 warning-level finding
-
 | Severity | Rule | Location | Message | Snippet |
 |---|---|---|---|---|
 | warn | `js.no_console` | `src/utils.ts:42` | Remove console.log before merging. | `  console.log("debug info");` |

@@ -908,7 +908,8 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
                                 CAP_GIT.to_string(),
                                 CapabilityStatus {
                                     status: CAP_STATUS_UNAVAILABLE.to_string(),
-                                    reason: Some(detail.clone()),
+                                    reason: Some(reason_token.to_string()),
+                                    detail: Some(detail.clone()),
                                 },
                             );
 
@@ -978,41 +979,39 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
     }
 }
 
-/// Marker error type for cockpit skip classification.
+/// Typed error for cockpit skip classification.
 ///
-/// When wrapped via `.context(CockpitSkipReason("token"))`, the classifier can
-/// distinguish prerequisite-missing errors (→ Skip) from runtime errors (→ Fail).
+/// Wraps both a reason token and the source error via `.map_err()`,
+/// so `downcast_ref` reliably finds the token.
 #[derive(Debug)]
-struct CockpitSkipReason(&'static str);
+struct CockpitSkipError {
+    token: &'static str,
+    source: anyhow::Error,
+}
 
-impl std::fmt::Display for CockpitSkipReason {
+impl std::fmt::Display for CockpitSkipError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.token)
     }
 }
 
-impl std::error::Error for CockpitSkipReason {}
+impl std::error::Error for CockpitSkipError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(self.source.as_ref())
+    }
+}
 
-/// Checks if the error chain contains a `CockpitSkipReason` marker and returns
+/// Checks if the error is a `CockpitSkipError` and returns
 /// the reason token if found. Untagged errors are treated as tool errors.
 fn classify_cockpit_error(err: &anyhow::Error) -> Option<&'static str> {
-    for cause in err.chain() {
-        if let Some(reason) = cause.downcast_ref::<CockpitSkipReason>() {
-            return Some(reason.0);
-        }
-    }
-    None
+    err.downcast_ref::<CockpitSkipError>().map(|e| e.token)
 }
 
-/// Extracts the original error detail, skipping the `CockpitSkipReason` marker layer.
+/// Extracts the original error detail from a `CockpitSkipError`.
 fn cockpit_error_detail(err: &anyhow::Error) -> String {
-    // Walk the chain and collect messages, skipping the CockpitSkipReason marker itself
-    let messages: Vec<String> = err
-        .chain()
-        .filter(|cause| cause.downcast_ref::<CockpitSkipReason>().is_none())
-        .map(|cause| cause.to_string())
-        .collect();
-    messages.join(": ")
+    err.downcast_ref::<CockpitSkipError>()
+        .map(|e| e.source.to_string())
+        .unwrap_or_else(|| err.to_string())
 }
 
 /// Builds a fail receipt for tool/runtime errors in cockpit mode.
@@ -1071,7 +1070,8 @@ fn build_tool_error_sensor_context(
         CAP_GIT.to_string(),
         CapabilityStatus {
             status: CAP_STATUS_UNAVAILABLE.to_string(),
-            reason: Some(detail.to_string()),
+            reason: Some(REASON_TOOL_ERROR.to_string()),
+            detail: Some(detail.to_string()),
         },
     );
     SensorReportContext {
@@ -1114,6 +1114,7 @@ fn build_tool_error_sensor_report(
             duration_ms: ctx.duration_ms,
             capabilities: ctx.capabilities.clone(),
         },
+
         verdict: Verdict {
             status: VerdictStatus::Fail,
             counts: VerdictCounts {
@@ -1224,8 +1225,12 @@ fn cmd_check_inner(
     // Handle --staged mode vs base/head mode
     let (base, head, diff_text) = if args.staged {
         info!("Checking staged changes");
-        let diff_text =
-            git_staged_diff(diff_context).context(CockpitSkipReason(REASON_NO_DIFF_INPUT))?;
+        let diff_text = git_staged_diff(diff_context).map_err(|e| {
+            anyhow::Error::new(CockpitSkipError {
+                token: REASON_NO_DIFF_INPUT,
+                source: e,
+            })
+        })?;
         ("(staged)".to_string(), "HEAD".to_string(), diff_text)
     } else {
         // Merge defaults (CLI overrides config).
@@ -1242,8 +1247,12 @@ fn cmd_check_inner(
             .unwrap_or_else(|| "HEAD".to_string());
 
         info!("Checking diff: {}...{}", base, head);
-        let diff_text =
-            git_diff(&base, &head, diff_context).context(CockpitSkipReason(REASON_MISSING_BASE))?;
+        let diff_text = git_diff(&base, &head, diff_context).map_err(|e| {
+            anyhow::Error::new(CockpitSkipError {
+                token: REASON_MISSING_BASE,
+                source: e,
+            })
+        })?;
         (base, head, diff_text)
     };
 
@@ -1339,6 +1348,7 @@ fn cmd_check_inner(
             CapabilityStatus {
                 status: CAP_STATUS_AVAILABLE.to_string(),
                 reason: None,
+                detail: None,
             },
         );
 

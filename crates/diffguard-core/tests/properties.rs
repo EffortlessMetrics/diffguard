@@ -497,6 +497,15 @@ proptest! {
 // When verdict has reasons, they SHALL be rendered in the markdown output.
 // **Validates: Requirements 10.4**
 
+/// Meta reasons that are renderable in markdown output.
+const RENDERABLE_META_REASONS: &[&str] = &[
+    "truncated",
+    "missing_base",
+    "no_diff_input",
+    "git_unavailable",
+    "tool_error",
+];
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(50))]
 
@@ -506,16 +515,20 @@ proptest! {
     ) {
         let md = render_markdown_for_receipt(&receipt);
 
-        if !receipt.verdict.reasons.is_empty() {
+        let meta_reasons: Vec<&String> = receipt.verdict.reasons.iter()
+            .filter(|r| RENDERABLE_META_REASONS.contains(&r.as_str()))
+            .collect();
+
+        if !meta_reasons.is_empty() {
             prop_assert!(
                 md.contains("Verdict reasons:"),
-                "Markdown should contain 'Verdict reasons:' when reasons exist"
+                "Markdown should contain 'Verdict reasons:' when meta reasons exist"
             );
 
-            for reason in &receipt.verdict.reasons {
+            for reason in &meta_reasons {
                 prop_assert!(
-                    md.contains(reason),
-                    "Markdown should contain reason '{}' but got:\n{}",
+                    md.contains(reason.as_str()),
+                    "Markdown should contain meta reason '{}' but got:\n{}",
                     reason,
                     md
                 );

@@ -15,7 +15,8 @@ expression: json
     "capabilities": {
       "git": {
         "status": "unavailable",
-        "reason": "git command not found"
+        "reason": "git_unavailable",
+        "detail": "git command not found"
       }
     }
   },

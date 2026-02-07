@@ -36,8 +36,6 @@ expression: json
       "error": 0,
       "suppressed": 3
     },
-    "reasons": [
-      "1 warning(s)"
-    ]
+    "reasons": []
   }
 }

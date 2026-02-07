@@ -58,6 +58,7 @@ fn ci() -> Result<()> {
         ],
     )?;
     run("cargo", &["test", "--workspace"])?;
+    conform::run_conformance(true)?;
     Ok(())
 }
 
