@@ -592,17 +592,44 @@ fn test_schema_drift() -> Result<()> {
     let contract_value: serde_json::Value =
         serde_json::from_str(&contract_text).context("parse contract schema")?;
 
-    if generated_value != contract_value {
+    let generated_canonical = canonicalize_json(&generated_value);
+    let contract_canonical = canonicalize_json(&contract_value);
+
+    if generated_canonical != contract_canonical {
+        // Find first divergence line for diagnostics
+        let first_diff = generated_canonical
+            .lines()
+            .zip(contract_canonical.lines())
+            .enumerate()
+            .find(|(_, (a, b))| a != b)
+            .map(|(i, (a, b))| {
+                format!(
+                    "first divergence at line {}:\n  generated: {}\n  contract:  {}",
+                    i + 1,
+                    a,
+                    b
+                )
+            })
+            .unwrap_or_else(|| "files differ in length".to_string());
+
         bail!(
             "schema drift detected!\n\
              Generated: schemas/sensor.report.v1.schema.json\n\
              Contract:  contracts/schemas/sensor.report.v1.schema.json\n\n\
+             {first_diff}\n\n\
              If the schema change is intentional, update the contract:\n\
              cp schemas/sensor.report.v1.schema.json contracts/schemas/sensor.report.v1.schema.json"
         );
     }
 
     Ok(())
+}
+
+/// Re-serializes a JSON Value to a canonical pretty-printed string.
+/// `serde_json::to_string_pretty` uses sorted keys when the Value is
+/// backed by a BTreeMap (the default), providing stable ordering.
+fn canonicalize_json(value: &serde_json::Value) -> String {
+    serde_json::to_string_pretty(value).expect("re-serialize json")
 }
 
 /// Test that frozen vocabulary constants have the expected values.

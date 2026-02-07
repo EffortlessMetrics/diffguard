@@ -1,13 +1,16 @@
-use diffguard_types::{CheckReceipt, Finding, VerdictStatus};
+use diffguard_types::{
+    CheckReceipt, Finding, VerdictStatus, REASON_GIT_UNAVAILABLE, REASON_MISSING_BASE,
+    REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, REASON_TRUNCATED,
+};
 
 /// Reasons that are meaningful to render in markdown output.
 /// Only meta conditions (truncation, skip reasons, tool errors) should appear.
 const RENDERABLE_META_REASONS: &[&str] = &[
-    "truncated",
-    "missing_base",
-    "no_diff_input",
-    "git_unavailable",
-    "tool_error",
+    REASON_TRUNCATED,
+    REASON_MISSING_BASE,
+    REASON_NO_DIFF_INPUT,
+    REASON_GIT_UNAVAILABLE,
+    REASON_TOOL_ERROR,
 ];
 
 pub fn render_markdown_for_receipt(receipt: &CheckReceipt) -> String {
@@ -386,8 +389,8 @@ mod tests {
                     suppressed: 0,
                 },
                 reasons: vec![
-                    "has_error".to_string(),
-                    "has_warning".to_string(),
+                    diffguard_types::REASON_HAS_ERROR.to_string(),
+                    diffguard_types::REASON_HAS_WARNING.to_string(),
                     "unknown_future_reason".to_string(),
                 ],
             },
@@ -426,11 +429,11 @@ mod tests {
                 status: VerdictStatus::Skip,
                 counts: diffguard_types::VerdictCounts::default(),
                 reasons: vec![
-                    "truncated".to_string(),
-                    "missing_base".to_string(),
-                    "no_diff_input".to_string(),
-                    "git_unavailable".to_string(),
-                    "tool_error".to_string(),
+                    REASON_TRUNCATED.to_string(),
+                    REASON_MISSING_BASE.to_string(),
+                    REASON_NO_DIFF_INPUT.to_string(),
+                    REASON_GIT_UNAVAILABLE.to_string(),
+                    REASON_TOOL_ERROR.to_string(),
                 ],
             },
             timing: None,

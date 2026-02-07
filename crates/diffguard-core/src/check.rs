@@ -356,7 +356,12 @@ diff --git a/src/lib.rs b/src/lib.rs
 "#;
 
         let run = run_check(&plan, &config, diff).expect("run_check");
-        assert!(run.receipt.verdict.reasons.iter().any(|r| r == "truncated"));
+        assert!(run
+            .receipt
+            .verdict
+            .reasons
+            .iter()
+            .any(|r| r == REASON_TRUNCATED));
     }
 
     #[test]

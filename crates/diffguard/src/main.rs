@@ -1002,14 +1002,21 @@ impl std::error::Error for CockpitSkipError {
 }
 
 /// Checks if the error is a `CockpitSkipError` and returns
-/// the reason token if found. Untagged errors are treated as tool errors.
+/// the reason token if found. Walks the full anyhow error chain so that
+/// additional `.context(...)` layers above the `CockpitSkipError` don't
+/// hide it. Untagged errors are treated as tool errors.
 fn classify_cockpit_error(err: &anyhow::Error) -> Option<&'static str> {
-    err.downcast_ref::<CockpitSkipError>().map(|e| e.token)
+    err.chain()
+        .find_map(|cause| cause.downcast_ref::<CockpitSkipError>())
+        .map(|e| e.token)
 }
 
 /// Extracts the original error detail from a `CockpitSkipError`.
+/// Walks the full anyhow error chain so that additional `.context(...)`
+/// layers above the `CockpitSkipError` don't hide it.
 fn cockpit_error_detail(err: &anyhow::Error) -> String {
-    err.downcast_ref::<CockpitSkipError>()
+    err.chain()
+        .find_map(|cause| cause.downcast_ref::<CockpitSkipError>())
         .map(|e| e.source.to_string())
         .unwrap_or_else(|| err.to_string())
 }

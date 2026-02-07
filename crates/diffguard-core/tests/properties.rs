@@ -10,7 +10,8 @@ use proptest::prelude::*;
 use diffguard_core::render_markdown_for_receipt;
 use diffguard_types::{
     CheckReceipt, DiffMeta, FailOn, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-    VerdictStatus, CHECK_SCHEMA_V1,
+    VerdictStatus, CHECK_SCHEMA_V1, REASON_GIT_UNAVAILABLE, REASON_MISSING_BASE,
+    REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, REASON_TRUNCATED,
 };
 
 // ============================================================================
@@ -499,11 +500,11 @@ proptest! {
 
 /// Meta reasons that are renderable in markdown output.
 const RENDERABLE_META_REASONS: &[&str] = &[
-    "truncated",
-    "missing_base",
-    "no_diff_input",
-    "git_unavailable",
-    "tool_error",
+    REASON_TRUNCATED,
+    REASON_MISSING_BASE,
+    REASON_NO_DIFF_INPUT,
+    REASON_GIT_UNAVAILABLE,
+    REASON_TOOL_ERROR,
 ];
 
 proptest! {

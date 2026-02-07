@@ -109,6 +109,7 @@ mod tests {
     use super::*;
     use diffguard_types::{
         DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+        CAP_GIT, CAP_STATUS_UNAVAILABLE, REASON_GIT_UNAVAILABLE,
     };
 
     fn test_receipt() -> CheckReceipt {
@@ -300,14 +301,14 @@ mod tests {
         receipt.verdict = Verdict {
             status: VerdictStatus::Skip,
             counts: VerdictCounts::default(),
-            reasons: vec!["git_unavailable".to_string()],
+            reasons: vec![REASON_GIT_UNAVAILABLE.to_string()],
         };
         let mut ctx = test_context();
         ctx.capabilities.insert(
-            "git".to_string(),
+            CAP_GIT.to_string(),
             CapabilityStatus {
-                status: "unavailable".to_string(),
-                reason: Some("git_unavailable".to_string()),
+                status: CAP_STATUS_UNAVAILABLE.to_string(),
+                reason: Some(REASON_GIT_UNAVAILABLE.to_string()),
                 detail: Some("git command not found".to_string()),
             },
         );
