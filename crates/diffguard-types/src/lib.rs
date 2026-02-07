@@ -1890,6 +1890,9 @@ pub struct CapabilityStatus {
     /// Optional reason for unavailability.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Human-readable detail for diagnostics.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
 }
 
 /// A finding in sensor.report.v1 format.
