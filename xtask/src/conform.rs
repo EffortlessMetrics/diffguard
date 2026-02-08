@@ -17,7 +17,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     let mut failed = 0;
 
     // Test 1: Schema validation (serde round-trip)
-    print!("  [1/9] Schema validation (serde)... ");
+    print!("  [1/13] Schema validation (serde)... ");
     match test_schema_validation() {
         Ok(()) => {
             println!("PASS");
@@ -31,9 +31,9 @@ pub fn run_conformance(quick: bool) -> Result<()> {
 
     // Test 2: Determinism (skip if quick mode)
     if quick {
-        println!("  [2/9] Determinism... SKIP (quick mode)");
+        println!("  [2/13] Determinism... SKIP (quick mode)");
     } else {
-        print!("  [2/9] Determinism... ");
+        print!("  [2/13] Determinism... ");
         match test_determinism() {
             Ok(()) => {
                 println!("PASS");
@@ -47,7 +47,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 3: Survivability (cockpit mode with bad input)
-    print!("  [3/9] Survivability... ");
+    print!("  [3/13] Survivability... ");
     match test_survivability() {
         Ok(()) => {
             println!("PASS");
@@ -60,7 +60,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 4: Required fields
-    print!("  [4/9] Required fields... ");
+    print!("  [4/13] Required fields... ");
     match test_required_fields() {
         Ok(()) => {
             println!("PASS");
@@ -73,7 +73,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 5: Vocabulary compliance
-    print!("  [5/9] Vocabulary compliance... ");
+    print!("  [5/13] Vocabulary compliance... ");
     match test_vocabulary() {
         Ok(()) => {
             println!("PASS");
@@ -86,7 +86,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 6: JSON schema file validation
-    print!("  [6/9] JSON schema file validation... ");
+    print!("  [6/13] JSON schema file validation... ");
     match test_json_schema_file() {
         Ok(()) => {
             println!("PASS");
@@ -99,7 +99,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 7: Schema drift detection
-    print!("  [7/9] Schema drift detection... ");
+    print!("  [7/13] Schema drift detection... ");
     match test_schema_drift() {
         Ok(()) => {
             println!("PASS");
@@ -112,7 +112,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 8: Vocabulary constants
-    print!("  [8/9] Vocabulary constants... ");
+    print!("  [8/13] Vocabulary constants... ");
     match test_vocabulary_constants() {
         Ok(()) => {
             println!("PASS");
@@ -125,7 +125,7 @@ pub fn run_conformance(quick: bool) -> Result<()> {
     }
 
     // Test 9: Tool error code in sensor report
-    print!("  [9/9] Tool error code field... ");
+    print!("  [9/13] Tool error code field... ");
     match test_tool_error_code() {
         Ok(()) => {
             println!("PASS");
@@ -137,8 +137,60 @@ pub fn run_conformance(quick: bool) -> Result<()> {
         }
     }
 
+    // Test 10: Token lint (all tokens match ^[a-z][a-z0-9_.]*$)
+    print!("  [10/13] Token lint... ");
+    match test_token_lint() {
+        Ok(()) => {
+            println!("PASS");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("FAIL: {e}");
+            failed += 1;
+        }
+    }
+
+    // Test 11: Path hygiene (forward slashes, repo-relative, no traversal)
+    print!("  [11/13] Path hygiene... ");
+    match test_path_hygiene() {
+        Ok(()) => {
+            println!("PASS");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("FAIL: {e}");
+            failed += 1;
+        }
+    }
+
+    // Test 12: Fingerprint format (64 lowercase hex chars)
+    print!("  [12/13] Fingerprint format... ");
+    match test_fingerprint_format() {
+        Ok(()) => {
+            println!("PASS");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("FAIL: {e}");
+            failed += 1;
+        }
+    }
+
+    // Test 13: Artifact path hygiene (forward slashes)
+    print!("  [13/13] Artifact path hygiene... ");
+    match test_artifact_path_hygiene() {
+        Ok(()) => {
+            println!("PASS");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("FAIL: {e}");
+            failed += 1;
+        }
+    }
+
     println!();
-    let total = if quick { 8 } else { 9 };
+    let total = if quick { 12 } else { 13 };
     println!("Results: {passed}/{total} tests passed");
 
     if failed > 0 {
@@ -243,6 +295,9 @@ fn test_determinism() -> Result<()> {
                 o.remove("duration_ms");
             }
         }
+
+        // Remove artifacts array (paths differ per run due to unique filenames)
+        value.as_object_mut().map(|o| o.remove("artifacts"));
 
         outputs.push(serde_json::to_string_pretty(&value)?);
     }
@@ -728,6 +783,271 @@ fn test_tool_error_code() -> Result<()> {
                             );
                         }
                     }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Test that all tokens (check_id, code, reasons, capability keys) match the
+/// cockpit token format: `^[a-z][a-z0-9_.]*$`.
+fn test_token_lint() -> Result<()> {
+    let temp_dir = TempDir::new().context("create temp dir")?;
+    setup_test_repo_with_finding(temp_dir.path())?;
+
+    let sensor_path = temp_dir.path().join("sensor.json");
+    let out_path = temp_dir.path().join("report.json");
+
+    run_diffguard(
+        temp_dir.path(),
+        &[
+            "check",
+            "--base",
+            "HEAD~1",
+            "--head",
+            "HEAD",
+            "--out",
+            out_path.to_str().unwrap(),
+            "--sensor",
+            sensor_path.to_str().unwrap(),
+        ],
+    )?;
+
+    let content = std::fs::read_to_string(&sensor_path)?;
+    let value: serde_json::Value = serde_json::from_str(&content)?;
+
+    let token_re = regex::Regex::new(r"^[a-z][a-z0-9_.]*$").expect("token regex");
+
+    // Validate check_id and code on each finding
+    if let Some(findings) = value.get("findings").and_then(|f| f.as_array()) {
+        for (i, finding) in findings.iter().enumerate() {
+            if let Some(check_id) = finding.get("check_id").and_then(|v| v.as_str()) {
+                if !token_re.is_match(check_id) {
+                    bail!(
+                        "findings[{i}].check_id '{}' does not match token format",
+                        check_id
+                    );
+                }
+            }
+            if let Some(code) = finding.get("code").and_then(|v| v.as_str()) {
+                if !token_re.is_match(code) {
+                    bail!("findings[{i}].code '{}' does not match token format", code);
+                }
+            }
+        }
+    }
+
+    // Validate verdict.reasons
+    if let Some(reasons) = value
+        .get("verdict")
+        .and_then(|v| v.get("reasons"))
+        .and_then(|r| r.as_array())
+    {
+        for (i, reason) in reasons.iter().enumerate() {
+            if let Some(r) = reason.as_str() {
+                if !token_re.is_match(r) {
+                    bail!("verdict.reasons[{i}] '{}' does not match token format", r);
+                }
+            }
+        }
+    }
+
+    // Validate capability keys
+    if let Some(capabilities) = value
+        .get("run")
+        .and_then(|r| r.get("capabilities"))
+        .and_then(|c| c.as_object())
+    {
+        for name in capabilities.keys() {
+            if !token_re.is_match(name) {
+                bail!("capabilities key '{}' does not match token format", name);
+            }
+        }
+    }
+
+    // Validate verdict.status is in frozen enum
+    let valid_statuses = ["pass", "warn", "fail", "skip"];
+    if let Some(status) = value
+        .get("verdict")
+        .and_then(|v| v.get("status"))
+        .and_then(|s| s.as_str())
+    {
+        if !valid_statuses.contains(&status) {
+            bail!("verdict.status '{}' not in frozen enum", status);
+        }
+    }
+
+    // Validate severity values in frozen enum
+    let valid_severities = ["info", "warn", "error"];
+    if let Some(findings) = value.get("findings").and_then(|f| f.as_array()) {
+        for (i, finding) in findings.iter().enumerate() {
+            if let Some(sev) = finding.get("severity").and_then(|s| s.as_str()) {
+                if !valid_severities.contains(&sev) {
+                    bail!("findings[{i}].severity '{}' not in frozen enum", sev);
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Test that finding `location.path` values use forward slashes, are repo-relative,
+/// and don't contain absolute paths or traversals.
+fn test_path_hygiene() -> Result<()> {
+    let temp_dir = TempDir::new().context("create temp dir")?;
+    setup_test_repo_with_finding(temp_dir.path())?;
+
+    let sensor_path = temp_dir.path().join("sensor.json");
+    let out_path = temp_dir.path().join("report.json");
+
+    run_diffguard(
+        temp_dir.path(),
+        &[
+            "check",
+            "--base",
+            "HEAD~1",
+            "--head",
+            "HEAD",
+            "--out",
+            out_path.to_str().unwrap(),
+            "--sensor",
+            sensor_path.to_str().unwrap(),
+        ],
+    )?;
+
+    let content = std::fs::read_to_string(&sensor_path)?;
+    let value: serde_json::Value = serde_json::from_str(&content)?;
+
+    if let Some(findings) = value.get("findings").and_then(|f| f.as_array()) {
+        for (i, finding) in findings.iter().enumerate() {
+            if let Some(path) = finding
+                .get("location")
+                .and_then(|l| l.get("path"))
+                .and_then(|p| p.as_str())
+            {
+                // Skip empty paths (e.g., tool error findings)
+                if path.is_empty() {
+                    continue;
+                }
+
+                if path.contains('\\') {
+                    bail!(
+                        "findings[{i}].location.path '{}' contains backslashes",
+                        path
+                    );
+                }
+                if path.starts_with('/') {
+                    bail!("findings[{i}].location.path '{}' is an absolute path", path);
+                }
+                // Check for Windows drive letters (e.g., C:)
+                if path.len() >= 2
+                    && path.as_bytes()[0].is_ascii_alphabetic()
+                    && path.as_bytes()[1] == b':'
+                {
+                    bail!(
+                        "findings[{i}].location.path '{}' contains a drive letter",
+                        path
+                    );
+                }
+                if path.contains("..") {
+                    bail!(
+                        "findings[{i}].location.path '{}' contains traversal '..'",
+                        path
+                    );
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Test that all fingerprints are exactly 64 lowercase hex characters.
+fn test_fingerprint_format() -> Result<()> {
+    let temp_dir = TempDir::new().context("create temp dir")?;
+    setup_test_repo_with_finding(temp_dir.path())?;
+
+    let sensor_path = temp_dir.path().join("sensor.json");
+    let out_path = temp_dir.path().join("report.json");
+
+    run_diffguard(
+        temp_dir.path(),
+        &[
+            "check",
+            "--base",
+            "HEAD~1",
+            "--head",
+            "HEAD",
+            "--out",
+            out_path.to_str().unwrap(),
+            "--sensor",
+            sensor_path.to_str().unwrap(),
+        ],
+    )?;
+
+    let content = std::fs::read_to_string(&sensor_path)?;
+    let value: serde_json::Value = serde_json::from_str(&content)?;
+
+    let fingerprint_re = regex::Regex::new(r"^[0-9a-f]{64}$").expect("fingerprint regex");
+
+    if let Some(findings) = value.get("findings").and_then(|f| f.as_array()) {
+        if findings.is_empty() {
+            bail!("no findings to validate fingerprints against");
+        }
+        for (i, finding) in findings.iter().enumerate() {
+            let fingerprint = finding
+                .get("fingerprint")
+                .and_then(|f| f.as_str())
+                .context(format!("findings[{i}].fingerprint missing"))?;
+
+            if !fingerprint_re.is_match(fingerprint) {
+                bail!(
+                    "findings[{i}].fingerprint '{}' does not match ^[0-9a-f]{{64}}$",
+                    fingerprint
+                );
+            }
+        }
+    } else {
+        bail!("no findings array in sensor report");
+    }
+
+    Ok(())
+}
+
+/// Test that all `artifacts[].path` values use forward slashes.
+fn test_artifact_path_hygiene() -> Result<()> {
+    let temp_dir = TempDir::new().context("create temp dir")?;
+    setup_test_repo_with_finding(temp_dir.path())?;
+
+    let sensor_path = temp_dir.path().join("sensor.json");
+    let out_path = temp_dir.path().join("report.json");
+
+    run_diffguard(
+        temp_dir.path(),
+        &[
+            "check",
+            "--base",
+            "HEAD~1",
+            "--head",
+            "HEAD",
+            "--out",
+            out_path.to_str().unwrap(),
+            "--sensor",
+            sensor_path.to_str().unwrap(),
+        ],
+    )?;
+
+    let content = std::fs::read_to_string(&sensor_path)?;
+    let value: serde_json::Value = serde_json::from_str(&content)?;
+
+    if let Some(artifacts) = value.get("artifacts").and_then(|a| a.as_array()) {
+        for (i, artifact) in artifacts.iter().enumerate() {
+            if let Some(path) = artifact.get("path").and_then(|p| p.as_str()) {
+                if path.contains('\\') {
+                    bail!("artifacts[{i}].path '{}' contains backslashes", path);
                 }
             }
         }

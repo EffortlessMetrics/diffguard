@@ -852,6 +852,58 @@ fn resolve_out_path(args: &CheckArgs, mode: Mode) -> PathBuf {
     }
 }
 
+/// Adjusts extras output paths for cockpit mode.
+///
+/// When `--sensor` is active (cockpit mode), the default paths for
+/// `--sarif`, `--junit`, `--csv`, and `--tsv` are moved under
+/// `artifacts/diffguard/extras/` to keep the top-level `artifacts/diffguard/`
+/// clean for the bus (`report.json` + `comment.md` only).
+///
+/// Only adjusts paths that match the compile-time `default_missing_value`;
+/// explicit user paths are left unchanged.
+fn resolve_extras_paths(args: &mut CheckArgs, mode: Mode) {
+    if !matches!(mode, Mode::Cockpit) || args.sensor.is_none() {
+        return;
+    }
+
+    // (current default_missing_value, cockpit-mode default)
+    let extras_defaults: &[(&str, &str)] = &[
+        (
+            "artifacts/diffguard/report.sarif.json",
+            "artifacts/diffguard/extras/report.sarif.json",
+        ),
+        (
+            "artifacts/diffguard/report.xml",
+            "artifacts/diffguard/extras/report.xml",
+        ),
+        (
+            "artifacts/diffguard/report.csv",
+            "artifacts/diffguard/extras/report.csv",
+        ),
+        (
+            "artifacts/diffguard/report.tsv",
+            "artifacts/diffguard/extras/report.tsv",
+        ),
+    ];
+
+    let fields: [&mut Option<PathBuf>; 4] = [
+        &mut args.sarif,
+        &mut args.junit,
+        &mut args.csv,
+        &mut args.tsv,
+    ];
+
+    for (field, (standard_default, cockpit_default)) in
+        fields.into_iter().zip(extras_defaults.iter())
+    {
+        if let Some(ref path) = field {
+            if path == Path::new(standard_default) {
+                *field = Some(PathBuf::from(cockpit_default));
+            }
+        }
+    }
+}
+
 /// Builds rule metadata map from config for sensor report.
 fn build_rule_metadata(cfg: &ConfigFile) -> HashMap<String, RuleMetadata> {
     cfg.rule
@@ -868,8 +920,9 @@ fn build_rule_metadata(cfg: &ConfigFile) -> HashMap<String, RuleMetadata> {
         .collect()
 }
 
-fn cmd_check(args: CheckArgs) -> Result<()> {
+fn cmd_check(mut args: CheckArgs) -> Result<()> {
     let mode = resolve_mode(&args);
+    resolve_extras_paths(&mut args, mode);
     let out_path = resolve_out_path(&args, mode);
 
     // Start timing
@@ -920,6 +973,8 @@ fn cmd_check(args: CheckArgs) -> Result<()> {
                                 capabilities,
                                 artifacts: vec![],
                                 rule_metadata: HashMap::new(),
+                                truncated_count: 0,
+                                rules_total: 0,
                             };
 
                             // Try to write the sensor report
@@ -1088,6 +1143,8 @@ fn build_tool_error_sensor_context(
         capabilities,
         artifacts: vec![],
         rule_metadata: HashMap::new(),
+        truncated_count: 0,
+        rules_total: 0,
     }
 }
 
@@ -1371,6 +1428,8 @@ fn cmd_check_inner(
             capabilities,
             artifacts,
             rule_metadata: build_rule_metadata(&cfg),
+            truncated_count: run.truncated_findings,
+            rules_total: run.rules_evaluated,
         };
 
         let sensor_json = render_sensor_json(&run.receipt, &ctx).context("render sensor report")?;

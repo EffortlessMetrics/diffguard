@@ -26,6 +26,10 @@ pub struct SensorReportContext {
     pub artifacts: Vec<Artifact>,
     /// Rule metadata for help/url lookup.
     pub rule_metadata: HashMap<String, RuleMetadata>,
+    /// Number of findings beyond max_findings that were dropped.
+    pub truncated_count: u32,
+    /// Total number of rules evaluated.
+    pub rules_total: usize,
 }
 
 /// Metadata for a rule (help text and URL).
@@ -63,6 +67,15 @@ pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -
         })
         .collect();
 
+    // Count distinct rule_ids across findings
+    let rules_matched = {
+        let mut seen = std::collections::BTreeSet::new();
+        for f in &receipt.findings {
+            seen.insert(&f.rule_id);
+        }
+        seen.len()
+    };
+
     let data = serde_json::json!({
         "diff": {
             "base": receipt.diff.base,
@@ -71,6 +84,12 @@ pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -
             "scope": receipt.diff.scope,
             "files_scanned": receipt.diff.files_scanned,
             "lines_scanned": receipt.diff.lines_scanned,
+        },
+        "diffguard": {
+            "suppressed_count": receipt.verdict.counts.suppressed,
+            "truncated_count": ctx.truncated_count,
+            "rules_matched": rules_matched,
+            "rules_total": ctx.rules_total,
         }
     });
 
@@ -162,6 +181,8 @@ mod tests {
                 format: "json".to_string(),
             }],
             rule_metadata: HashMap::new(),
+            truncated_count: 0,
+            rules_total: 5,
         };
         ctx.capabilities.insert(
             "git".to_string(),

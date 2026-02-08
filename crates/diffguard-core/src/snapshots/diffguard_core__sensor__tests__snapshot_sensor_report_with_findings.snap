@@ -61,6 +61,12 @@ expression: json
       "head": "HEAD",
       "lines_scanned": 50,
       "scope": "added"
+    },
+    "diffguard": {
+      "rules_matched": 1,
+      "rules_total": 5,
+      "suppressed_count": 0,
+      "truncated_count": 0
     }
   }
 }

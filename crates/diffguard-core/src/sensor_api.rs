@@ -55,10 +55,12 @@ pub fn run_sensor(
     let _ = substrate;
     let check_run = run_check(&settings.plan, &settings.config, &settings.diff_text)?;
 
-    // 2. Build rule metadata from config
+    // 2. Build rule metadata from config and merge check stats into context
     let rule_metadata = extract_rule_metadata(&settings.config);
     let ctx = SensorReportContext {
         rule_metadata,
+        truncated_count: check_run.truncated_findings,
+        rules_total: check_run.rules_evaluated,
         ..settings.context.clone()
     };
 
@@ -146,6 +148,8 @@ mod tests {
             capabilities,
             artifacts: vec![],
             rule_metadata: HashMap::new(),
+            truncated_count: 0,
+            rules_total: 0,
         }
     }
 

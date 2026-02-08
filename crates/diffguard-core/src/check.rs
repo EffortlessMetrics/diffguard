@@ -35,6 +35,10 @@ pub struct CheckRun {
     pub markdown: String,
     pub annotations: Vec<String>,
     pub exit_code: i32,
+    /// Number of findings dropped due to max_findings truncation.
+    pub truncated_findings: u32,
+    /// Number of rules that were evaluated (after tag filtering).
+    pub rules_evaluated: usize,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -67,6 +71,7 @@ pub fn run_check(
         .collect();
 
     let rules = compile_rules(&filtered_rules)?;
+    let rules_evaluated = filtered_rules.len();
 
     let lines = diff_lines.into_iter().map(|l| InputLine {
         path: l.path,
@@ -122,6 +127,8 @@ pub fn run_check(
         markdown,
         annotations,
         exit_code,
+        truncated_findings: evaluation.truncated_findings,
+        rules_evaluated,
     })
 }
 
