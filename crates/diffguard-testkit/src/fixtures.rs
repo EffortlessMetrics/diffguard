@@ -750,4 +750,12 @@ mod tests {
         let (lines, _) = parse_unified_diff(sample_diffs::renamed_file(), Scope::Added).unwrap();
         assert!(lines.iter().all(|l| l.path == "new/path.rs"));
     }
+
+    #[test]
+    fn additional_sample_diffs_are_available() {
+        assert!(!sample_diffs::malformed_hunk().is_empty());
+        assert!(!sample_diffs::with_unwrap_in_comment().is_empty());
+        assert!(!sample_diffs::javascript_console_log().is_empty());
+        assert!(!sample_diffs::python_print().is_empty());
+    }
 }

@@ -67,10 +67,10 @@ pub fn render_junit_for_receipt(receipt: &CheckReceipt) -> String {
 
             // Add failure element for non-info severity
             if matches!(f.severity, Severity::Error | Severity::Warn) {
-                let failure_type = match f.severity {
-                    Severity::Error => "error",
-                    Severity::Warn => "warning",
-                    Severity::Info => "info",
+                let failure_type = if matches!(f.severity, Severity::Error) {
+                    "error"
+                } else {
+                    "warning"
                 };
 
                 out.push_str(&format!(
@@ -284,6 +284,32 @@ mod tests {
         assert!(xml.contains("Rule: rust.no_unwrap"));
         assert!(xml.contains("File: src/lib.rs"));
         assert!(xml.contains("Line: 15"));
+    }
+
+    #[test]
+    fn junit_info_severity_does_not_emit_failure() {
+        let mut receipt = create_test_receipt_with_findings();
+        receipt.findings = vec![Finding {
+            rule_id: "docs.info".to_string(),
+            severity: Severity::Info,
+            message: "Just information".to_string(),
+            path: "README.md".to_string(),
+            line: 1,
+            column: None,
+            match_text: "info".to_string(),
+            snippet: "info".to_string(),
+        }];
+        receipt.verdict.counts = VerdictCounts {
+            info: 1,
+            warn: 0,
+            error: 0,
+            suppressed: 0,
+        };
+        receipt.verdict.status = VerdictStatus::Pass;
+
+        let xml = render_junit_for_receipt(&receipt);
+        assert!(!xml.contains("<failure type=\"error\""));
+        assert!(!xml.contains("<failure type=\"warning\""));
     }
 
     /// Snapshot test for JUnit XML output with findings.

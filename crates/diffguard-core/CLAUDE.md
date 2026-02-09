@@ -34,6 +34,10 @@ pub fn run_sensor(settings: &Settings, substrate: Option<&dyn Substrate>) -> Res
 This is the entry point for BusyBox/integrated cockpit usage.
 The CLI continues using `run_check()` directly.
 
+**API Stability:** `run_sensor()` is the stable integration seam for Cockpit/BusyBox consumers.
+The `SensorReport` return type is the R2 Library Contract surface — changes to its shape
+require a schema version bump (see `docs/cockpit-integration.md` Deprecation Process).
+
 ### Rendering Functions
 
 ```rust

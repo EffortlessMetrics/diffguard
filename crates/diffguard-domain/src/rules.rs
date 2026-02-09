@@ -392,18 +392,15 @@ mod tests {
 
         // Both patterns could match "foobar", but first_match should return "foo"
         let content = "foobar";
-        let mut matched = false;
-        for p in &r.patterns {
-            if let Some(m) = p.find(content) {
-                // First pattern "foo" should match at position 0-3
-                assert_eq!(m.start(), 0);
-                assert_eq!(m.end(), 3);
-                assert_eq!(&content[m.start()..m.end()], "foo");
-                matched = true;
-                break;
-            }
-        }
-        assert!(matched, "Expected a pattern to match");
+        let m = r
+            .patterns
+            .iter()
+            .find_map(|p| p.find(content))
+            .expect("Expected a pattern to match");
+        // First pattern "foo" should match at position 0-3
+        assert_eq!(m.start(), 0);
+        assert_eq!(m.end(), 3);
+        assert_eq!(&content[m.start()..m.end()], "foo");
     }
 
     #[test]
@@ -476,9 +473,10 @@ mod tests {
 
         // The general pattern should match first
         let content = "specific";
-        if let Some(m) = r.patterns[0].find(content) {
-            assert_eq!(&content[m.start()..m.end()], "specific");
-        }
+        let m = r.patterns[0]
+            .find(content)
+            .expect("Expected specific pattern to match");
+        assert_eq!(&content[m.start()..m.end()], "specific");
     }
 
     // --- Complex Glob Pattern Tests ---

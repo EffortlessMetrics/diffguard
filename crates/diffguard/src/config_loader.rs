@@ -145,6 +145,7 @@ fn merge_configs(base: ConfigFile, other: ConfigFile) -> ConfigFile {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::bail;
     use std::fs;
     use tempfile::TempDir;
 
@@ -340,5 +341,137 @@ patterns = ["l1"]
         assert!(ids.contains(&"level1.rule"));
         assert!(ids.contains(&"level2.rule"));
         assert!(ids.contains(&"level3.rule"));
+    }
+
+    #[test]
+    fn test_include_depth_limit_exceeded() {
+        let temp = TempDir::new().unwrap();
+
+        // Create a chain longer than MAX_INCLUDE_DEPTH
+        for i in 0..=MAX_INCLUDE_DEPTH + 1 {
+            let path = temp.path().join(format!("level{}.toml", i));
+            if i < MAX_INCLUDE_DEPTH + 1 {
+                let include_line = format!("includes = [\"level{}.toml\"]\n", i + 1);
+                fs::write(&path, include_line).unwrap();
+            } else {
+                fs::write(&path, "").unwrap();
+            }
+        }
+
+        let root = temp.path().join("level0.toml");
+        let result = load_config_with_includes(&root, no_expand);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Include depth exceeded"));
+    }
+
+    #[test]
+    fn test_merge_configs_defaults_override() {
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                base: Some("base".to_string()),
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                head: Some("head".to_string()),
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+        assert_eq!(merged.defaults.head.as_deref(), Some("head"));
+    }
+
+    #[test]
+    fn test_include_logging_path_resolution_debug() {
+        let _ = tracing_subscriber::fmt()
+            .with_max_level(tracing::Level::DEBUG)
+            .try_init();
+
+        let temp = TempDir::new().unwrap();
+        let base_path = temp.path().join("base.toml");
+        fs::write(
+            &base_path,
+            r#"
+[[rule]]
+id = "base.rule"
+severity = "warn"
+message = "Base"
+patterns = ["base"]
+"#,
+        )
+        .unwrap();
+
+        let main_path = temp.path().join("main.toml");
+        fs::write(&main_path, "includes = [\"base.toml\"]\n").unwrap();
+
+        let result = load_config_with_includes(&main_path, no_expand).unwrap();
+        assert_eq!(result.rule.len(), 1);
+    }
+
+    #[test]
+    fn test_invalid_toml_returns_error() {
+        let temp = TempDir::new().unwrap();
+        let config_path = temp.path().join("bad.toml");
+        fs::write(&config_path, "invalid = [").unwrap();
+
+        let result = load_config_with_includes(&config_path, no_expand);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("parse config"));
+    }
+
+    #[test]
+    fn test_expand_env_error_propagates() {
+        let temp = TempDir::new().unwrap();
+        let config_path = temp.path().join("config.toml");
+        fs::write(
+            &config_path,
+            r#"
+[[rule]]
+id = "test.rule"
+severity = "warn"
+message = "Test"
+patterns = ["test"]
+"#,
+        )
+        .unwrap();
+
+        let expand_env = |_s: &str| -> Result<String> { bail!("expand failed") };
+        let result = load_config_with_includes(&config_path, expand_env);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("expand failed"));
+    }
+
+    #[test]
+    fn test_merge_configs_keeps_base_defaults_when_other_default() {
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                base: Some("origin/main".to_string()),
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults::default(),
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+        assert_eq!(merged.defaults.base.as_deref(), Some("origin/main"));
     }
 }

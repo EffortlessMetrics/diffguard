@@ -313,6 +313,30 @@ diff --git a/src/lib.rs b/src/lib.rs
     }
 
     #[test]
+    fn run_check_with_path_filters_filters_findings() {
+        let plan = test_plan(100, FailOn::Error, vec!["src/lib.rs"]);
+        let config = test_rule_config(diffguard_types::Severity::Warn, "warn_me");
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,2 @@
+ fn a() {}
++let x = warn_me();
+diff --git a/other.rs b/other.rs
+--- a/other.rs
++++ b/other.rs
+@@ -1,1 +1,2 @@
+ fn b() {}
++let y = warn_me();
+"#;
+
+        let run = run_check(&plan, &config, diff).expect("run_check");
+        assert_eq!(run.receipt.findings.len(), 1);
+        assert_eq!(run.receipt.findings[0].path, "src/lib.rs");
+    }
+
+    #[test]
     fn run_check_sets_warn_verdict_and_reasons() {
         let plan = test_plan(100, FailOn::Warn, vec![]);
         let config = test_rule_config(diffguard_types::Severity::Warn, "warn_me");

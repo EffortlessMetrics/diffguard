@@ -95,6 +95,7 @@ a key, it effectively becomes API and requires coordination to change.
 | `truncated_count` | `u32` | Findings dropped due to `max_findings` limit |
 | `rules_matched` | `usize` | Distinct rules that produced at least one finding |
 | `rules_total` | `usize` | Total rules evaluated (after tag filtering) |
+| `tags_matched` | `Map<String, u32>` | Finding count per matched rule tag (omitted if empty) |
 
 ### `data.diff` metadata
 
@@ -138,3 +139,17 @@ Before proposing a new key or artifact for cockpit consumption:
 5. **Conformance** — A conformance test in `xtask/src/conform.rs` validates the key
 6. **Schema** — The vendored contract schema includes the new field (if structurally constrained)
 7. **Coordination** — A PR or issue is opened against the cockpit integration spec
+
+## Deprecation Process
+
+When removing or renaming a Tier A or Tier B field:
+
+| Phase | Duration | Action |
+|-------|----------|--------|
+| **Announce** | — | Open a deprecation issue with rationale and migration path |
+| **Dual-emit** | 2 minor releases | Emit both old and new field; old field marked deprecated in docs |
+| **Conformance gate** | Next minor | Add conformance test that the new field is present |
+| **Remove** | Next minor after gate | Stop emitting the deprecated field |
+| **Document** | Same release | Update this file and CHANGELOG |
+
+Tier C artifacts (extras) can be changed freely without this process.

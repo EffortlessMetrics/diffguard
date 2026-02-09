@@ -2,7 +2,7 @@
 //!
 //! This module converts CheckReceipt to the `sensor.report.v1` format.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use diffguard_types::{
     Artifact, CapabilityStatus, CheckReceipt, RunMeta, SensorFinding, SensorLocation, SensorReport,
@@ -32,11 +32,12 @@ pub struct SensorReportContext {
     pub rules_total: usize,
 }
 
-/// Metadata for a rule (help text and URL).
+/// Metadata for a rule (help text, URL, and tags).
 #[derive(Debug, Clone, Default)]
 pub struct RuleMetadata {
     pub help: Option<String>,
     pub url: Option<String>,
+    pub tags: Vec<String>,
 }
 
 /// Renders a CheckReceipt as a SensorReport.
@@ -76,6 +77,31 @@ pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -
         seen.len()
     };
 
+    // Count findings per matched rule tag (BTreeMap for deterministic key ordering)
+    let tags_matched: BTreeMap<String, u32> = {
+        let mut counts = BTreeMap::new();
+        for f in &receipt.findings {
+            if let Some(meta) = ctx.rule_metadata.get(&f.rule_id) {
+                for tag in &meta.tags {
+                    *counts.entry(tag.clone()).or_insert(0) += 1;
+                }
+            }
+        }
+        counts
+    };
+
+    let mut diffguard_data = serde_json::json!({
+        "suppressed_count": receipt.verdict.counts.suppressed,
+        "truncated_count": ctx.truncated_count,
+        "rules_matched": rules_matched,
+        "rules_total": ctx.rules_total,
+    });
+
+    if !tags_matched.is_empty() {
+        diffguard_data["tags_matched"] =
+            serde_json::to_value(&tags_matched).expect("serialize tags_matched");
+    }
+
     let data = serde_json::json!({
         "diff": {
             "base": receipt.diff.base,
@@ -85,12 +111,7 @@ pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -
             "files_scanned": receipt.diff.files_scanned,
             "lines_scanned": receipt.diff.lines_scanned,
         },
-        "diffguard": {
-            "suppressed_count": receipt.verdict.counts.suppressed,
-            "truncated_count": ctx.truncated_count,
-            "rules_matched": rules_matched,
-            "rules_total": ctx.rules_total,
-        }
+        "diffguard": diffguard_data,
     });
 
     SensorReport {
@@ -200,6 +221,7 @@ mod tests {
                     "https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html"
                         .to_string(),
                 ),
+                tags: vec!["safety".to_string()],
             },
         );
         ctx
@@ -284,6 +306,35 @@ mod tests {
         let data = report.data.as_ref().unwrap();
         assert_eq!(data["diff"]["base"], "origin/main");
         assert_eq!(data["diff"]["head"], "HEAD");
+    }
+
+    #[test]
+    fn sensor_report_includes_tags_matched() {
+        let receipt = test_receipt();
+        let ctx = test_context();
+        let report = render_sensor_report(&receipt, &ctx);
+        let data = report.data.as_ref().unwrap();
+        let tags = data["diffguard"]["tags_matched"]
+            .as_object()
+            .expect("tags_matched");
+        assert_eq!(tags["safety"].as_u64(), Some(1));
+    }
+
+    #[test]
+    fn sensor_report_omits_tags_matched_when_metadata_missing() {
+        let mut receipt = test_receipt();
+        receipt.findings[0].rule_id = "missing.rule".to_string();
+
+        let mut ctx = test_context();
+        ctx.rule_metadata.clear();
+
+        let report = render_sensor_report(&receipt, &ctx);
+        let data = report.data.as_ref().unwrap();
+        let diffguard = data
+            .get("diffguard")
+            .and_then(|v| v.as_object())
+            .expect("diffguard data");
+        assert!(!diffguard.contains_key("tags_matched"));
     }
 
     #[test]

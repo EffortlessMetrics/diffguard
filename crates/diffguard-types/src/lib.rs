@@ -1259,3 +1259,78 @@ pub struct Artifact {
     /// Format of the artifact (e.g., "json", "sarif", "markdown").
     pub format: String,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn severity_scope_failon_as_str() {
+        assert_eq!(Severity::Info.as_str(), "info");
+        assert_eq!(Severity::Warn.as_str(), "warn");
+        assert_eq!(Severity::Error.as_str(), "error");
+
+        assert_eq!(Scope::Added.as_str(), "added");
+        assert_eq!(Scope::Changed.as_str(), "changed");
+
+        assert_eq!(FailOn::Error.as_str(), "error");
+        assert_eq!(FailOn::Warn.as_str(), "warn");
+        assert_eq!(FailOn::Never.as_str(), "never");
+    }
+
+    #[test]
+    fn defaults_match_expected_values() {
+        let defaults = Defaults::default();
+        assert_eq!(defaults.base.as_deref(), Some("origin/main"));
+        assert_eq!(defaults.head.as_deref(), Some("HEAD"));
+        assert_eq!(defaults.scope, Some(Scope::Added));
+        assert_eq!(defaults.fail_on, Some(FailOn::Error));
+        assert_eq!(defaults.max_findings, Some(200));
+        assert_eq!(defaults.diff_context, Some(0));
+    }
+
+    #[test]
+    fn verdict_counts_suppressed_is_omitted_when_zero() {
+        let counts = VerdictCounts::default();
+        let value = serde_json::to_value(&counts).expect("serialize verdict counts");
+        let obj = value.as_object().expect("counts should be object");
+        assert!(!obj.contains_key("suppressed"));
+
+        let with_suppressed = VerdictCounts {
+            suppressed: 2,
+            ..VerdictCounts::default()
+        };
+        let value = serde_json::to_value(&with_suppressed).expect("serialize verdict counts");
+        let obj = value.as_object().expect("counts should be object");
+        assert_eq!(obj.get("suppressed").and_then(|v| v.as_u64()), Some(2));
+    }
+
+    #[test]
+    fn built_in_config_contains_expected_rules_and_unique_ids() {
+        let cfg = ConfigFile::built_in();
+        assert!(cfg.rule.len() > 10, "built-in rules should be non-trivial");
+
+        let ids: std::collections::HashSet<&str> = cfg.rule.iter().map(|r| r.id.as_str()).collect();
+        assert_eq!(
+            ids.len(),
+            cfg.rule.len(),
+            "built-in rule IDs should be unique"
+        );
+
+        for expected in [
+            "rust.no_unwrap",
+            "rust.no_dbg",
+            "python.no_print",
+            "js.no_console",
+            "ruby.no_binding_pry",
+            "security.hardcoded_ipv4",
+        ] {
+            assert!(
+                ids.contains(expected),
+                "expected built-in rule '{expected}'"
+            );
+        }
+
+        assert_eq!(cfg.defaults, Defaults::default());
+    }
+}

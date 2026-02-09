@@ -244,6 +244,35 @@ mod tests {
     }
 
     #[test]
+    fn skips_rules_that_do_not_apply_to_language() {
+        let rules = compile_rules(&[test_rule(
+            "python.no_print",
+            Severity::Warn,
+            "no",
+            vec!["python"],
+            vec!["print\\("],
+            vec!["**/*.py"],
+            vec!["**/tests/**"],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "src/lib.rs".to_string(),
+                line: 1,
+                content: "print(\"hello\")".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        assert!(eval.findings.is_empty());
+        assert_eq!(eval.counts.warn, 0);
+    }
+
+    #[test]
     fn does_not_match_in_comment_when_ignored() {
         let rules = compile_rules(&[test_rule(
             "rust.no_unwrap",

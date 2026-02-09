@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::io::{self, Write};
+use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
@@ -465,21 +465,54 @@ impl LanguageArg {
     }
 }
 
-fn main() -> Result<()> {
-    let cli = Cli::parse();
+#[cfg(not(test))]
+fn main() -> std::process::ExitCode {
+    match run_with_args(std::env::args_os()) {
+        Ok(code) => std::process::ExitCode::from(code as u8),
+        Err(err) => {
+            eprintln!("{err:?}");
+            std::process::ExitCode::from(1)
+        }
+    }
+}
+
+fn run_with_args<I, T>(args: I) -> Result<i32>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    let cli = Cli::parse_from(args);
 
     // Initialize logging based on flags
     init_logging(cli.verbose, cli.debug);
 
     match cli.command {
         Commands::Check(args) => cmd_check(*args),
-        Commands::Rules(args) => cmd_rules(args),
-        Commands::Explain(args) => cmd_explain(args),
+        Commands::Rules(args) => {
+            cmd_rules(args)?;
+            Ok(0)
+        }
+        Commands::Explain(args) => {
+            cmd_explain(args)?;
+            Ok(0)
+        }
         Commands::Validate(args) => cmd_validate(args),
-        Commands::Sarif(args) => cmd_sarif(args),
-        Commands::Junit(args) => cmd_junit(args),
-        Commands::Csv(args) => cmd_csv(args),
-        Commands::Init(args) => cmd_init(args),
+        Commands::Sarif(args) => {
+            cmd_sarif(args)?;
+            Ok(0)
+        }
+        Commands::Junit(args) => {
+            cmd_junit(args)?;
+            Ok(0)
+        }
+        Commands::Csv(args) => {
+            cmd_csv(args)?;
+            Ok(0)
+        }
+        Commands::Init(args) => {
+            cmd_init(args)?;
+            Ok(0)
+        }
         Commands::Test(args) => cmd_test(args),
     }
 }
@@ -498,10 +531,10 @@ fn init_logging(verbose: bool, debug: bool) {
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
 
-    tracing_subscriber::registry()
+    let _ = tracing_subscriber::registry()
         .with(fmt::layer().with_writer(std::io::stderr))
         .with(filter)
-        .init();
+        .try_init();
 
     debug!("Logging initialized at level: {}", level);
 }
@@ -523,7 +556,22 @@ fn cmd_rules(args: RulesArgs) -> Result<()> {
     Ok(())
 }
 
-fn cmd_validate(args: ValidateArgs) -> Result<()> {
+fn compile_rules_checked(
+    rules: &[diffguard_types::RuleConfig],
+) -> Result<Vec<diffguard_domain::CompiledRule>, diffguard_domain::RuleCompileError> {
+    #[cfg(test)]
+    {
+        if std::env::var("DIFFGUARD_TEST_FORCE_COMPILE_ERROR").is_ok() {
+            return Err(diffguard_domain::RuleCompileError::MissingPatterns {
+                rule_id: "forced.compile".to_string(),
+            });
+        }
+    }
+
+    compile_rules(rules)
+}
+
+fn cmd_validate(args: ValidateArgs) -> Result<i32> {
     info!("Validating configuration file");
 
     // Determine config path
@@ -624,7 +672,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<()> {
 
     // Also try to compile all rules to catch any other issues
     if errors.is_empty() {
-        if let Err(e) = compile_rules(&cfg.rule) {
+        if let Err(e) = compile_rules_checked(&cfg.rule) {
             errors.push(format!("Rule compilation error: {}", e));
         }
     }
@@ -667,9 +715,9 @@ fn cmd_validate(args: ValidateArgs) -> Result<()> {
     }
 
     if errors.is_empty() {
-        Ok(())
+        Ok(0)
     } else {
-        std::process::exit(1);
+        Ok(1)
     }
 }
 
@@ -914,13 +962,43 @@ fn build_rule_metadata(cfg: &ConfigFile) -> HashMap<String, RuleMetadata> {
                 RuleMetadata {
                     help: r.help.clone(),
                     url: r.url.clone(),
+                    tags: r.tags.clone(),
                 },
             )
         })
         .collect()
 }
 
-fn cmd_check(mut args: CheckArgs) -> Result<()> {
+fn maybe_force_sensor_json_error() -> Option<serde_json::Error> {
+    if cfg!(test) && std::env::var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR").is_ok() {
+        Some(<serde_json::Error as serde::ser::Error>::custom(
+            "forced sensor json error",
+        ))
+    } else {
+        None
+    }
+}
+
+fn render_sensor_json_checked(
+    receipt: &CheckReceipt,
+    ctx: &SensorReportContext,
+) -> Result<String, serde_json::Error> {
+    if let Some(err) = maybe_force_sensor_json_error() {
+        return Err(err);
+    }
+    render_sensor_json(receipt, ctx)
+}
+
+fn serialize_sensor_report_checked(
+    report: &diffguard_types::SensorReport,
+) -> Result<String, serde_json::Error> {
+    if let Some(err) = maybe_force_sensor_json_error() {
+        return Err(err);
+    }
+    serde_json::to_string_pretty(report)
+}
+
+fn cmd_check(mut args: CheckArgs) -> Result<i32> {
     let mode = resolve_mode(&args);
     resolve_extras_paths(&mut args, mode);
     let out_path = resolve_out_path(&args, mode);
@@ -940,14 +1018,14 @@ fn cmd_check(mut args: CheckArgs) -> Result<()> {
         Mode::Standard => {
             // Standard mode: propagate errors and use normal exit codes
             let exit_code = result?;
-            std::process::exit(exit_code);
+            Ok(exit_code)
         }
         Mode::Cockpit => {
             // Cockpit mode: always try to write a receipt, exit 0 if successful
             match result {
                 Ok(_exit_code) => {
                     // Check ran successfully, exit 0 (receipt was written)
-                    std::process::exit(0);
+                    Ok(0)
                 }
                 Err(err) => {
                     // Classify the error to determine skip vs fail
@@ -979,10 +1057,10 @@ fn cmd_check(mut args: CheckArgs) -> Result<()> {
 
                             // Try to write the sensor report
                             if let Some(sensor_path) = &args.sensor {
-                                if let Ok(json) = render_sensor_json(&skip_receipt, &ctx) {
+                                if let Ok(json) = render_sensor_json_checked(&skip_receipt, &ctx) {
                                     if write_text(sensor_path, &json).is_ok() {
                                         eprintln!("diffguard: check skipped: {detail}");
-                                        std::process::exit(0);
+                                        return Ok(0);
                                     }
                                 }
                             }
@@ -990,7 +1068,7 @@ fn cmd_check(mut args: CheckArgs) -> Result<()> {
                             // Also write the regular receipt
                             if write_json(&out_path, &skip_receipt).is_ok() {
                                 eprintln!("diffguard: check skipped: {detail}");
-                                std::process::exit(0);
+                                return Ok(0);
                             }
                         }
                         None => {
@@ -1009,10 +1087,10 @@ fn cmd_check(mut args: CheckArgs) -> Result<()> {
                             if let Some(sensor_path) = &args.sensor {
                                 let sensor_report =
                                     build_tool_error_sensor_report(&args, &detail, &ctx);
-                                if let Ok(json) = serde_json::to_string_pretty(&sensor_report) {
+                                if let Ok(json) = serialize_sensor_report_checked(&sensor_report) {
                                     if write_text(sensor_path, &json).is_ok() {
                                         eprintln!("diffguard: tool error: {detail}");
-                                        std::process::exit(0);
+                                        return Ok(0);
                                     }
                                 }
                             }
@@ -1020,14 +1098,14 @@ fn cmd_check(mut args: CheckArgs) -> Result<()> {
                             // Also write the regular receipt
                             if write_json(&out_path, &fail_receipt).is_ok() {
                                 eprintln!("diffguard: tool error: {detail}");
-                                std::process::exit(0);
+                                return Ok(0);
                             }
                         }
                     }
 
                     // Could not write any receipt - catastrophic failure
                     eprintln!("diffguard: catastrophic failure: {err}");
-                    std::process::exit(1);
+                    Ok(1)
                 }
             }
         }
@@ -1343,9 +1421,18 @@ fn cmd_check_inner(
         run.receipt.verdict.status
     );
 
+    let cwd = std::env::current_dir().ok();
+    let to_artifact_path = |path: &Path| {
+        let rel = match cwd.as_ref() {
+            Some(cwd) if path.is_absolute() => path.strip_prefix(cwd).unwrap_or(path),
+            _ => path,
+        };
+        rel.to_string_lossy().replace('\\', "/")
+    };
+
     // Collect artifacts
     let mut artifacts = vec![Artifact {
-        path: out_path.display().to_string().replace('\\', "/"),
+        path: to_artifact_path(out_path),
         format: "json".to_string(),
     }];
 
@@ -1354,7 +1441,7 @@ fn cmd_check_inner(
     if let Some(md_path) = &args.md {
         write_text(md_path, &run.markdown)?;
         artifacts.push(Artifact {
-            path: md_path.display().to_string().replace('\\', "/"),
+            path: to_artifact_path(md_path),
             format: "markdown".to_string(),
         });
     }
@@ -1369,7 +1456,7 @@ fn cmd_check_inner(
         let sarif = render_sarif_json(&run.receipt).context("render SARIF")?;
         write_text(sarif_path, &sarif)?;
         artifacts.push(Artifact {
-            path: sarif_path.display().to_string().replace('\\', "/"),
+            path: to_artifact_path(sarif_path),
             format: "sarif".to_string(),
         });
     }
@@ -1378,7 +1465,7 @@ fn cmd_check_inner(
         let junit = render_junit_for_receipt(&run.receipt);
         write_text(junit_path, &junit)?;
         artifacts.push(Artifact {
-            path: junit_path.display().to_string().replace('\\', "/"),
+            path: to_artifact_path(junit_path),
             format: "junit".to_string(),
         });
     }
@@ -1387,7 +1474,7 @@ fn cmd_check_inner(
         let csv = render_csv_for_receipt(&run.receipt);
         write_text(csv_path, &csv)?;
         artifacts.push(Artifact {
-            path: csv_path.display().to_string().replace('\\', "/"),
+            path: to_artifact_path(csv_path),
             format: "csv".to_string(),
         });
     }
@@ -1396,7 +1483,7 @@ fn cmd_check_inner(
         let tsv = render_tsv_for_receipt(&run.receipt);
         write_text(tsv_path, &tsv)?;
         artifacts.push(Artifact {
-            path: tsv_path.display().to_string().replace('\\', "/"),
+            path: to_artifact_path(tsv_path),
             format: "tsv".to_string(),
         });
     }
@@ -1417,7 +1504,7 @@ fn cmd_check_inner(
         );
 
         artifacts.push(Artifact {
-            path: sensor_path.display().to_string().replace('\\', "/"),
+            path: to_artifact_path(sensor_path),
             format: "json".to_string(),
         });
 
@@ -1494,23 +1581,35 @@ fn cmd_csv(args: CsvArgs) -> Result<()> {
     Ok(())
 }
 
+fn confirm_overwrite<R: BufRead, W: Write>(
+    input: &mut R,
+    mut err: W,
+    output_path: &Path,
+) -> Result<bool> {
+    eprint!(
+        "Configuration file '{}' already exists. Overwrite? [y/N] ",
+        output_path.display()
+    );
+    err.flush().context("flush stderr")?;
+
+    let mut input_line = String::new();
+    input.read_line(&mut input_line).context("read stdin")?;
+
+    let input = input_line.trim().to_lowercase();
+    Ok(input == "y" || input == "yes")
+}
+
 fn cmd_init(args: InitArgs) -> Result<()> {
+    let mut input = io::stdin().lock();
+    cmd_init_with_io(args, &mut input, io::stderr())
+}
+
+fn cmd_init_with_io<R: BufRead, W: Write>(args: InitArgs, input: &mut R, err: W) -> Result<()> {
     let output_path = &args.output;
 
     // Check if file already exists
     if output_path.exists() && !args.force {
-        // Prompt for confirmation
-        eprint!(
-            "Configuration file '{}' already exists. Overwrite? [y/N] ",
-            output_path.display()
-        );
-        io::stderr().flush().context("flush stderr")?;
-
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).context("read stdin")?;
-
-        let input = input.trim().to_lowercase();
-        if input != "y" && input != "yes" {
+        if !confirm_overwrite(input, err, output_path)? {
             println!("Aborted.");
             return Ok(());
         }
@@ -1557,7 +1656,7 @@ fn cmd_init(args: InitArgs) -> Result<()> {
     Ok(())
 }
 
-fn cmd_test(args: TestArgs) -> Result<()> {
+fn cmd_test(args: TestArgs) -> Result<i32> {
     info!("Running rule test cases");
 
     let cfg = load_config(args.config.clone(), args.no_default_rules)?;
@@ -1607,7 +1706,7 @@ fn cmd_test(args: TestArgs) -> Result<()> {
                 println!("  should_match = true");
             }
         }
-        return Ok(());
+        return Ok(0);
     }
 
     let mut passed = 0;
@@ -1703,10 +1802,10 @@ fn cmd_test(args: TestArgs) -> Result<()> {
     }
 
     if failed > 0 {
-        std::process::exit(1);
+        Ok(1)
+    } else {
+        Ok(0)
     }
-
-    Ok(())
 }
 
 fn load_config(path: Option<PathBuf>, no_default_rules: bool) -> Result<ConfigFile> {
@@ -1885,7 +1984,358 @@ fn write_text(path: &Path, text: &str) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use diffguard_types::Severity;
+    use chrono::TimeZone;
+    use diffguard_types::{
+        CheckReceipt, Defaults, DiffMeta, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+    };
+    use std::path::Path;
+    use std::sync::Mutex;
+    use tempfile::TempDir;
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn base_check_args() -> CheckArgs {
+        CheckArgs {
+            base: None,
+            head: None,
+            staged: false,
+            config: None,
+            no_default_rules: false,
+            scope: None,
+            diff_context: None,
+            fail_on: None,
+            max_findings: None,
+            paths: vec![],
+            only_tags: vec![],
+            disable_tags: vec![],
+            enable_tags: vec![],
+            out: None,
+            md: None,
+            github_annotations: false,
+            sarif: None,
+            junit: None,
+            csv: None,
+            tsv: None,
+            mode: Mode::Standard,
+            sensor: None,
+            language: None,
+        }
+    }
+
+    fn write_config(dir: &std::path::Path, contents: &str) -> PathBuf {
+        let path = dir.join("diffguard.toml");
+        std::fs::write(&path, contents).expect("write config");
+        path
+    }
+
+    fn run_git(dir: &std::path::Path, args: &[&str]) -> String {
+        let output = std::process::Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .output()
+            .expect("run git");
+        assert!(output.status.success(), "git {:?} failed", args);
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
+    }
+
+    fn with_current_dir<F, R>(dir: &std::path::Path, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let prev = std::env::current_dir().expect("current dir");
+        std::env::set_current_dir(dir).expect("set current dir");
+        let out = f();
+        std::env::set_current_dir(prev).expect("restore current dir");
+        out
+    }
+
+    fn setup_repo_with_match() -> (TempDir, String, String, PathBuf) {
+        let dir = TempDir::new().expect("temp");
+        run_git(dir.path(), &["init"]);
+        run_git(dir.path(), &["config", "user.email", "test@example.com"]);
+        run_git(dir.path(), &["config", "user.name", "Test"]);
+
+        std::fs::create_dir_all(dir.path().join("src")).expect("create src");
+        std::fs::write(dir.path().join("src/lib.rs"), "fn base() {}\n").expect("write base");
+        run_git(dir.path(), &["add", "."]);
+        run_git(dir.path(), &["commit", "-m", "base"]);
+        let base_sha = run_git(dir.path(), &["rev-parse", "HEAD"]);
+
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "test.match"
+severity = "warn"
+message = "Test match"
+patterns = ["test_match"]
+paths = ["**/*.rs"]
+"#,
+        );
+
+        std::fs::write(
+            dir.path().join("src/lib.rs"),
+            "fn base() { let _ = test_match(); }\n",
+        )
+        .expect("write head");
+        run_git(dir.path(), &["add", "."]);
+        run_git(dir.path(), &["commit", "-m", "head"]);
+        let head_sha = run_git(dir.path(), &["rev-parse", "HEAD"]);
+
+        (dir, base_sha, head_sha, config_path)
+    }
+
+    fn write_sample_receipt(dir: &std::path::Path) -> PathBuf {
+        let receipt = CheckReceipt {
+            schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
+            tool: ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: DiffMeta {
+                base: "origin/main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: diffguard_types::Scope::Added,
+                files_scanned: 1,
+                lines_scanned: 1,
+            },
+            findings: vec![diffguard_types::Finding {
+                rule_id: "test.rule".to_string(),
+                severity: diffguard_types::Severity::Warn,
+                message: "Test message".to_string(),
+                path: "src/lib.rs".to_string(),
+                line: 1,
+                column: Some(1),
+                match_text: "TODO".to_string(),
+                snippet: "// TODO".to_string(),
+            }],
+            verdict: Verdict {
+                status: VerdictStatus::Warn,
+                counts: VerdictCounts {
+                    warn: 1,
+                    ..VerdictCounts::default()
+                },
+                reasons: vec![],
+            },
+            timing: None,
+        };
+
+        let path = dir.join("receipt.json");
+        let json = serde_json::to_string_pretty(&receipt).expect("serialize receipt");
+        std::fs::write(&path, json).expect("write receipt");
+        path
+    }
+
+    #[test]
+    fn scope_arg_converts_to_scope() {
+        let added: Scope = ScopeArg::Added.into();
+        let changed: Scope = ScopeArg::Changed.into();
+        assert!(matches!(added, Scope::Added));
+        assert!(matches!(changed, Scope::Changed));
+    }
+
+    #[test]
+    fn fail_on_arg_converts_to_fail_on() {
+        let error: FailOn = FailOnArg::Error.into();
+        let warn: FailOn = FailOnArg::Warn.into();
+        let never: FailOn = FailOnArg::Never.into();
+        assert!(matches!(error, FailOn::Error));
+        assert!(matches!(warn, FailOn::Warn));
+        assert!(matches!(never, FailOn::Never));
+    }
+
+    #[test]
+    fn run_with_args_dispatches_rules_verbose_and_debug() {
+        let dir = TempDir::new().expect("temp");
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "test.rule"
+severity = "warn"
+message = "Test"
+patterns = ["test"]
+"#,
+        );
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "--verbose",
+            "rules",
+            "--config",
+            config_path.to_str().unwrap(),
+            "--no-default-rules",
+        ])
+        .expect("run rules verbose");
+        assert_eq!(exit_code, 0);
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "--debug",
+            "rules",
+            "--config",
+            config_path.to_str().unwrap(),
+            "--no-default-rules",
+        ])
+        .expect("run rules debug");
+        assert_eq!(exit_code, 0);
+    }
+
+    #[test]
+    fn run_with_args_dispatches_additional_commands() {
+        let dir = TempDir::new().expect("temp");
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "test.rule"
+severity = "warn"
+message = "Test"
+patterns = ["test"]
+"#,
+        );
+
+        let receipt_path = write_sample_receipt(dir.path());
+        let sarif_path = dir.path().join("out.sarif.json");
+        let junit_path = dir.path().join("out.xml");
+        let csv_path = dir.path().join("out.csv");
+        let init_path = dir.path().join("generated.toml");
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "explain",
+            "test.rule",
+            "--config",
+            config_path.to_str().unwrap(),
+            "--no-default-rules",
+        ])
+        .expect("run explain");
+        assert_eq!(exit_code, 0);
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "validate",
+            "--config",
+            config_path.to_str().unwrap(),
+        ])
+        .expect("run validate");
+        assert_eq!(exit_code, 0);
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "sarif",
+            "--report",
+            receipt_path.to_str().unwrap(),
+            "--output",
+            sarif_path.to_str().unwrap(),
+        ])
+        .expect("run sarif");
+        assert_eq!(exit_code, 0);
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "junit",
+            "--report",
+            receipt_path.to_str().unwrap(),
+            "--output",
+            junit_path.to_str().unwrap(),
+        ])
+        .expect("run junit");
+        assert_eq!(exit_code, 0);
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "csv",
+            "--report",
+            receipt_path.to_str().unwrap(),
+            "--output",
+            csv_path.to_str().unwrap(),
+        ])
+        .expect("run csv");
+        assert_eq!(exit_code, 0);
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "init",
+            "--output",
+            init_path.to_str().unwrap(),
+            "--preset",
+            "minimal",
+            "--force",
+        ])
+        .expect("run init");
+        assert_eq!(exit_code, 0);
+        assert!(init_path.exists());
+    }
+
+    #[test]
+    fn confirm_overwrite_parses_input() {
+        let mut yes = std::io::Cursor::new("yes\n");
+        let mut sink = Vec::new();
+        let ok = confirm_overwrite(&mut yes, &mut sink, Path::new("diffguard.toml")).unwrap();
+        assert!(ok);
+
+        let mut no = std::io::Cursor::new("n\n");
+        let mut sink2 = Vec::new();
+        let ok = confirm_overwrite(&mut no, &mut sink2, Path::new("diffguard.toml")).unwrap();
+        assert!(!ok);
+    }
+
+    #[test]
+    fn cmd_init_with_io_force_writes_file() {
+        let dir = TempDir::new().unwrap();
+        let output_path = dir.path().join("nested/diffguard.toml");
+        let args = InitArgs {
+            preset: Preset::Minimal,
+            output: output_path.clone(),
+            force: true,
+        };
+
+        let mut input = std::io::Cursor::new("");
+        let mut err = Vec::new();
+        cmd_init_with_io(args, &mut input, &mut err).expect("init with force");
+        assert!(output_path.exists());
+    }
+
+    #[test]
+    fn cmd_init_with_io_respects_overwrite_prompt() {
+        let dir = TempDir::new().unwrap();
+        let output_path = dir.path().join("diffguard.toml");
+        std::fs::write(&output_path, "old").unwrap();
+
+        let args = InitArgs {
+            preset: Preset::Minimal,
+            output: output_path.clone(),
+            force: false,
+        };
+
+        let mut input = std::io::Cursor::new("n\n");
+        let mut err = Vec::new();
+        cmd_init_with_io(args, &mut input, &mut err).expect("init with prompt");
+        let contents = std::fs::read_to_string(&output_path).unwrap();
+        assert_eq!(contents, "old");
+    }
+
+    #[test]
+    fn cmd_init_with_io_overwrites_when_confirmed() {
+        let dir = TempDir::new().unwrap();
+        let output_path = dir.path().join("diffguard.toml");
+        std::fs::write(&output_path, "old").unwrap();
+
+        let args = InitArgs {
+            preset: Preset::Minimal,
+            output: output_path.clone(),
+            force: false,
+        };
+
+        let mut input = std::io::Cursor::new("y\n");
+        let mut err = Vec::new();
+        cmd_init_with_io(args, &mut input, &mut err).expect("init overwrite");
+        let contents = std::fs::read_to_string(&output_path).unwrap();
+        assert_ne!(contents, "old");
+    }
 
     #[test]
     fn test_format_rule_explanation_basic() {
@@ -2099,5 +2549,1319 @@ mod tests {
         assert_eq!(LanguageArg::Sql.as_str(), "sql");
         assert_eq!(LanguageArg::Xml.as_str(), "xml");
         assert_eq!(LanguageArg::Php.as_str(), "php");
+    }
+
+    #[test]
+    fn resolve_mode_prefers_env_over_args() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        std::env::set_var("DIFFGUARD_MODE", "cockpit");
+
+        let mut args = base_check_args();
+        args.mode = Mode::Standard;
+        assert!(matches!(resolve_mode(&args), Mode::Cockpit));
+
+        std::env::remove_var("DIFFGUARD_MODE");
+    }
+
+    #[test]
+    fn resolve_mode_ignores_invalid_env() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        std::env::set_var("DIFFGUARD_MODE", "unknown");
+
+        let mut args = base_check_args();
+        args.mode = Mode::Standard;
+        assert!(matches!(resolve_mode(&args), Mode::Standard));
+
+        std::env::remove_var("DIFFGUARD_MODE");
+    }
+
+    #[test]
+    fn resolve_out_path_respects_mode_and_sensor() {
+        let mut args = base_check_args();
+        assert_eq!(
+            resolve_out_path(&args, Mode::Standard),
+            PathBuf::from("artifacts/diffguard/report.json")
+        );
+
+        args.sensor = Some(PathBuf::from("artifacts/diffguard/report.json"));
+        assert_eq!(
+            resolve_out_path(&args, Mode::Cockpit),
+            PathBuf::from("artifacts/diffguard/extras/check.json")
+        );
+
+        args.out = Some(PathBuf::from("custom/out.json"));
+        assert_eq!(
+            resolve_out_path(&args, Mode::Cockpit),
+            PathBuf::from("custom/out.json")
+        );
+    }
+
+    #[test]
+    fn resolve_extras_paths_rewrites_defaults_in_cockpit_mode() {
+        let mut args = base_check_args();
+        args.sensor = Some(PathBuf::from("artifacts/diffguard/report.json"));
+        args.sarif = Some(PathBuf::from("artifacts/diffguard/report.sarif.json"));
+        args.junit = Some(PathBuf::from("artifacts/diffguard/report.xml"));
+        args.csv = Some(PathBuf::from("artifacts/diffguard/report.csv"));
+        args.tsv = Some(PathBuf::from("artifacts/diffguard/report.tsv"));
+
+        resolve_extras_paths(&mut args, Mode::Cockpit);
+
+        assert_eq!(
+            args.sarif.as_ref().unwrap(),
+            Path::new("artifacts/diffguard/extras/report.sarif.json")
+        );
+        assert_eq!(
+            args.junit.as_ref().unwrap(),
+            Path::new("artifacts/diffguard/extras/report.xml")
+        );
+        assert_eq!(
+            args.csv.as_ref().unwrap(),
+            Path::new("artifacts/diffguard/extras/report.csv")
+        );
+        assert_eq!(
+            args.tsv.as_ref().unwrap(),
+            Path::new("artifacts/diffguard/extras/report.tsv")
+        );
+    }
+
+    #[test]
+    fn resolve_extras_paths_keeps_custom_paths() {
+        let mut args = base_check_args();
+        args.sensor = Some(PathBuf::from("artifacts/diffguard/report.json"));
+        args.csv = Some(PathBuf::from("custom/report.csv"));
+        resolve_extras_paths(&mut args, Mode::Cockpit);
+        assert_eq!(args.csv.as_ref().unwrap(), Path::new("custom/report.csv"));
+    }
+
+    #[test]
+    fn build_rule_metadata_includes_help_url_and_tags() {
+        let cfg = ConfigFile {
+            includes: vec![],
+            defaults: Defaults::default(),
+            rule: vec![RuleConfig {
+                id: "rule.one".to_string(),
+                severity: Severity::Warn,
+                message: "msg".to_string(),
+                languages: vec![],
+                patterns: vec!["x".to_string()],
+                paths: vec![],
+                exclude_paths: vec![],
+                ignore_comments: false,
+                ignore_strings: false,
+                help: Some("help".to_string()),
+                url: Some("https://example.com".to_string()),
+                tags: vec!["tag1".to_string(), "tag2".to_string()],
+                test_cases: vec![],
+            }],
+        };
+
+        let meta = build_rule_metadata(&cfg);
+        let entry = meta.get("rule.one").expect("metadata entry");
+        assert_eq!(entry.help.as_deref(), Some("help"));
+        assert_eq!(entry.url.as_deref(), Some("https://example.com"));
+        assert_eq!(entry.tags, vec!["tag1".to_string(), "tag2".to_string()]);
+    }
+
+    #[test]
+    fn cockpit_error_classification_and_detail() {
+        let source = anyhow::anyhow!("missing base ref");
+        let err = CockpitSkipError {
+            token: REASON_MISSING_BASE,
+            source,
+        };
+        let wrapped = anyhow::anyhow!(err).context("top level");
+
+        assert_eq!(classify_cockpit_error(&wrapped), Some(REASON_MISSING_BASE));
+        assert_eq!(cockpit_error_detail(&wrapped), "missing base ref");
+
+        let other = anyhow::anyhow!("other error");
+        assert_eq!(classify_cockpit_error(&other), None);
+        assert_eq!(cockpit_error_detail(&other), "other error");
+    }
+
+    #[test]
+    fn build_tool_error_receipt_uses_defaults_and_sets_reason() {
+        let args = base_check_args();
+        let receipt = build_tool_error_receipt(&args, "boom");
+
+        assert_eq!(receipt.diff.base, "origin/main");
+        assert_eq!(receipt.diff.head, "HEAD");
+        assert_eq!(receipt.diff.context_lines, 0);
+        assert_eq!(receipt.diff.scope, Scope::Added);
+        assert_eq!(receipt.verdict.status, VerdictStatus::Fail);
+        assert_eq!(receipt.verdict.counts.error, 1);
+        assert!(receipt
+            .verdict
+            .reasons
+            .contains(&REASON_TOOL_ERROR.to_string()));
+
+        let finding = &receipt.findings[0];
+        assert_eq!(finding.rule_id, CHECK_ID_INTERNAL);
+        assert_eq!(finding.message, "boom");
+    }
+
+    #[test]
+    fn build_tool_error_sensor_context_and_report() {
+        let started_at = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+        let ended_at = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 1).unwrap();
+        let ctx = build_tool_error_sensor_context(&started_at, &ended_at, 1000, "bad git");
+
+        let cap = ctx.capabilities.get(CAP_GIT).expect("git capability");
+        assert_eq!(cap.status, CAP_STATUS_UNAVAILABLE);
+        assert_eq!(cap.reason.as_deref(), Some(REASON_TOOL_ERROR));
+        assert_eq!(cap.detail.as_deref(), Some("bad git"));
+
+        let args = base_check_args();
+        let report = build_tool_error_sensor_report(&args, "bad git", &ctx);
+
+        assert_eq!(report.schema, diffguard_types::SENSOR_REPORT_SCHEMA_V1);
+        assert_eq!(report.verdict.status, VerdictStatus::Fail);
+        assert!(report
+            .verdict
+            .reasons
+            .contains(&REASON_TOOL_ERROR.to_string()));
+        assert_eq!(report.findings.len(), 1);
+
+        let finding = &report.findings[0];
+        assert_eq!(finding.check_id, CHECK_ID_INTERNAL);
+        assert_eq!(finding.code, CODE_TOOL_RUNTIME_ERROR);
+        assert_eq!(finding.message, "bad git");
+        assert_eq!(finding.fingerprint.len(), 64);
+    }
+
+    #[test]
+    fn merge_with_built_in_overrides_by_id() {
+        let user = ConfigFile {
+            includes: vec![],
+            defaults: Defaults {
+                base: Some("custom/base".to_string()),
+                ..Defaults::default()
+            },
+            rule: vec![
+                RuleConfig {
+                    id: "rust.no_unwrap".to_string(),
+                    severity: Severity::Info,
+                    message: "custom message".to_string(),
+                    languages: vec!["rust".to_string()],
+                    patterns: vec![r"\.unwrap\(".to_string()],
+                    paths: vec!["**/*.rs".to_string()],
+                    exclude_paths: vec![],
+                    ignore_comments: true,
+                    ignore_strings: true,
+                    help: None,
+                    url: None,
+                    tags: vec![],
+                    test_cases: vec![],
+                },
+                RuleConfig {
+                    id: "custom.rule".to_string(),
+                    severity: Severity::Warn,
+                    message: "custom".to_string(),
+                    languages: vec![],
+                    patterns: vec!["x".to_string()],
+                    paths: vec![],
+                    exclude_paths: vec![],
+                    ignore_comments: false,
+                    ignore_strings: false,
+                    help: None,
+                    url: None,
+                    tags: vec![],
+                    test_cases: vec![],
+                },
+            ],
+        };
+
+        let merged = merge_with_built_in(user);
+        assert_eq!(merged.defaults.base.as_deref(), Some("custom/base"));
+
+        let mut rule_map = std::collections::HashMap::new();
+        for rule in &merged.rule {
+            rule_map.insert(rule.id.as_str(), rule);
+        }
+
+        let override_rule = rule_map.get("rust.no_unwrap").expect("override rule");
+        assert_eq!(override_rule.message, "custom message");
+        assert_eq!(override_rule.severity, Severity::Info);
+        assert!(rule_map.contains_key("custom.rule"));
+        assert!(rule_map.contains_key("rust.no_dbg"));
+    }
+
+    #[test]
+    fn write_json_and_text_create_parent_dirs() {
+        let dir = TempDir::new().unwrap();
+        let json_path = dir.path().join("nested/out.json");
+        let text_path = dir.path().join("nested/out.txt");
+
+        let payload = serde_json::json!({ "ok": true });
+        write_json(&json_path, &payload).expect("write json");
+        write_text(&text_path, "hello").expect("write text");
+
+        let json_content = serde_json::from_str::<serde_json::Value>(
+            &std::fs::read_to_string(&json_path).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(json_content.get("ok").and_then(|v| v.as_bool()), Some(true));
+        assert_eq!(std::fs::read_to_string(&text_path).unwrap(), "hello");
+    }
+
+    #[test]
+    fn find_similar_rules_contains_match() {
+        let rules = vec![RuleConfig {
+            id: "alpha.rule".to_string(),
+            severity: Severity::Warn,
+            message: "".to_string(),
+            languages: vec![],
+            patterns: vec![],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            help: None,
+            url: None,
+            tags: vec![],
+            test_cases: vec![],
+        }];
+
+        let suggestions = find_similar_rules("pha", &rules);
+        assert!(suggestions.contains(&"alpha.rule".to_string()));
+    }
+
+    #[test]
+    fn find_similar_rules_edit_distance_match() {
+        let rules = vec![RuleConfig {
+            id: "alpha.rule".to_string(),
+            severity: Severity::Warn,
+            message: "".to_string(),
+            languages: vec![],
+            patterns: vec![],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            help: None,
+            url: None,
+            tags: vec![],
+            test_cases: vec![],
+        }];
+
+        let suggestions = find_similar_rules("alpah.rule", &rules);
+        assert_eq!(suggestions, vec!["alpha.rule".to_string()]);
+    }
+
+    #[test]
+    fn simple_edit_distance_handles_empty_rhs() {
+        assert_eq!(simple_edit_distance("abc", ""), 3);
+    }
+
+    #[test]
+    fn cmd_rules_json_renders() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "test.rule"
+severity = "warn"
+message = "Test"
+patterns = ["test"]
+"#,
+        );
+
+        let args = RulesArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            format: RulesFormat::Json,
+        };
+        cmd_rules(args).expect("cmd_rules");
+    }
+
+    #[test]
+    fn cmd_explain_found_and_missing() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "alpha.rule"
+severity = "warn"
+message = "Alpha"
+patterns = ["alpha"]
+"#,
+        );
+
+        let args = ExplainArgs {
+            rule_id: "alpha.rule".to_string(),
+            config: Some(config_path.clone()),
+            no_default_rules: true,
+        };
+        cmd_explain(args).expect("explain should succeed");
+
+        let args = ExplainArgs {
+            rule_id: "alpha.rul".to_string(),
+            config: Some(config_path),
+            no_default_rules: true,
+        };
+        let err = cmd_explain(args).expect_err("explain should fail");
+        assert!(err.to_string().contains("Did you mean"));
+    }
+
+    #[test]
+    fn cmd_validate_uses_default_config_path_and_strict_warnings() {
+        let dir = TempDir::new().unwrap();
+        write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "warn.rule"
+severity = "warn"
+message = ""
+patterns = ["todo"]
+"#,
+        );
+
+        let args = ValidateArgs {
+            config: None,
+            strict: true,
+            format: ValidateFormat::Text,
+        };
+
+        let code = with_current_dir(dir.path(), || cmd_validate(args).unwrap());
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn cmd_validate_missing_config_errors() {
+        let dir = TempDir::new().unwrap();
+        let args = ValidateArgs {
+            config: None,
+            strict: false,
+            format: ValidateFormat::Text,
+        };
+
+        let err = with_current_dir(dir.path(), || cmd_validate(args).unwrap_err());
+        assert!(err.to_string().contains("No configuration file found"));
+    }
+
+    #[test]
+    fn cmd_validate_json_reports_errors() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "bad.rule"
+severity = "warn"
+message = "Bad"
+patterns = ["("]
+"#,
+        );
+
+        let args = ValidateArgs {
+            config: Some(config_path),
+            strict: false,
+            format: ValidateFormat::Json,
+        };
+        let code = cmd_validate(args).unwrap();
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn cmd_validate_text_reports_errors_and_warnings() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "dup.rule"
+severity = "warn"
+message = ""
+patterns = []
+
+[[rule]]
+id = "dup.rule"
+severity = "warn"
+message = "x"
+patterns = ["["]
+paths = ["["]
+exclude_paths = ["["]
+"#,
+        );
+
+        let args = ValidateArgs {
+            config: Some(config_path),
+            strict: true,
+            format: ValidateFormat::Text,
+        };
+        let code = cmd_validate(args).unwrap();
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn cmd_validate_reports_invalid_globs_and_strict_warnings() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "warn.rule"
+severity = "warn"
+message = ""
+patterns = ["TODO"]
+paths = ["[a"]
+exclude_paths = ["[a"]
+"#,
+        );
+
+        let args = ValidateArgs {
+            config: Some(config_path),
+            strict: true,
+            format: ValidateFormat::Text,
+        };
+        let code = cmd_validate(args).unwrap();
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn cmd_test_no_cases_text() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "test.rule"
+severity = "warn"
+message = "Test"
+patterns = ["TODO"]
+"#,
+        );
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: None,
+            format: TestFormat::Text,
+        };
+        let code = cmd_test(args).unwrap();
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn cmd_test_text_success_no_failures() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "pass.rule"
+severity = "warn"
+message = "Pass"
+patterns = ["TODO"]
+
+[[rule.test_cases]]
+input = "TODO"
+should_match = true
+"#,
+        );
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: None,
+            format: TestFormat::Text,
+        };
+        let code = cmd_test(args).unwrap();
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn cmd_test_json_success_and_failure() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "test.rule"
+severity = "warn"
+message = "Test"
+patterns = ["TODO"]
+
+[[rule.test_cases]]
+input = "TODO"
+should_match = true
+"#,
+        );
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: None,
+            format: TestFormat::Json,
+        };
+        let code = cmd_test(args).unwrap();
+        assert_eq!(code, 0);
+
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "fail.rule"
+severity = "warn"
+message = "Test"
+patterns = ["TODO"]
+
+[[rule.test_cases]]
+input = "OK"
+should_match = true
+"#,
+        );
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: None,
+            format: TestFormat::Json,
+        };
+        let code = cmd_test(args).unwrap();
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn cmd_test_rule_filter_missing() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "alpha.rule"
+severity = "warn"
+message = "Alpha"
+patterns = ["alpha"]
+"#,
+        );
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: Some("missing".to_string()),
+            format: TestFormat::Text,
+        };
+        let err = cmd_test(args).expect_err("missing rule filter should error");
+        assert!(err.to_string().contains("No rules match filter"));
+    }
+
+    #[test]
+    fn cmd_test_compile_error_records_failures() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "bad.rule"
+severity = "warn"
+message = "Bad"
+patterns = ["("]
+
+[[rule.test_cases]]
+input = "x"
+should_match = true
+"#,
+        );
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: None,
+            format: TestFormat::Json,
+        };
+        let code = cmd_test(args).unwrap();
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn cmd_check_inner_writes_outputs() {
+        let (dir, base_sha, head_sha, config_path) = setup_repo_with_match();
+        let out_path = dir.path().join("artifacts/diffguard/report.json");
+        let md_path = dir.path().join("artifacts/diffguard/comment.md");
+        let sarif_path = dir.path().join("artifacts/diffguard/report.sarif.json");
+        let junit_path = dir.path().join("artifacts/diffguard/report.xml");
+        let csv_path = dir.path().join("artifacts/diffguard/report.csv");
+        let tsv_path = dir.path().join("artifacts/diffguard/report.tsv");
+        let sensor_path = dir.path().join("artifacts/diffguard/sensor.json");
+
+        let mut args = base_check_args();
+        args.base = Some(base_sha);
+        args.head = Some(head_sha);
+        args.config = Some(config_path);
+        args.out = Some(out_path.clone());
+        args.md = Some(md_path.clone());
+        args.sarif = Some(sarif_path.clone());
+        args.junit = Some(junit_path.clone());
+        args.csv = Some(csv_path.clone());
+        args.tsv = Some(tsv_path.clone());
+        args.sensor = Some(sensor_path.clone());
+        args.github_annotations = true;
+        args.language = Some(LanguageArg::Rust);
+
+        let started_at = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+        let exit_code = with_current_dir(dir.path(), || {
+            cmd_check_inner(&args, Mode::Standard, &started_at, &out_path).unwrap()
+        });
+
+        assert_eq!(exit_code, 0);
+        assert!(out_path.exists());
+        assert!(md_path.exists());
+        assert!(sarif_path.exists());
+        assert!(junit_path.exists());
+        assert!(csv_path.exists());
+        assert!(tsv_path.exists());
+        assert!(sensor_path.exists());
+    }
+
+    #[test]
+    fn cmd_check_cockpit_skip_and_tool_error_paths() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let (dir, _base_sha, _head_sha, config_path) = setup_repo_with_match();
+        let out_path = dir.path().join("artifacts/diffguard/report.json");
+
+        let mut args = base_check_args();
+        args.mode = Mode::Cockpit;
+        args.base = Some("missing-ref".to_string());
+        args.head = Some("HEAD".to_string());
+        args.config = Some(config_path);
+        args.out = Some(out_path.clone());
+
+        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        assert_eq!(code, 0);
+        assert!(out_path.exists());
+
+        let dir2 = TempDir::new().unwrap();
+        let bad_config = dir2.path().join("bad.toml");
+        std::fs::write(&bad_config, "not toml").unwrap();
+
+        let sensor_path = dir2.path().join("sensor.json");
+        let mut args = base_check_args();
+        args.mode = Mode::Cockpit;
+        args.config = Some(bad_config);
+        args.sensor = Some(sensor_path.clone());
+        args.out = Some(dir2.path().join("report.json"));
+
+        let code = cmd_check(args).unwrap();
+        assert_eq!(code, 0);
+        assert!(sensor_path.exists());
+    }
+
+    #[test]
+    fn cmd_check_standard_and_cockpit_success() {
+        let (dir, base_sha, head_sha, config_path) = setup_repo_with_match();
+
+        let mut standard_args = base_check_args();
+        standard_args.base = Some(base_sha.clone());
+        standard_args.head = Some(head_sha.clone());
+        standard_args.config = Some(config_path.clone());
+        standard_args.no_default_rules = true;
+        standard_args.mode = Mode::Standard;
+
+        let code = with_current_dir(dir.path(), || cmd_check(standard_args).unwrap());
+        assert_eq!(code, 0);
+        assert!(dir.path().join("artifacts/diffguard/report.json").exists());
+
+        let mut cockpit_args = base_check_args();
+        cockpit_args.base = Some(base_sha);
+        cockpit_args.head = Some(head_sha);
+        cockpit_args.config = Some(config_path);
+        cockpit_args.no_default_rules = true;
+        cockpit_args.mode = Mode::Cockpit;
+
+        let code = with_current_dir(dir.path(), || cmd_check(cockpit_args).unwrap());
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn cmd_check_cockpit_skip_writes_sensor_report() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let (dir, _base_sha, _head_sha, config_path) = setup_repo_with_match();
+        let sensor_path = dir.path().join("artifacts/diffguard/sensor.json");
+        let out_path = dir.path().join("artifacts/diffguard/report.json");
+
+        let mut args = base_check_args();
+        args.mode = Mode::Cockpit;
+        args.base = Some("missing-ref".to_string());
+        args.head = Some("HEAD".to_string());
+        args.config = Some(config_path);
+        args.sensor = Some(sensor_path.clone());
+        args.out = Some(out_path);
+
+        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        assert_eq!(code, 0);
+        assert!(sensor_path.exists());
+    }
+
+    #[test]
+    fn cmd_check_cockpit_catastrophic_failure_when_writes_fail() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let dir = TempDir::new().unwrap();
+        let bad_config = dir.path().join("bad.toml");
+        std::fs::write(&bad_config, "not toml").unwrap();
+
+        let out_dir = dir.path().join("out_dir");
+        let sensor_dir = dir.path().join("sensor_dir");
+        std::fs::create_dir_all(&out_dir).unwrap();
+        std::fs::create_dir_all(&sensor_dir).unwrap();
+
+        let mut args = base_check_args();
+        args.mode = Mode::Cockpit;
+        args.config = Some(bad_config);
+        args.out = Some(out_dir);
+        args.sensor = Some(sensor_dir);
+
+        let code = cmd_check(args).unwrap();
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn cmd_check_inner_handles_staged_diff() {
+        let dir = TempDir::new().unwrap();
+        run_git(dir.path(), &["init"]);
+        run_git(dir.path(), &["config", "user.email", "test@example.com"]);
+        run_git(dir.path(), &["config", "user.name", "Test"]);
+
+        std::fs::create_dir_all(dir.path().join("src")).unwrap();
+        std::fs::write(dir.path().join("src/lib.rs"), "fn base() {}\n").unwrap();
+        run_git(dir.path(), &["add", "."]);
+        run_git(dir.path(), &["commit", "-m", "base"]);
+
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "test.match"
+severity = "warn"
+message = "Test match"
+patterns = ["test_match"]
+paths = ["**/*.rs"]
+"#,
+        );
+
+        std::fs::write(
+            dir.path().join("src/lib.rs"),
+            "fn base() { let _ = test_match(); }\n",
+        )
+        .unwrap();
+        run_git(dir.path(), &["add", "."]);
+
+        let out_path = dir.path().join("artifacts/diffguard/report.json");
+        let mut args = base_check_args();
+        args.staged = true;
+        args.config = Some(config_path);
+        args.no_default_rules = true;
+
+        let started_at = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+        let code = with_current_dir(dir.path(), || {
+            cmd_check_inner(&args, Mode::Standard, &started_at, &out_path).unwrap()
+        });
+
+        assert_eq!(code, 0);
+        assert!(out_path.exists());
+    }
+
+    #[test]
+    fn cmd_renderers_write_outputs() {
+        let dir = TempDir::new().unwrap();
+        let receipt_path = write_sample_receipt(dir.path());
+
+        let sarif_path = dir.path().join("out.sarif.json");
+        cmd_sarif(SarifArgs {
+            report: receipt_path.clone(),
+            output: Some(sarif_path.clone()),
+        })
+        .expect("sarif");
+        assert!(sarif_path.exists());
+
+        let junit_path = dir.path().join("out.xml");
+        cmd_junit(JunitArgs {
+            report: receipt_path.clone(),
+            output: Some(junit_path.clone()),
+        })
+        .expect("junit");
+        assert!(junit_path.exists());
+
+        let csv_path = dir.path().join("out.csv");
+        cmd_csv(CsvArgs {
+            report: receipt_path,
+            output: Some(csv_path.clone()),
+            tsv: false,
+        })
+        .expect("csv");
+        assert!(csv_path.exists());
+    }
+
+    #[test]
+    fn cmd_renderers_stdout_and_tsv() {
+        let dir = TempDir::new().unwrap();
+        let receipt_path = write_sample_receipt(dir.path());
+
+        cmd_sarif(SarifArgs {
+            report: receipt_path.clone(),
+            output: None,
+        })
+        .expect("sarif stdout");
+
+        cmd_junit(JunitArgs {
+            report: receipt_path.clone(),
+            output: None,
+        })
+        .expect("junit stdout");
+
+        cmd_csv(CsvArgs {
+            report: receipt_path,
+            output: None,
+            tsv: true,
+        })
+        .expect("tsv stdout");
+    }
+
+    #[test]
+    fn run_with_args_dispatches_test_command() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "test.rule"
+severity = "warn"
+message = "Test"
+patterns = ["TODO"]
+
+[[rule.test_cases]]
+input = "TODO"
+should_match = true
+"#,
+        );
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "test",
+            "--config",
+            config_path.to_str().unwrap(),
+            "--no-default-rules",
+            "--format",
+            "json",
+        ])
+        .unwrap();
+        assert_eq!(exit_code, 0);
+    }
+
+    #[test]
+    fn cmd_validate_accepts_valid_globs_and_strict_no_warnings() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "ok.rule"
+severity = "warn"
+message = "Ok"
+help = "Help text"
+tags = ["tag"]
+patterns = ["TODO"]
+paths = ["src/**/*.rs"]
+exclude_paths = ["target/**"]
+"#,
+        );
+
+        let args = ValidateArgs {
+            config: Some(config_path),
+            strict: true,
+            format: ValidateFormat::Text,
+        };
+        let code = cmd_validate(args).unwrap();
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn cmd_validate_forced_compile_error() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        std::env::set_var("DIFFGUARD_TEST_FORCE_COMPILE_ERROR", "1");
+
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "ok.rule"
+severity = "warn"
+message = "Ok"
+patterns = ["TODO"]
+"#,
+        );
+
+        let args = ValidateArgs {
+            config: Some(config_path),
+            strict: false,
+            format: ValidateFormat::Text,
+        };
+        let code = cmd_validate(args).unwrap();
+        std::env::remove_var("DIFFGUARD_TEST_FORCE_COMPILE_ERROR");
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn cmd_explain_suggests_similar_rules() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "alpha.rule"
+severity = "warn"
+message = "Alpha"
+patterns = ["alpha"]
+"#,
+        );
+
+        let args = ExplainArgs {
+            rule_id: "alpah.rule".to_string(),
+            config: Some(config_path),
+            no_default_rules: true,
+        };
+        let err = cmd_explain(args).expect_err("missing rule should error");
+        let msg = err.to_string();
+        assert!(msg.contains("Did you mean"));
+        assert!(msg.contains("alpha.rule"));
+    }
+
+    #[test]
+    fn cmd_explain_missing_rule_without_suggestions() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "alpha.rule"
+severity = "warn"
+message = "Alpha"
+patterns = ["alpha"]
+"#,
+        );
+
+        let args = ExplainArgs {
+            rule_id: "completely.unrelated".to_string(),
+            config: Some(config_path),
+            no_default_rules: true,
+        };
+        let err = cmd_explain(args).expect_err("missing rule should error");
+        let msg = err.to_string();
+        assert!(!msg.contains("Did you mean"));
+        assert!(msg.contains("Rule 'completely.unrelated' not found."));
+    }
+
+    #[test]
+    fn find_similar_rules_uses_edit_distance() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "alpha.rule"
+severity = "warn"
+message = "Alpha"
+patterns = ["alpha"]
+"#,
+        );
+
+        let cfg = load_config(Some(config_path), true).expect("load config");
+        let suggestions = find_similar_rules("alpah.rule", &cfg.rule);
+        assert!(suggestions.contains(&"alpha.rule".to_string()));
+    }
+
+    #[test]
+    fn cmd_check_cockpit_skip_fails_to_write_receipts() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let dir = TempDir::new().unwrap();
+        let sensor_dir = dir.path().join("sensor");
+        let out_dir = dir.path().join("out");
+        std::fs::create_dir_all(&sensor_dir).unwrap();
+        std::fs::create_dir_all(&out_dir).unwrap();
+
+        let mut args = base_check_args();
+        args.mode = Mode::Cockpit;
+        args.staged = true;
+        args.sensor = Some(sensor_dir);
+        args.out = Some(out_dir);
+
+        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn cmd_check_cockpit_tool_error_writes_receipt_when_sensor_fails() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let dir = TempDir::new().unwrap();
+        let sensor_dir = dir.path().join("sensor");
+        std::fs::create_dir_all(&sensor_dir).unwrap();
+        let out_file = dir.path().join("out.json");
+        let missing_config = dir.path().join("missing.toml");
+
+        let mut args = base_check_args();
+        args.mode = Mode::Cockpit;
+        args.sensor = Some(sensor_dir);
+        args.out = Some(out_file.clone());
+        args.config = Some(missing_config);
+
+        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        assert_eq!(code, 0);
+        assert!(out_file.exists());
+    }
+
+    #[test]
+    fn cmd_check_cockpit_skip_sensor_json_error_falls_back_to_out() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        std::env::set_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR", "1");
+
+        let dir = TempDir::new().unwrap();
+        let sensor_path = dir.path().join("sensor.json");
+        let out_file = dir.path().join("out.json");
+
+        let mut args = base_check_args();
+        args.mode = Mode::Cockpit;
+        args.staged = true;
+        args.sensor = Some(sensor_path);
+        args.out = Some(out_file.clone());
+
+        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
+        assert_eq!(code, 0);
+        assert!(out_file.exists());
+    }
+
+    #[test]
+    fn cmd_check_cockpit_tool_error_sensor_json_error_falls_back_to_out() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        std::env::set_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR", "1");
+
+        let dir = TempDir::new().unwrap();
+        let sensor_path = dir.path().join("sensor.json");
+        let out_file = dir.path().join("out.json");
+        let missing_config = dir.path().join("missing.toml");
+
+        let mut args = base_check_args();
+        args.mode = Mode::Cockpit;
+        args.sensor = Some(sensor_path);
+        args.out = Some(out_file.clone());
+        args.config = Some(missing_config);
+
+        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
+        assert_eq!(code, 0);
+        assert!(out_file.exists());
+    }
+
+    #[test]
+    fn cmd_check_cockpit_tool_error_without_sensor_writes_receipt() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let dir = TempDir::new().unwrap();
+        let out_file = dir.path().join("out.json");
+        let missing_config = dir.path().join("missing.toml");
+
+        let mut args = base_check_args();
+        args.mode = Mode::Cockpit;
+        args.out = Some(out_file.clone());
+        args.config = Some(missing_config);
+
+        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        assert_eq!(code, 0);
+        assert!(out_file.exists());
+    }
+
+    #[test]
+    fn cmd_check_inner_staged_error_maps_to_skip() {
+        let dir = TempDir::new().unwrap();
+        let mut args = base_check_args();
+        args.staged = true;
+        let started_at = Utc::now();
+        let out_path = dir.path().join("out.json");
+
+        let err = with_current_dir(dir.path(), || {
+            cmd_check_inner(&args, Mode::Cockpit, &started_at, &out_path)
+        })
+        .expect_err("staged diff should error in non-git dir");
+        assert!(err.to_string().contains(REASON_NO_DIFF_INPUT));
+    }
+
+    #[test]
+    fn cmd_init_with_io_no_parent_path() {
+        let dir = TempDir::new().unwrap();
+        let output = PathBuf::from("diffguard.toml");
+
+        with_current_dir(dir.path(), || {
+            let args = InitArgs {
+                preset: Preset::Minimal,
+                output,
+                force: true,
+            };
+            let mut input = std::io::Cursor::new("");
+            let mut err = Vec::new();
+            cmd_init_with_io(args, &mut input, &mut err).unwrap();
+        });
+
+        assert!(dir.path().join("diffguard.toml").exists());
+    }
+
+    #[test]
+    fn cmd_init_with_io_empty_path_errors() {
+        let dir = TempDir::new().unwrap();
+        let output = PathBuf::from("");
+
+        with_current_dir(dir.path(), || {
+            let args = InitArgs {
+                preset: Preset::Minimal,
+                output,
+                force: true,
+            };
+            let mut input = std::io::Cursor::new("");
+            let mut err = Vec::new();
+            let res = cmd_init_with_io(args, &mut input, &mut err);
+            assert!(res.is_err());
+        });
+    }
+
+    #[test]
+    fn cmd_test_no_rules_defined_errors() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(dir.path(), "");
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: None,
+            format: TestFormat::Text,
+        };
+        let err = cmd_test(args).expect_err("empty config should error");
+        assert!(err.to_string().contains("No rules defined"));
+    }
+
+    #[test]
+    fn cmd_test_no_cases_json() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "test.rule"
+severity = "warn"
+message = "Test"
+patterns = ["TODO"]
+"#,
+        );
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: None,
+            format: TestFormat::Json,
+        };
+        let code = cmd_test(args).unwrap();
+        assert_eq!(code, 0);
+    }
+
+    #[test]
+    fn cmd_test_text_failure_outputs_details() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "empty.rule"
+severity = "warn"
+message = "Empty"
+patterns = ["EMPTY"]
+
+[[rule]]
+id = "fail.rule"
+severity = "warn"
+message = "Fail"
+patterns = ["TODO"]
+
+[[rule.test_cases]]
+input = "OK"
+should_match = true
+description = "Expected TODO"
+"#,
+        );
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: None,
+            format: TestFormat::Text,
+        };
+        let code = cmd_test(args).unwrap();
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn cmd_test_text_failures_with_empty_and_missing_description() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "desc.rule"
+severity = "warn"
+message = "Desc"
+patterns = ["TODO"]
+
+[[rule.test_cases]]
+input = "OK"
+should_match = true
+description = ""
+
+[[rule.test_cases]]
+input = "NOPE"
+should_match = true
+"#,
+        );
+
+        let args = TestArgs {
+            config: Some(config_path),
+            no_default_rules: true,
+            rule: None,
+            format: TestFormat::Text,
+        };
+        let code = cmd_test(args).unwrap();
+        assert_eq!(code, 1);
+    }
+
+    #[test]
+    fn git_staged_diff_errors_outside_repo() {
+        let dir = TempDir::new().unwrap();
+        let err = with_current_dir(dir.path(), || git_staged_diff(0).expect_err("no repo"));
+        assert!(err.to_string().contains("git diff --cached failed"));
+    }
+
+    #[test]
+    fn write_json_and_text_without_parent() {
+        let dir = TempDir::new().unwrap();
+        with_current_dir(dir.path(), || {
+            let json_path = Path::new("out.json");
+            let text_path = Path::new("out.txt");
+            write_json(json_path, &serde_json::json!({"ok": true})).unwrap();
+            write_text(text_path, "hi").unwrap();
+        });
+
+        assert!(dir.path().join("out.json").exists());
+        assert!(dir.path().join("out.txt").exists());
+    }
+
+    #[test]
+    fn write_json_and_text_with_no_parent_errors() {
+        let dir = TempDir::new().unwrap();
+        with_current_dir(dir.path(), || {
+            let json_path = Path::new("");
+            let text_path = Path::new("");
+            assert!(write_json(json_path, &serde_json::json!({"ok": true})).is_err());
+            assert!(write_text(text_path, "hi").is_err());
+        });
     }
 }

@@ -684,6 +684,61 @@ mod tests {
     }
 
     #[test]
+    fn build_for_scope_delegates_to_build() {
+        let diff = DiffBuilder::new()
+            .file("src/lib.rs")
+            .hunk(1, 0, 1, 1)
+            .add_line("fn added() {}")
+            .done()
+            .done()
+            .build_for_scope(diffguard_types::Scope::Added);
+
+        assert!(diff.contains("+fn added() {}"));
+    }
+
+    #[test]
+    fn in_progress_flags_and_remove_lines() {
+        let diff = DiffBuilder::new()
+            .file("old.rs")
+            .deleted()
+            .hunk(1, 1, 0, 0)
+            .remove("fn old() {}")
+            .done()
+            .done()
+            .build();
+
+        assert!(diff.contains("deleted file mode"));
+        assert!(diff.contains("-fn old() {}"));
+    }
+
+    #[test]
+    fn in_progress_new_file_and_rename() {
+        let diff_new = DiffBuilder::new()
+            .file("new.rs")
+            .new_file()
+            .hunk(0, 0, 1, 1)
+            .add_line("fn new_file() {}")
+            .done()
+            .done()
+            .build();
+
+        assert!(diff_new.contains("new file mode"));
+        assert!(diff_new.contains("+fn new_file() {}"));
+
+        let diff_renamed = DiffBuilder::new()
+            .file("renamed.rs")
+            .rename_from("old_name.rs")
+            .hunk(1, 1, 1, 1)
+            .context("fn existing() {}")
+            .done()
+            .done()
+            .build();
+
+        assert!(diff_renamed.contains("rename from old_name.rs"));
+        assert!(diff_renamed.contains("rename to renamed.rs"));
+    }
+
+    #[test]
     fn generated_diff_with_changes() {
         let diff = GeneratedDiff::with_changes("src/lib.rs", &["fn old() {}"], &["fn new() {}"]);
 
@@ -737,5 +792,52 @@ mod tests {
             "Full hunk header should be '@@ -10,3 +42,5 @@', got: {}",
             output
         );
+    }
+
+    #[test]
+    fn hunk_builder_for_additions_and_batch_methods() {
+        let hunk = HunkBuilder::for_additions(10, 2)
+            .add_lines(&["line1", "line2"])
+            .remove_lines(&["old1"]);
+        let output = hunk.build();
+
+        assert!(output.contains("@@ -9,1 +10,3 @@"));
+        assert!(output.contains("+line1"));
+        assert!(output.contains("+line2"));
+        assert!(output.contains("-old1"));
+    }
+
+    #[test]
+    fn hunk_builder_add_lines_from_slice() {
+        let hunk = HunkBuilder::new(1, 0, 1, 2).add_lines_from_slice(&["a", "b"]);
+        let output = hunk.build();
+        assert!(output.contains("+a"));
+        assert!(output.contains("+b"));
+    }
+
+    #[test]
+    fn file_builder_add_hunk_directly() {
+        let hunk = HunkBuilder::new(1, 0, 1, 1).add_line("fn added() {}");
+        let diff = DiffBuilder::new()
+            .file("src/inline.rs")
+            .add_hunk_directly(hunk)
+            .done()
+            .build();
+
+        assert!(diff.contains("diff --git a/src/inline.rs b/src/inline.rs"));
+        assert!(diff.contains("+fn added() {}"));
+    }
+
+    #[test]
+    fn generated_diff_deleted_and_renamed() {
+        let deleted = GeneratedDiff::deleted("old.rs", &["fn a() {}", "fn b() {}"]);
+        assert_eq!(deleted.expected_files, 0);
+        assert!(deleted.text.contains("deleted file mode"));
+
+        let renamed = GeneratedDiff::renamed("old.rs", "new.rs", &["fn added() {}"]);
+        assert_eq!(renamed.expected_files, 1);
+        assert_eq!(renamed.expected_added_lines, 1);
+        assert!(renamed.text.contains("rename from old.rs"));
+        assert!(renamed.text.contains("rename to new.rs"));
     }
 }

@@ -41,6 +41,30 @@ const KNOWN_EXTENSIONS: &[(&str, &str)] = &[
     ("zsh", "shell"),
     ("ksh", "shell"),
     ("fish", "shell"),
+    // Swift - Requirement 1.14
+    ("swift", "swift"),
+    // Scala - Requirement 1.15
+    ("scala", "scala"),
+    ("sc", "scala"),
+    // SQL - Requirement 1.16
+    ("sql", "sql"),
+    // XML/HTML - Requirement 1.17
+    ("xml", "xml"),
+    ("xsl", "xml"),
+    ("xslt", "xml"),
+    ("xsd", "xml"),
+    ("svg", "xml"),
+    ("xhtml", "xml"),
+    ("html", "xml"),
+    ("htm", "xml"),
+    // PHP - Requirement 1.18
+    ("php", "php"),
+    ("phtml", "php"),
+    ("php3", "php"),
+    ("php4", "php"),
+    ("php5", "php"),
+    ("php7", "php"),
+    ("phps", "php"),
     // C - Requirement 1.10
     ("c", "c"),
     ("h", "c"),

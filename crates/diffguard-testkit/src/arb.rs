@@ -565,4 +565,39 @@ mod tests {
             prop_assert_eq!(fail_on, parsed);
         }
     }
+
+    #[test]
+    fn arb_strategies_smoke() {
+        let mut runner = TestRunner::default();
+
+        let _ = arb_verdict_status()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_simple_regex().new_tree(&mut runner).unwrap().current();
+        let _ = arb_optional_string()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_minimal_rule_config()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_defaults().new_tree(&mut runner).unwrap().current();
+        let _ = arb_config_file().new_tree(&mut runner).unwrap().current();
+        let _ = arb_finding().new_tree(&mut runner).unwrap().current();
+        let _ = arb_verdict_counts()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_line_content().new_tree(&mut runner).unwrap().current();
+        let _ = arb_safe_line_content()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_lines(3).new_tree(&mut runner).unwrap().current();
+        let _ = arb_language().new_tree(&mut runner).unwrap().current();
+        let _ = arb_include_glob().new_tree(&mut runner).unwrap().current();
+        let _ = arb_exclude_glob().new_tree(&mut runner).unwrap().current();
+    }
 }

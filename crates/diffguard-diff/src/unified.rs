@@ -576,6 +576,78 @@ diff --git a/a.txt b/a.txt
         assert_eq!(changed.len(), 0);
     }
 
+    #[test]
+    fn skips_submodule_marker_lines() {
+        let diff = r#"
+diff --git a/submodule b/submodule
+Subproject commit abc123
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 0);
+        assert!(lines.is_empty());
+    }
+
+    #[test]
+    fn skips_hunks_without_current_path() {
+        let diff = r#"
+@@ -0,0 +1 @@
++hello
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 0);
+        assert!(lines.is_empty());
+    }
+
+    #[test]
+    fn skips_no_newline_marker() {
+        let diff = r#"
+diff --git a/a.txt b/a.txt
+--- a/a.txt
++++ b/a.txt
+@@ -1 +1 @@
++hello
+\\ No newline at end of file
+"#;
+
+        let (lines, _) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(lines.len(), 1);
+    }
+
+    #[test]
+    fn skips_submodule_line_inside_hunk() {
+        let diff = r#"
+diff --git a/submodule b/submodule
+--- a/submodule
++++ b/submodule
+@@ -0,0 +1 @@
++Subproject commit abc123
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 0);
+        assert!(lines.is_empty());
+    }
+
+    #[test]
+    fn strip_prefix_path_empty_returns_none() {
+        assert!(strip_prefix_path("a/").is_none());
+        assert!(strip_prefix_path("").is_none());
+    }
+
+    #[test]
+    fn tokenize_git_paths_trailing_escape_in_quote() {
+        let tokens = tokenize_git_paths(r#""path\"#, 1);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].value, "path\\");
+    }
+
+    #[test]
+    fn parse_single_git_path_empty_returns_none() {
+        assert!(parse_single_git_path("   ").is_none());
+    }
+
     // ========================================================================
     // Tests for detection functions (Requirements 4.1-4.5)
     // ========================================================================
@@ -697,6 +769,11 @@ diff --git a/a.txt b/a.txt
     }
 
     #[test]
+    fn parse_rename_path_empty_returns_none() {
+        assert_eq!(parse_rename_path("   "), None);
+    }
+
+    #[test]
     fn parse_rename_to_extracts_destination_path() {
         assert_eq!(
             parse_rename_to("rename to src/new/path.rs"),
@@ -741,6 +818,20 @@ diff --git a/a.txt b/a.txt
             Some("dir name/\"file\".rs".to_string())
         );
         assert_eq!(parse_diff_git_line("diff --git a/only"), None);
+    }
+
+    #[test]
+    fn parse_unified_diff_skips_malformed_diff_git_line() {
+        let diff = r#"
+diff --git a/only
+@@ -1,1 +1,1 @@
++line
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert!(lines.is_empty());
+        assert_eq!(stats.files, 0);
+        assert_eq!(stats.lines, 0);
     }
 
     #[test]

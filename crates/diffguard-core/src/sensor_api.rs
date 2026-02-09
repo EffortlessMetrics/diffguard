@@ -68,7 +68,7 @@ pub fn run_sensor(
     Ok(render_sensor_report(&check_run.receipt, &ctx))
 }
 
-/// Extracts rule metadata (help text and URL) from a config file.
+/// Extracts rule metadata (help text, URL, and tags) from a config file.
 fn extract_rule_metadata(config: &ConfigFile) -> HashMap<String, RuleMetadata> {
     config
         .rule
@@ -79,6 +79,7 @@ fn extract_rule_metadata(config: &ConfigFile) -> HashMap<String, RuleMetadata> {
                 RuleMetadata {
                     help: r.help.clone(),
                     url: r.url.clone(),
+                    tags: r.tags.clone(),
                 },
             )
         })
@@ -199,6 +200,17 @@ mod tests {
         let finding = &report.findings[0];
         assert_eq!(finding.help.as_deref(), Some("Fix the test pattern"));
         assert_eq!(finding.url.as_deref(), Some("https://example.com/help"));
+    }
+
+    #[test]
+    fn substrate_defaults_return_none() {
+        struct Dummy;
+        impl Substrate for Dummy {}
+
+        let dummy = Dummy;
+        assert!(dummy.changed_files().is_none());
+        assert!(dummy.repo_root().is_none());
+        assert!(dummy.metadata().is_none());
     }
 
     #[test]

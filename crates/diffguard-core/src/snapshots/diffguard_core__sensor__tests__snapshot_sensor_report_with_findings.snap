@@ -66,6 +66,9 @@ expression: json
       "rules_matched": 1,
       "rules_total": 5,
       "suppressed_count": 0,
+      "tags_matched": {
+        "safety": 1
+      },
       "truncated_count": 0
     }
   }
