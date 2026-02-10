@@ -186,7 +186,7 @@ patterns = ["("]
     let stdout = String::from_utf8_lossy(&output.stdout);
     let value: serde_json::Value = serde_json::from_str(&stdout).expect("valid json");
     assert_eq!(value["valid"], false);
-    assert!(value["errors"].as_array().unwrap().len() >= 1);
+    assert!(!value["errors"].as_array().unwrap().is_empty());
 }
 
 #[test]

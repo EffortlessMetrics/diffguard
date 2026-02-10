@@ -444,19 +444,6 @@ impl Preprocessor {
                             continue;
                         }
 
-                        // Swift/Scala double-quoted strings (not triple-quoted)
-                        if string_syntax == StringSyntax::SwiftScala && bytes[i] == b'"' {
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            self.mode = Mode::NormalString {
-                                escaped: false,
-                                quote: b'"',
-                            };
-                            i += 1;
-                            continue;
-                        }
-
                         // Normal double-quoted string: "..."
                         // Note: SQL only uses single quotes for strings, so skip this for SQL
                         if bytes[i] == b'"' && string_syntax != StringSyntax::Sql {
@@ -879,7 +866,7 @@ impl Preprocessor {
             self.mode = Mode::Normal;
         }
 
-        String::from_utf8(out).unwrap_or_else(|_| line.to_string())
+        String::from_utf8_lossy(&out).into_owned()
     }
 }
 
@@ -1112,6 +1099,34 @@ mod tests {
         assert_eq!(Language::Java.string_syntax(), StringSyntax::CStyle);
         assert_eq!(Language::Kotlin.string_syntax(), StringSyntax::CStyle);
         assert_eq!(Language::Unknown.string_syntax(), StringSyntax::CStyle);
+    }
+
+    #[test]
+    fn cstyle_masks_double_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::C);
+        let s = p.sanitize_line("printf(\"hello\");");
+        assert!(s.contains("printf("));
+        assert!(!s.contains("hello"));
+    }
+
+    #[test]
+    fn cstyle_masks_char_literals() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::C);
+        let line = r#"char c = 'x'; char nl = '\n';"#;
+        let s = p.sanitize_line(line);
+        assert!(!s.contains("'x'"));
+        assert!(!s.contains("'\\n'"));
+        assert_eq!(s.len(), line.len());
+    }
+
+    #[test]
+    fn rust_masks_char_literals() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Rust);
+        let line = r#"let c = 'z'; let escaped = '\'';"#;
+        let s = p.sanitize_line(line);
+        assert!(!s.contains("'z'"));
+        assert!(!s.contains("'\\''"));
+        assert_eq!(s.len(), line.len());
     }
 
     #[test]
@@ -2237,6 +2252,15 @@ mod tests {
     }
 
     #[test]
+    fn scala_triple_single_quotes_do_not_start_triple_string() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Scala);
+        let line = "val x = '''println() inside'''";
+        let s = p.sanitize_line(line);
+        assert_eq!(s, line);
+        assert!(p.mode == Mode::Normal);
+    }
+
+    #[test]
     fn scala_triple_quoted_string_multiline() {
         let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Scala);
         let s1 = p.sanitize_line("val x = \"\"\"start of");
@@ -2717,7 +2741,7 @@ mod tests {
         let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Rust);
         p.mode = Mode::LineComment;
         let _ = p.sanitize_line("still comment");
-        assert!(matches!(p.mode, Mode::Normal));
+        assert!(p.mode == Mode::Normal);
     }
 
     #[test]
@@ -2749,7 +2773,8 @@ mod tests {
 
     #[test]
     fn shell_strings_preserved_when_strings_not_masked() {
-        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Shell);
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Shell);
         let line = "echo $'a\\n' 'b'";
         let s = p.sanitize_line(line);
         assert!(s.contains("a"));
@@ -2778,11 +2803,11 @@ mod tests {
         let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Rust);
         p.mode = Mode::BlockComment { depth: 1 };
         let _ = p.sanitize_line("/*");
-        assert!(matches!(p.mode, Mode::BlockComment { depth: 2 }));
+        assert!(p.mode == Mode::BlockComment { depth: 2 });
 
         p.mode = Mode::BlockComment { depth: 1 };
         let _ = p.sanitize_line("*/");
-        assert!(matches!(p.mode, Mode::Normal));
+        assert!(p.mode == Mode::Normal);
     }
 
     #[test]
@@ -2790,6 +2815,6 @@ mod tests {
         let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Xml);
         p.mode = Mode::XmlComment;
         let _ = p.sanitize_line("-->");
-        assert!(matches!(p.mode, Mode::Normal));
+        assert!(p.mode == Mode::Normal);
     }
 }

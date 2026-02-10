@@ -538,7 +538,7 @@ index 0000000..1111111 100644
         assert_eq!(stats.lines, 1);
         assert_eq!(lines[0].path, "src/lib.rs");
         assert_eq!(lines[0].line, 2);
-        assert!(matches!(lines[0].kind, ChangeKind::Added));
+        assert_eq!(lines[0].kind, ChangeKind::Added);
     }
 
     #[test]
@@ -558,7 +558,7 @@ diff --git a/src/lib.rs b/src/lib.rs
 
         let (changed, _) = parse_unified_diff(diff, Scope::Changed).unwrap();
         assert_eq!(changed.len(), 1);
-        assert!(matches!(changed[0].kind, ChangeKind::Changed));
+        assert_eq!(changed[0].kind, ChangeKind::Changed);
     }
 
     #[test]
@@ -821,6 +821,12 @@ diff --git a/submodule b/submodule
     }
 
     #[test]
+    fn parse_diff_git_line_rejects_missing_prefix() {
+        assert_eq!(parse_diff_git_line("diff --gi a/src/lib.rs b/src/lib.rs"), None);
+        assert_eq!(parse_diff_git_line("not a diff header"), None);
+    }
+
+    #[test]
     fn parse_unified_diff_skips_malformed_diff_git_line() {
         let diff = r#"
 diff --git a/only
@@ -849,6 +855,24 @@ diff --git a/only
             parse_plus_plus_plus(r#"+++ "b/dir\ name/\"file\".rs""#),
             Some("dir name/\"file\".rs".to_string())
         );
+    }
+
+    #[test]
+    fn parse_plus_plus_plus_rejects_invalid_lines() {
+        assert_eq!(parse_plus_plus_plus("++ b/src/lib.rs"), None);
+        assert_eq!(parse_plus_plus_plus("+++ "), None);
+    }
+
+    #[test]
+    fn parse_hunk_header_rejects_non_numeric_start() {
+        let err = parse_hunk_header("@@ -1,2 +x,4 @@").unwrap_err();
+        assert!(matches!(err, DiffParseError::MalformedHunkHeader(_)));
+    }
+
+    #[test]
+    fn parse_hunk_header_rejects_missing_plus_section() {
+        let err = parse_hunk_header("@@ -1,2").unwrap_err();
+        assert!(matches!(err, DiffParseError::MalformedHunkHeader(_)));
     }
 
     #[test]
@@ -1500,6 +1524,6 @@ diff --git a/src/i18n.rs b/src/i18n.rs
         assert_eq!(stats.lines, 1);
 
         assert_eq!(lines[0].content, "let greeting = \"Привет\";");
-        assert!(matches!(lines[0].kind, ChangeKind::Changed));
+        assert_eq!(lines[0].kind, ChangeKind::Changed);
     }
 }

@@ -338,6 +338,11 @@ mod tests {
     }
 
     #[test]
+    fn escape_csv_field_with_carriage_return() {
+        assert_eq!(escape_csv_field("line1\rline2"), "\"line1\rline2\"");
+    }
+
+    #[test]
     fn escape_tsv_field_plain_text() {
         assert_eq!(escape_tsv_field("plain text"), "plain text");
     }
@@ -350,6 +355,11 @@ mod tests {
     #[test]
     fn escape_tsv_field_with_newline() {
         assert_eq!(escape_tsv_field("a\nb"), "a\\nb");
+    }
+
+    #[test]
+    fn escape_tsv_field_with_carriage_return() {
+        assert_eq!(escape_tsv_field("a\rb"), "a\\rb");
     }
 
     #[test]

@@ -1608,11 +1608,9 @@ fn cmd_init_with_io<R: BufRead, W: Write>(args: InitArgs, input: &mut R, err: W)
     let output_path = &args.output;
 
     // Check if file already exists
-    if output_path.exists() && !args.force {
-        if !confirm_overwrite(input, err, output_path)? {
-            println!("Aborted.");
-            return Ok(());
-        }
+    if output_path.exists() && !args.force && !confirm_overwrite(input, err, output_path)? {
+        println!("Aborted.");
+        return Ok(());
     }
 
     // Generate the preset content
@@ -3724,6 +3722,52 @@ patterns = ["alpha"]
             let res = cmd_init_with_io(args, &mut input, &mut err);
             assert!(res.is_err());
         });
+    }
+
+    struct FailingWriter;
+
+    impl Write for FailingWriter {
+        fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+            Ok(buf.len())
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Err(io::Error::new(io::ErrorKind::Other, "flush failed"))
+        }
+    }
+
+    #[test]
+    fn confirm_overwrite_accepts_yes_variants() {
+        let output = Path::new("diffguard.toml");
+
+        let mut input = std::io::Cursor::new("y\n");
+        let accepted = confirm_overwrite(&mut input, Vec::new(), output).unwrap();
+        assert!(accepted);
+
+        let mut input = std::io::Cursor::new("YES\n");
+        let accepted = confirm_overwrite(&mut input, Vec::new(), output).unwrap();
+        assert!(accepted);
+    }
+
+    #[test]
+    fn confirm_overwrite_rejects_default_or_no() {
+        let output = Path::new("diffguard.toml");
+
+        let mut input = std::io::Cursor::new("\n");
+        let accepted = confirm_overwrite(&mut input, Vec::new(), output).unwrap();
+        assert!(!accepted);
+
+        let mut input = std::io::Cursor::new("n\n");
+        let accepted = confirm_overwrite(&mut input, Vec::new(), output).unwrap();
+        assert!(!accepted);
+    }
+
+    #[test]
+    fn confirm_overwrite_propagates_flush_error() {
+        let output = Path::new("diffguard.toml");
+        let mut input = std::io::Cursor::new("y\n");
+        let err = confirm_overwrite(&mut input, FailingWriter, output).unwrap_err();
+        assert!(err.to_string().contains("flush stderr"));
     }
 
     #[test]

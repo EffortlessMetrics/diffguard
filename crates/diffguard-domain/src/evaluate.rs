@@ -825,4 +825,22 @@ mod tests {
         assert_eq!(byte_to_column(s, s.len()), Some(4));
         assert_eq!(byte_to_column(s, s.len() + 1), None);
     }
+
+    #[test]
+    fn first_match_returns_none_for_empty_patterns() {
+        let patterns: Vec<regex::Regex> = Vec::new();
+        assert_eq!(first_match(&patterns, "abc"), None);
+    }
+
+    #[test]
+    fn bump_counts_increments_all_severities() {
+        let mut counts = VerdictCounts::default();
+        bump_counts(&mut counts, Severity::Info);
+        bump_counts(&mut counts, Severity::Warn);
+        bump_counts(&mut counts, Severity::Error);
+
+        assert_eq!(counts.info, 1);
+        assert_eq!(counts.warn, 1);
+        assert_eq!(counts.error, 1);
+    }
 }

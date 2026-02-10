@@ -138,6 +138,27 @@ mod tests {
         assert!(md.contains("src/lib.rs"));
     }
 
+    #[test]
+    fn render_finding_row_escapes_pipes_and_backticks() {
+        let finding = Finding {
+            rule_id: "rule|id`tick".to_string(),
+            severity: diffguard_types::Severity::Warn,
+            message: "message with | and `ticks`".to_string(),
+            path: "src/lib|name`.rs".to_string(),
+            line: 7,
+            column: Some(1),
+            match_text: "match".to_string(),
+            snippet: "snippet with `code` | pipe".to_string(),
+        };
+
+        let row = render_finding_row(&finding);
+
+        assert!(row.contains("rule\\|id\\`tick"));
+        assert!(row.contains("src/lib\\|name\\`.rs:7"));
+        assert!(row.contains("message with \\| and \\`ticks\\`"));
+        assert!(row.contains("snippet with \\`code\\` \\| pipe"));
+    }
+
     /// Helper to create a test receipt with multiple findings
     fn create_test_receipt_with_findings() -> CheckReceipt {
         CheckReceipt {
