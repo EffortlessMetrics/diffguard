@@ -123,8 +123,8 @@ fn escape_xml(s: &str) -> String {
 mod tests {
     use super::*;
     use diffguard_types::{
-        CheckReceipt, DiffMeta, Finding, Scope, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
-        CHECK_SCHEMA_V1,
+        CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, ToolMeta, Verdict, VerdictCounts,
+        VerdictStatus,
     };
 
     fn create_test_receipt_with_findings() -> CheckReceipt {

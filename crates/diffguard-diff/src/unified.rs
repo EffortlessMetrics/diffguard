@@ -822,7 +822,10 @@ diff --git a/submodule b/submodule
 
     #[test]
     fn parse_diff_git_line_rejects_missing_prefix() {
-        assert_eq!(parse_diff_git_line("diff --gi a/src/lib.rs b/src/lib.rs"), None);
+        assert_eq!(
+            parse_diff_git_line("diff --gi a/src/lib.rs b/src/lib.rs"),
+            None
+        );
         assert_eq!(parse_diff_git_line("not a diff header"), None);
     }
 
@@ -1348,22 +1351,30 @@ diff --git a/src/b.rs b/src/b.rs
         // Verify lines from file a
         let a_lines: Vec<_> = lines.iter().filter(|l| l.path == "src/a.rs").collect();
         assert_eq!(a_lines.len(), 2);
-        assert!(a_lines
-            .iter()
-            .any(|l| l.content == "fn a2() {}" && l.line == 2));
-        assert!(a_lines
-            .iter()
-            .any(|l| l.content == "fn a11() {}" && l.line == 12));
+        assert!(
+            a_lines
+                .iter()
+                .any(|l| l.content == "fn a2() {}" && l.line == 2)
+        );
+        assert!(
+            a_lines
+                .iter()
+                .any(|l| l.content == "fn a11() {}" && l.line == 12)
+        );
 
         // Verify lines from file b
         let b_lines: Vec<_> = lines.iter().filter(|l| l.path == "src/b.rs").collect();
         assert_eq!(b_lines.len(), 2);
-        assert!(b_lines
-            .iter()
-            .any(|l| l.content == "fn b2() {}" && l.line == 2));
-        assert!(b_lines
-            .iter()
-            .any(|l| l.content == "fn b21() {}" && l.line == 22));
+        assert!(
+            b_lines
+                .iter()
+                .any(|l| l.content == "fn b2() {}" && l.line == 2)
+        );
+        assert!(
+            b_lines
+                .iter()
+                .any(|l| l.content == "fn b21() {}" && l.line == 22)
+        );
     }
 
     #[test]

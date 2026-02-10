@@ -3,10 +3,10 @@ use std::path::Path;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 
 use diffguard_diff::parse_unified_diff;
-use diffguard_domain::{compile_rules, evaluate_lines, InputLine};
+use diffguard_domain::{InputLine, compile_rules, evaluate_lines};
 use diffguard_types::{
-    CheckReceipt, DiffMeta, FailOn, Finding, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
-    REASON_TRUNCATED,
+    CheckReceipt, DiffMeta, FailOn, Finding, REASON_TRUNCATED, ToolMeta, Verdict, VerdictCounts,
+    VerdictStatus,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -387,12 +387,13 @@ diff --git a/src/lib.rs b/src/lib.rs
 "#;
 
         let run = run_check(&plan, &config, diff).expect("run_check");
-        assert!(run
-            .receipt
-            .verdict
-            .reasons
-            .iter()
-            .any(|r| r == REASON_TRUNCATED));
+        assert!(
+            run.receipt
+                .verdict
+                .reasons
+                .iter()
+                .any(|r| r == REASON_TRUNCATED)
+        );
     }
 
     #[test]

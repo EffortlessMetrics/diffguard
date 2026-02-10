@@ -1,7 +1,7 @@
 //! Integration tests for the `diffguard init` command.
 
-use assert_cmd::cargo;
 use assert_cmd::Command;
+use assert_cmd::cargo;
 use tempfile::TempDir;
 
 fn diffguard_cmd() -> Command {

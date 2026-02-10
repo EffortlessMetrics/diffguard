@@ -5,7 +5,7 @@
 use proptest::prelude::*;
 use std::path::Path;
 
-use diffguard_domain::{detect_language, Language, PreprocessOptions, Preprocessor};
+use diffguard_domain::{Language, PreprocessOptions, Preprocessor, detect_language};
 
 // Known extensions and their expected language mappings
 // Based on Requirements 1.1-1.12 and actual detect_language implementation
@@ -1450,7 +1450,7 @@ fn test_missing_patterns_error_message_format() {
 
 // ==================== Property: Evaluation Determinism ====================
 
-use diffguard_domain::{evaluate_lines, InputLine};
+use diffguard_domain::{InputLine, evaluate_lines};
 
 /// Strategy to generate valid input lines for evaluation
 fn input_line_strategy() -> impl Strategy<Value = InputLine> {

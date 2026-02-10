@@ -1,8 +1,8 @@
-use assert_cmd::cargo;
 use assert_cmd::Command;
+use assert_cmd::cargo;
 use diffguard_types::{
-    CheckReceipt, DiffMeta, Finding, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
-    CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Severity, ToolMeta, Verdict, VerdictCounts,
+    VerdictStatus,
 };
 use tempfile::TempDir;
 

@@ -175,11 +175,7 @@ fn parse_rule_ids(rest: &str) -> Option<HashSet<String>> {
         }
     }
 
-    if ids.is_empty() {
-        None
-    } else {
-        Some(ids)
-    }
+    if ids.is_empty() { None } else { Some(ids) }
 }
 
 /// Tracks suppression state for a file being processed.

@@ -1,5 +1,5 @@
-use assert_cmd::cargo;
 use assert_cmd::Command;
+use assert_cmd::cargo;
 use tempfile::TempDir;
 
 fn run_git(dir: &std::path::Path, args: &[&str]) -> String {

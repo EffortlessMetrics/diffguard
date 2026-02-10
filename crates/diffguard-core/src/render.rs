@@ -1,6 +1,6 @@
 use diffguard_types::{
-    CheckReceipt, Finding, VerdictStatus, REASON_GIT_UNAVAILABLE, REASON_MISSING_BASE,
-    REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, REASON_TRUNCATED,
+    CheckReceipt, Finding, REASON_GIT_UNAVAILABLE, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT,
+    REASON_TOOL_ERROR, REASON_TRUNCATED, VerdictStatus,
 };
 
 /// Reasons that are meaningful to render in markdown output.

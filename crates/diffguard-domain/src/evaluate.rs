@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use diffguard_types::{Finding, Severity, VerdictCounts};
 
 use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
-use crate::rules::{detect_language, CompiledRule};
+use crate::rules::{CompiledRule, detect_language};
 use crate::suppression::SuppressionTracker;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

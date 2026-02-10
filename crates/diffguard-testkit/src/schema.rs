@@ -169,8 +169,8 @@ pub fn verify_snake_case_fields(value: &serde_json::Value) -> Result<(), Vec<Str
 mod tests {
     use super::*;
     use diffguard_types::{
-        Defaults, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-        VerdictStatus, CHECK_SCHEMA_V1,
+        CHECK_SCHEMA_V1, Defaults, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
+        VerdictCounts, VerdictStatus,
     };
 
     #[test]

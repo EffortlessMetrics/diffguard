@@ -99,8 +99,8 @@ fn escape_tsv_field(s: &str) -> String {
 mod tests {
     use super::*;
     use diffguard_types::{
-        CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-        VerdictStatus, CHECK_SCHEMA_V1,
+        CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
+        VerdictCounts, VerdictStatus,
     };
 
     fn create_test_receipt_with_findings() -> CheckReceipt {

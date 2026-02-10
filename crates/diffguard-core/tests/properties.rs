@@ -9,9 +9,9 @@ use proptest::prelude::*;
 
 use diffguard_core::render_markdown_for_receipt;
 use diffguard_types::{
-    CheckReceipt, DiffMeta, FailOn, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-    VerdictStatus, CHECK_SCHEMA_V1, REASON_GIT_UNAVAILABLE, REASON_MISSING_BASE,
-    REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, REASON_TRUNCATED,
+    CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, FailOn, Finding, REASON_GIT_UNAVAILABLE,
+    REASON_MISSING_BASE, REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, REASON_TRUNCATED, Scope,
+    Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
 };
 
 // ============================================================================

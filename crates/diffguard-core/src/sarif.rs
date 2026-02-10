@@ -9,8 +9,7 @@ use std::collections::BTreeMap;
 use diffguard_types::{CheckReceipt, Finding, Severity};
 
 /// SARIF schema URL
-const SARIF_SCHEMA: &str =
-    "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json";
+const SARIF_SCHEMA: &str = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json";
 
 /// SARIF version
 const SARIF_VERSION: &str = "2.1.0";
@@ -257,8 +256,8 @@ fn finding_to_sarif_result(f: &Finding) -> SarifResult {
 mod tests {
     use super::*;
     use diffguard_types::{
-        CheckReceipt, DiffMeta, Finding, Scope, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
-        CHECK_SCHEMA_V1,
+        CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, ToolMeta, Verdict, VerdictCounts,
+        VerdictStatus,
     };
 
     /// Helper to create a test receipt with multiple findings

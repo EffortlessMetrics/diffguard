@@ -4,8 +4,8 @@
 //! for use in tests across the workspace.
 
 use diffguard_types::{
-    CheckReceipt, ConfigFile, Defaults, DiffMeta, FailOn, Finding, RuleConfig, Scope, Severity,
-    ToolMeta, Verdict, VerdictCounts, VerdictStatus, CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, ConfigFile, Defaults, DiffMeta, FailOn, Finding, RuleConfig,
+    Scope, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
 };
 
 // =============================================================================

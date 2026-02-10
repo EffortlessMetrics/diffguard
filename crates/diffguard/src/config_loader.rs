@@ -8,7 +8,7 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use tracing::debug;
 
 use diffguard_types::ConfigFile;
@@ -361,10 +361,12 @@ patterns = ["l1"]
         let root = temp.path().join("level0.toml");
         let result = load_config_with_includes(&root, no_expand);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Include depth exceeded"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Include depth exceeded")
+        );
     }
 
     #[test]

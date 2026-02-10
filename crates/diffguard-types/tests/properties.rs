@@ -3,8 +3,8 @@
 //! Feature: diffguard-completion, Property 9: Schema Validation Round-Trip
 
 use diffguard_types::{
-    CheckReceipt, ConfigFile, Defaults, DiffMeta, FailOn, Finding, RuleConfig, Scope, Severity,
-    ToolMeta, Verdict, VerdictCounts, VerdictStatus, CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, ConfigFile, Defaults, DiffMeta, FailOn, Finding, RuleConfig,
+    Scope, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
 };
 use jsonschema::JSONSchema;
 use proptest::prelude::*;

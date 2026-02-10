@@ -7,8 +7,8 @@ use std::collections::HashMap;
 
 use diffguard_types::{ConfigFile, SensorReport};
 
-use crate::check::{run_check, CheckPlan};
-use crate::sensor::{render_sensor_report, RuleMetadata, SensorReportContext};
+use crate::check::{CheckPlan, run_check};
+use crate::sensor::{RuleMetadata, SensorReportContext, render_sensor_report};
 
 /// Consolidated input for the diffguard sensor engine.
 ///
@@ -90,8 +90,8 @@ fn extract_rule_metadata(config: &ConfigFile) -> HashMap<String, RuleMetadata> {
 mod tests {
     use super::*;
     use diffguard_types::{
-        CapabilityStatus, FailOn, RuleConfig, Scope, Severity, CAP_GIT, CAP_STATUS_AVAILABLE,
-        SENSOR_REPORT_SCHEMA_V1,
+        CAP_GIT, CAP_STATUS_AVAILABLE, CapabilityStatus, FailOn, RuleConfig,
+        SENSOR_REPORT_SCHEMA_V1, Scope, Severity,
     };
     use std::collections::HashMap;
 

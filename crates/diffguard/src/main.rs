@@ -4,21 +4,21 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use chrono::Utc;
 use clap::{Parser, Subcommand, ValueEnum};
 use tracing::{debug, info};
 
 use diffguard_core::{
-    render_csv_for_receipt, render_junit_for_receipt, render_sarif_json, render_sensor_json,
-    render_tsv_for_receipt, run_check, CheckPlan, RuleMetadata, SensorReportContext,
+    CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt, render_junit_for_receipt,
+    render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
 };
 use diffguard_domain::compile_rules;
 use diffguard_types::{
-    Artifact, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta, FailOn, RuleConfig, Scope,
-    ToolMeta, Verdict, VerdictCounts, VerdictStatus, CAP_GIT, CAP_STATUS_AVAILABLE,
-    CAP_STATUS_UNAVAILABLE, CHECK_ID_INTERNAL, CODE_TOOL_RUNTIME_ERROR, REASON_MISSING_BASE,
-    REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR,
+    Artifact, CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_UNAVAILABLE, CHECK_ID_INTERNAL,
+    CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta, FailOn,
+    REASON_MISSING_BASE, REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, RuleConfig, Scope, ToolMeta,
+    Verdict, VerdictCounts, VerdictStatus,
 };
 
 mod config_loader;
@@ -519,7 +519,7 @@ where
 
 /// Initialize tracing/logging based on CLI flags.
 fn init_logging(verbose: bool, debug: bool) {
-    use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+    use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
     let level = if debug {
         "debug"
@@ -577,11 +577,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
     // Determine config path
     let config_path = args.config.clone().or_else(|| {
         let p = PathBuf::from("diffguard.toml");
-        if p.exists() {
-            Some(p)
-        } else {
-            None
-        }
+        if p.exists() { Some(p) } else { None }
     });
 
     let Some(path) = config_path else {
@@ -714,11 +710,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
         }
     }
 
-    if errors.is_empty() {
-        Ok(0)
-    } else {
-        Ok(1)
-    }
+    if errors.is_empty() { Ok(0) } else { Ok(1) }
 }
 
 fn cmd_explain(args: ExplainArgs) -> Result<()> {
@@ -1799,21 +1791,13 @@ fn cmd_test(args: TestArgs) -> Result<i32> {
         }
     }
 
-    if failed > 0 {
-        Ok(1)
-    } else {
-        Ok(0)
-    }
+    if failed > 0 { Ok(1) } else { Ok(0) }
 }
 
 fn load_config(path: Option<PathBuf>, no_default_rules: bool) -> Result<ConfigFile> {
     let user_path = path.or_else(|| {
         let p = PathBuf::from("diffguard.toml");
-        if p.exists() {
-            Some(p)
-        } else {
-            None
-        }
+        if p.exists() { Some(p) } else { None }
     });
 
     let Some(path) = user_path else {
@@ -2502,10 +2486,12 @@ patterns = ["test"]
         let input = "value: ${DIFFGUARD_TEST_MISSING_VAR}";
         let result = expand_env_vars(input);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("DIFFGUARD_TEST_MISSING_VAR"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("DIFFGUARD_TEST_MISSING_VAR")
+        );
     }
 
     #[test]
@@ -2689,10 +2675,12 @@ patterns = ["test"]
         assert_eq!(receipt.diff.scope, Scope::Added);
         assert_eq!(receipt.verdict.status, VerdictStatus::Fail);
         assert_eq!(receipt.verdict.counts.error, 1);
-        assert!(receipt
-            .verdict
-            .reasons
-            .contains(&REASON_TOOL_ERROR.to_string()));
+        assert!(
+            receipt
+                .verdict
+                .reasons
+                .contains(&REASON_TOOL_ERROR.to_string())
+        );
 
         let finding = &receipt.findings[0];
         assert_eq!(finding.rule_id, CHECK_ID_INTERNAL);
@@ -2715,10 +2703,12 @@ patterns = ["test"]
 
         assert_eq!(report.schema, diffguard_types::SENSOR_REPORT_SCHEMA_V1);
         assert_eq!(report.verdict.status, VerdictStatus::Fail);
-        assert!(report
-            .verdict
-            .reasons
-            .contains(&REASON_TOOL_ERROR.to_string()));
+        assert!(
+            report
+                .verdict
+                .reasons
+                .contains(&REASON_TOOL_ERROR.to_string())
+        );
         assert_eq!(report.findings.len(), 1);
 
         let finding = &report.findings[0];

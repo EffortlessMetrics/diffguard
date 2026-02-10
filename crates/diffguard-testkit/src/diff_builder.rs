@@ -29,7 +29,7 @@
 //! assert!(diff.contains("+fn new_function() {}"));
 //! ```
 
-use crate::arb::{MAX_FILES, MAX_HUNKS_PER_FILE, MAX_LINES_PER_HUNK, MAX_LINE_LENGTH};
+use crate::arb::{MAX_FILES, MAX_HUNKS_PER_FILE, MAX_LINE_LENGTH, MAX_LINES_PER_HUNK};
 
 /// A builder for constructing unified diff strings.
 #[derive(Debug, Clone, Default)]

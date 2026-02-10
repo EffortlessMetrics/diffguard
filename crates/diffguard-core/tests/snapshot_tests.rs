@@ -11,8 +11,8 @@
 //! - No column info
 
 use diffguard_types::{
-    CheckReceipt, DiffMeta, Finding, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
-    CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Severity, ToolMeta, Verdict, VerdictCounts,
+    VerdictStatus,
 };
 
 // =========================================================================
