@@ -41,16 +41,20 @@ pub struct CompiledRule {
 
 impl CompiledRule {
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
-        if let Some(include) = &self.include {
-            if !include.is_match(path) {
-                return false;
-            }
+        if self
+            .include
+            .as_ref()
+            .is_some_and(|include| !include.is_match(path))
+        {
+            return false;
         }
 
-        if let Some(exclude) = &self.exclude {
-            if exclude.is_match(path) {
-                return false;
-            }
+        if self
+            .exclude
+            .as_ref()
+            .is_some_and(|exclude| exclude.is_match(path))
+        {
+            return false;
         }
 
         if !self.languages.is_empty() {

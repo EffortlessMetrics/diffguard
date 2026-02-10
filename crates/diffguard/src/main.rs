@@ -1,3 +1,5 @@
+#![allow(clippy::collapsible_if)]
+
 use std::collections::HashMap;
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -936,7 +938,7 @@ fn resolve_extras_paths(args: &mut CheckArgs, mode: Mode) {
     for (field, (standard_default, cockpit_default)) in
         fields.into_iter().zip(extras_defaults.iter())
     {
-        if let Some(ref path) = field {
+        if let Some(path) = field.as_ref() {
             if path == Path::new(standard_default) {
                 *field = Some(PathBuf::from(cockpit_default));
             }
@@ -2497,11 +2499,15 @@ patterns = ["test"]
     #[test]
     fn test_expand_env_vars_from_environment() {
         // Set a test environment variable
-        std::env::set_var("DIFFGUARD_TEST_VAR", "test_value");
+        unsafe {
+            std::env::set_var("DIFFGUARD_TEST_VAR", "test_value");
+        }
         let input = "hello ${DIFFGUARD_TEST_VAR}!";
         let result = expand_env_vars(input).unwrap();
         assert_eq!(result, "hello test_value!");
-        std::env::remove_var("DIFFGUARD_TEST_VAR");
+        unsafe {
+            std::env::remove_var("DIFFGUARD_TEST_VAR");
+        }
     }
 
     #[test]
@@ -2538,25 +2544,33 @@ patterns = ["test"]
     #[test]
     fn resolve_mode_prefers_env_over_args() {
         let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("DIFFGUARD_MODE", "cockpit");
+        unsafe {
+            std::env::set_var("DIFFGUARD_MODE", "cockpit");
+        }
 
         let mut args = base_check_args();
         args.mode = Mode::Standard;
         assert!(matches!(resolve_mode(&args), Mode::Cockpit));
 
-        std::env::remove_var("DIFFGUARD_MODE");
+        unsafe {
+            std::env::remove_var("DIFFGUARD_MODE");
+        }
     }
 
     #[test]
     fn resolve_mode_ignores_invalid_env() {
         let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("DIFFGUARD_MODE", "unknown");
+        unsafe {
+            std::env::set_var("DIFFGUARD_MODE", "unknown");
+        }
 
         let mut args = base_check_args();
         args.mode = Mode::Standard;
         assert!(matches!(resolve_mode(&args), Mode::Standard));
 
-        std::env::remove_var("DIFFGUARD_MODE");
+        unsafe {
+            std::env::remove_var("DIFFGUARD_MODE");
+        }
     }
 
     #[test]
@@ -3470,7 +3484,9 @@ exclude_paths = ["target/**"]
     #[test]
     fn cmd_validate_forced_compile_error() {
         let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("DIFFGUARD_TEST_FORCE_COMPILE_ERROR", "1");
+        unsafe {
+            std::env::set_var("DIFFGUARD_TEST_FORCE_COMPILE_ERROR", "1");
+        }
 
         let dir = TempDir::new().unwrap();
         let config_path = write_config(
@@ -3490,7 +3506,9 @@ patterns = ["TODO"]
             format: ValidateFormat::Text,
         };
         let code = cmd_validate(args).unwrap();
-        std::env::remove_var("DIFFGUARD_TEST_FORCE_COMPILE_ERROR");
+        unsafe {
+            std::env::remove_var("DIFFGUARD_TEST_FORCE_COMPILE_ERROR");
+        }
         assert_eq!(code, 1);
     }
 
@@ -3605,7 +3623,9 @@ patterns = ["alpha"]
     #[test]
     fn cmd_check_cockpit_skip_sensor_json_error_falls_back_to_out() {
         let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR", "1");
+        unsafe {
+            std::env::set_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR", "1");
+        }
 
         let dir = TempDir::new().unwrap();
         let sensor_path = dir.path().join("sensor.json");
@@ -3618,7 +3638,9 @@ patterns = ["alpha"]
         args.out = Some(out_file.clone());
 
         let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
-        std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
+        unsafe {
+            std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
+        }
         assert_eq!(code, 0);
         assert!(out_file.exists());
     }
@@ -3626,7 +3648,9 @@ patterns = ["alpha"]
     #[test]
     fn cmd_check_cockpit_tool_error_sensor_json_error_falls_back_to_out() {
         let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR", "1");
+        unsafe {
+            std::env::set_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR", "1");
+        }
 
         let dir = TempDir::new().unwrap();
         let sensor_path = dir.path().join("sensor.json");
@@ -3640,7 +3664,9 @@ patterns = ["alpha"]
         args.config = Some(missing_config);
 
         let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
-        std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
+        unsafe {
+            std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
+        }
         assert_eq!(code, 0);
         assert!(out_file.exists());
     }
@@ -3722,7 +3748,7 @@ patterns = ["alpha"]
         }
 
         fn flush(&mut self) -> io::Result<()> {
-            Err(io::Error::new(io::ErrorKind::Other, "flush failed"))
+            Err(io::Error::other("flush failed"))
         }
     }
 

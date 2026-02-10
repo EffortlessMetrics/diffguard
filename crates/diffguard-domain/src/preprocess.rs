@@ -288,6 +288,7 @@ impl Preprocessor {
     ///
     /// The output is the same length in bytes as the input.
     #[cfg_attr(mutants, mutants::skip)]
+    #[allow(clippy::collapsible_if)]
     pub fn sanitize_line(&mut self, line: &str) -> String {
         let mut out: Vec<u8> = line.as_bytes().to_vec();
         let bytes = line.as_bytes();

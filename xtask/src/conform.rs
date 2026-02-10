@@ -1,4 +1,5 @@
 #![allow(unexpected_cfgs)]
+#![allow(clippy::collapsible_if)]
 
 #[cfg(coverage)]
 use anyhow::Result;

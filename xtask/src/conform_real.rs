@@ -1446,9 +1446,9 @@ mod tests {
     #[test]
     fn cargo_bin_path_prefers_env_var() {
         let _guard = ENV_LOCK.lock().unwrap();
-        std::env::set_var("CARGO_BIN_EXE_diffguard", "custom-diffguard");
+        unsafe { std::env::set_var("CARGO_BIN_EXE_diffguard", "custom-diffguard"); }
         assert_eq!(cargo_bin_path(), "custom-diffguard");
-        std::env::remove_var("CARGO_BIN_EXE_diffguard");
+        unsafe { std::env::remove_var("CARGO_BIN_EXE_diffguard"); }
     }
 
     #[test]

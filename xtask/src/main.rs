@@ -224,11 +224,15 @@ mod tests {
             std::fs::set_permissions(&cargo_path, perms).unwrap();
         }
 
-        std::env::set_var("DIFFGUARD_XTASK_CARGO", &cargo_path);
+        unsafe {
+            std::env::set_var("DIFFGUARD_XTASK_CARGO", &cargo_path);
+        }
 
         let result = run_with_args(["xtask", "ci"]);
 
-        std::env::remove_var("DIFFGUARD_XTASK_CARGO");
+        unsafe {
+            std::env::remove_var("DIFFGUARD_XTASK_CARGO");
+        }
         result.expect("run ci");
     }
 
@@ -268,11 +272,15 @@ mod tests {
             std::fs::set_permissions(&cargo_path, perms).unwrap();
         }
 
-        std::env::set_var("DIFFGUARD_XTASK_CARGO", &cargo_path);
+        unsafe {
+            std::env::set_var("DIFFGUARD_XTASK_CARGO", &cargo_path);
+        }
 
         let err = ci().expect_err("ci should fail when clippy fails");
 
-        std::env::remove_var("DIFFGUARD_XTASK_CARGO");
+        unsafe {
+            std::env::remove_var("DIFFGUARD_XTASK_CARGO");
+        }
 
         assert!(err.to_string().contains("command failed"));
     }
