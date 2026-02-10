@@ -1,7 +1,10 @@
-/target
+/target*
 **/*.rs.bk
 Cargo.lock
 .DS_Store
 artifacts/
 .fuzz/
 /fuzz/
+*.pdb
+*.profraw
+.tmp_*
