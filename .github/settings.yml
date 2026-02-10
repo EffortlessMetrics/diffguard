@@ -1,0 +1,25 @@
+# .github/settings.yml
+repository:
+  description: "Diff-scoped governance linter for PR automation"
+  homepage: "https://github.com/effortless-mgmt/diffguard"
+  topics: rust, linter, diff, git, ci, governance, devex
+
+  # Merge strategy settings
+  allow_merge_commit: false
+  allow_squash_merge: true
+  allow_rebase_merge: true
+  delete_branch_on_merge: true
+
+# Branch protection settings for the default branch
+branches:
+  - name: main
+    protection:
+      required_pull_request_reviews:
+        required_approving_review_count: 1
+        dismiss_stale_reviews: true
+        require_code_owner_reviews: true
+      required_status_checks:
+        strict: true
+        contexts: [] # Add specific CI check names here if known (e.g., "ci (ubuntu-latest)")
+      enforce_admins: false
+      restrictions: null
