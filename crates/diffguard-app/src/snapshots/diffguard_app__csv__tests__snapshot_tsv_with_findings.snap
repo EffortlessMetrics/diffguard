@@ -1,0 +1,7 @@
+---
+source: crates/diffguard-app/src/csv.rs
+expression: tsv
+---
+file	line	rule_id	severity	message	snippet
+src/lib.rs	15	rust.no_unwrap	error	Avoid unwrap/expect in production code.	let value = result.unwrap();
+src/main.rs	23	rust.no_dbg	warn	Remove dbg!/println! before merging.	    dbg!(config);

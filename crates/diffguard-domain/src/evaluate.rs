@@ -69,14 +69,13 @@ pub fn evaluate_lines(
             suppression_tracker.reset();
         }
 
-        // Parse suppressions from the RAW line BEFORE preprocessing
-        // This ensures directives in comments are still visible
-        let effective_suppressions = suppression_tracker.process_line(&l.content);
-
         let path = std::path::Path::new(&l.path);
         let lang = detect_language(path);
 
         let masked_comments = p_comments.sanitize_line(&l.content);
+        // Parse suppressions from the RAW line, but only if the directive
+        // is inside a masked comment span.
+        let effective_suppressions = suppression_tracker.process_line(&l.content, &masked_comments);
         let masked_strings = p_strings.sanitize_line(&l.content);
         let masked_both = p_both.sanitize_line(&l.content);
 
@@ -295,6 +294,16 @@ mod tests {
         assert_eq!(eval.counts.warn, 5);
         assert_eq!(eval.findings.len(), 2);
         assert_eq!(eval.truncated_findings, 3);
+    }
+
+    #[test]
+    fn trim_snippet_truncates_and_appends_ellipsis() {
+        let long = "a".repeat(300);
+        let trimmed = super::trim_snippet(&long);
+
+        assert!(trimmed.ends_with('…'));
+        assert_eq!(trimmed.chars().count(), 241);
+        assert!(trimmed.len() <= long.len() + 3);
     }
 
     #[test]
@@ -766,5 +775,23 @@ mod tests {
         assert_eq!(eval.counts.error, 0);
         assert_eq!(eval.counts.suppressed, 2);
         assert!(eval.findings.is_empty());
+    }
+
+    #[test]
+    fn safe_slice_clamps_and_slices() {
+        let s = "abcde";
+        assert_eq!(safe_slice(s, 1, 3), "bc");
+        assert_eq!(safe_slice(s, 0, 100), "abcde");
+        assert_eq!(safe_slice(s, 10, 12), "");
+    }
+
+    #[test]
+    fn byte_to_column_counts_chars() {
+        let s = "aβc";
+        assert_eq!(byte_to_column(s, 0), Some(1));
+        assert_eq!(byte_to_column(s, 1), Some(2));
+        assert_eq!(byte_to_column(s, 3), Some(3));
+        assert_eq!(byte_to_column(s, s.len()), Some(4));
+        assert_eq!(byte_to_column(s, s.len() + 1), None);
     }
 }

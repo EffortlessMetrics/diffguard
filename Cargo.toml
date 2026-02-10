@@ -14,6 +14,7 @@ default-members = ["crates/diffguard"]
 
 [workspace.package]
 version = "0.1.0"
+authors = ["Effortless Metrics <contact@effortlessmetrics.com>"]
 edition = "2021"
 license = "MIT OR Apache-2.0"
 rust-version = "1.75"

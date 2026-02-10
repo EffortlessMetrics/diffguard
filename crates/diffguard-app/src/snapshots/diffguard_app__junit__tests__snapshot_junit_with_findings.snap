@@ -1,0 +1,35 @@
+---
+source: crates/diffguard-app/src/junit.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="diffguard" tests="3" failures="3" errors="0">
+  <testsuite name="rust.no_dbg" tests="1" failures="1" errors="0">
+    <testcase classname="src/main.rs" name="src/main.rs:23">
+      <failure type="warning" message="Remove dbg!/println! before merging.">
+Rule: rust.no_dbg
+File: src/main.rs
+Line: 23
+Snippet:     dbg!(config);
+      </failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="rust.no_unwrap" tests="2" failures="2" errors="0">
+    <testcase classname="src/lib.rs" name="src/lib.rs:15">
+      <failure type="error" message="Avoid unwrap/expect in production code.">
+Rule: rust.no_unwrap
+File: src/lib.rs
+Line: 15
+Snippet: let value = result.unwrap();
+      </failure>
+    </testcase>
+    <testcase classname="src/other.rs" name="src/other.rs:8">
+      <failure type="error" message="Avoid unwrap/expect in production code.">
+Rule: rust.no_unwrap
+File: src/other.rs
+Line: 8
+Snippet: x.unwrap()
+      </failure>
+    </testcase>
+  </testsuite>
+</testsuites>

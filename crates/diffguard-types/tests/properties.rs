@@ -1245,4 +1245,57 @@ mod unit_tests {
             result.err().map(|e| e.collect::<Vec<_>>())
         );
     }
+
+    #[test]
+    fn severity_as_str_matches_expected() {
+        assert_eq!(Severity::Info.as_str(), "info");
+        assert_eq!(Severity::Warn.as_str(), "warn");
+        assert_eq!(Severity::Error.as_str(), "error");
+    }
+
+    #[test]
+    fn scope_as_str_matches_expected() {
+        assert_eq!(Scope::Added.as_str(), "added");
+        assert_eq!(Scope::Changed.as_str(), "changed");
+    }
+
+    #[test]
+    fn fail_on_as_str_matches_expected() {
+        assert_eq!(FailOn::Error.as_str(), "error");
+        assert_eq!(FailOn::Warn.as_str(), "warn");
+        assert_eq!(FailOn::Never.as_str(), "never");
+    }
+
+    #[test]
+    fn verdict_counts_suppressed_skips_zero() {
+        let counts = VerdictCounts {
+            info: 0,
+            warn: 0,
+            error: 0,
+            suppressed: 0,
+        };
+        let json_value = serde_json::to_value(&counts).expect("counts serialize");
+        let object = json_value.as_object().expect("counts should be object");
+        assert!(
+            !object.contains_key("suppressed"),
+            "suppressed should be omitted when zero"
+        );
+    }
+
+    #[test]
+    fn verdict_counts_suppressed_serializes_when_nonzero() {
+        let counts = VerdictCounts {
+            info: 0,
+            warn: 0,
+            error: 0,
+            suppressed: 2,
+        };
+        let json_value = serde_json::to_value(&counts).expect("counts serialize");
+        let object = json_value.as_object().expect("counts should be object");
+        assert_eq!(
+            object.get("suppressed"),
+            Some(&serde_json::json!(2)),
+            "suppressed should serialize when non-zero"
+        );
+    }
 }

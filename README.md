@@ -29,11 +29,16 @@ cargo install --path crates/diffguard
 ## Quick start
 
 ```bash
+# Initialize with a preset
+diffguard init --preset minimal
+
 # From a feature branch:
 diffguard check --base origin/main --head HEAD --github-annotations \
   --out artifacts/diffguard/report.json \
   --md artifacts/diffguard/comment.md
 ```
+
+Available presets: `minimal`, `rust-quality`, `secrets`, `js-console`, `python-debug`
 
 ### Exit codes
 
@@ -72,6 +77,37 @@ You can point `diffguard` at a config file:
 diffguard check --config diffguard.toml
 ```
 
+### Inline Suppressions
+
+Suppress specific findings with inline comments:
+
+```rust
+// Same line
+let x = get_value().unwrap(); // diffguard: ignore rust.no_unwrap
+
+// Next line
+// diffguard: ignore-next-line rust.no_unwrap
+let x = get_value().unwrap();
+
+// Multiple rules
+let x = foo(); // diffguard: ignore rule1, rule2
+
+// All rules
+let x = foo(); // diffguard: ignore *
+```
+
+## Output Formats
+
+diffguard supports multiple output formats for different use cases:
+
+| Format | Flag | Use Case |
+|--------|------|----------|
+| JSON | `--out` | Automation, bots, downstream processing |
+| Markdown | `--md` | PR comments, human-readable summaries |
+| SARIF | `--sarif` | GitHub Advanced Security, code scanning |
+| JUnit | `--junit` | CI/CD integration (Jenkins, GitLab CI) |
+| CSV/TSV | `--csv` / `--tsv` | Spreadsheet import, data analysis |
+
 ## GitHub Actions example
 
 ```yaml
@@ -83,41 +119,79 @@ diffguard check --config diffguard.toml
       --config diffguard.toml \
       --out artifacts/diffguard/report.json \
       --md artifacts/diffguard/comment.md \
+      --sarif artifacts/diffguard/report.sarif \
       --github-annotations
+
+- name: Upload SARIF to GitHub Security
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: artifacts/diffguard/report.sarif
 ```
 
 ## Repo layout
 
-This repo uses a clean, microcrate workspace layout:
+This repo uses a clean, microcrate workspace layout with strict dependency direction:
 
-- `diffguard-types`: receipts + config DTOs
-- `diffguard-diff`: unified diff parsing
-- `diffguard-domain`: rule evaluation + preprocessing
-- `diffguard-app`: orchestration use-cases
-- `diffguard` (CLI): clap wiring and I/O
-- `xtask`: repo automation (`xtask ci`, `xtask schema`, ...)
+```
+diffguard (CLI)          I/O boundary: clap, file I/O, git subprocess
+       │
+       ▼
+diffguard-app            Orchestration: run_check(), render outputs
+       │
+       ├────────────────────────┐
+       ▼                        ▼
+diffguard-domain         diffguard-diff
+  Business logic           Diff parsing
+       │                        │
+       └──────────┬─────────────┘
+                  ▼
+          diffguard-types
+            Pure DTOs
+```
+
+| Crate | Purpose |
+|-------|---------|
+| `diffguard-types` | Serializable DTOs, severity/scope enums, built-in presets |
+| `diffguard-diff` | Parse unified diff format, detect binary/submodule/rename |
+| `diffguard-domain` | Compile rules, evaluate lines, preprocess comments/strings |
+| `diffguard-app` | Orchestrate checks, compute verdicts, render outputs |
+| `diffguard` | CLI binary: arg parsing, config loading, git invocation |
+| `diffguard-testkit` | Shared test utilities (proptest strategies, fixtures) |
+| `xtask` | Repo automation (`ci`, `schema`) |
 
 ## Development
 
 ```bash
-# typical workflow
+# Build and test
+cargo build --workspace
 cargo test --workspace
+cargo fmt --check
+cargo clippy --workspace --all-targets -- -D warnings
 
-# automation
+# Full CI suite
 cargo run -p xtask -- ci
+
+# Generate JSON schemas
 cargo run -p xtask -- schema
 ```
 
-### Mutation testing
+### Testing
 
-This repo is designed to work well with `cargo-mutants`.
+| Type | Command |
+|------|---------|
+| Unit tests | `cargo test --workspace` |
+| Snapshot tests | `cargo insta test` |
+| Mutation tests | `cargo mutants` |
+| Fuzz tests | `cargo +nightly fuzz run unified_diff_parser` |
 
 ### Fuzzing
 
-A `fuzz/` directory is included (libFuzzer). Install `cargo-fuzz` and run:
+Three fuzz targets are available:
 
 ```bash
-cargo fuzz run unified_diff_parser
+cargo +nightly fuzz run unified_diff_parser  # Diff parsing
+cargo +nightly fuzz run preprocess           # Comment/string masking
+cargo +nightly fuzz run rule_matcher         # Rule evaluation
 ```
 
 ## Minimum Supported Rust Version (MSRV)
