@@ -214,10 +214,8 @@ paths = ["**/*.rs"]
     // When: Running check
     let result = repo.run_check(&head_sha);
 
-    // Then: Receipt mentions omitted findings
-    result
-        .assert_receipt_contains("omitted")
-        .assert_receipt_contains("max_findings");
+    // Then: Receipt mentions truncation via token
+    result.assert_receipt_contains("truncated");
 }
 
 /// Scenario: Mixed severities with max_findings.

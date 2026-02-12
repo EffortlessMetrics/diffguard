@@ -41,16 +41,20 @@ pub struct CompiledRule {
 
 impl CompiledRule {
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
-        if let Some(include) = &self.include {
-            if !include.is_match(path) {
-                return false;
-            }
+        if self
+            .include
+            .as_ref()
+            .is_some_and(|include| !include.is_match(path))
+        {
+            return false;
         }
 
-        if let Some(exclude) = &self.exclude {
-            if exclude.is_match(path) {
-                return false;
-            }
+        if self
+            .exclude
+            .as_ref()
+            .is_some_and(|exclude| exclude.is_match(path))
+        {
+            return false;
         }
 
         if !self.languages.is_empty() {
@@ -146,6 +150,12 @@ pub fn detect_language(path: &Path) -> Option<&'static str> {
         "cpp" | "cc" | "cxx" | "hpp" | "hxx" | "hh" => Some("cpp"),
         "cs" => Some("csharp"),
         "sh" | "bash" | "zsh" | "ksh" | "fish" => Some("shell"),
+        "swift" => Some("swift"),
+        "scala" | "sc" => Some("scala"),
+        "sql" => Some("sql"),
+        "xml" | "xsl" | "xslt" | "xsd" | "svg" | "xhtml" => Some("xml"),
+        "html" | "htm" => Some("xml"),
+        "php" | "phtml" | "php3" | "php4" | "php5" | "php7" | "phps" => Some("php"),
         _ => None,
     }
 }
@@ -179,6 +189,8 @@ mod tests {
             ignore_strings,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         }
     }
 
@@ -299,6 +311,48 @@ mod tests {
     }
 
     #[test]
+    fn detect_language_swift() {
+        assert_eq!(detect_language(Path::new("app.swift")), Some("swift"));
+        assert_eq!(detect_language(Path::new("App.SWIFT")), Some("swift"));
+    }
+
+    #[test]
+    fn detect_language_scala() {
+        assert_eq!(detect_language(Path::new("app.scala")), Some("scala"));
+        assert_eq!(detect_language(Path::new("app.sc")), Some("scala"));
+        assert_eq!(detect_language(Path::new("App.SCALA")), Some("scala"));
+    }
+
+    #[test]
+    fn detect_language_sql() {
+        assert_eq!(detect_language(Path::new("query.sql")), Some("sql"));
+        assert_eq!(detect_language(Path::new("Query.SQL")), Some("sql"));
+    }
+
+    #[test]
+    fn detect_language_xml() {
+        assert_eq!(detect_language(Path::new("config.xml")), Some("xml"));
+        assert_eq!(detect_language(Path::new("style.xsl")), Some("xml"));
+        assert_eq!(detect_language(Path::new("transform.xslt")), Some("xml"));
+        assert_eq!(detect_language(Path::new("schema.xsd")), Some("xml"));
+        assert_eq!(detect_language(Path::new("icon.svg")), Some("xml"));
+        assert_eq!(detect_language(Path::new("page.xhtml")), Some("xml"));
+        assert_eq!(detect_language(Path::new("page.html")), Some("xml"));
+        assert_eq!(detect_language(Path::new("page.htm")), Some("xml"));
+    }
+
+    #[test]
+    fn detect_language_php() {
+        assert_eq!(detect_language(Path::new("index.php")), Some("php"));
+        assert_eq!(detect_language(Path::new("template.phtml")), Some("php"));
+        assert_eq!(detect_language(Path::new("legacy.php3")), Some("php"));
+        assert_eq!(detect_language(Path::new("legacy.php4")), Some("php"));
+        assert_eq!(detect_language(Path::new("legacy.php5")), Some("php"));
+        assert_eq!(detect_language(Path::new("modern.php7")), Some("php"));
+        assert_eq!(detect_language(Path::new("highlight.phps")), Some("php"));
+    }
+
+    #[test]
     fn detect_language_case_insensitive() {
         // Test that extension matching is case-insensitive
         assert_eq!(detect_language(Path::new("file.RS")), Some("rust"));
@@ -333,6 +387,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -340,18 +396,15 @@ mod tests {
 
         // Both patterns could match "foobar", but first_match should return "foo"
         let content = "foobar";
-        let mut matched = false;
-        for p in &r.patterns {
-            if let Some(m) = p.find(content) {
-                // First pattern "foo" should match at position 0-3
-                assert_eq!(m.start(), 0);
-                assert_eq!(m.end(), 3);
-                assert_eq!(&content[m.start()..m.end()], "foo");
-                matched = true;
-                break;
-            }
-        }
-        assert!(matched, "Expected a pattern to match");
+        let m = r
+            .patterns
+            .iter()
+            .find_map(|p| p.find(content))
+            .expect("Expected a pattern to match");
+        // First pattern "foo" should match at position 0-3
+        assert_eq!(m.start(), 0);
+        assert_eq!(m.end(), 3);
+        assert_eq!(&content[m.start()..m.end()], "foo");
     }
 
     #[test]
@@ -371,6 +424,8 @@ mod tests {
                 ignore_strings: false,
                 help: None,
                 url: None,
+                tags: vec![],
+                test_cases: vec![],
             },
             RuleConfig {
                 id: "rule.second".to_string(),
@@ -384,6 +439,8 @@ mod tests {
                 ignore_strings: false,
                 help: None,
                 url: None,
+                tags: vec![],
+                test_cases: vec![],
             },
         ];
 
@@ -411,6 +468,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -418,9 +477,10 @@ mod tests {
 
         // The general pattern should match first
         let content = "specific";
-        if let Some(m) = r.patterns[0].find(content) {
-            assert_eq!(&content[m.start()..m.end()], "specific");
-        }
+        let m = r.patterns[0]
+            .find(content)
+            .expect("Expected specific pattern to match");
+        assert_eq!(&content[m.start()..m.end()], "specific");
     }
 
     // --- Complex Glob Pattern Tests ---
@@ -440,6 +500,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -471,6 +533,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -502,6 +566,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -540,6 +606,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -571,6 +639,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -602,6 +672,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -630,6 +702,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -658,6 +732,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -686,6 +762,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -714,6 +792,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -740,6 +820,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -777,6 +859,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();
@@ -803,6 +887,8 @@ mod tests {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let rules = compile_rules(&[cfg]).unwrap();

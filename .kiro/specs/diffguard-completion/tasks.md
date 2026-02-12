@@ -123,7 +123,7 @@ This implementation plan breaks down the diffguard completion work into discrete
 
 - [x] 10. Add snapshot tests for markdown output
   - [x] 10.1 Add insta dependency and create snapshot tests
-    - Add `insta` to dev-dependencies in `diffguard-app/Cargo.toml`
+    - Add `insta` to dev-dependencies in `diffguard-core/Cargo.toml`
     - Create snapshot test for markdown with findings
     - Create snapshot test for markdown with no findings
     - Create snapshot test for verdict rendering

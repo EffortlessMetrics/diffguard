@@ -1,0 +1,9 @@
+---
+source: crates/diffguard-core/src/render.rs
+expression: md
+---
+## diffguard — PASS
+
+Scanned **5** file(s), **120** line(s) (scope: `added`, base: `origin/main`, head: `HEAD`)
+
+No findings.

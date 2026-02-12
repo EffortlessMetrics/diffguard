@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-core/tests/snapshot_tests.rs
+expression: "annotations.join(\"\\n\")"
+---
+::error file=src/config.rs,line=8::security.no_hardcoded_secret Hardcoded secret detected

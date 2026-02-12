@@ -1,0 +1,332 @@
+# Diffguard SARIF Integration - Detailed Example
+#
+# This example workflow demonstrates comprehensive diffguard configuration
+# with SARIF integration for GitHub Code Scanning.
+#
+# ============================================================================
+# SARIF INTEGRATION OVERVIEW
+# ============================================================================
+#
+# SARIF (Static Analysis Results Interchange Format) is an OASIS standard
+# for expressing the output of static analysis tools. Benefits include:
+#
+#   - GitHub Security tab integration for unified vulnerability dashboard
+#   - Rich code location tracking with source snippets
+#   - Cross-tool result aggregation
+#   - Industry standard adopted by NIST, Microsoft, and major security tools
+#
+# When diffguard findings are uploaded to GitHub Code Scanning:
+#   - They appear in the repository's Security tab
+#   - PR checks show inline annotations on affected lines
+#   - Findings can be dismissed, tracked, and managed centrally
+#
+# ============================================================================
+# PREREQUISITES
+# ============================================================================
+#
+# 1. GitHub Advanced Security must be enabled for private repositories
+#    (free for public repositories)
+#
+# 2. The workflow must have 'security-events: write' permission
+#
+# 3. diffguard must be installed or built from source
+#
+# ============================================================================
+
+name: diffguard-sarif-example
+
+# This workflow is disabled by default - remove 'workflow_dispatch' trigger
+# and uncomment 'pull_request' to enable automatic runs.
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: 'Base branch for diff comparison'
+        required: false
+        default: 'main'
+      fail_on:
+        description: 'Fail policy (error, warn, never)'
+        required: false
+        default: 'error'
+        type: choice
+        options:
+          - error
+          - warn
+          - never
+  # Uncomment to run on pull requests:
+  # pull_request:
+  #   branches: [main, develop]
+
+permissions:
+  # Required to read repository contents
+  contents: read
+  # Required to upload SARIF results to Code Scanning
+  security-events: write
+  # Optional: allows the workflow to write PR comments
+  pull-requests: write
+
+env:
+  # Cache key for Rust dependencies
+  CARGO_TERM_COLOR: always
+  # diffguard output directory
+  DIFFGUARD_OUTPUT_DIR: artifacts/diffguard
+
+jobs:
+  # =========================================================================
+  # OPTION A: Build from Source
+  # =========================================================================
+  # Use this approach when diffguard is not yet published to crates.io
+  # or when you need a specific version/branch.
+
+  diffguard-from-source:
+    name: Run diffguard (build from source)
+    runs-on: ubuntu-latest
+
+    steps:
+      # ----------------------------------------------------------------------
+      # Step 1: Checkout with full history
+      # ----------------------------------------------------------------------
+      # fetch-depth: 0 ensures we have the complete git history,
+      # which is necessary for accurate diff calculation between branches.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ----------------------------------------------------------------------
+      # Step 2: Setup Rust toolchain
+      # ----------------------------------------------------------------------
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # ----------------------------------------------------------------------
+      # Step 3: Cache cargo dependencies
+      # ----------------------------------------------------------------------
+      # Caching significantly speeds up subsequent workflow runs.
+      - name: Cache cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          # Cache the built diffguard binary
+          cache-targets: true
+
+      # ----------------------------------------------------------------------
+      # Step 4: Build diffguard
+      # ----------------------------------------------------------------------
+      # Build in release mode for faster execution during the check.
+      - name: Build diffguard
+        run: cargo build --release -p diffguard
+
+      # ----------------------------------------------------------------------
+      # Step 5: Run diffguard check
+      # ----------------------------------------------------------------------
+      # The check command evaluates rules against added/changed lines.
+      #
+      # Key flags:
+      #   --base: The branch to compare against (usually origin/main)
+      #   --head: The commit to check (usually the PR head or current SHA)
+      #   --sarif: Output path for SARIF report
+      #   --out: Output path for JSON receipt
+      #   --md: Output path for Markdown summary (optional)
+      #   --fail-on: When to fail (error, warn, never)
+      #
+      # Exit codes:
+      #   0 - Pass (no violations, or only info-level findings)
+      #   2 - Policy fail (error-level findings found)
+      #   3 - Warn fail (warn-level findings found with --fail-on warn)
+      #
+      - name: Run diffguard check
+        id: diffguard
+        run: |
+          # Determine base ref from inputs or PR context
+          BASE_REF="${{ inputs.base_ref || github.base_ref || 'main' }}"
+          FAIL_ON="${{ inputs.fail_on || 'error' }}"
+
+          echo "Comparing against: origin/${BASE_REF}"
+          echo "Fail policy: ${FAIL_ON}"
+
+          # Create output directory
+          mkdir -p ${{ env.DIFFGUARD_OUTPUT_DIR }}
+
+          # Run diffguard
+          ./target/release/diffguard check \
+            --base "origin/${BASE_REF}" \
+            --head "${{ github.sha }}" \
+            --sarif "${{ env.DIFFGUARD_OUTPUT_DIR }}/report.sarif.json" \
+            --out "${{ env.DIFFGUARD_OUTPUT_DIR }}/report.json" \
+            --md "${{ env.DIFFGUARD_OUTPUT_DIR }}/comment.md" \
+            --github-annotations \
+            --fail-on "${FAIL_ON}"
+        continue-on-error: true
+
+      # ----------------------------------------------------------------------
+      # Step 6: Upload SARIF to GitHub Code Scanning
+      # ----------------------------------------------------------------------
+      # This step uploads the SARIF file to GitHub's Code Scanning feature.
+      # Results will appear in:
+      #   - The repository's Security tab
+      #   - PR checks as inline annotations
+      #
+      # The 'category' field groups results from different tools or runs.
+      #
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ env.DIFFGUARD_OUTPUT_DIR }}/report.sarif.json
+          # Category helps distinguish diffguard results from other tools
+          category: diffguard
+          # Wait for processing to complete (useful for debugging)
+          wait-for-processing: true
+        # Always run this step if the SARIF file was created
+        if: always() && hashFiles(format('{0}/report.sarif.json', env.DIFFGUARD_OUTPUT_DIR)) != ''
+
+      # ----------------------------------------------------------------------
+      # Step 7: Upload artifacts for later inspection
+      # ----------------------------------------------------------------------
+      # All generated reports are uploaded as workflow artifacts.
+      # This allows downloading and inspecting results offline.
+      #
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: diffguard-reports
+          path: ${{ env.DIFFGUARD_OUTPUT_DIR }}/
+          retention-days: 30
+        if: always()
+
+      # ----------------------------------------------------------------------
+      # Step 8: Post PR comment (optional)
+      # ----------------------------------------------------------------------
+      # This step posts the Markdown summary as a PR comment.
+      # Requires 'pull-requests: write' permission.
+      #
+      - name: Post PR comment
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request' && hashFiles(format('{0}/comment.md', env.DIFFGUARD_OUTPUT_DIR)) != ''
+        with:
+          script: |
+            const fs = require('fs');
+            const commentPath = '${{ env.DIFFGUARD_OUTPUT_DIR }}/comment.md';
+
+            if (!fs.existsSync(commentPath)) {
+              console.log('No comment file found, skipping');
+              return;
+            }
+
+            const body = fs.readFileSync(commentPath, 'utf8');
+
+            // Find existing diffguard comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('<!-- diffguard-report -->')
+            );
+
+            const commentBody = '<!-- diffguard-report -->\n' + body;
+
+            if (botComment) {
+              // Update existing comment
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody,
+              });
+            } else {
+              // Create new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody,
+              });
+            }
+
+      # ----------------------------------------------------------------------
+      # Step 9: Check results and fail if needed
+      # ----------------------------------------------------------------------
+      # The diffguard step uses continue-on-error to allow SARIF upload
+      # even when findings are detected. This step re-raises the failure.
+      #
+      - name: Check diffguard results
+        if: steps.diffguard.outcome == 'failure'
+        run: |
+          echo "::error::diffguard found policy violations"
+          exit 1
+
+  # =========================================================================
+  # OPTION B: Install from crates.io (when published)
+  # =========================================================================
+  # Uncomment this job when diffguard is published to crates.io.
+  # This is faster than building from source.
+  #
+  # diffguard-from-crates:
+  #   name: Run diffguard (from crates.io)
+  #   runs-on: ubuntu-latest
+  #
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #
+  #     - name: Install diffguard
+  #       run: cargo install diffguard
+  #
+  #     - name: Run diffguard check
+  #       run: |
+  #         diffguard check \
+  #           --base origin/${{ github.base_ref }} \
+  #           --head ${{ github.sha }} \
+  #           --sarif artifacts/diffguard/report.sarif.json \
+  #           --fail-on error
+  #       continue-on-error: true
+  #
+  #     - name: Upload SARIF
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       with:
+  #         sarif_file: artifacts/diffguard/report.sarif.json
+  #         category: diffguard
+  #       if: always()
+
+  # =========================================================================
+  # OPTION C: Using Pre-built Binary (fastest)
+  # =========================================================================
+  # When diffguard releases include pre-built binaries, download them
+  # directly for the fastest workflow execution.
+  #
+  # diffguard-prebuilt:
+  #   name: Run diffguard (pre-built binary)
+  #   runs-on: ubuntu-latest
+  #
+  #   steps:
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v4
+  #       with:
+  #         fetch-depth: 0
+  #
+  #     - name: Download diffguard
+  #       run: |
+  #         curl -L -o diffguard.tar.gz \
+  #           "https://github.com/OWNER/diffguard/releases/latest/download/diffguard-x86_64-unknown-linux-gnu.tar.gz"
+  #         tar xzf diffguard.tar.gz
+  #         chmod +x diffguard
+  #
+  #     - name: Run diffguard check
+  #       run: |
+  #         ./diffguard check \
+  #           --base origin/${{ github.base_ref }} \
+  #           --head ${{ github.sha }} \
+  #           --sarif report.sarif.json
+  #       continue-on-error: true
+  #
+  #     - name: Upload SARIF
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       with:
+  #         sarif_file: report.sarif.json
+  #         category: diffguard
+  #       if: always()

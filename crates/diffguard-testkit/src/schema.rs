@@ -169,8 +169,8 @@ pub fn verify_snake_case_fields(value: &serde_json::Value) -> Result<(), Vec<Str
 mod tests {
     use super::*;
     use diffguard_types::{
-        Defaults, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-        VerdictStatus, CHECK_SCHEMA_V1,
+        CHECK_SCHEMA_V1, Defaults, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
+        VerdictCounts, VerdictStatus,
     };
 
     #[test]
@@ -185,6 +185,7 @@ mod tests {
     #[test]
     fn validates_empty_config() {
         let config = ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![],
         };
@@ -216,6 +217,7 @@ mod tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         assert!(
@@ -260,6 +262,7 @@ mod tests {
                 },
                 reasons: vec!["1 error-level finding".to_string()],
             },
+            timing: None,
         };
 
         assert!(
@@ -312,5 +315,51 @@ mod tests {
         assert!(names.contains(&"foo".to_string()));
         assert!(names.contains(&"bar".to_string()));
         assert!(names.contains(&"baz".to_string()));
+    }
+
+    #[test]
+    fn validate_config_and_check_json_helpers() {
+        let config = ConfigFile::built_in();
+        let config_json = serde_json::to_value(&config).expect("serialize config");
+        assert!(validate_config_json(&config_json).is_ok());
+
+        let receipt = CheckReceipt {
+            schema: CHECK_SCHEMA_V1.to_string(),
+            tool: ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: DiffMeta {
+                base: "origin/main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: Scope::Added,
+                files_scanned: 0,
+                lines_scanned: 0,
+            },
+            findings: vec![],
+            verdict: Verdict {
+                status: VerdictStatus::Pass,
+                counts: VerdictCounts::default(),
+                reasons: vec![],
+            },
+            timing: None,
+        };
+        let receipt_json = serde_json::to_value(&receipt).expect("serialize receipt");
+        assert!(validate_check_json(&receipt_json).is_ok());
+    }
+
+    #[test]
+    fn validate_with_schema_reports_errors() {
+        let bad = serde_json::json!({ "rule": [ { "id": "bad.rule" } ] });
+        let err = validate_config_json(&bad).expect_err("expected schema error");
+        assert!(err.to_string().contains("Schema validation failed"));
+    }
+
+    #[test]
+    fn verify_snake_case_fields_reports_errors() {
+        let json = serde_json::json!({ "camelCase": 1, "snake_case": 2 });
+        let err = verify_snake_case_fields(&json).expect_err("expected snake_case failure");
+        assert!(err.iter().any(|name| name == "camelCase"));
     }
 }

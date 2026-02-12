@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use diffguard_types::{Finding, Severity, VerdictCounts};
 
 use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
-use crate::rules::{detect_language, CompiledRule};
+use crate::rules::{CompiledRule, detect_language};
 use crate::suppression::SuppressionTracker;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -207,6 +207,8 @@ mod tests {
             ignore_strings,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         }
     }
 
@@ -239,6 +241,35 @@ mod tests {
         assert_eq!(eval.findings.len(), 1);
         assert_eq!(eval.findings[0].line, 12);
         assert!(eval.findings[0].column.is_some());
+    }
+
+    #[test]
+    fn skips_rules_that_do_not_apply_to_language() {
+        let rules = compile_rules(&[test_rule(
+            "python.no_print",
+            Severity::Warn,
+            "no",
+            vec!["python"],
+            vec!["print\\("],
+            vec!["**/*.py"],
+            vec!["**/tests/**"],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let eval = evaluate_lines(
+            [InputLine {
+                path: "src/lib.rs".to_string(),
+                line: 1,
+                content: "print(\"hello\")".to_string(),
+            }],
+            &rules,
+            100,
+        );
+
+        assert!(eval.findings.is_empty());
+        assert_eq!(eval.counts.warn, 0);
     }
 
     #[test]
@@ -793,5 +824,23 @@ mod tests {
         assert_eq!(byte_to_column(s, 3), Some(3));
         assert_eq!(byte_to_column(s, s.len()), Some(4));
         assert_eq!(byte_to_column(s, s.len() + 1), None);
+    }
+
+    #[test]
+    fn first_match_returns_none_for_empty_patterns() {
+        let patterns: Vec<regex::Regex> = Vec::new();
+        assert_eq!(first_match(&patterns, "abc"), None);
+    }
+
+    #[test]
+    fn bump_counts_increments_all_severities() {
+        let mut counts = VerdictCounts::default();
+        bump_counts(&mut counts, Severity::Info);
+        bump_counts(&mut counts, Severity::Warn);
+        bump_counts(&mut counts, Severity::Error);
+
+        assert_eq!(counts.info, 1);
+        assert_eq!(counts.warn, 1);
+        assert_eq!(counts.error, 1);
     }
 }

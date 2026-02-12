@@ -40,7 +40,7 @@ Command-line interface and I/O boundary. This is the only crate that performs fi
 
 1. Add field to appropriate `Args` struct in `main.rs`
 2. Use `#[arg(...)]` for clap configuration
-3. Wire through to `diffguard-app` if it affects check logic
+3. Wire through to `diffguard-core` if it affects check logic
 4. Update `--help` text with clear description
 
 ### Adding a new subcommand
@@ -48,7 +48,7 @@ Command-line interface and I/O boundary. This is the only crate that performs fi
 1. Add variant to `Commands` enum
 2. Create corresponding `Args` struct
 3. Add handler in `main()` match
-4. Keep I/O in this crate, delegate logic to `diffguard-app`
+4. Keep I/O in this crate, delegate logic to `diffguard-core`
 
 ### Adding a new preset
 

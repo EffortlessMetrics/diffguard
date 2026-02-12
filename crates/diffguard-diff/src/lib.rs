@@ -5,6 +5,10 @@
 mod unified;
 
 pub use unified::{
+    ChangeKind,
+    DiffLine,
+    DiffParseError,
+    DiffStats,
     // Detection functions for special diff content (Requirements 4.1-4.5)
     is_binary_file,
     is_deleted_file,
@@ -14,8 +18,4 @@ pub use unified::{
     parse_rename_from,
     parse_rename_to,
     parse_unified_diff,
-    ChangeKind,
-    DiffLine,
-    DiffParseError,
-    DiffStats,
 };

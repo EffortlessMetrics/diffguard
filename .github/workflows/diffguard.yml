@@ -1,0 +1,61 @@
+# Diffguard SARIF Integration Workflow
+#
+# This workflow runs diffguard on pull requests and uploads findings
+# to GitHub Code Scanning for visibility in the Security tab.
+#
+# SARIF (Static Analysis Results Interchange Format) is an industry
+# standard for static analysis tools, enabling unified vulnerability
+# dashboards and rich code location tracking.
+
+name: diffguard
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  diffguard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for accurate diff
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build diffguard
+        run: cargo build --release -p diffguard
+
+      - name: Run diffguard check
+        id: diffguard
+        run: |
+          ./target/release/diffguard check \
+            --base origin/${{ github.base_ref }} \
+            --head ${{ github.sha }} \
+            --sarif artifacts/diffguard/report.sarif.json \
+            --out artifacts/diffguard/report.json \
+            --fail-on never
+        continue-on-error: true
+
+      - name: Upload SARIF to GitHub Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: artifacts/diffguard/report.sarif.json
+          category: diffguard
+        if: always() && hashFiles('artifacts/diffguard/report.sarif.json') != ''
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: diffguard-reports
+          path: artifacts/diffguard/
+          retention-days: 30
+        if: always()

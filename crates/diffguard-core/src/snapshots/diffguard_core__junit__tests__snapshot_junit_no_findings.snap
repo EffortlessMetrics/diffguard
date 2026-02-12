@@ -1,0 +1,11 @@
+---
+source: crates/diffguard-core/src/junit.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="diffguard" tests="0" failures="0" errors="0">
+  <testsuite name="diffguard" tests="1" failures="0" errors="0">
+    <testcase classname="diffguard" name="no_findings">
+    </testcase>
+  </testsuite>
+</testsuites>

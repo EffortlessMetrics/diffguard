@@ -3,8 +3,8 @@
 //! Feature: diffguard-completion, Property 9: Schema Validation Round-Trip
 
 use diffguard_types::{
-    CheckReceipt, ConfigFile, Defaults, DiffMeta, FailOn, Finding, RuleConfig, Scope, Severity,
-    ToolMeta, Verdict, VerdictCounts, VerdictStatus, CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, ConfigFile, Defaults, DiffMeta, FailOn, Finding, RuleConfig,
+    Scope, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
 };
 use jsonschema::JSONSchema;
 use proptest::prelude::*;
@@ -105,6 +105,7 @@ fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
         arb_string_vec(),                                    // exclude_paths
         any::<bool>(),                                       // ignore_comments
         any::<bool>(),                                       // ignore_strings
+        arb_string_vec(),                                    // tags
     )
         .prop_map(
             |(
@@ -117,6 +118,7 @@ fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                 exclude_paths,
                 ignore_comments,
                 ignore_strings,
+                tags,
             )| {
                 RuleConfig {
                     id,
@@ -130,6 +132,8 @@ fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     ignore_strings,
                     help: None,
                     url: None,
+                    tags,
+                    test_cases: vec![],
                 }
             },
         )
@@ -141,7 +145,11 @@ fn arb_config_file() -> impl Strategy<Value = ConfigFile> {
         arb_defaults(),
         prop::collection::vec(arb_rule_config(), 0..5),
     )
-        .prop_map(|(defaults, rule)| ConfigFile { defaults, rule })
+        .prop_map(|(defaults, rule)| ConfigFile {
+            includes: vec![],
+            defaults,
+            rule,
+        })
 }
 
 /// Strategy for generating valid ToolMeta.
@@ -235,6 +243,7 @@ fn arb_check_receipt() -> impl Strategy<Value = CheckReceipt> {
             diff,
             findings,
             verdict,
+            timing: None,
         })
 }
 
@@ -712,6 +721,7 @@ mod unit_tests {
     fn empty_config_validates_against_schema() {
         let schema = load_config_schema();
         let config = ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![],
         };
@@ -750,6 +760,7 @@ mod unit_tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let json_value =
@@ -812,6 +823,7 @@ mod unit_tests {
                 },
                 reasons: vec!["1 error-level finding".to_string()],
             },
+            timing: None,
         };
 
         let json_value =
@@ -884,6 +896,7 @@ mod unit_tests {
                 },
                 reasons: vec!["1 warning".to_string()],
             },
+            timing: None,
         };
 
         // Serialize to JSON
@@ -1043,6 +1056,7 @@ mod unit_tests {
     fn config_with_all_optional_fields_null() {
         let schema = load_config_schema();
         let config = ConfigFile {
+            includes: vec![],
             defaults: Defaults {
                 base: None,
                 head: None,
@@ -1097,6 +1111,7 @@ mod unit_tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let json_value =
@@ -1147,6 +1162,7 @@ mod unit_tests {
                 },
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let json_value =
@@ -1197,6 +1213,7 @@ mod unit_tests {
                 },
                 reasons: vec!["\u{8b66}\u{544a}".to_string()],
             },
+            timing: None,
         };
 
         let json_value =
@@ -1233,6 +1250,7 @@ mod unit_tests {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         };
 
         let json_value =

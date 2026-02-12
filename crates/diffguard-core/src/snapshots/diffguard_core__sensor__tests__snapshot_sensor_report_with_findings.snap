@@ -1,0 +1,75 @@
+---
+source: crates/diffguard-core/src/sensor.rs
+expression: json
+---
+{
+  "schema": "sensor.report.v1",
+  "tool": {
+    "name": "diffguard",
+    "version": "0.1.0"
+  },
+  "run": {
+    "started_at": "2024-01-15T10:30:00Z",
+    "ended_at": "2024-01-15T10:30:01Z",
+    "duration_ms": 1234,
+    "capabilities": {
+      "git": {
+        "status": "available"
+      }
+    }
+  },
+  "verdict": {
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 1
+    },
+    "reasons": []
+  },
+  "findings": [
+    {
+      "check_id": "diffguard.pattern",
+      "code": "rust.no_unwrap",
+      "severity": "error",
+      "message": "Avoid unwrap",
+      "location": {
+        "path": "src/lib.rs",
+        "line": 42,
+        "column": 10
+      },
+      "fingerprint": "d559ee3767f8ccda27b477039711c881d44c366e3bd8ea119649746bdff1a0b8",
+      "help": "Use ? operator instead",
+      "url": "https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html",
+      "data": {
+        "match_text": ".unwrap()",
+        "snippet": "let x = foo.unwrap();"
+      }
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "artifacts/diffguard/report.json",
+      "format": "json"
+    }
+  ],
+  "data": {
+    "diff": {
+      "base": "origin/main",
+      "context_lines": 0,
+      "files_scanned": 2,
+      "head": "HEAD",
+      "lines_scanned": 50,
+      "scope": "added"
+    },
+    "diffguard": {
+      "rules_matched": 1,
+      "rules_total": 5,
+      "suppressed_count": 0,
+      "tags_matched": {
+        "safety": 1
+      },
+      "truncated_count": 0
+    }
+  }
+}

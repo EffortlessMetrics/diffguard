@@ -1,0 +1,13 @@
+---
+source: crates/diffguard-core/src/render.rs
+expression: md
+---
+## diffguard — FAIL
+
+Scanned **3** file(s), **42** line(s) (scope: `added`, base: `origin/main`, head: `HEAD`)
+
+| Severity | Rule | Location | Message | Snippet |
+|---|---|---|---|---|
+| error | `rust.no_unwrap` | `src/lib.rs:15` | Avoid unwrap/expect in production code. | `let value = result.unwrap();` |
+| warn | `rust.no_dbg` | `src/main.rs:23` | Remove dbg!/println! before merging. | `    dbg!(config);` |
+| warn | `python.no_print` | `scripts/deploy.py:8` | Remove print() before merging. | `print("Deploying...")` |

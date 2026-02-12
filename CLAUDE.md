@@ -28,13 +28,13 @@ cargo +nightly fuzz run unified_diff_parser          # Fuzz testing
 
 ## Architecture
 
-Dependency direction flows downward (CLI depends on app, app depends on domain/diff, all depend on types):
+Dependency direction flows downward (CLI depends on core, core depends on domain/diff, all depend on types):
 
 ```
 diffguard (CLI)          I/O boundary: clap, file I/O, git subprocess, env vars
        │
        ▼
-diffguard-app            Use-cases: run_check(), render_markdown_for_receipt(), compute verdicts
+diffguard-core           Engine: run_check(), run_sensor(), render outputs, compute verdicts
        │
        ├────────────────────────┐
        ▼                        ▼
@@ -55,7 +55,7 @@ diffguard-domain         diffguard-diff
 | `diffguard-types` | Serializable DTOs, severity/scope enums, built-in rule definitions |
 | `diffguard-diff` | Parse unified diff format, handle binary/submodule/rename detection |
 | `diffguard-domain` | Compile rules, evaluate lines, preprocess (mask comments/strings) |
-| `diffguard-app` | Orchestrate check runs, compute verdicts, render markdown/annotations |
+| `diffguard-core` | Engine: check runs, sensor reports, verdicts, render markdown/annotations |
 | `diffguard` | CLI binary: arg parsing, config loading, git invocation, file output |
 | `xtask` | Repo automation tasks (ci, schema generation) |
 
@@ -105,7 +105,7 @@ These are contracts that must be maintained:
 ### Adding CLI flags
 
 1. Add to `Args` struct in `diffguard/src/main.rs`
-2. Wire through to `diffguard-app` if it affects orchestration
+2. Wire through to `diffguard-core` if it affects orchestration
 3. Update `--help` text and any documentation
 
 ## Configuration

@@ -269,6 +269,7 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
         prop::collection::vec(arb_exclude_glob(), 0..MAX_PATHS_PER_RULE),     // exclude_paths
         any::<bool>(),                                                        // ignore_comments
         any::<bool>(),                                                        // ignore_strings
+        prop::collection::vec(arb_non_empty_string(), 0..3),                  // tags
     )
         .prop_map(
             |(
@@ -281,6 +282,7 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                 exclude_paths,
                 ignore_comments,
                 ignore_strings,
+                tags,
             )| {
                 RuleConfig {
                     id,
@@ -294,6 +296,8 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     ignore_strings,
                     help: None,
                     url: None,
+                    tags,
+                    test_cases: vec![],
                 }
             },
         )
@@ -314,6 +318,8 @@ pub fn arb_minimal_rule_config() -> impl Strategy<Value = RuleConfig> {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         },
     )
 }
@@ -350,7 +356,11 @@ pub fn arb_config_file() -> impl Strategy<Value = ConfigFile> {
         arb_defaults(),
         prop::collection::vec(arb_rule_config(), 0..MAX_FILES),
     )
-        .prop_map(|(defaults, rule)| ConfigFile { defaults, rule })
+        .prop_map(|(defaults, rule)| ConfigFile {
+            includes: vec![],
+            defaults,
+            rule,
+        })
 }
 
 // =============================================================================
@@ -554,5 +564,40 @@ mod tests {
             let parsed: FailOn = serde_json::from_str(&json).unwrap();
             prop_assert_eq!(fail_on, parsed);
         }
+    }
+
+    #[test]
+    fn arb_strategies_smoke() {
+        let mut runner = TestRunner::default();
+
+        let _ = arb_verdict_status()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_simple_regex().new_tree(&mut runner).unwrap().current();
+        let _ = arb_optional_string()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_minimal_rule_config()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_defaults().new_tree(&mut runner).unwrap().current();
+        let _ = arb_config_file().new_tree(&mut runner).unwrap().current();
+        let _ = arb_finding().new_tree(&mut runner).unwrap().current();
+        let _ = arb_verdict_counts()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_line_content().new_tree(&mut runner).unwrap().current();
+        let _ = arb_safe_line_content()
+            .new_tree(&mut runner)
+            .unwrap()
+            .current();
+        let _ = arb_lines(3).new_tree(&mut runner).unwrap().current();
+        let _ = arb_language().new_tree(&mut runner).unwrap().current();
+        let _ = arb_include_glob().new_tree(&mut runner).unwrap().current();
+        let _ = arb_exclude_glob().new_tree(&mut runner).unwrap().current();
     }
 }

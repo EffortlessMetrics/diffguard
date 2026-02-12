@@ -6,7 +6,7 @@
 diffguard/
 ├── crates/
 │   ├── diffguard/          # CLI binary - clap wiring and I/O
-│   ├── diffguard-app/      # Application layer - orchestration
+│   ├── diffguard-core/      # Application layer - orchestration
 │   ├── diffguard-diff/     # Unified diff parsing
 │   ├── diffguard-domain/   # Core logic - rule evaluation, preprocessing
 │   └── diffguard-types/    # DTOs - config and receipt types
@@ -35,7 +35,7 @@ Core business logic, I/O-free and highly testable:
 - `evaluate.rs`: Match rules against input lines, produce findings
 - `preprocess.rs`: Mask comments/strings for ignore options
 
-### `diffguard-app`
+### `diffguard-core`
 Application orchestration layer:
 - `check.rs`: `run_check()` - ties diff parsing + rule evaluation + verdict
 - `render.rs`: Markdown summary generation

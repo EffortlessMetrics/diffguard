@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-core/tests/snapshot_tests.rs
+expression: "annotations.join(\"\\n\")"
+---
+::notice file=src/parser.rs,line=100::style.no_fixme FIXME comment: "fix this <urgent>" needs attention

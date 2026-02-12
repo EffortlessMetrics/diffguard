@@ -65,9 +65,9 @@ This plan implements comprehensive test coverage across the diffguard workspace 
 - [ ] 6. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Add diffguard-app property tests
-  - [ ] 7.1 Create property test file for diffguard-app
-    - Create crates/diffguard-app/tests/properties.rs
+- [ ] 7. Add diffguard-core property tests
+  - [ ] 7.1 Create property test file for diffguard-core
+    - Create crates/diffguard-core/tests/properties.rs
     - Add proptest dependency to Cargo.toml
     - _Requirements: 4.1_
   - [ ] 7.2 Write property test for exit code semantics
@@ -140,7 +140,7 @@ This plan implements comprehensive test coverage across the diffguard workspace 
   - [ ] 14.3 Run cargo-mutants on diffguard-domain
     - Identify and fix surviving mutants
     - _Requirements: 6.3_
-  - [ ] 14.4 Run cargo-mutants on diffguard-app
+  - [ ] 14.4 Run cargo-mutants on diffguard-core
     - Identify and fix surviving mutants
     - _Requirements: 6.4_
 

@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-core/tests/snapshot_tests.rs
+expression: "annotations.join(\"\\n\")"
+---
+::notice file=src/lib.rs,line=5::style.todo_comment TODO comment found

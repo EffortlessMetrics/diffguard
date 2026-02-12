@@ -17,7 +17,7 @@ The existing architecture remains unchanged. Enhancements are additive within ea
 └─────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────┐
-│                    diffguard-app                            │
+│                    diffguard-core                            │
 │  - run_check() orchestration                                │
 │  - Markdown rendering                                       │
 └─────────────────────────────────────────────────────────────┘
@@ -542,7 +542,7 @@ crates/
 │   ├── src/evaluate.rs             # Unit tests for evaluation
 │   └── tests/
 │       └── properties.rs           # Property tests for domain logic
-├── diffguard-app/
+├── diffguard-core/
 │   └── src/render.rs               # Snapshot tests with insta
 └── diffguard/
     └── tests/

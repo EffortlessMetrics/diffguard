@@ -460,21 +460,19 @@ mod tests {
         let content = Preset::Minimal.generate();
         // Should parse without error (comments are valid TOML)
         let result: Result<ConfigFile, _> = toml::from_str(&content);
-        assert!(
-            result.is_ok(),
-            "Failed to parse minimal preset: {:?}",
-            result.err()
-        );
+        let err = result.as_ref().err();
+        assert!(result.is_ok(), "Failed to parse minimal preset: {:?}", err);
     }
 
     #[test]
     fn test_rust_quality_preset_generates_valid_toml() {
         let content = Preset::RustQuality.generate();
         let result: Result<ConfigFile, _> = toml::from_str(&content);
+        let err = result.as_ref().err();
         assert!(
             result.is_ok(),
             "Failed to parse rust-quality preset: {:?}",
-            result.err()
+            err
         );
 
         let config = result.unwrap();
@@ -490,11 +488,8 @@ mod tests {
     fn test_secrets_preset_generates_valid_toml() {
         let content = Preset::Secrets.generate();
         let result: Result<ConfigFile, _> = toml::from_str(&content);
-        assert!(
-            result.is_ok(),
-            "Failed to parse secrets preset: {:?}",
-            result.err()
-        );
+        let err = result.as_ref().err();
+        assert!(result.is_ok(), "Failed to parse secrets preset: {:?}", err);
 
         let config = result.unwrap();
         assert!(!config.rule.is_empty(), "secrets preset should have rules");
@@ -505,10 +500,11 @@ mod tests {
     fn test_js_console_preset_generates_valid_toml() {
         let content = Preset::JsConsole.generate();
         let result: Result<ConfigFile, _> = toml::from_str(&content);
+        let err = result.as_ref().err();
         assert!(
             result.is_ok(),
             "Failed to parse js-console preset: {:?}",
-            result.err()
+            err
         );
 
         let config = result.unwrap();
@@ -524,10 +520,11 @@ mod tests {
     fn test_python_debug_preset_generates_valid_toml() {
         let content = Preset::PythonDebug.generate();
         let result: Result<ConfigFile, _> = toml::from_str(&content);
+        let err = result.as_ref().err();
         assert!(
             result.is_ok(),
             "Failed to parse python-debug preset: {:?}",
-            result.err()
+            err
         );
 
         let config = result.unwrap();
@@ -549,14 +546,14 @@ mod tests {
             Preset::PythonDebug,
         ] {
             let content = preset.generate();
-            let config: ConfigFile = toml::from_str(&content)
-                .unwrap_or_else(|e| panic!("Failed to parse {:?} preset: {}", preset, e));
+            let config: ConfigFile =
+                toml::from_str(&content).expect("Preset should parse as valid TOML");
 
             // All presets should have reasonable defaults
+            let msg = format!("{:?} preset should have some defaults configured", preset);
             assert!(
                 config.defaults.base.is_some() || config.defaults.scope.is_some(),
-                "{:?} preset should have some defaults configured",
-                preset
+                "{msg}"
             );
         }
     }

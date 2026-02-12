@@ -80,6 +80,7 @@ pub fn parse_suppression(line: &str) -> Option<Suppression> {
 /// `masked_comments` should be the output of the comments-only preprocessor
 /// for the same line and language. The directive is accepted only if the
 /// directive prefix is fully masked (spaces) in `masked_comments`.
+#[allow(clippy::collapsible_if)]
 pub fn parse_suppression_in_comments(line: &str, masked_comments: &str) -> Option<Suppression> {
     if line.len() != masked_comments.len() {
         return None;
@@ -175,11 +176,7 @@ fn parse_rule_ids(rest: &str) -> Option<HashSet<String>> {
         }
     }
 
-    if ids.is_empty() {
-        None
-    } else {
-        Some(ids)
-    }
+    if ids.is_empty() { None } else { Some(ids) }
 }
 
 /// Tracks suppression state for a file being processed.
@@ -427,6 +424,13 @@ mod tests {
     }
 
     #[test]
+    fn parse_in_comments_length_mismatch_returns_none() {
+        let line = "let x = 1; // diffguard: ignore rust.no_unwrap";
+        let masked = "short";
+        assert!(parse_suppression_in_comments(line, masked).is_none());
+    }
+
+    #[test]
     fn parse_in_string_is_ignored_when_not_in_comment() {
         let line = "let x = \"diffguard: ignore rust.no_unwrap\";";
         let masked = masked_comments(line, Language::Rust);
@@ -486,6 +490,26 @@ mod tests {
 
         // If there's a wildcard in the list, it becomes a full wildcard
         assert!(suppression.is_wildcard());
+    }
+
+    #[test]
+    fn parse_suppression_at_unknown_directive_returns_none() {
+        let line = "// diffguard: nope rust.no_unwrap";
+        let prefix_start = line.find(DIRECTIVE_PREFIX).expect("prefix");
+        assert!(parse_suppression_at(line, prefix_start).is_none());
+    }
+
+    #[test]
+    fn parse_suppression_in_comments_skips_invalid_directive() {
+        let line = "// diffguard: nope rust.no_unwrap";
+        let masked = masked_comments(line, Language::Rust);
+        assert!(parse_suppression_in_comments(line, &masked).is_none());
+    }
+
+    #[test]
+    fn parse_rule_ids_empty_returns_none() {
+        assert!(parse_rule_ids("   ").is_none());
+        assert!(parse_rule_ids(" , , ").is_none());
     }
 
     // ==================== SuppressionTracker tests ====================

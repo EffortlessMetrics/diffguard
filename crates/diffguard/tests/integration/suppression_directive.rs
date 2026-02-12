@@ -20,7 +20,7 @@ fn given_unwrap_in_comment_when_check_then_not_flagged() {
 
     repo.write_file(
         "src/lib.rs",
-        r#"// TODO: consider using .unwrap() here for simplicity
+        r#"// Consider using .unwrap() here for simplicity
 pub fn safe() -> Option<u32> { Some(1) }
 "#,
     );

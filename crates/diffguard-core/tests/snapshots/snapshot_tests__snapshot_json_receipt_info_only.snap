@@ -1,0 +1,40 @@
+---
+source: crates/diffguard-core/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "schema": "diffguard.check.v1",
+  "tool": {
+    "name": "diffguard",
+    "version": "0.1.0"
+  },
+  "diff": {
+    "base": "origin/main",
+    "head": "HEAD",
+    "context_lines": 0,
+    "scope": "added",
+    "files_scanned": 1,
+    "lines_scanned": 15
+  },
+  "findings": [
+    {
+      "rule_id": "style.todo_comment",
+      "severity": "info",
+      "message": "TODO comment found",
+      "path": "src/lib.rs",
+      "line": 5,
+      "column": 1,
+      "match_text": "TODO",
+      "snippet": "// TODO: refactor this later"
+    }
+  ],
+  "verdict": {
+    "status": "pass",
+    "counts": {
+      "info": 1,
+      "warn": 0,
+      "error": 0
+    },
+    "reasons": []
+  }
+}

@@ -538,7 +538,7 @@ index 0000000..1111111 100644
         assert_eq!(stats.lines, 1);
         assert_eq!(lines[0].path, "src/lib.rs");
         assert_eq!(lines[0].line, 2);
-        assert!(matches!(lines[0].kind, ChangeKind::Added));
+        assert_eq!(lines[0].kind, ChangeKind::Added);
     }
 
     #[test]
@@ -558,7 +558,7 @@ diff --git a/src/lib.rs b/src/lib.rs
 
         let (changed, _) = parse_unified_diff(diff, Scope::Changed).unwrap();
         assert_eq!(changed.len(), 1);
-        assert!(matches!(changed[0].kind, ChangeKind::Changed));
+        assert_eq!(changed[0].kind, ChangeKind::Changed);
     }
 
     #[test]
@@ -574,6 +574,78 @@ diff --git a/a.txt b/a.txt
 
         let (changed, _) = parse_unified_diff(diff, Scope::Changed).unwrap();
         assert_eq!(changed.len(), 0);
+    }
+
+    #[test]
+    fn skips_submodule_marker_lines() {
+        let diff = r#"
+diff --git a/submodule b/submodule
+Subproject commit abc123
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 0);
+        assert!(lines.is_empty());
+    }
+
+    #[test]
+    fn skips_hunks_without_current_path() {
+        let diff = r#"
+@@ -0,0 +1 @@
++hello
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 0);
+        assert!(lines.is_empty());
+    }
+
+    #[test]
+    fn skips_no_newline_marker() {
+        let diff = r#"
+diff --git a/a.txt b/a.txt
+--- a/a.txt
++++ b/a.txt
+@@ -1 +1 @@
++hello
+\\ No newline at end of file
+"#;
+
+        let (lines, _) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(lines.len(), 1);
+    }
+
+    #[test]
+    fn skips_submodule_line_inside_hunk() {
+        let diff = r#"
+diff --git a/submodule b/submodule
+--- a/submodule
++++ b/submodule
+@@ -0,0 +1 @@
++Subproject commit abc123
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert_eq!(stats.files, 0);
+        assert!(lines.is_empty());
+    }
+
+    #[test]
+    fn strip_prefix_path_empty_returns_none() {
+        assert!(strip_prefix_path("a/").is_none());
+        assert!(strip_prefix_path("").is_none());
+    }
+
+    #[test]
+    fn tokenize_git_paths_trailing_escape_in_quote() {
+        let tokens = tokenize_git_paths(r#""path\"#, 1);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].value, "path\\");
+    }
+
+    #[test]
+    fn parse_single_git_path_empty_returns_none() {
+        assert!(parse_single_git_path("   ").is_none());
     }
 
     // ========================================================================
@@ -697,6 +769,11 @@ diff --git a/a.txt b/a.txt
     }
 
     #[test]
+    fn parse_rename_path_empty_returns_none() {
+        assert_eq!(parse_rename_path("   "), None);
+    }
+
+    #[test]
     fn parse_rename_to_extracts_destination_path() {
         assert_eq!(
             parse_rename_to("rename to src/new/path.rs"),
@@ -744,6 +821,29 @@ diff --git a/a.txt b/a.txt
     }
 
     #[test]
+    fn parse_diff_git_line_rejects_missing_prefix() {
+        assert_eq!(
+            parse_diff_git_line("diff --gi a/src/lib.rs b/src/lib.rs"),
+            None
+        );
+        assert_eq!(parse_diff_git_line("not a diff header"), None);
+    }
+
+    #[test]
+    fn parse_unified_diff_skips_malformed_diff_git_line() {
+        let diff = r#"
+diff --git a/only
+@@ -1,1 +1,1 @@
++line
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Added).unwrap();
+        assert!(lines.is_empty());
+        assert_eq!(stats.files, 0);
+        assert_eq!(stats.lines, 0);
+    }
+
+    #[test]
     fn parse_plus_plus_plus_parses_paths() {
         assert_eq!(
             parse_plus_plus_plus("+++ b/src/lib.rs"),
@@ -758,6 +858,24 @@ diff --git a/a.txt b/a.txt
             parse_plus_plus_plus(r#"+++ "b/dir\ name/\"file\".rs""#),
             Some("dir name/\"file\".rs".to_string())
         );
+    }
+
+    #[test]
+    fn parse_plus_plus_plus_rejects_invalid_lines() {
+        assert_eq!(parse_plus_plus_plus("++ b/src/lib.rs"), None);
+        assert_eq!(parse_plus_plus_plus("+++ "), None);
+    }
+
+    #[test]
+    fn parse_hunk_header_rejects_non_numeric_start() {
+        let err = parse_hunk_header("@@ -1,2 +x,4 @@").unwrap_err();
+        assert!(matches!(err, DiffParseError::MalformedHunkHeader(_)));
+    }
+
+    #[test]
+    fn parse_hunk_header_rejects_missing_plus_section() {
+        let err = parse_hunk_header("@@ -1,2").unwrap_err();
+        assert!(matches!(err, DiffParseError::MalformedHunkHeader(_)));
     }
 
     #[test]
@@ -1233,22 +1351,30 @@ diff --git a/src/b.rs b/src/b.rs
         // Verify lines from file a
         let a_lines: Vec<_> = lines.iter().filter(|l| l.path == "src/a.rs").collect();
         assert_eq!(a_lines.len(), 2);
-        assert!(a_lines
-            .iter()
-            .any(|l| l.content == "fn a2() {}" && l.line == 2));
-        assert!(a_lines
-            .iter()
-            .any(|l| l.content == "fn a11() {}" && l.line == 12));
+        assert!(
+            a_lines
+                .iter()
+                .any(|l| l.content == "fn a2() {}" && l.line == 2)
+        );
+        assert!(
+            a_lines
+                .iter()
+                .any(|l| l.content == "fn a11() {}" && l.line == 12)
+        );
 
         // Verify lines from file b
         let b_lines: Vec<_> = lines.iter().filter(|l| l.path == "src/b.rs").collect();
         assert_eq!(b_lines.len(), 2);
-        assert!(b_lines
-            .iter()
-            .any(|l| l.content == "fn b2() {}" && l.line == 2));
-        assert!(b_lines
-            .iter()
-            .any(|l| l.content == "fn b21() {}" && l.line == 22));
+        assert!(
+            b_lines
+                .iter()
+                .any(|l| l.content == "fn b2() {}" && l.line == 2)
+        );
+        assert!(
+            b_lines
+                .iter()
+                .any(|l| l.content == "fn b21() {}" && l.line == 22)
+        );
     }
 
     #[test]
@@ -1409,6 +1535,6 @@ diff --git a/src/i18n.rs b/src/i18n.rs
         assert_eq!(stats.lines, 1);
 
         assert_eq!(lines[0].content, "let greeting = \"Привет\";");
-        assert!(matches!(lines[0].kind, ChangeKind::Changed));
+        assert_eq!(lines[0].kind, ChangeKind::Changed);
     }
 }

@@ -5,7 +5,7 @@
 use proptest::prelude::*;
 use std::path::Path;
 
-use diffguard_domain::{detect_language, Language, PreprocessOptions, Preprocessor};
+use diffguard_domain::{Language, PreprocessOptions, Preprocessor, detect_language};
 
 // Known extensions and their expected language mappings
 // Based on Requirements 1.1-1.12 and actual detect_language implementation
@@ -41,6 +41,30 @@ const KNOWN_EXTENSIONS: &[(&str, &str)] = &[
     ("zsh", "shell"),
     ("ksh", "shell"),
     ("fish", "shell"),
+    // Swift - Requirement 1.14
+    ("swift", "swift"),
+    // Scala - Requirement 1.15
+    ("scala", "scala"),
+    ("sc", "scala"),
+    // SQL - Requirement 1.16
+    ("sql", "sql"),
+    // XML/HTML - Requirement 1.17
+    ("xml", "xml"),
+    ("xsl", "xml"),
+    ("xslt", "xml"),
+    ("xsd", "xml"),
+    ("svg", "xml"),
+    ("xhtml", "xml"),
+    ("html", "xml"),
+    ("htm", "xml"),
+    // PHP - Requirement 1.18
+    ("php", "php"),
+    ("phtml", "php"),
+    ("php3", "php"),
+    ("php4", "php"),
+    ("php5", "php"),
+    ("php7", "php"),
+    ("phps", "php"),
     // C - Requirement 1.10
     ("c", "c"),
     ("h", "c"),
@@ -1017,6 +1041,8 @@ fn make_rule_config(id: &str, patterns: Vec<String>) -> RuleConfig {
         ignore_strings: false,
         help: None,
         url: None,
+        tags: vec![],
+        test_cases: vec![],
     }
 }
 
@@ -1034,6 +1060,8 @@ fn make_rule_config_with_paths(id: &str, patterns: Vec<String>, paths: Vec<Strin
         ignore_strings: false,
         help: None,
         url: None,
+        tags: vec![],
+        test_cases: vec![],
     }
 }
 
@@ -1055,6 +1083,8 @@ fn make_rule_config_with_exclude_paths(
         ignore_strings: false,
         help: None,
         url: None,
+        tags: vec![],
+        test_cases: vec![],
     }
 }
 
@@ -1420,7 +1450,7 @@ fn test_missing_patterns_error_message_format() {
 
 // ==================== Property: Evaluation Determinism ====================
 
-use diffguard_domain::{evaluate_lines, InputLine};
+use diffguard_domain::{InputLine, evaluate_lines};
 
 /// Strategy to generate valid input lines for evaluation
 fn input_line_strategy() -> impl Strategy<Value = InputLine> {
@@ -1462,6 +1492,8 @@ fn valid_rule_config_strategy() -> impl Strategy<Value = RuleConfig> {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         })
 }
 
@@ -1585,6 +1617,8 @@ proptest! {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let compiled = compile_rules(&[rule]).expect("rule should compile");
@@ -1822,6 +1856,8 @@ proptest! {
             ignore_strings: false,
             help: None,
             url: None,
+            tags: vec![],
+            test_cases: vec![],
         };
 
         let compiled = compile_rules(&[config]).expect("rule should compile");

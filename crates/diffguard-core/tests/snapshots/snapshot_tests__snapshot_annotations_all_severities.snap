@@ -1,0 +1,7 @@
+---
+source: crates/diffguard-core/tests/snapshot_tests.rs
+expression: "annotations.join(\"\\n\")"
+---
+::notice file=src/lib.rs,line=42::test.rule Test message
+::warning file=src/lib.rs,line=42::test.rule Test message
+::error file=src/lib.rs,line=42::test.rule Test message

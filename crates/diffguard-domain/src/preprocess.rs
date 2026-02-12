@@ -19,6 +19,11 @@ pub enum Language {
     Java,
     Kotlin,
     Shell,
+    Swift,
+    Scala,
+    Sql,
+    Xml,
+    Php,
     #[default]
     Unknown,
 }
@@ -43,6 +48,11 @@ impl FromStr for Language {
             "java" => Language::Java,
             "kotlin" => Language::Kotlin,
             "shell" | "bash" | "sh" | "zsh" | "ksh" | "fish" => Language::Shell,
+            "swift" => Language::Swift,
+            "scala" => Language::Scala,
+            "sql" => Language::Sql,
+            "xml" | "html" | "xhtml" | "svg" | "xsl" | "xslt" => Language::Xml,
+            "php" => Language::Php,
             _ => Language::Unknown,
         })
     }
@@ -53,7 +63,14 @@ impl Language {
     pub fn comment_syntax(self) -> CommentSyntax {
         match self {
             Language::Python | Language::Ruby | Language::Shell => CommentSyntax::Hash,
-            Language::Rust => CommentSyntax::CStyleNested,
+            // Rust, Swift, and Scala support nested block comments
+            Language::Rust | Language::Swift | Language::Scala => CommentSyntax::CStyleNested,
+            // SQL uses -- for line comments
+            Language::Sql => CommentSyntax::Sql,
+            // XML/HTML uses <!-- --> block comments only
+            Language::Xml => CommentSyntax::Xml,
+            // PHP uses //, #, and /* */
+            Language::Php => CommentSyntax::Php,
             _ => CommentSyntax::CStyle,
         }
     }
@@ -69,6 +86,14 @@ impl Language {
             }
             Language::Go => StringSyntax::Go,
             Language::Shell => StringSyntax::Shell,
+            // Swift and Scala support triple-quoted strings like Python
+            Language::Swift | Language::Scala => StringSyntax::SwiftScala,
+            // SQL uses single quotes for strings
+            Language::Sql => StringSyntax::Sql,
+            // XML uses both single and double quotes for attribute values
+            Language::Xml => StringSyntax::Xml,
+            // PHP uses both single and double quotes
+            Language::Php => StringSyntax::Php,
             _ => StringSyntax::CStyle,
         }
     }
@@ -79,10 +104,16 @@ impl Language {
 pub enum CommentSyntax {
     /// C-style comments: `//` line comments and `/* */` block comments
     CStyle,
-    /// C-style comments with nesting support (Rust): `//` and `/* */` with nesting
+    /// C-style comments with nesting support (Rust, Swift, Scala): `//` and `/* */` with nesting
     CStyleNested,
     /// Hash comments only: `#` line comments (Python, Ruby)
     Hash,
+    /// SQL comments: `--` line comments and `/* */` block comments
+    Sql,
+    /// XML/HTML comments: `<!-- -->` block comments only
+    Xml,
+    /// PHP comments: `//`, `#` line comments and `/* */` block comments
+    Php,
 }
 
 /// String syntax variants for different programming languages.
@@ -100,6 +131,14 @@ pub enum StringSyntax {
     Go,
     /// Shell strings: `'...'` (literal, no escapes), `"..."` (with escapes), `$'...'` (ANSI-C)
     Shell,
+    /// Swift/Scala strings: `"..."`, `"""..."""` multi-line strings
+    SwiftScala,
+    /// SQL strings: `'...'` single quotes only
+    Sql,
+    /// XML/HTML strings: `"..."` and `'...'` for attribute values
+    Xml,
+    /// PHP strings: `'...'` (literal) and `"..."` (with escapes)
+    Php,
 }
 
 /// Preprocessing options.
@@ -178,6 +217,8 @@ enum Mode {
     ShellAnsiCString {
         escaped: bool,
     },
+    /// XML/HTML block comment: <!-- ... -->
+    XmlComment,
 }
 
 impl fmt::Debug for Mode {
@@ -199,6 +240,7 @@ impl fmt::Debug for Mode {
             Mode::ShellAnsiCString { escaped } => {
                 write!(f, "ShellAnsiCString(escaped={escaped})")
             }
+            Mode::XmlComment => write!(f, "XmlComment"),
         }
     }
 }
@@ -246,6 +288,7 @@ impl Preprocessor {
     ///
     /// The output is the same length in bytes as the input.
     #[cfg_attr(mutants, mutants::skip)]
+    #[allow(clippy::collapsible_if)]
     pub fn sanitize_line(&mut self, line: &str) -> String {
         let mut out: Vec<u8> = line.as_bytes().to_vec();
         let bytes = line.as_bytes();
@@ -263,17 +306,15 @@ impl Preprocessor {
                     if self.opts.track_strings() {
                         // Rust raw string start detection: r#"..."# or br#"..."#
                         if string_syntax == StringSyntax::Rust {
-                            if let Some((start_i, end_quote_i, hashes)) =
+                            if let Some((_, end_quote_i, hashes)) =
                                 detect_raw_string_start(bytes, i)
                             {
-                                if start_i == i {
-                                    if self.opts.mask_strings {
-                                        mask_range(&mut out, start_i, end_quote_i + 1);
-                                    }
-                                    self.mode = Mode::RawString { hashes };
-                                    i = end_quote_i + 1;
-                                    continue;
+                                if self.opts.mask_strings {
+                                    mask_range(&mut out, i, end_quote_i + 1);
                                 }
+                                self.mode = Mode::RawString { hashes };
+                                i = end_quote_i + 1;
+                                continue;
                             }
 
                             // Byte string: b"..."
@@ -290,18 +331,26 @@ impl Preprocessor {
                             }
                         }
 
-                        // Python triple-quoted strings: """...""" or '''...'''
-                        if string_syntax == StringSyntax::Python {
+                        // Triple-quoted strings: """...""" or '''...''' (Python)
+                        // Swift/Scala only use """...""" (not single-quote triple)
+                        if string_syntax == StringSyntax::Python
+                            || string_syntax == StringSyntax::SwiftScala
+                        {
                             if let Some((quote, end_i)) = detect_triple_quote_start(bytes, i) {
-                                if self.opts.mask_strings {
-                                    mask_range(&mut out, i, end_i);
+                                // Swift/Scala only support double-quote triple strings
+                                if string_syntax == StringSyntax::SwiftScala && quote != b'"' {
+                                    // Fall through to normal string handling
+                                } else {
+                                    if self.opts.mask_strings {
+                                        mask_range(&mut out, i, end_i);
+                                    }
+                                    self.mode = Mode::TripleQuotedString {
+                                        escaped: false,
+                                        quote,
+                                    };
+                                    i = end_i;
+                                    continue;
                                 }
-                                self.mode = Mode::TripleQuotedString {
-                                    escaped: false,
-                                    quote,
-                                };
-                                i = end_i;
-                                continue;
                             }
                         }
 
@@ -350,8 +399,55 @@ impl Preprocessor {
                             continue;
                         }
 
+                        // SQL strings: '...' (single quotes with '' escape)
+                        if string_syntax == StringSyntax::Sql && bytes[i] == b'\'' {
+                            if self.opts.mask_strings {
+                                out[i] = b' ';
+                            }
+                            self.mode = Mode::NormalString {
+                                escaped: false,
+                                quote: b'\'',
+                            };
+                            i += 1;
+                            continue;
+                        }
+
+                        // XML/HTML attribute strings: both "..." and '...'
+                        if string_syntax == StringSyntax::Xml
+                            && (bytes[i] == b'"' || bytes[i] == b'\'')
+                        {
+                            let quote = bytes[i];
+                            if self.opts.mask_strings {
+                                out[i] = b' ';
+                            }
+                            // XML strings don't have escape sequences
+                            self.mode = Mode::NormalString {
+                                escaped: false,
+                                quote,
+                            };
+                            i += 1;
+                            continue;
+                        }
+
+                        // PHP strings: '...' (literal, minimal escapes) and "..." (with escapes)
+                        if string_syntax == StringSyntax::Php
+                            && (bytes[i] == b'"' || bytes[i] == b'\'')
+                        {
+                            let quote = bytes[i];
+                            if self.opts.mask_strings {
+                                out[i] = b' ';
+                            }
+                            self.mode = Mode::NormalString {
+                                escaped: false,
+                                quote,
+                            };
+                            i += 1;
+                            continue;
+                        }
+
                         // Normal double-quoted string: "..."
-                        if bytes[i] == b'"' {
+                        // Note: SQL only uses single quotes for strings, so skip this for SQL
+                        if bytes[i] == b'"' && string_syntax != StringSyntax::Sql {
                             if self.opts.mask_strings {
                                 out[i] = b' ';
                             }
@@ -403,11 +499,65 @@ impl Preprocessor {
 
                     // Comment detection (language-specific)
                     if self.opts.mask_comments {
-                        // Hash comments for Python/Ruby
+                        // Hash comments for Python/Ruby/Shell
                         if comment_syntax == CommentSyntax::Hash && bytes[i] == b'#' {
                             mask_range(&mut out, i, len);
                             self.mode = Mode::LineComment;
                             break;
+                        }
+
+                        // PHP comments: // and # for line comments, /* */ for block
+                        if comment_syntax == CommentSyntax::Php {
+                            if bytes[i] == b'#' {
+                                mask_range(&mut out, i, len);
+                                self.mode = Mode::LineComment;
+                                break;
+                            }
+                            if bytes[i] == b'/' && i + 1 < len {
+                                let n = bytes[i + 1];
+                                if n == b'/' {
+                                    mask_range(&mut out, i, len);
+                                    self.mode = Mode::LineComment;
+                                    break;
+                                }
+                                if n == b'*' {
+                                    mask_range(&mut out, i, i + 2);
+                                    self.mode = Mode::BlockComment { depth: 1 };
+                                    i += 2;
+                                    continue;
+                                }
+                            }
+                        }
+
+                        // SQL comments: -- for line comments, /* */ for block
+                        if comment_syntax == CommentSyntax::Sql {
+                            // -- line comment
+                            if bytes[i] == b'-' && i + 1 < len && bytes[i + 1] == b'-' {
+                                mask_range(&mut out, i, len);
+                                self.mode = Mode::LineComment;
+                                break;
+                            }
+                            // /* */ block comment
+                            if bytes[i] == b'/' && i + 1 < len && bytes[i + 1] == b'*' {
+                                mask_range(&mut out, i, i + 2);
+                                self.mode = Mode::BlockComment { depth: 1 };
+                                i += 2;
+                                continue;
+                            }
+                        }
+
+                        // XML/HTML comments: <!-- -->
+                        if comment_syntax == CommentSyntax::Xml
+                            && bytes[i] == b'<'
+                            && i + 3 < len
+                            && bytes[i + 1] == b'!'
+                            && bytes[i + 2] == b'-'
+                            && bytes[i + 3] == b'-'
+                        {
+                            mask_range(&mut out, i, i + 4);
+                            self.mode = Mode::XmlComment;
+                            i += 4;
+                            continue;
                         }
 
                         // C-style comments: // and /* */
@@ -684,6 +834,31 @@ impl Preprocessor {
 
                     i += 1;
                 }
+
+                Mode::XmlComment => {
+                    // XML/HTML comments: <!-- ... -->
+                    // Everything inside is masked until we see -->
+                    if self.opts.mask_comments {
+                        out[i] = b' ';
+                    }
+
+                    // Check for closing -->
+                    if bytes[i] == b'-'
+                        && i + 2 < len
+                        && bytes[i + 1] == b'-'
+                        && bytes[i + 2] == b'>'
+                    {
+                        if self.opts.mask_comments {
+                            out[i + 1] = b' ';
+                            out[i + 2] = b' ';
+                        }
+                        self.mode = Mode::Normal;
+                        i += 3;
+                        continue;
+                    }
+
+                    i += 1;
+                }
             }
         }
 
@@ -692,7 +867,7 @@ impl Preprocessor {
             self.mode = Mode::Normal;
         }
 
-        String::from_utf8(out).unwrap_or_else(|_| line.to_string())
+        String::from_utf8_lossy(&out).into_owned()
     }
 }
 
@@ -925,6 +1100,34 @@ mod tests {
         assert_eq!(Language::Java.string_syntax(), StringSyntax::CStyle);
         assert_eq!(Language::Kotlin.string_syntax(), StringSyntax::CStyle);
         assert_eq!(Language::Unknown.string_syntax(), StringSyntax::CStyle);
+    }
+
+    #[test]
+    fn cstyle_masks_double_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::C);
+        let s = p.sanitize_line("printf(\"hello\");");
+        assert!(s.contains("printf("));
+        assert!(!s.contains("hello"));
+    }
+
+    #[test]
+    fn cstyle_masks_char_literals() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::C);
+        let line = r#"char c = 'x'; char nl = '\n';"#;
+        let s = p.sanitize_line(line);
+        assert!(!s.contains("'x'"));
+        assert!(!s.contains("'\\n'"));
+        assert_eq!(s.len(), line.len());
+    }
+
+    #[test]
+    fn rust_masks_char_literals() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Rust);
+        let line = r#"let c = 'z'; let escaped = '\'';"#;
+        let s = p.sanitize_line(line);
+        assert!(!s.contains("'z'"));
+        assert!(!s.contains("'\\''"));
+        assert_eq!(s.len(), line.len());
     }
 
     #[test]
@@ -1862,5 +2065,757 @@ mod tests {
         assert!(!s.contains("double"));
         assert!(!s.contains("ansi"));
         assert!(!s.contains("comment"));
+    }
+
+    // ==================== Swift-specific tests ====================
+
+    #[test]
+    fn swift_language_from_str() {
+        assert_eq!("swift".parse::<Language>().unwrap(), Language::Swift);
+        assert_eq!("Swift".parse::<Language>().unwrap(), Language::Swift);
+        assert_eq!("SWIFT".parse::<Language>().unwrap(), Language::Swift);
+    }
+
+    #[test]
+    fn swift_comment_syntax() {
+        assert_eq!(
+            Language::Swift.comment_syntax(),
+            CommentSyntax::CStyleNested
+        );
+    }
+
+    #[test]
+    fn swift_string_syntax() {
+        assert_eq!(Language::Swift.string_syntax(), StringSyntax::SwiftScala);
+    }
+
+    #[test]
+    fn swift_masks_line_comments() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Swift);
+        let s = p.sanitize_line("let x = 1 // print() here");
+        assert!(s.contains("let x = 1"));
+        assert!(!s.contains("print"));
+    }
+
+    #[test]
+    fn swift_masks_block_comments() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Swift);
+        let s = p.sanitize_line("let x = /* print() */ 1");
+        assert!(s.contains("let x ="));
+        assert!(s.contains("1"));
+        assert!(!s.contains("print"));
+    }
+
+    #[test]
+    fn swift_nested_block_comments() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Swift);
+        // Swift supports nested block comments like Rust
+        let s1 = p.sanitize_line("let x = 1 /* outer /* inner");
+        assert!(s1.contains("let x = 1"));
+        assert!(!s1.contains("outer"));
+        assert!(!s1.contains("inner"));
+
+        // Still in nested comment
+        let s2 = p.sanitize_line("still inside");
+        assert!(!s2.contains("still"));
+
+        // Close inner
+        let s3 = p.sanitize_line("close inner */ still outer");
+        assert!(!s3.contains("close inner"));
+        assert!(!s3.contains("still outer"));
+
+        // Close outer
+        let s4 = p.sanitize_line("close outer */ let y = 2");
+        assert!(!s4.contains("close outer"));
+        assert!(s4.contains("let y = 2"));
+    }
+
+    #[test]
+    fn swift_masks_double_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Swift);
+        let s = p.sanitize_line("let x = \"print() inside\"");
+        assert!(s.contains("let x ="));
+        assert!(!s.contains("print"));
+    }
+
+    #[test]
+    fn swift_masks_triple_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Swift);
+        let s = p.sanitize_line("let x = \"\"\"print() inside\"\"\"");
+        assert!(s.contains("let x ="));
+        assert!(!s.contains("print"));
+    }
+
+    #[test]
+    fn swift_triple_quoted_string_multiline() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Swift);
+        // First line starts the triple-quoted string
+        let s1 = p.sanitize_line("let x = \"\"\"start of");
+        assert!(s1.contains("let x ="));
+        assert!(!s1.contains("start"));
+
+        // Second line is inside the string
+        let s2 = p.sanitize_line("print() in middle");
+        assert!(!s2.contains("print"));
+
+        // Third line ends the string
+        let s3 = p.sanitize_line("end of string\"\"\" + y");
+        assert!(!s3.contains("end of string"));
+        assert!(s3.contains("+ y"));
+    }
+
+    #[test]
+    fn swift_preserves_line_length() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Swift);
+        let line = "let x = \"hello\" // comment";
+        let s = p.sanitize_line(line);
+        assert_eq!(s.len(), line.len());
+    }
+
+    // ==================== Scala-specific tests ====================
+
+    #[test]
+    fn scala_language_from_str() {
+        assert_eq!("scala".parse::<Language>().unwrap(), Language::Scala);
+        assert_eq!("Scala".parse::<Language>().unwrap(), Language::Scala);
+        assert_eq!("SCALA".parse::<Language>().unwrap(), Language::Scala);
+    }
+
+    #[test]
+    fn scala_comment_syntax() {
+        assert_eq!(
+            Language::Scala.comment_syntax(),
+            CommentSyntax::CStyleNested
+        );
+    }
+
+    #[test]
+    fn scala_string_syntax() {
+        assert_eq!(Language::Scala.string_syntax(), StringSyntax::SwiftScala);
+    }
+
+    #[test]
+    fn scala_masks_line_comments() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Scala);
+        let s = p.sanitize_line("val x = 1 // println() here");
+        assert!(s.contains("val x = 1"));
+        assert!(!s.contains("println"));
+    }
+
+    #[test]
+    fn scala_masks_block_comments() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Scala);
+        let s = p.sanitize_line("val x = /* println() */ 1");
+        assert!(s.contains("val x ="));
+        assert!(s.contains("1"));
+        assert!(!s.contains("println"));
+    }
+
+    #[test]
+    fn scala_nested_block_comments() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Scala);
+        // Scala supports nested block comments
+        let s1 = p.sanitize_line("val x = 1 /* outer /* inner");
+        assert!(s1.contains("val x = 1"));
+        assert!(!s1.contains("outer"));
+
+        let s2 = p.sanitize_line("still inside");
+        assert!(!s2.contains("still"));
+
+        let s3 = p.sanitize_line("inner */ still outer");
+        assert!(!s3.contains("inner"));
+
+        let s4 = p.sanitize_line("outer */ val y = 2");
+        assert!(s4.contains("val y = 2"));
+    }
+
+    #[test]
+    fn scala_masks_double_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Scala);
+        let s = p.sanitize_line("val x = \"println() inside\"");
+        assert!(s.contains("val x ="));
+        assert!(!s.contains("println"));
+    }
+
+    #[test]
+    fn scala_masks_triple_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Scala);
+        let s = p.sanitize_line("val x = \"\"\"println() inside\"\"\"");
+        assert!(s.contains("val x ="));
+        assert!(!s.contains("println"));
+    }
+
+    #[test]
+    fn scala_triple_single_quotes_do_not_start_triple_string() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Scala);
+        let line = "val x = '''println() inside'''";
+        let s = p.sanitize_line(line);
+        assert_eq!(s, line);
+        assert!(p.mode == Mode::Normal);
+    }
+
+    #[test]
+    fn scala_triple_quoted_string_multiline() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Scala);
+        let s1 = p.sanitize_line("val x = \"\"\"start of");
+        assert!(s1.contains("val x ="));
+        assert!(!s1.contains("start"));
+
+        let s2 = p.sanitize_line("println() in middle");
+        assert!(!s2.contains("println"));
+
+        let s3 = p.sanitize_line("end of string\"\"\" + y");
+        assert!(!s3.contains("end of string"));
+        assert!(s3.contains("+ y"));
+    }
+
+    #[test]
+    fn scala_preserves_line_length() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Scala);
+        let line = "val x = \"hello\" // comment";
+        let s = p.sanitize_line(line);
+        assert_eq!(s.len(), line.len());
+    }
+
+    // ==================== SQL-specific tests ====================
+
+    #[test]
+    fn sql_language_from_str() {
+        assert_eq!("sql".parse::<Language>().unwrap(), Language::Sql);
+        assert_eq!("SQL".parse::<Language>().unwrap(), Language::Sql);
+        assert_eq!("Sql".parse::<Language>().unwrap(), Language::Sql);
+    }
+
+    #[test]
+    fn sql_comment_syntax() {
+        assert_eq!(Language::Sql.comment_syntax(), CommentSyntax::Sql);
+    }
+
+    #[test]
+    fn sql_string_syntax() {
+        assert_eq!(Language::Sql.string_syntax(), StringSyntax::Sql);
+    }
+
+    #[test]
+    fn sql_masks_double_dash_comments() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Sql);
+        let s = p.sanitize_line("SELECT * FROM users -- secret query");
+        assert!(s.contains("SELECT * FROM users"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn sql_masks_block_comments() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Sql);
+        let s = p.sanitize_line("SELECT /* hidden */ * FROM users");
+        assert!(s.contains("SELECT"));
+        assert!(s.contains("* FROM users"));
+        assert!(!s.contains("hidden"));
+    }
+
+    #[test]
+    fn sql_multiline_block_comment() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Sql);
+        let s1 = p.sanitize_line("SELECT * /* start comment");
+        assert!(s1.contains("SELECT *"));
+        assert!(!s1.contains("start"));
+
+        let s2 = p.sanitize_line("hidden query");
+        assert!(!s2.contains("hidden"));
+
+        let s3 = p.sanitize_line("end comment */ FROM users");
+        assert!(!s3.contains("end comment"));
+        assert!(s3.contains("FROM users"));
+    }
+
+    #[test]
+    fn sql_masks_single_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Sql);
+        let s = p.sanitize_line("SELECT * FROM users WHERE name = 'secret_password'");
+        assert!(s.contains("SELECT * FROM users WHERE name ="));
+        assert!(!s.contains("secret_password"));
+    }
+
+    #[test]
+    fn sql_does_not_mask_double_quoted_as_string() {
+        // In SQL, double quotes are for identifiers, not strings
+        // But for simplicity, we don't handle them specially
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Sql);
+        let s = p.sanitize_line("SELECT \"column\" FROM users");
+        // SQL string syntax only uses single quotes, so double quotes pass through
+        assert!(s.contains("SELECT"));
+        assert!(s.contains("column")); // Not masked because SQL uses single quotes
+    }
+
+    #[test]
+    fn sql_single_dash_not_comment() {
+        // A single dash should not start a comment in SQL
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Sql);
+        let s = p.sanitize_line("SELECT a - b FROM table");
+        assert!(s.contains("SELECT a - b FROM table"));
+    }
+
+    #[test]
+    fn sql_preserves_line_length() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Sql);
+        let line = "SELECT 'hello' -- comment";
+        let s = p.sanitize_line(line);
+        assert_eq!(s.len(), line.len());
+    }
+
+    #[test]
+    fn sql_does_not_mask_hash_in_string() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Sql);
+        let s = p.sanitize_line("SELECT * WHERE name = '-- not a comment' -- real comment");
+        assert!(s.contains("-- not a comment"));
+        assert!(!s.contains("real comment"));
+    }
+
+    // ==================== XML/HTML-specific tests ====================
+
+    #[test]
+    fn xml_language_from_str() {
+        assert_eq!("xml".parse::<Language>().unwrap(), Language::Xml);
+        assert_eq!("html".parse::<Language>().unwrap(), Language::Xml);
+        assert_eq!("xhtml".parse::<Language>().unwrap(), Language::Xml);
+        assert_eq!("svg".parse::<Language>().unwrap(), Language::Xml);
+        assert_eq!("xsl".parse::<Language>().unwrap(), Language::Xml);
+        assert_eq!("xslt".parse::<Language>().unwrap(), Language::Xml);
+    }
+
+    #[test]
+    fn xml_comment_syntax() {
+        assert_eq!(Language::Xml.comment_syntax(), CommentSyntax::Xml);
+    }
+
+    #[test]
+    fn xml_string_syntax() {
+        assert_eq!(Language::Xml.string_syntax(), StringSyntax::Xml);
+    }
+
+    #[test]
+    fn xml_masks_comments() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Xml);
+        let s = p.sanitize_line("<div><!-- secret comment --></div>");
+        assert!(s.contains("<div>"));
+        assert!(s.contains("</div>"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn xml_multiline_comment() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Xml);
+        let s1 = p.sanitize_line("<div><!-- start comment");
+        assert!(s1.contains("<div>"));
+        assert!(!s1.contains("start"));
+
+        let s2 = p.sanitize_line("hidden content");
+        assert!(!s2.contains("hidden"));
+
+        let s3 = p.sanitize_line("end comment --></div>");
+        assert!(!s3.contains("end comment"));
+        assert!(s3.contains("</div>"));
+    }
+
+    #[test]
+    fn xml_masks_double_quoted_attributes() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Xml);
+        let s = p.sanitize_line("<input type=\"password\" value=\"secret\">");
+        assert!(s.contains("<input type="));
+        assert!(s.contains("value="));
+        assert!(!s.contains("password"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn xml_masks_single_quoted_attributes() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Xml);
+        let s = p.sanitize_line("<input type='password' value='secret'>");
+        assert!(s.contains("<input type="));
+        assert!(s.contains("value="));
+        assert!(!s.contains("password"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn xml_mixed_quotes() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Xml);
+        let s = p.sanitize_line("<div class=\"myclass\" id='myid'>");
+        assert!(s.contains("<div class="));
+        assert!(s.contains("id="));
+        assert!(!s.contains("myclass"));
+        assert!(!s.contains("myid"));
+    }
+
+    #[test]
+    fn xml_preserves_line_length() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Xml);
+        let line = "<div class=\"test\"><!-- comment --></div>";
+        let s = p.sanitize_line(line);
+        assert_eq!(s.len(), line.len());
+    }
+
+    #[test]
+    fn xml_comment_delimiter_not_in_string() {
+        // When masking only comments, strings should preserve their content
+        // The <!-- inside the string should NOT be treated as a comment start
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Xml);
+        let s = p.sanitize_line("<div data-comment=\"<!-- not a comment -->\"><!-- real --></div>");
+        // The string content is preserved because we're only masking comments
+        assert!(s.contains("<!-- not a comment -->"));
+        // The real comment is masked
+        assert!(!s.contains("real"));
+    }
+
+    // ==================== PHP-specific tests ====================
+
+    #[test]
+    fn php_language_from_str() {
+        assert_eq!("php".parse::<Language>().unwrap(), Language::Php);
+        assert_eq!("PHP".parse::<Language>().unwrap(), Language::Php);
+        assert_eq!("Php".parse::<Language>().unwrap(), Language::Php);
+    }
+
+    #[test]
+    fn php_comment_syntax() {
+        assert_eq!(Language::Php.comment_syntax(), CommentSyntax::Php);
+    }
+
+    #[test]
+    fn php_string_syntax() {
+        assert_eq!(Language::Php.string_syntax(), StringSyntax::Php);
+    }
+
+    #[test]
+    fn php_masks_double_slash_comments() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Php);
+        let s = p.sanitize_line("$x = 1; // echo secret");
+        assert!(s.contains("$x = 1;"));
+        assert!(!s.contains("echo"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn php_masks_hash_comments() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Php);
+        let s = p.sanitize_line("$x = 1; # echo secret");
+        assert!(s.contains("$x = 1;"));
+        assert!(!s.contains("echo"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn php_masks_block_comments() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Php);
+        let s = p.sanitize_line("$x = /* echo secret */ 1;");
+        assert!(s.contains("$x ="));
+        assert!(s.contains("1;"));
+        assert!(!s.contains("echo"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn php_multiline_block_comment() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Php);
+        let s1 = p.sanitize_line("$x = 1; /* start comment");
+        assert!(s1.contains("$x = 1;"));
+        assert!(!s1.contains("start"));
+
+        let s2 = p.sanitize_line("hidden code");
+        assert!(!s2.contains("hidden"));
+
+        let s3 = p.sanitize_line("end comment */ $y = 2;");
+        assert!(!s3.contains("end comment"));
+        assert!(s3.contains("$y = 2;"));
+    }
+
+    #[test]
+    fn php_masks_double_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Php);
+        let s = p.sanitize_line("$x = \"echo secret\";");
+        assert!(s.contains("$x ="));
+        assert!(!s.contains("echo"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn php_masks_single_quoted_strings() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Php);
+        let s = p.sanitize_line("$x = 'echo secret';");
+        assert!(s.contains("$x ="));
+        assert!(!s.contains("echo"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn php_string_with_escapes() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Php);
+        let s = p.sanitize_line("$x = \"say \\\"hello\\\"\";");
+        assert!(s.contains("$x ="));
+        assert!(!s.contains("say"));
+        assert!(!s.contains("hello"));
+    }
+
+    #[test]
+    fn php_hash_not_comment_in_string() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Php);
+        let s = p.sanitize_line("$x = \"# not a comment\"; # real comment");
+        assert!(s.contains("# not a comment"));
+        assert!(!s.contains("real comment"));
+    }
+
+    #[test]
+    fn php_slash_not_comment_in_string() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Php);
+        let s = p.sanitize_line("$x = \"// not a comment\"; // real comment");
+        assert!(s.contains("// not a comment"));
+        assert!(!s.contains("real comment"));
+    }
+
+    #[test]
+    fn php_preserves_line_length() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Php);
+        let line = "$x = 'hello'; // comment";
+        let s = p.sanitize_line(line);
+        assert_eq!(s.len(), line.len());
+    }
+
+    #[test]
+    fn php_mixed_comments_and_strings() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Php);
+        let s = p.sanitize_line("echo 'single' . \"double\"; // comment # more");
+        assert!(s.contains("echo"));
+        assert!(s.contains("."));
+        assert!(!s.contains("single"));
+        assert!(!s.contains("double"));
+        assert!(!s.contains("comment"));
+        assert!(!s.contains("more"));
+    }
+
+    #[test]
+    fn mode_debug_formats_variants() {
+        let modes = [
+            Mode::RawString { hashes: 2 },
+            Mode::Char { escaped: false },
+            Mode::TemplateLiteral { escaped: true },
+            Mode::TripleQuotedString {
+                escaped: false,
+                quote: b'"',
+            },
+            Mode::ShellLiteralString,
+            Mode::ShellAnsiCString { escaped: false },
+            Mode::XmlComment,
+        ];
+
+        for mode in modes {
+            let rendered = format!("{:?}", mode);
+            assert!(!rendered.is_empty());
+        }
+    }
+
+    #[test]
+    fn rust_raw_and_byte_strings_masked() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Rust);
+        let line = "let a = r#\"raw\"#; let b = b\"byte\";";
+        let s = p.sanitize_line(line);
+        assert!(s.contains("let a ="));
+        assert!(s.contains("let b ="));
+        assert!(!s.contains("raw"));
+        assert!(!s.contains("byte"));
+    }
+
+    #[test]
+    fn python_triple_quoted_string_handles_escapes() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Python);
+        let line = "x = \"\"\"a\\\\b\"\"\"";
+        let s = p.sanitize_line(line);
+        assert!(s.contains("x ="));
+        assert!(!s.contains("a\\\\b"));
+    }
+
+    #[test]
+    fn shell_ansi_c_string_masks_and_escapes() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let line = "echo $'a\\\\n'";
+        let s = p.sanitize_line(line);
+        assert!(s.contains("echo"));
+        assert!(!s.contains("a"));
+        assert!(!s.contains("n"));
+    }
+
+    #[test]
+    fn php_block_comments_masked() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Php);
+        let line = "<?php /* block */ echo $x; ?>";
+        let s = p.sanitize_line(line);
+        assert!(s.contains("echo"));
+        assert!(!s.contains("block"));
+    }
+
+    #[test]
+    fn line_comment_resets_mode() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Rust);
+        let s1 = p.sanitize_line("// comment");
+        assert!(!s1.contains("comment"));
+        let s2 = p.sanitize_line("let x = 1;");
+        assert!(s2.contains("let x = 1;"));
+    }
+
+    #[test]
+    fn nested_block_comment_masks_nested() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Rust);
+        let line = "/* outer /* inner */ tail */ let x = 1;";
+        let s = p.sanitize_line(line);
+        assert!(s.contains("let x = 1;"));
+        assert!(!s.contains("outer"));
+        assert!(!s.contains("inner"));
+        assert!(!s.contains("tail"));
+    }
+
+    #[test]
+    fn xml_comment_masks_and_closes() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Xml);
+        let line = "<!-- hi --> <tag>";
+        let s = p.sanitize_line(line);
+        assert!(s.contains("<tag>"));
+        assert!(!s.contains("hi"));
+    }
+
+    #[test]
+    fn rust_byte_string_masks_when_strings_only() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Rust);
+        let s = p.sanitize_line(r#"let b = b"bytes";"#);
+        assert!(!s.contains("bytes"));
+    }
+
+    #[test]
+    fn rust_raw_string_masks_end_delimiter() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Rust);
+        let _ = p.sanitize_line("let s = r#\"raw");
+        let end = p.sanitize_line("\"#;");
+        assert!(!end.contains("\"#"));
+    }
+
+    #[test]
+    fn shell_ansi_c_string_masks_prefix_and_body() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let s = p.sanitize_line("$'a\\n'");
+        assert!(s.trim().is_empty());
+    }
+
+    #[test]
+    fn shell_literal_string_masks_body() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Shell);
+        let s = p.sanitize_line("'abc'");
+        assert!(s.trim().is_empty());
+    }
+
+    #[test]
+    fn swift_double_quoted_masks_when_strings_only() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Swift);
+        let s = p.sanitize_line("let s = \"hello\";");
+        assert!(!s.contains("hello"));
+    }
+
+    #[test]
+    fn php_block_comment_masks_opening() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Php);
+        let s = p.sanitize_line("/* php block */");
+        assert!(!s.contains("php"));
+    }
+
+    #[test]
+    fn line_comment_mode_branch_executes() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Rust);
+        p.mode = Mode::LineComment;
+        let _ = p.sanitize_line("still comment");
+        assert!(p.mode == Mode::Normal);
+    }
+
+    #[test]
+    fn triple_quoted_string_masks_closing() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Python);
+        let _ = p.sanitize_line("s = '''hello");
+        let end = p.sanitize_line("world'''");
+        assert!(!end.contains("'''"));
+    }
+
+    #[test]
+    fn rust_raw_and_byte_strings_preserved_when_strings_not_masked() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Rust);
+        let line = "let a = r#\"raw\"#; let b = b\"byte\";";
+        let s = p.sanitize_line(line);
+        assert!(s.contains("raw"));
+        assert!(s.contains("byte"));
+    }
+
+    #[test]
+    fn python_triple_quoted_string_preserved_when_strings_not_masked() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Python);
+        let line = "x = \"\"\"triple\"\"\"";
+        let s = p.sanitize_line(line);
+        assert!(s.contains("triple"));
+    }
+
+    #[test]
+    fn shell_strings_preserved_when_strings_not_masked() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Shell);
+        let line = "echo $'a\\n' 'b'";
+        let s = p.sanitize_line(line);
+        assert!(s.contains("a"));
+        assert!(s.contains("b"));
+    }
+
+    #[test]
+    fn template_literal_escape_branches_execute() {
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::strings_only(), Language::JavaScript);
+        let line: String = ['`', '\\', '`', 'x', '`'].iter().collect();
+        let s = p.sanitize_line(&line);
+        assert_eq!(s.len(), line.len());
+    }
+
+    #[test]
+    fn php_slash_not_comment_in_mask_comments_mode() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Php);
+        let line = "/x";
+        let s = p.sanitize_line(line);
+        assert_eq!(s, line);
+    }
+
+    #[test]
+    fn block_comment_mode_without_masking_handles_nested_and_close() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Rust);
+        p.mode = Mode::BlockComment { depth: 1 };
+        let _ = p.sanitize_line("/*");
+        assert!(p.mode == Mode::BlockComment { depth: 2 });
+
+        p.mode = Mode::BlockComment { depth: 1 };
+        let _ = p.sanitize_line("*/");
+        assert!(p.mode == Mode::Normal);
+    }
+
+    #[test]
+    fn xml_comment_mode_without_masking_handles_close() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Xml);
+        p.mode = Mode::XmlComment;
+        let _ = p.sanitize_line("-->");
+        assert!(p.mode == Mode::Normal);
     }
 }

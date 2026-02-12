@@ -4,8 +4,8 @@
 //! for use in tests across the workspace.
 
 use diffguard_types::{
-    CheckReceipt, ConfigFile, Defaults, DiffMeta, FailOn, Finding, RuleConfig, Scope, Severity,
-    ToolMeta, Verdict, VerdictCounts, VerdictStatus, CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, ConfigFile, Defaults, DiffMeta, FailOn, Finding, RuleConfig,
+    Scope, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
 };
 
 // =============================================================================
@@ -19,6 +19,7 @@ pub mod sample_configs {
     /// An empty configuration with default values.
     pub fn empty() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![],
         }
@@ -32,6 +33,7 @@ pub mod sample_configs {
     /// A minimal configuration with one rule.
     pub fn minimal() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![RuleConfig {
                 id: "test.rule".to_string(),
@@ -45,6 +47,8 @@ pub mod sample_configs {
                 ignore_strings: false,
                 help: None,
                 url: None,
+                tags: vec![],
+                test_cases: vec![],
             }],
         }
     }
@@ -52,6 +56,7 @@ pub mod sample_configs {
     /// A Rust-focused configuration.
     pub fn rust_focused() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults {
                 base: Some("origin/main".to_string()),
                 head: Some("HEAD".to_string()),
@@ -73,6 +78,8 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "rust.no_dbg".to_string(),
@@ -86,6 +93,8 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
+                    test_cases: vec![],
                 },
             ],
         }
@@ -94,6 +103,7 @@ pub mod sample_configs {
     /// A JavaScript/TypeScript-focused configuration.
     pub fn javascript_focused() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![
                 RuleConfig {
@@ -117,6 +127,8 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "js.no_debugger".to_string(),
@@ -130,6 +142,8 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
+                    test_cases: vec![],
                 },
             ],
         }
@@ -138,6 +152,7 @@ pub mod sample_configs {
     /// A Python-focused configuration.
     pub fn python_focused() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![
                 RuleConfig {
@@ -152,6 +167,8 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "python.no_pdb".to_string(),
@@ -169,6 +186,8 @@ pub mod sample_configs {
                     ignore_strings: true,
                     help: None,
                     url: None,
+                    tags: vec![],
+                    test_cases: vec![],
                 },
             ],
         }
@@ -182,6 +201,7 @@ pub mod sample_configs {
         rules.extend(python_focused().rule);
 
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: rules,
         }
@@ -190,6 +210,7 @@ pub mod sample_configs {
     /// A configuration with all severity levels.
     pub fn all_severities() -> ConfigFile {
         ConfigFile {
+            includes: vec![],
             defaults: Defaults::default(),
             rule: vec![
                 RuleConfig {
@@ -204,6 +225,8 @@ pub mod sample_configs {
                     ignore_strings: false,
                     help: None,
                     url: None,
+                    tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "test.warn".to_string(),
@@ -217,6 +240,8 @@ pub mod sample_configs {
                     ignore_strings: false,
                     help: None,
                     url: None,
+                    tags: vec![],
+                    test_cases: vec![],
                 },
                 RuleConfig {
                     id: "test.error".to_string(),
@@ -230,6 +255,8 @@ pub mod sample_configs {
                     ignore_strings: false,
                     help: None,
                     url: None,
+                    tags: vec![],
+                    test_cases: vec![],
                 },
             ],
         }
@@ -502,6 +529,7 @@ pub mod sample_receipts {
                 counts: VerdictCounts::default(),
                 reasons: vec![],
             },
+            timing: None,
         }
     }
 
@@ -541,6 +569,7 @@ pub mod sample_receipts {
                 },
                 reasons: vec!["1 warning-level finding".to_string()],
             },
+            timing: None,
         }
     }
 
@@ -580,6 +609,7 @@ pub mod sample_receipts {
                 },
                 reasons: vec!["1 error-level finding".to_string()],
             },
+            timing: None,
         }
     }
 
@@ -644,6 +674,7 @@ pub mod sample_receipts {
                     "1 warning-level finding".to_string(),
                 ],
             },
+            timing: None,
         }
     }
 }
@@ -718,5 +749,13 @@ mod tests {
         // Renamed file should use new path
         let (lines, _) = parse_unified_diff(sample_diffs::renamed_file(), Scope::Added).unwrap();
         assert!(lines.iter().all(|l| l.path == "new/path.rs"));
+    }
+
+    #[test]
+    fn additional_sample_diffs_are_available() {
+        assert!(!sample_diffs::malformed_hunk().is_empty());
+        assert!(!sample_diffs::with_unwrap_in_comment().is_empty());
+        assert!(!sample_diffs::javascript_console_log().is_empty());
+        assert!(!sample_diffs::python_print().is_empty());
     }
 }

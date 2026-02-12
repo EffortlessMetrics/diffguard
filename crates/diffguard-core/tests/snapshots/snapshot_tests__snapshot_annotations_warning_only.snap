@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-core/tests/snapshot_tests.rs
+expression: "annotations.join(\"\\n\")"
+---
+::warning file=src/main.rs,line=15::rust.no_dbg Remove dbg! macro before merging

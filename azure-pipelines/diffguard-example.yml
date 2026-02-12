@@ -1,0 +1,223 @@
+# Azure DevOps Pipeline Example for diffguard
+# This file demonstrates how to use the diffguard template in your pipelines
+#
+# Copy this file to your repository's root as `azure-pipelines.yml` and customize as needed
+# For more information, see: https://github.com/effortless-mgmt/diffguard
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - 'feature/*'
+      - 'release/*'
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+# =============================================================================
+# Basic Example
+# =============================================================================
+# Minimal configuration using defaults
+# =============================================================================
+
+stages:
+  - stage: BasicExample
+    displayName: 'Basic diffguard Check'
+    jobs:
+      - job: diffguard_basic
+        displayName: 'Run diffguard'
+        steps:
+          - template: diffguard.yml
+            parameters:
+              baseBranch: 'origin/main'
+
+# =============================================================================
+# Full Configuration Example
+# =============================================================================
+# Demonstrates all available parameters
+# =============================================================================
+
+  - stage: FullExample
+    displayName: 'Full Configuration Example'
+    dependsOn: []  # Run in parallel with BasicExample
+    jobs:
+      - job: diffguard_full
+        displayName: 'Run diffguard (Full Config)'
+        steps:
+          - template: diffguard.yml
+            parameters:
+              # Git comparison settings
+              baseBranch: 'origin/main'
+
+              # Configuration file path
+              configFile: 'diffguard.toml'
+
+              # Fail policy: error, warn, or never
+              # - error: fail pipeline only on errors (exit code 2)
+              # - warn: fail pipeline on errors or warnings (exit code 2 or 3)
+              # - never: never fail based on findings
+              failOn: 'error'
+
+              # Installation method: cargo or binary
+              # - cargo: build from source (slower, always latest)
+              # - binary: download pre-built release (faster)
+              installMethod: 'binary'
+
+              # Version to install (only used with binary method)
+              version: 'latest'
+
+              # Artifact publishing
+              publishArtifacts: true
+              artifactName: 'diffguard-report'
+
+              # Output formats
+              enableMarkdown: true   # Markdown summary for PR comments
+              enableSarif: true      # SARIF for security dashboards
+              enableJunit: true      # JUnit XML for test result integration
+
+              # Additional CLI arguments
+              additionalArgs: '--scope added'
+
+              # Working directory (for monorepos or subdirectories)
+              workingDirectory: '$(Build.SourcesDirectory)'
+
+# =============================================================================
+# Multi-Project Example (Monorepo)
+# =============================================================================
+# Run diffguard on multiple projects in a monorepo
+# =============================================================================
+
+  - stage: MonorepoExample
+    displayName: 'Monorepo Example'
+    dependsOn: []
+    jobs:
+      - job: diffguard_frontend
+        displayName: 'Frontend Check'
+        steps:
+          - template: diffguard.yml
+            parameters:
+              baseBranch: 'origin/main'
+              configFile: 'frontend/diffguard.toml'
+              workingDirectory: '$(Build.SourcesDirectory)/frontend'
+              artifactName: 'diffguard-frontend'
+
+      - job: diffguard_backend
+        displayName: 'Backend Check'
+        steps:
+          - template: diffguard.yml
+            parameters:
+              baseBranch: 'origin/main'
+              configFile: 'backend/diffguard.toml'
+              workingDirectory: '$(Build.SourcesDirectory)/backend'
+              artifactName: 'diffguard-backend'
+
+# =============================================================================
+# Strict Mode Example
+# =============================================================================
+# Fail on any findings (warnings or errors)
+# =============================================================================
+
+  - stage: StrictExample
+    displayName: 'Strict Mode Example'
+    dependsOn: []
+    jobs:
+      - job: diffguard_strict
+        displayName: 'Strict Check (fail on warnings)'
+        steps:
+          - template: diffguard.yml
+            parameters:
+              baseBranch: 'origin/main'
+              failOn: 'warn'
+              additionalArgs: '--no-default-rules'  # Only use custom rules
+
+# =============================================================================
+# Advisory Mode Example
+# =============================================================================
+# Run as advisory (never fail the pipeline)
+# =============================================================================
+
+  - stage: AdvisoryExample
+    displayName: 'Advisory Mode Example'
+    dependsOn: []
+    jobs:
+      - job: diffguard_advisory
+        displayName: 'Advisory Check (never fail)'
+        steps:
+          - template: diffguard.yml
+            parameters:
+              baseBranch: 'origin/main'
+              failOn: 'never'
+              enableMarkdown: true
+              publishArtifacts: true
+
+# =============================================================================
+# With Manual Approval Gate
+# =============================================================================
+# Run diffguard before deployment with approval
+# =============================================================================
+
+  - stage: PreDeployCheck
+    displayName: 'Pre-Deploy Governance Check'
+    dependsOn: []
+    jobs:
+      - job: diffguard_predeploy
+        displayName: 'Governance Check'
+        steps:
+          - template: diffguard.yml
+            parameters:
+              baseBranch: 'origin/main'
+              failOn: 'error'
+              enableSarif: true
+
+  - stage: Deploy
+    displayName: 'Deploy'
+    dependsOn: PreDeployCheck
+    condition: succeeded()
+    jobs:
+      - deployment: deploy_production
+        displayName: 'Deploy to Production'
+        environment: 'production'  # Requires approval if configured
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: echo "Deploying..."
+                  displayName: 'Deploy Application'
+
+# =============================================================================
+# Scheduled Baseline Scan
+# =============================================================================
+# Run a full baseline scan on a schedule
+# =============================================================================
+
+schedules:
+  - cron: '0 6 * * 1'  # Every Monday at 6 AM UTC
+    displayName: 'Weekly Baseline Scan'
+    branches:
+      include:
+        - main
+    always: true
+
+# Add a stage that only runs on schedule
+# (Uncomment and customize as needed)
+#
+#   - stage: WeeklyBaseline
+#     displayName: 'Weekly Baseline Scan'
+#     condition: eq(variables['Build.Reason'], 'Schedule')
+#     jobs:
+#       - job: baseline_scan
+#         displayName: 'Full Baseline Scan'
+#         steps:
+#           - template: diffguard.yml
+#             parameters:
+#               baseBranch: 'origin/main~100'  # Compare against 100 commits ago
+#               failOn: 'never'
+#               publishArtifacts: true
+#               artifactName: 'baseline-report'
