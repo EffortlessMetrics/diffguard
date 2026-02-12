@@ -14,13 +14,13 @@ default-members = ["crates/diffguard"]
 
 [workspace.package]
 version = "0.1.0"
-authors = ["Steven Zimmerman <steven@effortless.management>"]
+authors = ["Steven Zimmerman, CPA <git@effortlesssteven.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"
 rust-version = "1.92"
 description = "Diff-scoped governance linter for PR automation"
-repository = "https://github.com/effortless-mgmt/diffguard"
-homepage = "https://github.com/effortless-mgmt/diffguard"
+repository = "https://github.com/effortlessmetrics/diffguard"
+homepage = "https://github.com/effortlessmetrics/diffguard"
 documentation = "https://docs.rs/diffguard"
 keywords = ["linter", "diff", "git", "ci", "governance"]
 categories = ["development-tools", "command-line-utilities"]
