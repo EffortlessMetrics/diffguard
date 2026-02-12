@@ -126,6 +126,7 @@ pub struct SarifPhysicalLocation {
 
 /// Artifact (file) location.
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SarifArtifactLocation {
     pub uri: String,
     #[serde(skip_serializing_if = "Option::is_none")]
