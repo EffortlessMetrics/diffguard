@@ -10,6 +10,7 @@ A diff-scoped governance linter: **rules applied to scoped lines** in a Git diff
 `diffguard` is designed for modern PR automation:
 
 - **Diff-aware** by default (no repo-wide grep noise)
+- Supports **git refs, staged diffs, or unified diff files/stdin**
 - Emits a stable **JSON receipt** for bots/automation
 - Can render a compact **Markdown summary** for PR comments
 - Can emit **GitHub Actions annotations** (`::error` / `::warning`)
@@ -36,6 +37,13 @@ diffguard init --preset minimal
 diffguard check --base origin/main --head HEAD --github-annotations \
   --out artifacts/diffguard/report.json \
   --md artifacts/diffguard/comment.md
+
+# Multi-base comparison (union of changed lines)
+diffguard check --base origin/main --base origin/release/1.0 --head HEAD
+
+# Non-git source: read unified diff from file or stdin
+diffguard check --diff-file patch.diff
+git diff --cached | diffguard check --diff-file -
 ```
 
 Available presets: `minimal`, `rust-quality`, `secrets`, `js-console`, `python-debug`
@@ -76,6 +84,41 @@ You can point `diffguard` at a config file:
 ```bash
 diffguard check --config diffguard.toml
 ```
+
+### Advanced Rule Semantics
+
+Rules can opt into richer matching behavior:
+
+```toml
+[[rule]]
+id = "python.eval_untrusted"
+severity = "warn"
+message = "eval() with untrusted input is forbidden."
+languages = ["python"]
+patterns = ["\\beval\\s*\\("]
+paths = ["**/*.py"]
+ignore_comments = true
+ignore_strings = true
+
+# 8.1 Multi-line windows
+multiline = true
+multiline_window = 2
+
+# 8.3 Require context near the primary match
+context_patterns = ["\\buntrusted\\b"]
+context_window = 2
+
+# 8.4 Escalate severity when context is present
+escalate_patterns = ["\\brequest\\.(GET|POST|data)\\b"]
+escalate_window = 1
+escalate_to = "error"
+
+# 8.5 Only evaluate when dependency rules matched in the same file
+depends_on = ["python.has_eval"]
+```
+
+Use `match_mode = "absent"` (8.2) to emit a finding when a pattern is missing
+in a scoped file.
 
 ### Environment Variables
 
@@ -151,6 +194,9 @@ diffguard supports multiple output formats for different use cases:
 | JUnit | `--junit` | CI/CD integration (Jenkins, GitLab CI) |
 | CSV/TSV | `--csv` / `--tsv` | Spreadsheet import, data analysis |
 | Sensor | `--sensor` | R2 Library Contract envelope (`sensor.report.v1`) |
+| Rule Stats | `--rule-stats` | Per-rule hit aggregation for analytics |
+| False-Positive Baseline | `--false-positive-baseline` / `--write-false-positive-baseline` | Acknowledge and track known false positives |
+| Trend History | `--trend-history` / `trend` | Cross-run metrics and historical summaries |
 
 ## GitHub Actions example
 
@@ -172,6 +218,16 @@ diffguard supports multiple output formats for different use cases:
     sarif_file: artifacts/diffguard/report.sarif
 ```
 
+## Git Hook Samples
+
+Sample hooks live in `docs/hooks/`:
+- `docs/hooks/commit-msg.sample`
+
+## IDE Integration
+
+- VS Code extension scaffold: `editors/vscode-diffguard`
+- LSP transport binary crate: `crates/diffguard-lsp`
+
 ## Repo layout
 
 This repo uses a clean, microcrate workspace layout with strict dependency direction:
@@ -191,6 +247,9 @@ diffguard-domain         diffguard-diff
                   ▼
           diffguard-types
             Pure DTOs
+
+diffguard-analytics      Analytics DTOs/helpers (false positives + trends)
+diffguard-lsp            Basic LSP transport for IDE integration
 ```
 
 | Crate | Purpose |
@@ -199,7 +258,9 @@ diffguard-domain         diffguard-diff
 | `diffguard-diff` | Parse unified diff format, detect binary/submodule/rename |
 | `diffguard-domain` | Compile rules, evaluate lines, preprocess comments/strings |
 | `diffguard-core` | Engine: check runs, sensor reports, verdicts, render outputs |
+| `diffguard-analytics` | False-positive baselines and trend history helpers |
 | `diffguard` | CLI binary: arg parsing, config loading, git invocation |
+| `diffguard-lsp` | Language Server Protocol transport (initialize/shutdown lifecycle) |
 | `diffguard-testkit` | Shared test utilities (proptest strategies, fixtures) |
 | `xtask` | Repo automation (`ci`, `schema`, `conform`) |
 

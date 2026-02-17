@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# commit-msg hook sample for diffguard
+# Usage:
+#   cp docs/hooks/commit-msg.sample .git/hooks/commit-msg
+#   chmod +x .git/hooks/commit-msg
+
+msg_file="${1:?commit message file path is required}"
+subject="$(head -n1 "$msg_file" | tr -d '\r')"
+
+# Allow autosquash commits through unchanged.
+if [[ "$subject" == fixup\!* || "$subject" == squash\!* ]]; then
+  exit 0
+fi
+
+# Example Conventional Commits check. Adjust to your team's format.
+if ! [[ "$subject" =~ ^(feat|fix|docs|refactor|test|chore)(\([a-z0-9._/-]+\))?:\ .+ ]]; then
+  echo "diffguard commit-msg: invalid subject line."
+  echo "Expected: <type>(optional-scope): <description>"
+  echo "Examples: feat(api): add token rotation support"
+  exit 1
+fi
+
+# Optional: enforce staged diff policies before commit finalization.
+# Remove this block if you only want message validation.
+if ! diffguard check --staged --config diffguard.toml --fail-on error >/dev/null; then
+  echo "diffguard commit-msg: staged changes failed policy checks."
+  echo "Run: diffguard check --staged --config diffguard.toml"
+  exit 1
+fi

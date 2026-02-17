@@ -8,7 +8,10 @@ pub mod preprocess;
 pub mod rules;
 pub mod suppression;
 
-pub use evaluate::{Evaluation, InputLine, evaluate_lines, evaluate_lines_with_overrides};
+pub use evaluate::{
+    Evaluation, InputLine, RuleHitStat, evaluate_lines, evaluate_lines_with_overrides,
+    evaluate_lines_with_overrides_and_language,
+};
 pub use overrides::{
     DirectoryRuleOverride, OverrideCompileError, ResolvedRuleOverride, RuleOverrideMatcher,
 };

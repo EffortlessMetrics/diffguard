@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FalsePositiveBaseline",
+  "type": "object",
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/FalsePositiveEntry"
+      }
+    },
+    "schema": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema"
+  ],
+  "$defs": {
+    "FalsePositiveEntry": {
+      "type": "object",
+      "properties": {
+        "fingerprint": {
+          "type": "string"
+        },
+        "line": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "rule_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fingerprint",
+        "rule_id",
+        "path",
+        "line"
+      ]
+    }
+  }
+}

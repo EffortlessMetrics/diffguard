@@ -1,3 +1,4 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 use globset::{Glob, GlobSet, GlobSetBuilder};
@@ -5,12 +6,14 @@ use globset::{Glob, GlobSet, GlobSetBuilder};
 use diffguard_diff::parse_unified_diff;
 use diffguard_domain::{
     DirectoryRuleOverride, InputLine, RuleOverrideMatcher, compile_rules,
-    evaluate_lines_with_overrides,
+    evaluate_lines_with_overrides_and_language,
 };
 use diffguard_types::{
     CheckReceipt, DiffMeta, FailOn, Finding, REASON_TRUNCATED, ToolMeta, Verdict, VerdictCounts,
     VerdictStatus,
 };
+
+use crate::fingerprint::compute_fingerprint;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CheckPlan {
@@ -32,6 +35,13 @@ pub struct CheckPlan {
     pub disable_tags: Vec<String>,
     /// Per-directory rule overrides loaded from `.diffguard.toml` files.
     pub directory_overrides: Vec<DirectoryRuleOverride>,
+    /// Force all files to be treated as this language for preprocessing/rule filtering.
+    pub force_language: Option<String>,
+    /// Optional line-level allowlist `(path, line)` for secondary filtering.
+    /// When set, only these diff lines are evaluated.
+    pub allowed_lines: Option<BTreeSet<(String, u32)>>,
+    /// Finding fingerprints to treat as acknowledged false positives.
+    pub false_positive_fingerprints: BTreeSet<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -44,6 +54,22 @@ pub struct CheckRun {
     pub truncated_findings: u32,
     /// Number of rules that were evaluated (after tag filtering).
     pub rules_evaluated: usize,
+    /// Per-rule hit aggregation for analytics.
+    pub rule_hits: Vec<RuleHitStat>,
+    /// Number of findings filtered as acknowledged false positives.
+    pub false_positive_findings: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RuleHitStat {
+    pub rule_id: String,
+    pub total: u32,
+    pub emitted: u32,
+    pub suppressed: u32,
+    pub info: u32,
+    pub warn: u32,
+    pub error: u32,
+    pub false_positive: u32,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -67,6 +93,15 @@ pub fn run_check(
         diff_lines.retain(|l| filters.is_match(Path::new(&l.path)));
     }
 
+    if let Some(allowed_lines) = &plan.allowed_lines {
+        diff_lines.retain(|l| allowed_lines.contains(&(l.path.clone(), l.line)));
+    }
+
+    // Multiple diff sources (or unusual diffs) can contain duplicates for the same
+    // path/line/content tuple. Keep first occurrence to preserve deterministic ordering.
+    let mut seen = BTreeSet::<(String, u32, String)>::new();
+    diff_lines.retain(|l| seen.insert((l.path.clone(), l.line, l.content.clone())));
+
     // Filter rules by tags
     let filtered_rules: Vec<_> = config
         .rule
@@ -85,17 +120,55 @@ pub fn run_check(
         content: l.content,
     });
 
-    let evaluation = evaluate_lines_with_overrides(lines, &rules, plan.max_findings, {
-        if plan.directory_overrides.is_empty() {
-            None
-        } else {
-            Some(&override_matcher)
-        }
-    });
+    let evaluation = evaluate_lines_with_overrides_and_language(
+        lines,
+        &rules,
+        plan.max_findings,
+        {
+            if plan.directory_overrides.is_empty() {
+                None
+            } else {
+                Some(&override_matcher)
+            }
+        },
+        plan.force_language.as_deref(),
+    );
 
-    let verdict_status = if evaluation.counts.error > 0 {
+    let mut filtered_findings = Vec::with_capacity(evaluation.findings.len());
+    let mut adjusted_counts = evaluation.counts.clone();
+    let mut false_positive_findings = 0u32;
+    let mut per_rule_false_positive = BTreeMap::<String, (u32, u32, u32, u32)>::new();
+
+    for finding in evaluation.findings {
+        let fingerprint = compute_fingerprint(&finding);
+        if plan.false_positive_fingerprints.contains(&fingerprint) {
+            false_positive_findings = false_positive_findings.saturating_add(1);
+            let entry = per_rule_false_positive
+                .entry(finding.rule_id.clone())
+                .or_insert((0, 0, 0, 0));
+            entry.0 = entry.0.saturating_add(1);
+            match finding.severity {
+                diffguard_types::Severity::Info => {
+                    adjusted_counts.info = adjusted_counts.info.saturating_sub(1);
+                    entry.1 = entry.1.saturating_add(1);
+                }
+                diffguard_types::Severity::Warn => {
+                    adjusted_counts.warn = adjusted_counts.warn.saturating_sub(1);
+                    entry.2 = entry.2.saturating_add(1);
+                }
+                diffguard_types::Severity::Error => {
+                    adjusted_counts.error = adjusted_counts.error.saturating_sub(1);
+                    entry.3 = entry.3.saturating_add(1);
+                }
+            }
+            continue;
+        }
+        filtered_findings.push(finding);
+    }
+
+    let verdict_status = if adjusted_counts.error > 0 {
         VerdictStatus::Fail
-    } else if evaluation.counts.warn > 0 {
+    } else if adjusted_counts.warn > 0 {
         VerdictStatus::Warn
     } else {
         VerdictStatus::Pass
@@ -120,10 +193,10 @@ pub fn run_check(
             files_scanned: evaluation.files_scanned,
             lines_scanned: evaluation.lines_scanned,
         },
-        findings: evaluation.findings.clone(),
+        findings: filtered_findings,
         verdict: Verdict {
             status: verdict_status,
-            counts: evaluation.counts.clone(),
+            counts: adjusted_counts,
             reasons,
         },
         timing: None,
@@ -134,6 +207,34 @@ pub fn run_check(
 
     let exit_code = compute_exit_code(plan.fail_on, &receipt.verdict.counts);
 
+    let mut rule_hits: Vec<RuleHitStat> = evaluation
+        .rule_hits
+        .into_iter()
+        .map(|s| RuleHitStat {
+            rule_id: s.rule_id,
+            total: s.total,
+            emitted: s.emitted,
+            suppressed: s.suppressed,
+            info: s.info,
+            warn: s.warn,
+            error: s.error,
+            false_positive: 0,
+        })
+        .collect();
+
+    if !per_rule_false_positive.is_empty() {
+        for stat in &mut rule_hits {
+            if let Some((filtered, info, warn, error)) = per_rule_false_positive.get(&stat.rule_id)
+            {
+                stat.emitted = stat.emitted.saturating_sub(*filtered);
+                stat.info = stat.info.saturating_sub(*info);
+                stat.warn = stat.warn.saturating_sub(*warn);
+                stat.error = stat.error.saturating_sub(*error);
+                stat.false_positive = stat.false_positive.saturating_add(*filtered);
+            }
+        }
+    }
+
     Ok(CheckRun {
         receipt,
         markdown,
@@ -141,6 +242,8 @@ pub fn run_check(
         exit_code,
         truncated_findings: evaluation.truncated_findings,
         rules_evaluated,
+        rule_hits,
+        false_positive_findings,
     })
 }
 
@@ -159,16 +262,22 @@ fn compile_filter_globs(globs: &[String]) -> Result<GlobSet, PathFilterError> {
 /// Filter a rule based on tag criteria in the plan.
 ///
 /// - If `only_tags` is non-empty, the rule must have at least one matching tag.
+/// - `enable_tags` is additive to `only_tags` (a rule matching either set is included).
 /// - If `disable_tags` is non-empty and the rule has any matching tag, it's excluded.
-/// - `enable_tags` is currently unused (reserved for future additive logic).
 fn filter_rule_by_tags(rule: &diffguard_types::RuleConfig, plan: &CheckPlan) -> bool {
-    // If only_tags is specified, rule must have at least one matching tag
+    // If only_tags is specified, allow rules matching only_tags OR enable_tags.
+    // This keeps enable_tags additive rather than restrictive on its own.
     if !plan.only_tags.is_empty() {
-        let has_matching_tag = rule
+        let has_only_tag = rule
             .tags
             .iter()
             .any(|t| plan.only_tags.iter().any(|ot| ot.eq_ignore_ascii_case(t)));
-        if !has_matching_tag {
+        let has_enabled_tag = !plan.enable_tags.is_empty()
+            && rule
+                .tags
+                .iter()
+                .any(|t| plan.enable_tags.iter().any(|et| et.eq_ignore_ascii_case(t)));
+        if !has_only_tag && !has_enabled_tag {
             return false;
         }
     }
@@ -260,6 +369,15 @@ mod tests {
                 exclude_paths: vec![],
                 ignore_comments: false,
                 ignore_strings: false,
+                match_mode: Default::default(),
+                multiline: false,
+                multiline_window: None,
+                context_patterns: vec![],
+                context_window: None,
+                escalate_patterns: vec![],
+                escalate_window: None,
+                escalate_to: None,
+                depends_on: vec![],
                 help: None,
                 url: None,
                 tags: vec![],
@@ -281,6 +399,9 @@ mod tests {
             enable_tags: vec![],
             disable_tags: vec![],
             directory_overrides: vec![],
+            force_language: None,
+            allowed_lines: None,
+            false_positive_fingerprints: BTreeSet::new(),
         }
     }
 
@@ -347,6 +468,118 @@ diff --git a/other.rs b/other.rs
         let run = run_check(&plan, &config, diff).expect("run_check");
         assert_eq!(run.receipt.findings.len(), 1);
         assert_eq!(run.receipt.findings[0].path, "src/lib.rs");
+    }
+
+    #[test]
+    fn run_check_dedupes_duplicate_diff_lines() {
+        let plan = test_plan(100, FailOn::Error, vec![]);
+        let config = test_rule_config(diffguard_types::Severity::Warn, "warn_me");
+        let single = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,2 @@
+ fn a() {}
++let x = warn_me();
+"#;
+        let duplicated = format!("{single}\n{single}");
+
+        let run = run_check(&plan, &config, &duplicated).expect("run_check");
+        assert_eq!(run.receipt.findings.len(), 1);
+        assert_eq!(run.receipt.verdict.counts.warn, 1);
+    }
+
+    #[test]
+    fn run_check_force_language_applies_rules_for_unknown_extensions() {
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.force_language = Some("rust".to_string());
+        let config = diffguard_types::ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults::default(),
+            rule: vec![diffguard_types::RuleConfig {
+                id: "test.rule".to_string(),
+                severity: diffguard_types::Severity::Warn,
+                message: "Test message".to_string(),
+                languages: vec!["rust".to_string()],
+                patterns: vec!["warn_me".to_string()],
+                paths: vec!["**/*.custom".to_string()],
+                exclude_paths: vec![],
+                ignore_comments: false,
+                ignore_strings: false,
+                match_mode: Default::default(),
+                multiline: false,
+                multiline_window: None,
+                context_patterns: vec![],
+                context_window: None,
+                escalate_patterns: vec![],
+                escalate_window: None,
+                escalate_to: None,
+                depends_on: vec![],
+                help: None,
+                url: None,
+                tags: vec![],
+                test_cases: vec![],
+            }],
+        };
+        let diff = r#"
+diff --git a/src/file.custom b/src/file.custom
+--- a/src/file.custom
++++ b/src/file.custom
+@@ -0,0 +1,1 @@
++warn_me();
+"#;
+
+        let run = run_check(&plan, &config, diff).expect("run_check");
+        assert_eq!(run.receipt.findings.len(), 1);
+        assert_eq!(run.receipt.verdict.counts.warn, 1);
+    }
+
+    #[test]
+    fn run_check_filters_by_allowed_lines() {
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.allowed_lines = Some(BTreeSet::from([(String::from("src/lib.rs"), 3)]));
+        let config = test_rule_config(diffguard_types::Severity::Warn, "warn_me");
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,3 @@
+ fn a() {}
++let x = warn_me();
++let y = warn_me();
+"#;
+
+        let run = run_check(&plan, &config, diff).expect("run_check");
+        assert_eq!(run.receipt.findings.len(), 1);
+        assert_eq!(run.receipt.findings[0].line, 3);
+    }
+
+    #[test]
+    fn run_check_filters_acknowledged_false_positive_fingerprints() {
+        let config = test_rule_config(diffguard_types::Severity::Warn, "warn_me");
+        let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,2 @@
+ fn a() {}
++let x = warn_me();
+"#;
+
+        let run_unfiltered =
+            run_check(&test_plan(100, FailOn::Warn, vec![]), &config, diff).expect("run_check");
+        let fingerprint = crate::compute_fingerprint(&run_unfiltered.receipt.findings[0]);
+
+        let mut plan = test_plan(100, FailOn::Warn, vec![]);
+        plan.false_positive_fingerprints.insert(fingerprint);
+        let filtered = run_check(&plan, &config, diff).expect("run_check");
+
+        assert_eq!(filtered.receipt.findings.len(), 0);
+        assert_eq!(filtered.receipt.verdict.counts.warn, 0);
+        assert_eq!(filtered.receipt.verdict.status, VerdictStatus::Pass);
+        assert_eq!(filtered.false_positive_findings, 1);
+        assert_eq!(filtered.rule_hits.len(), 1);
+        assert_eq!(filtered.rule_hits[0].false_positive, 1);
     }
 
     #[test]
@@ -523,6 +756,15 @@ diff --git a/src/lib.rs b/src/lib.rs
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: tags.into_iter().map(|s| s.to_string()).collect(),
@@ -558,6 +800,25 @@ diff --git a/src/lib.rs b/src/lib.rs
         let rule = make_rule_with_tags("test.rule", vec!["DEBUG"]);
         let mut plan = test_plan(100, FailOn::Error, vec![]);
         plan.only_tags = vec!["debug".to_string()];
+        assert!(filter_rule_by_tags(&rule, &plan));
+    }
+
+    #[test]
+    fn filter_rule_by_tags_enable_tags_additive_with_only_tags() {
+        let rule = make_rule_with_tags("test.rule", vec!["security"]);
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.only_tags = vec!["debug".to_string()];
+        plan.enable_tags = vec!["security".to_string()];
+
+        assert!(filter_rule_by_tags(&rule, &plan));
+    }
+
+    #[test]
+    fn filter_rule_by_tags_enable_tags_no_effect_without_only_tags() {
+        let rule = make_rule_with_tags("test.rule", vec!["style"]);
+        let mut plan = test_plan(100, FailOn::Error, vec![]);
+        plan.enable_tags = vec!["security".to_string()];
+
         assert!(filter_rule_by_tags(&rule, &plan));
     }
 

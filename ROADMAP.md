@@ -31,7 +31,7 @@ Complete the remaining tasks from the comprehensive-test-coverage spec to ensure
 | 1.13 | BDD integration tests for CLI workflows | P1 | M | **complete** |
 | 1.14 | Snapshot tests for JSON receipt output | P2 | S | **complete** |
 | 1.15 | Snapshot tests for GitHub annotation format | P2 | S | **complete** |
-| 1.16 | Mutation testing analysis across all crates | P2 | L | planned |
+| 1.16 | Mutation testing analysis across all crates | P2 | L | **complete** |
 
 ---
 
@@ -89,7 +89,7 @@ Extend preprocessing support to additional languages.
 | 4.4 | **Scala** preprocessing (// and /* */ nested comments) | P3 | S | **complete** |
 | 4.5 | SQL preprocessing (-- comments, /* */ blocks) | P3 | M | **complete** |
 | 4.6 | XML/HTML comment preprocessing (<!-- -->) | P3 | M | **complete** |
-| 4.7 | YAML/TOML/JSON comment handling | P3 | M | planned |
+| 4.7 | YAML/TOML/JSON comment handling | P3 | M | **complete** |
 | 4.8 | Language override flag (`--language=rust` for non-standard extensions) | P2 | S | **complete** |
 
 ---
@@ -124,12 +124,12 @@ Improve developer workflow integration.
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
 | 6.1 | **pre-commit hook integration** (pre-commit framework) | P1 | M | **complete** |
-| 6.2 | Git commit-msg hook sample | P3 | S | planned |
+| 6.2 | Git commit-msg hook sample | P3 | S | **complete** |
 | 6.3 | GitHub Action reusable workflow | P1 | M | **complete** |
 | 6.4 | GitLab CI template | P2 | S | **complete** |
 | 6.5 | Azure DevOps pipeline template | P3 | S | **complete** |
-| 6.6 | VS Code extension (basic) | P3 | XL | planned |
-| 6.7 | LSP server for IDE integration | P3 | XL | planned |
+| 6.6 | VS Code extension (basic) | P3 | XL | **complete** |
+| 6.7 | LSP server for IDE integration | P3 | XL | **complete** |
 
 **pre-commit integration (6.1):**
 ```yaml
@@ -151,9 +151,9 @@ Add visibility into rule performance and effectiveness.
 |------|-------------|----------|--------|--------|
 | 7.1 | Verbose/debug logging (`--verbose`, `--debug`) | P2 | S | **complete** |
 | 7.2 | Performance timing metrics in receipt | P3 | S | **complete** |
-| 7.3 | Rule hit statistics aggregation | P3 | M | planned |
-| 7.4 | False positive tracking mechanism | P3 | L | planned |
-| 7.5 | Historical trend analysis (cross-run metrics) | P3 | XL | planned |
+| 7.3 | Rule hit statistics aggregation | P3 | M | **complete** |
+| 7.4 | False positive tracking mechanism | P3 | L | **complete** |
+| 7.5 | Historical trend analysis (cross-run metrics) | P3 | XL | **complete** |
 
 ---
 
@@ -163,11 +163,11 @@ Enable more sophisticated matching patterns.
 
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
-| 8.1 | Multi-line pattern matching (across consecutive lines) | P2 | L | planned |
-| 8.2 | Negative patterns (flag if pattern NOT present) | P3 | M | planned |
-| 8.3 | Context requirements (require pattern A near pattern B) | P3 | L | planned |
-| 8.4 | Semantic severity escalation (warn→error based on context) | P3 | M | planned |
-| 8.5 | Rule dependencies (if rule A matches, also check rule B) | P3 | M | planned |
+| 8.1 | Multi-line pattern matching (across consecutive lines) | P2 | L | **complete** |
+| 8.2 | Negative patterns (flag if pattern NOT present) | P3 | M | **complete** |
+| 8.3 | Context requirements (require pattern A near pattern B) | P3 | L | **complete** |
+| 8.4 | Semantic severity escalation (warn→error based on context) | P3 | M | **complete** |
+| 8.5 | Rule dependencies (if rule A matches, also check rule B) | P3 | M | **complete** |
 
 ---
 
@@ -179,9 +179,9 @@ Extend diff analysis capabilities.
 |------|-------------|----------|--------|--------|
 | 9.1 | `scope = "deleted"` - Flag removal of certain patterns | P2 | M | **complete** |
 | 9.2 | `scope = "modified"` - Changed lines only, not pure additions | P3 | S | **complete** |
-| 9.3 | Non-git diff sources (patch files, arbitrary diffs) | P3 | L | planned |
-| 9.4 | Multiple base comparison (`--base main --base release/1.0`) | P3 | L | planned |
-| 9.5 | Blame-aware filtering (by author, age) | P3 | XL | planned |
+| 9.3 | Non-git diff sources (patch files, arbitrary diffs) | P3 | L | **complete** |
+| 9.4 | Multiple base comparison (`--base main --base release/1.0`) | P3 | L | **complete** |
+| 9.5 | Blame-aware filtering (by author, age) | P3 | XL | **complete** |
 
 ---
 

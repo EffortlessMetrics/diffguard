@@ -1,0 +1,32 @@
+[package]
+name = "diffguard-lsp"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Minimal Language Server Protocol server for diffguard"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/diffguard-lsp"
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+include = [
+  "src/**",
+  "Cargo.toml",
+  "README.md",
+  "../../LICENSE-*",
+]
+exclude = [
+  "**/*.snap.new",
+  "**/target/**",
+  "**/artifacts/**",
+  "**/fuzz/**",
+]
+
+[dependencies]
+anyhow.workspace = true
+serde_json.workspace = true
+lsp-server = "0.7"
+lsp-types = "0.97"

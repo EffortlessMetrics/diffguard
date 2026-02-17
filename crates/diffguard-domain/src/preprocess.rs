@@ -24,6 +24,9 @@ pub enum Language {
     Sql,
     Xml,
     Php,
+    Yaml,
+    Toml,
+    Json,
     #[default]
     Unknown,
 }
@@ -53,6 +56,9 @@ impl FromStr for Language {
             "sql" => Language::Sql,
             "xml" | "html" | "xhtml" | "svg" | "xsl" | "xslt" => Language::Xml,
             "php" => Language::Php,
+            "yaml" | "yml" => Language::Yaml,
+            "toml" => Language::Toml,
+            "json" | "jsonc" | "json5" => Language::Json,
             _ => Language::Unknown,
         })
     }
@@ -71,6 +77,10 @@ impl Language {
             Language::Xml => CommentSyntax::Xml,
             // PHP uses //, #, and /* */
             Language::Php => CommentSyntax::Php,
+            // YAML/TOML use # comments
+            Language::Yaml | Language::Toml => CommentSyntax::Hash,
+            // JSON supports comments in jsonc/json5 dialects
+            Language::Json => CommentSyntax::CStyle,
             _ => CommentSyntax::CStyle,
         }
     }
@@ -94,6 +104,8 @@ impl Language {
             Language::Xml => StringSyntax::Xml,
             // PHP uses both single and double quotes
             Language::Php => StringSyntax::Php,
+            // YAML/TOML/JSON strings are C-style-like in this best-effort model
+            Language::Yaml | Language::Toml | Language::Json => StringSyntax::CStyle,
             _ => StringSyntax::CStyle,
         }
     }
@@ -1001,6 +1013,9 @@ mod tests {
         assert_eq!("csharp".parse::<Language>().unwrap(), Language::CSharp);
         assert_eq!("java".parse::<Language>().unwrap(), Language::Java);
         assert_eq!("kotlin".parse::<Language>().unwrap(), Language::Kotlin);
+        assert_eq!("yaml".parse::<Language>().unwrap(), Language::Yaml);
+        assert_eq!("toml".parse::<Language>().unwrap(), Language::Toml);
+        assert_eq!("json".parse::<Language>().unwrap(), Language::Json);
     }
 
     #[test]
@@ -1022,6 +1037,9 @@ mod tests {
         assert_eq!("CSharp".parse::<Language>().unwrap(), Language::CSharp);
         assert_eq!("JAVA".parse::<Language>().unwrap(), Language::Java);
         assert_eq!("KOTLIN".parse::<Language>().unwrap(), Language::Kotlin);
+        assert_eq!("YAML".parse::<Language>().unwrap(), Language::Yaml);
+        assert_eq!("TOML".parse::<Language>().unwrap(), Language::Toml);
+        assert_eq!("JSON".parse::<Language>().unwrap(), Language::Json);
     }
 
     #[test]
@@ -1043,6 +1061,8 @@ mod tests {
     fn comment_syntax_hash_languages() {
         assert_eq!(Language::Python.comment_syntax(), CommentSyntax::Hash);
         assert_eq!(Language::Ruby.comment_syntax(), CommentSyntax::Hash);
+        assert_eq!(Language::Yaml.comment_syntax(), CommentSyntax::Hash);
+        assert_eq!(Language::Toml.comment_syntax(), CommentSyntax::Hash);
     }
 
     #[test]
@@ -1060,6 +1080,7 @@ mod tests {
         assert_eq!(Language::CSharp.comment_syntax(), CommentSyntax::CStyle);
         assert_eq!(Language::Java.comment_syntax(), CommentSyntax::CStyle);
         assert_eq!(Language::Kotlin.comment_syntax(), CommentSyntax::CStyle);
+        assert_eq!(Language::Json.comment_syntax(), CommentSyntax::CStyle);
         assert_eq!(Language::Unknown.comment_syntax(), CommentSyntax::CStyle);
     }
 
@@ -2602,6 +2623,32 @@ mod tests {
         assert!(!s.contains("double"));
         assert!(!s.contains("comment"));
         assert!(!s.contains("more"));
+    }
+
+    // ==================== YAML/TOML/JSON-specific tests ====================
+
+    #[test]
+    fn yaml_hash_comment_ignored() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Yaml);
+        let s = p.sanitize_line("key: value # secret");
+        assert!(s.contains("key: value"));
+        assert!(!s.contains("secret"));
+    }
+
+    #[test]
+    fn toml_hash_comment_ignored() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Toml);
+        let s = p.sanitize_line("name = \"app\" # local");
+        assert!(s.contains("name = \"app\""));
+        assert!(!s.contains("local"));
+    }
+
+    #[test]
+    fn jsonc_double_slash_comment_ignored() {
+        let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Json);
+        let s = p.sanitize_line("{\"key\": \"value\" // trailing note");
+        assert!(s.contains("{\"key\": \"value\""));
+        assert!(!s.contains("trailing note"));
     }
 
     #[test]

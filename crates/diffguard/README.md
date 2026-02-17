@@ -1,108 +1,115 @@
 # diffguard
 
-Command-line interface for the [diffguard](https://crates.io/crates/diffguard) governance linter.
+Command-line interface for diff-scoped governance linting.
 
-This is the main binary crate and I/O boundary — it handles argument parsing, configuration loading, git subprocess invocation, and file output. All domain logic is delegated to the library crates.
+This crate is the workspace I/O boundary. It owns:
 
-## Installation
+- CLI parsing (`clap`)
+- config loading/merge (`diffguard.toml`, includes, env expansion)
+- git integration (`base/head`, `--staged`, blame filtering)
+- invoking `diffguard-core`
+- writing receipts/reports and returning stable exit codes
+
+## Install
 
 ```bash
-# From crates.io
+# crates.io
 cargo install diffguard
 
-# From source
+# workspace source
 cargo install --path crates/diffguard
 ```
 
-## Commands
+## Command Surface
 
-### `check` — Main linting command
+`diffguard` commands:
 
-```bash
-diffguard check --base origin/main --head HEAD
-```
+- `check` - evaluate rules on diff-scoped lines
+- `rules` - print effective rules (toml/json)
+- `explain` - show details for one rule ID
+- `validate` - validate config regex/globs and optional strict checks
+- `init` - write starter `diffguard.toml`
+- `test` - run `rule.test_cases` from config
+- `trend` - summarize trend-history files
+- `sarif` / `junit` / `csv` - render existing receipt files
 
-Options:
-- `--base <REF>` — Base git ref for diff (default: from config or `origin/main`)
-- `--head <REF>` — Head git ref for diff (default: `HEAD`)
-- `--config <PATH>` — Config file path (default: `diffguard.toml`)
-- `--scope <SCOPE>` — `added`, `changed` (legacy alias), `modified`, or `deleted` (default: from config)
-- `--fail-on <LEVEL>` — `error`, `warn`, or `never` (default: from config)
-- `--max-findings <N>` — Limit number of findings
-- `--paths <GLOB>` — Only check matching paths (repeatable)
-- `--out <PATH>` — Write JSON receipt to file
-- `--md <PATH>` — Write Markdown summary to file
-- `--sarif <PATH>` — Write SARIF report to file
-- `--junit <PATH>` — Write JUnit XML to file
-- `--csv <PATH>` — Write CSV to file
-- `--tsv <PATH>` — Write TSV to file
-- `--github-annotations` — Emit GitHub Actions annotations to stdout
-
-### `rules` — List effective rules
+## Quick Start
 
 ```bash
-diffguard rules                    # TOML format
-diffguard rules --json             # JSON format
-diffguard rules --config my.toml   # From specific config
+diffguard init --preset minimal
+
+diffguard check \
+  --base origin/main \
+  --head HEAD \
+  --config diffguard.toml \
+  --out artifacts/diffguard/report.json \
+  --md artifacts/diffguard/comment.md \
+  --sarif artifacts/diffguard/report.sarif.json \
+  --github-annotations
 ```
 
-### `explain` — Show rule details
+Non-git input is also supported:
 
 ```bash
-diffguard explain rust.no_unwrap
+diffguard check --diff-file patch.diff
+git diff --cached | diffguard check --diff-file -
 ```
 
-### `init` — Create starter configuration
+## `check` Highlights
 
-```bash
-diffguard init                     # Interactive preset selection
-diffguard init --preset minimal    # Specific preset
-diffguard init --preset secrets    # Secret detection rules
-```
+Input selection:
 
-Available presets: `minimal`, `rust-quality`, `secrets`, `js-console`, `python-debug`
+- `--base <REF>` (repeatable) and `--head <REF>`
+- `--staged`
+- `--diff-file <PATH|->`
 
-### `sarif` / `junit` / `csv` — Render-only modes
+Policy and filtering:
 
-Convert an existing JSON receipt to other formats:
+- `--scope added|changed|modified|deleted`
+- `--fail-on error|warn|never`
+- `--max-findings <N>`
+- `--paths <GLOB>` (repeatable)
+- `--only-tags` / `--enable-tags` / `--disable-tags`
+- `--language <LANG>` (force preprocessing language)
+- `--blame-author` / `--blame-max-age-days`
 
-```bash
-diffguard sarif --receipt report.json --out report.sarif
-diffguard junit --receipt report.json --out report.xml
-diffguard csv --receipt report.json --out report.csv
-```
+Outputs:
+
+- `--out` (JSON receipt)
+- `--md`
+- `--sarif`
+- `--junit`
+- `--csv` / `--tsv`
+- `--sensor`
+- `--rule-stats`
+- `--false-positive-baseline`
+- `--write-false-positive-baseline`
+- `--trend-history` / `--trend-max-runs`
+- `--github-annotations`
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| `0` | Pass — no policy violations |
-| `1` | Tool error — I/O, parse, git, or config failure |
-| `2` | Policy fail — error-level findings (or warn-level when `fail_on: warn`) |
-| `3` | Warn-fail — warning-level findings with warn-fail policy |
+Stable exit code contract in standard mode:
 
-## GitHub Actions Example
+- `0` pass
+- `1` tool/runtime error
+- `2` policy fail
+- `3` warn-fail (when `fail_on=warn`)
 
-```yaml
-- name: Run diffguard
-  run: |
-    diffguard check \
-      --base origin/main \
-      --head HEAD \
-      --config diffguard.toml \
-      --out artifacts/report.json \
-      --md artifacts/comment.md \
-      --sarif artifacts/report.sarif \
-      --github-annotations
-```
+`--mode cockpit` changes behavior to integration-focused semantics:
 
-## Configuration
+- `0` when a receipt is successfully written
+- `1` only on catastrophic failure
 
-See `diffguard.toml.example` for full configuration options. The CLI loads configuration from:
+## Presets
 
-1. `--config` flag path (if provided)
-2. `diffguard.toml` in current directory (if exists)
-3. Built-in defaults
+`diffguard init --preset ...` supports:
+
+- `minimal`
+- `rust-quality`
+- `secrets`
+- `js-console`
+- `python-debug`
 
 ## License
 

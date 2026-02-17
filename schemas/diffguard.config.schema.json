@@ -92,9 +92,73 @@
         "never"
       ]
     },
+    "MatchMode": {
+      "oneOf": [
+        {
+          "description": "Emit a finding when at least one pattern matches (default behavior).",
+          "type": "string",
+          "const": "any"
+        },
+        {
+          "description": "Emit a finding when none of the patterns match within the scoped file.",
+          "type": "string",
+          "const": "absent"
+        }
+      ]
+    },
     "RuleConfig": {
       "type": "object",
       "properties": {
+        "context_patterns": {
+          "description": "Optional context patterns that must match near a primary match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context_window": {
+          "description": "Context search window (lines before/after the matched line).\nIf omitted and `context_patterns` are set, a default of 3 is used.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "depends_on": {
+          "description": "Rule dependencies. This rule is only evaluated in files where all dependencies matched.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "escalate_patterns": {
+          "description": "Optional patterns that escalate severity when found near a match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "escalate_to": {
+          "description": "Escalation target severity. Defaults to `error` when escalation patterns match.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Severity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "escalate_window": {
+          "description": "Escalation search window (lines before/after the matched line).\nIf omitted and `escalate_patterns` are set, a default of 0 (same line) is used.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
         "exclude_paths": {
           "description": "Exclude path globs.",
           "type": "array",
@@ -129,8 +193,25 @@
             "type": "string"
           }
         },
+        "match_mode": {
+          "description": "Matching mode:\n- `any` (default): emit when patterns match\n- `absent`: emit when patterns do not match in the scoped file",
+          "$ref": "#/$defs/MatchMode"
+        },
         "message": {
           "type": "string"
+        },
+        "multiline": {
+          "description": "Enable multi-line matching across consecutive scoped lines.",
+          "type": "boolean"
+        },
+        "multiline_window": {
+          "description": "Number of consecutive scoped lines to include in a multiline window.\nIf omitted and `multiline=true`, a default of 2 lines is used.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
         },
         "paths": {
           "description": "Include path globs. Empty means \"all\".",
