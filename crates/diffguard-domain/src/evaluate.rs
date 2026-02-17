@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use diffguard_types::{Finding, Severity, VerdictCounts};
 
+use crate::overrides::RuleOverrideMatcher;
 use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
 use crate::rules::{CompiledRule, detect_language};
 use crate::suppression::SuppressionTracker;
@@ -26,6 +27,15 @@ pub fn evaluate_lines(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
     max_findings: usize,
+) -> Evaluation {
+    evaluate_lines_with_overrides(lines, rules, max_findings, None)
+}
+
+pub fn evaluate_lines_with_overrides(
+    lines: impl IntoIterator<Item = InputLine>,
+    rules: &[CompiledRule],
+    max_findings: usize,
+    overrides: Option<&RuleOverrideMatcher>,
 ) -> Evaluation {
     let mut findings: Vec<Finding> = Vec::new();
     let mut counts = VerdictCounts::default();
@@ -84,6 +94,11 @@ pub fn evaluate_lines(
                 continue;
             }
 
+            let resolved_override = overrides.map(|m| m.resolve(&l.path, &r.id));
+            if resolved_override.is_some_and(|resolved| !resolved.enabled) {
+                continue;
+            }
+
             let candidate = match (r.ignore_comments, r.ignore_strings) {
                 (true, true) => masked_both.as_str(),
                 (true, false) => masked_comments.as_str(),
@@ -98,7 +113,11 @@ pub fn evaluate_lines(
                     continue;
                 }
 
-                bump_counts(&mut counts, r.severity);
+                let effective_severity = resolved_override
+                    .and_then(|resolved| resolved.severity)
+                    .unwrap_or(r.severity);
+
+                bump_counts(&mut counts, effective_severity);
 
                 if findings.len() < max_findings {
                     let column = byte_to_column(&l.content, m_start).map(|c| c as u32);
@@ -106,7 +125,7 @@ pub fn evaluate_lines(
 
                     findings.push(Finding {
                         rule_id: r.id.clone(),
-                        severity: r.severity,
+                        severity: effective_severity,
                         message: r.message.clone(),
                         path: l.path.clone(),
                         line: l.line,
@@ -180,6 +199,7 @@ fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
 mod tests {
     use super::*;
     use crate::rules::compile_rules;
+    use crate::{DirectoryRuleOverride, RuleOverrideMatcher};
     use diffguard_types::RuleConfig;
 
     /// Helper to create a RuleConfig for testing with default help/url
@@ -842,5 +862,82 @@ mod tests {
         assert_eq!(counts.info, 1);
         assert_eq!(counts.warn, 1);
         assert_eq!(counts.error, 1);
+    }
+
+    #[test]
+    fn directory_overrides_can_change_severity_or_disable_rule() {
+        let rules = compile_rules(&[test_rule(
+            "rust.no_unwrap",
+            Severity::Error,
+            "no unwrap",
+            vec!["rust"],
+            vec!["\\.unwrap\\("],
+            vec!["**/*.rs"],
+            vec![],
+            true,
+            true,
+        )])
+        .unwrap();
+
+        let overrides = RuleOverrideMatcher::compile(&[
+            DirectoryRuleOverride {
+                directory: "src/legacy".to_string(),
+                rule_id: "rust.no_unwrap".to_string(),
+                enabled: None,
+                severity: Some(Severity::Warn),
+                exclude_paths: vec![],
+            },
+            DirectoryRuleOverride {
+                directory: "src/generated".to_string(),
+                rule_id: "rust.no_unwrap".to_string(),
+                enabled: Some(false),
+                severity: None,
+                exclude_paths: vec![],
+            },
+        ])
+        .expect("compile overrides");
+
+        let eval = evaluate_lines_with_overrides(
+            [
+                InputLine {
+                    path: "src/new/lib.rs".to_string(),
+                    line: 1,
+                    content: "let x = y.unwrap();".to_string(),
+                },
+                InputLine {
+                    path: "src/legacy/lib.rs".to_string(),
+                    line: 1,
+                    content: "let x = y.unwrap();".to_string(),
+                },
+                InputLine {
+                    path: "src/generated/lib.rs".to_string(),
+                    line: 1,
+                    content: "let x = y.unwrap();".to_string(),
+                },
+            ],
+            &rules,
+            100,
+            Some(&overrides),
+        );
+
+        assert_eq!(eval.counts.error, 1);
+        assert_eq!(eval.counts.warn, 1);
+        assert_eq!(eval.findings.len(), 2);
+        assert!(
+            eval.findings
+                .iter()
+                .any(|f| { f.path == "src/new/lib.rs" && matches!(f.severity, Severity::Error) })
+        );
+        assert!(
+            eval.findings
+                .iter()
+                .any(|f| { f.path == "src/legacy/lib.rs" && matches!(f.severity, Severity::Warn) })
+        );
+        assert!(
+            !eval
+                .findings
+                .iter()
+                .any(|f| f.path == "src/generated/lib.rs")
+        );
     }
 }

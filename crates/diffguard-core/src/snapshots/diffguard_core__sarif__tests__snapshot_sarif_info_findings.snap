@@ -11,7 +11,7 @@ expression: json
         "driver": {
           "name": "diffguard",
           "version": "0.1.0",
-          "informationUri": "https://github.com/effortless-mgmt/diffguard",
+          "informationUri": "https://github.com/effortlessmetrics/diffguard",
           "rules": [
             {
               "id": "info.todo",
@@ -37,7 +37,7 @@ expression: json
               "physicalLocation": {
                 "artifactLocation": {
                   "uri": "src/lib.rs",
-                  "uri_base_id": "%SRCROOT%"
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
                   "startLine": 5,

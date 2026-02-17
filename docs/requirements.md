@@ -5,16 +5,19 @@ This document captures the functional and non-functional requirements for diffgu
 ## Mission Statement
 
 diffguard is a **diff-scoped governance linter** for PR automation. It applies configurable rules
-only to added or changed lines in Git diffs, enabling teams to enforce coding standards on new
-code without creating noise from legacy issues.
+to scoped lines in Git diffs (added/modified/deleted), enabling teams to enforce coding standards
+on new code or intentional removals without creating noise from legacy issues.
 
 ## Truth Layer
 
 The source of truth for diffguard is always the **unified diff** between two Git refs.
 This means:
 
-1. Only lines that appear as additions (`+`) in the diff are candidates for rule evaluation
-2. Context lines and removed lines are not evaluated
+1. Only lines selected by scope are candidates for rule evaluation:
+   - additions (`+`) for `added`
+   - modified additions (`+` that follow removals) for `changed`/`modified`
+   - removals (`-`) for `deleted`
+2. Context lines are never evaluated
 3. The tool never reads source files directly; all content comes from the diff
 
 This design ensures:
@@ -58,7 +61,7 @@ The following are explicitly **not** in scope for diffguard:
 |----|-------------|
 | 1.1 | The `check` subcommand MUST accept `--base` and `--head` refs |
 | 1.2 | The `check` subcommand MUST accept `--config` path or default to `./diffguard.toml` |
-| 1.3 | The `check` subcommand MUST support `--scope` with values `added` or `changed` |
+| 1.3 | The `check` subcommand MUST support `--scope` with values `added`, `changed`, `modified`, or `deleted` |
 | 1.4 | The `check` subcommand MUST support `--fail-on` with values `error`, `warn`, or `never` |
 | 1.5 | The `check` subcommand MUST support `--max-findings` to cap output |
 | 1.6 | The `check` subcommand MUST support `--paths` for glob-based path filtering |
@@ -99,7 +102,7 @@ The following are explicitly **not** in scope for diffguard:
 | 4.2 | Submodule changes MUST be skipped |
 | 4.3 | Renamed files MUST use the new (destination) path |
 | 4.4 | Mode-only changes (chmod) MUST be skipped |
-| 4.5 | Deleted files MUST be skipped (no negative line numbers) |
+| 4.5 | Deleted files MUST be skipped unless `scope=deleted` |
 | 4.6 | Malformed hunk headers MUST NOT crash parsing; subsequent files MUST still be processed |
 
 ### 5. Escape Hatches

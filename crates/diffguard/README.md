@@ -26,7 +26,7 @@ Options:
 - `--base <REF>` — Base git ref for diff (default: from config or `origin/main`)
 - `--head <REF>` — Head git ref for diff (default: `HEAD`)
 - `--config <PATH>` — Config file path (default: `diffguard.toml`)
-- `--scope <SCOPE>` — `added` or `changed` (default: from config)
+- `--scope <SCOPE>` — `added`, `changed` (legacy alias), `modified`, or `deleted` (default: from config)
 - `--fail-on <LEVEL>` — `error`, `warn`, or `never` (default: from config)
 - `--max-findings <N>` — Limit number of findings
 - `--paths <GLOB>` — Only check matching paths (repeatable)

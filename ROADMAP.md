@@ -27,7 +27,7 @@ Complete the remaining tasks from the comprehensive-test-coverage spec to ensure
 | 1.9 | Markdown rendering property tests | P1 | S | **complete** |
 | 1.10 | GitHub annotation format property tests | P1 | S | **complete** |
 | 1.11 | Config parse fuzz target | P1 | M | **complete** |
-| 1.12 | evaluate_lines fuzz target | P1 | M | planned |
+| 1.12 | evaluate_lines fuzz target | P1 | M | **complete** |
 | 1.13 | BDD integration tests for CLI workflows | P1 | M | **complete** |
 | 1.14 | Snapshot tests for JSON receipt output | P2 | S | **complete** |
 | 1.15 | Snapshot tests for GitHub annotation format | P2 | S | **complete** |
@@ -66,7 +66,7 @@ Improve rule flexibility and user experience.
 | 3.4 | Rule testing framework (example inputs with expected matches) | P2 | L | **complete** |
 | 3.5 | Environment variable expansion in config (`${VAR}`) | P3 | S | **complete** |
 | 3.6 | Config inheritance/composition (`includes = ["base.toml"]`) | P3 | M | **complete** |
-| 3.7 | Per-directory rule overrides (.diffguard.toml lookup) | P3 | M | in-progress |
+| 3.7 | Per-directory rule overrides (.diffguard.toml lookup) | P3 | M | **complete** |
 
 **Inline suppression format:**
 ```rust
@@ -177,8 +177,8 @@ Extend diff analysis capabilities.
 
 | Item | Description | Priority | Effort | Status |
 |------|-------------|----------|--------|--------|
-| 9.1 | `scope = "deleted"` - Flag removal of certain patterns | P2 | M | planned |
-| 9.2 | `scope = "modified"` - Changed lines only, not pure additions | P3 | S | planned |
+| 9.1 | `scope = "deleted"` - Flag removal of certain patterns | P2 | M | **complete** |
+| 9.2 | `scope = "modified"` - Changed lines only, not pure additions | P3 | S | **complete** |
 | 9.3 | Non-git diff sources (patch files, arbitrary diffs) | P3 | L | planned |
 | 9.4 | Multiple base comparison (`--base main --base release/1.0`) | P3 | L | planned |
 | 9.5 | Blame-aware filtering (by author, age) | P3 | XL | planned |
@@ -235,4 +235,4 @@ To propose additions to this roadmap:
 
 ---
 
-*Last updated: 2026-02-05*
+*Last updated: 2026-02-17*

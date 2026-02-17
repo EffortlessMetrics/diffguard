@@ -2,20 +2,23 @@
 
 Unified diff parser for the [diffguard](https://crates.io/crates/diffguard) governance linter.
 
-This crate parses `git diff` style unified diffs and extracts added/changed lines with their metadata. It is I/O-free (pure parsing) and fuzz-tested to ensure it never panics on malformed input.
+This crate parses `git diff` style unified diffs and extracts scoped lines with their metadata. It is I/O-free (pure parsing) and fuzz-tested to ensure it never panics on malformed input.
 
 ## Features
 
 - Parse unified diff format from `git diff` output
-- Extract added and modified lines with line numbers and file paths
-- Filter by scope: `Added` (new lines only) or `Changed` (new + modified)
+- Extract added/modified/deleted lines with line numbers and file paths
+- Filter by scope:
+  - `Added` (all added lines)
+  - `Changed` / `Modified` (only added lines that directly follow removals)
+  - `Deleted` (removed lines)
 - Detect and handle special cases:
   - Binary files (skipped)
   - Submodule changes (skipped)
   - File renames (tracked correctly)
   - Mode-only changes (no content lines)
   - Missing newline at EOF
-  - Deleted files (skipped for "added" scope)
+  - Deleted files (skipped unless scope is `Deleted`)
 - **Never panics** — malformed input returns errors
 
 ## Usage
@@ -36,11 +39,12 @@ index 1234567..abcdefg 100644
 "#;
 
 // Parse with "Added" scope - only truly new lines
-let lines = parse_unified_diff(diff_text, Scope::Added)?;
+let (lines, stats) = parse_unified_diff(diff_text, Scope::Added)?;
 
 for line in &lines {
-    println!("{}:{} - {}", line.path, line.line_no, line.content);
+    println!("{}:{} - {}", line.path, line.line, line.content);
 }
+println!("scanned files={}, lines={}", stats.files, stats.lines);
 ```
 
 ## API
@@ -48,7 +52,7 @@ for line in &lines {
 ### Main Function
 
 ```rust
-pub fn parse_unified_diff(input: &str, scope: Scope) -> Result<Vec<DiffLine>>
+pub fn parse_unified_diff(input: &str, scope: Scope) -> Result<(Vec<DiffLine>, DiffStats)>
 ```
 
 ### Output Types
@@ -56,20 +60,20 @@ pub fn parse_unified_diff(input: &str, scope: Scope) -> Result<Vec<DiffLine>>
 ```rust
 pub struct DiffLine {
     pub path: String,       // File path (e.g., "src/main.rs")
-    pub line_no: usize,     // Line number in new file
+    pub line: u32,          // Line number in old/new file depending on scope
     pub content: String,    // Line content (without +/- prefix)
-    pub kind: ChangeKind,   // Added or Changed
+    pub kind: ChangeKind,   // Added, Changed, or Deleted
 }
 
 pub enum ChangeKind {
     Added,    // New line (+ in diff)
-    Changed,  // Modified context (when scope=Changed)
+    Changed,  // Added line that replaces removed content
+    Deleted,  // Removed line (- in diff)
 }
 
 pub struct DiffStats {
-    pub files_changed: usize,
-    pub lines_added: usize,
-    pub lines_removed: usize,
+    pub files: u32,
+    pub lines: u32,
 }
 ```
 

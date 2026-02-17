@@ -1,6 +1,6 @@
 #![allow(clippy::collapsible_if)]
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -15,12 +15,13 @@ use diffguard_core::{
     CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt, render_junit_for_receipt,
     render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
 };
-use diffguard_domain::compile_rules;
+use diffguard_diff::parse_unified_diff;
+use diffguard_domain::{DirectoryRuleOverride, compile_rules};
 use diffguard_types::{
     Artifact, CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_UNAVAILABLE, CHECK_ID_INTERNAL,
-    CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta, FailOn,
-    REASON_MISSING_BASE, REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, RuleConfig, Scope, ToolMeta,
-    Verdict, VerdictCounts, VerdictStatus,
+    CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta,
+    DirectoryOverrideConfig, FailOn, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR,
+    RuleConfig, Scope, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
 };
 
 mod config_loader;
@@ -47,7 +48,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Evaluate rules against added/changed lines in a git diff.
+    /// Evaluate rules against diff-scoped lines in a git diff.
     Check(Box<CheckArgs>),
 
     /// Print the effective rules (built-in + optional config merge).
@@ -392,6 +393,8 @@ enum Mode {
 enum ScopeArg {
     Added,
     Changed,
+    Modified,
+    Deleted,
 }
 
 impl From<ScopeArg> for Scope {
@@ -399,6 +402,8 @@ impl From<ScopeArg> for Scope {
         match v {
             ScopeArg::Added => Scope::Added,
             ScopeArg::Changed => Scope::Changed,
+            ScopeArg::Modified => Scope::Modified,
+            ScopeArg::Deleted => Scope::Deleted,
         }
     }
 }
@@ -966,6 +971,106 @@ fn build_rule_metadata(cfg: &ConfigFile) -> HashMap<String, RuleMetadata> {
         .collect()
 }
 
+fn load_directory_overrides_for_diff(
+    diff_text: &str,
+    scope: Scope,
+) -> Result<Vec<DirectoryRuleOverride>> {
+    let (diff_lines, _) =
+        parse_unified_diff(diff_text, scope).context("parse diff for directory overrides")?;
+
+    let mut candidates = BTreeSet::<PathBuf>::new();
+    for line in diff_lines {
+        collect_override_candidates_for_path(&line.path, &mut candidates);
+    }
+
+    let mut candidate_paths: Vec<PathBuf> = candidates.into_iter().collect();
+    candidate_paths.sort_by(|a, b| {
+        let a_parent = a.parent().unwrap_or_else(|| Path::new(""));
+        let b_parent = b.parent().unwrap_or_else(|| Path::new(""));
+        directory_depth(a_parent)
+            .cmp(&directory_depth(b_parent))
+            .then_with(|| a.to_string_lossy().cmp(&b.to_string_lossy()))
+    });
+
+    let mut overrides = Vec::new();
+
+    for override_path in candidate_paths {
+        if !override_path.is_file() {
+            continue;
+        }
+
+        let text = std::fs::read_to_string(&override_path).with_context(|| {
+            format!("read directory override config {}", override_path.display())
+        })?;
+        let expanded = expand_env_vars(&text).with_context(|| {
+            format!(
+                "expand env vars in directory override config {}",
+                override_path.display()
+            )
+        })?;
+
+        let parsed: DirectoryOverrideConfig = toml::from_str(&expanded).with_context(|| {
+            format!(
+                "parse directory override config {}",
+                override_path.display()
+            )
+        })?;
+
+        let directory =
+            normalize_override_directory(override_path.parent().unwrap_or_else(|| Path::new("")));
+
+        for rule in parsed.rules {
+            overrides.push(DirectoryRuleOverride {
+                directory: directory.clone(),
+                rule_id: rule.id,
+                enabled: rule.enabled,
+                severity: rule.severity,
+                exclude_paths: rule.exclude_paths,
+            });
+        }
+    }
+
+    Ok(overrides)
+}
+
+fn collect_override_candidates_for_path(file_path: &str, out: &mut BTreeSet<PathBuf>) {
+    let path = Path::new(file_path);
+    let mut current = path.parent();
+
+    if current.is_none() {
+        out.insert(PathBuf::from(".diffguard.toml"));
+        return;
+    }
+
+    while let Some(dir) = current {
+        let mut candidate = PathBuf::new();
+        if !dir.as_os_str().is_empty() {
+            candidate.push(dir);
+        }
+        candidate.push(".diffguard.toml");
+        out.insert(candidate);
+
+        if dir.as_os_str().is_empty() {
+            break;
+        }
+        current = dir.parent();
+    }
+}
+
+fn normalize_override_directory(path: &Path) -> String {
+    let raw = path.to_string_lossy().replace('\\', "/");
+    let trimmed = raw.trim_matches('/');
+    if trimmed.is_empty() || trimmed == "." {
+        String::new()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn directory_depth(path: &Path) -> usize {
+    path.components().count()
+}
+
 fn maybe_force_sensor_json_error() -> Option<serde_json::Error> {
     if cfg!(test) && std::env::var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR").is_ok() {
         Some(<serde_json::Error as serde::ser::Error>::custom(
@@ -1098,10 +1203,7 @@ fn cmd_check(mut args: CheckArgs) -> Result<i32> {
                                 return Ok(0);
                             }
                         }
-                        None => {
-                            // Unexpected runtime error → fail receipt with tool_error
-                            let detail = err.to_string();
-                            let fail_receipt = build_tool_error_receipt(&args, &detail);
+                    }
 
                     // Could not write any receipt - catastrophic failure
                     eprintln!("diffguard: catastrophic failure: {err}");
@@ -1399,6 +1501,13 @@ fn cmd_check_inner(
     };
 
     debug!("Diff text length: {} bytes", diff_text.len());
+    let directory_overrides = load_directory_overrides_for_diff(&diff_text, scope)?;
+    if !directory_overrides.is_empty() {
+        info!(
+            "Loaded {} per-directory override(s)",
+            directory_overrides.len()
+        );
+    }
 
     let plan = CheckPlan {
         base: base.clone(),
@@ -1411,6 +1520,7 @@ fn cmd_check_inner(
         only_tags: args.only_tags.clone(),
         enable_tags: args.enable_tags.clone(),
         disable_tags: args.disable_tags.clone(),
+        directory_overrides,
     };
 
     let run = run_check(&plan, &cfg, &diff_text)?;
@@ -2028,16 +2138,23 @@ mod tests {
         String::from_utf8_lossy(&output.stdout).trim().to_string()
     }
 
-    fn with_current_dir<F, R>(dir: &std::path::Path, f: F) -> R
+    fn with_current_dir_unlocked<F, R>(dir: &std::path::Path, f: F) -> R
     where
         F: FnOnce() -> R,
     {
-        let _guard = ENV_LOCK.lock().unwrap();
         let prev = std::env::current_dir().expect("current dir");
         std::env::set_current_dir(dir).expect("set current dir");
         let out = f();
         std::env::set_current_dir(prev).expect("restore current dir");
         out
+    }
+
+    fn with_current_dir<F, R>(dir: &std::path::Path, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        let _guard = ENV_LOCK.lock().unwrap();
+        with_current_dir_unlocked(dir, f)
     }
 
     fn setup_repo_with_match() -> (TempDir, String, String, PathBuf) {
@@ -2119,11 +2236,74 @@ paths = ["**/*.rs"]
     }
 
     #[test]
+    fn collect_override_candidates_walks_ancestor_directories() {
+        let mut out = BTreeSet::new();
+        collect_override_candidates_for_path("src/deep/module/lib.rs", &mut out);
+
+        assert!(out.contains(&PathBuf::from(".diffguard.toml")));
+        assert!(out.contains(&PathBuf::from("src/.diffguard.toml")));
+        assert!(out.contains(&PathBuf::from("src/deep/.diffguard.toml")));
+        assert!(out.contains(&PathBuf::from("src/deep/module/.diffguard.toml")));
+    }
+
+    #[test]
+    fn load_directory_overrides_for_diff_loads_root_then_deeper_overrides() {
+        let dir = TempDir::new().expect("temp");
+        std::fs::create_dir_all(dir.path().join("src/legacy")).expect("mkdir legacy");
+
+        std::fs::write(
+            dir.path().join(".diffguard.toml"),
+            r#"
+[[rule]]
+id = "rust.no_unwrap"
+enabled = false
+"#,
+        )
+        .expect("write root override");
+
+        std::fs::write(
+            dir.path().join("src/legacy/.diffguard.toml"),
+            r#"
+[[rule]]
+id = "rust.no_unwrap"
+enabled = true
+severity = "warn"
+"#,
+        )
+        .expect("write nested override");
+
+        let diff = r#"
+diff --git a/src/legacy/lib.rs b/src/legacy/lib.rs
+--- a/src/legacy/lib.rs
++++ b/src/legacy/lib.rs
+@@ -0,0 +1 @@
++let x = y.unwrap();
+"#;
+
+        let overrides = with_current_dir(dir.path(), || {
+            load_directory_overrides_for_diff(diff, Scope::Added).expect("load overrides")
+        });
+
+        assert_eq!(overrides.len(), 2);
+        assert_eq!(overrides[0].directory, "");
+        assert_eq!(overrides[0].rule_id, "rust.no_unwrap");
+        assert_eq!(overrides[0].enabled, Some(false));
+
+        assert_eq!(overrides[1].directory, "src/legacy");
+        assert_eq!(overrides[1].enabled, Some(true));
+        assert_eq!(overrides[1].severity, Some(Severity::Warn));
+    }
+
+    #[test]
     fn scope_arg_converts_to_scope() {
         let added: Scope = ScopeArg::Added.into();
         let changed: Scope = ScopeArg::Changed.into();
+        let modified: Scope = ScopeArg::Modified.into();
+        let deleted: Scope = ScopeArg::Deleted.into();
         assert!(matches!(added, Scope::Added));
         assert!(matches!(changed, Scope::Changed));
+        assert!(matches!(modified, Scope::Modified));
+        assert!(matches!(deleted, Scope::Deleted));
     }
 
     #[test]
@@ -3239,7 +3419,7 @@ should_match = true
         args.config = Some(config_path);
         args.out = Some(out_path.clone());
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 0);
         assert!(out_path.exists());
 
@@ -3300,7 +3480,7 @@ should_match = true
         args.sensor = Some(sensor_path.clone());
         args.out = Some(out_path);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 0);
         assert!(sensor_path.exists());
     }
@@ -3602,7 +3782,7 @@ patterns = ["alpha"]
         args.sensor = Some(sensor_dir);
         args.out = Some(out_dir);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 1);
     }
 
@@ -3621,7 +3801,7 @@ patterns = ["alpha"]
         args.out = Some(out_file.clone());
         args.config = Some(missing_config);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 0);
         assert!(out_file.exists());
     }
@@ -3643,7 +3823,7 @@ patterns = ["alpha"]
         args.sensor = Some(sensor_path);
         args.out = Some(out_file.clone());
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         unsafe {
             std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
         }
@@ -3669,7 +3849,7 @@ patterns = ["alpha"]
         args.out = Some(out_file.clone());
         args.config = Some(missing_config);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         unsafe {
             std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
         }
@@ -3689,7 +3869,7 @@ patterns = ["alpha"]
         args.out = Some(out_file.clone());
         args.config = Some(missing_config);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 0);
         assert!(out_file.exists());
     }

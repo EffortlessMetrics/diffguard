@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Per-directory rule overrides via `.diffguard.toml` files:
+  - Rule disable/enable by subtree (`enabled`)
+  - Severity overrides by subtree (`severity`)
+  - Additional subtree-scoped excludes (`exclude_paths`)
+- Dedicated `evaluate_lines` fuzz target (`fuzz/fuzz_targets/evaluate_lines.rs`)
+- Scope expansion for diff analysis:
+  - `scope = "deleted"` to evaluate removed lines
+  - `scope = "modified"` for changed-only additions (with `changed` retained as compatibility alias)
+
+## [0.2.0] - 2026-02-16
+
+### Added
+
 - **Sensor report** (`sensor.report.v1`) - R2 Library Contract entry point (`run_sensor()`) for Cockpit/BusyBox integration, with full JSON schema
 - **SARIF 2.1.0 output** (`--sarif` flag, `diffguard sarif` subcommand) for integration with GitHub Code Scanning and other SARIF-compatible tools
 - **Inline suppression directives**:
@@ -139,5 +152,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `diffguard-core`: Orchestration layer
   - `diffguard`: CLI binary with I/O
 
-[Unreleased]: https://github.com/effortless-mgmt/diffguard/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/effortless-mgmt/diffguard/releases/tag/v0.1.0
+[Unreleased]: https://github.com/effortlessmetrics/diffguard/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/effortlessmetrics/diffguard/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/effortlessmetrics/diffguard/releases/tag/v0.1.0

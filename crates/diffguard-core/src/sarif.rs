@@ -15,7 +15,7 @@ const SARIF_SCHEMA: &str = "https://raw.githubusercontent.com/oasis-tcs/sarif-sp
 const SARIF_VERSION: &str = "2.1.0";
 
 /// GitHub repository URL for diffguard
-const DIFFGUARD_INFO_URI: &str = "https://github.com/effortless-mgmt/diffguard";
+const DIFFGUARD_INFO_URI: &str = "https://github.com/effortlessmetrics/diffguard";
 
 /// Root SARIF document structure.
 #[derive(Debug, Clone, Serialize)]

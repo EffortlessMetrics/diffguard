@@ -1,6 +1,6 @@
 //! Unified diff parsing.
 //!
-//! This crate parses `git diff` style unified diffs and extracts added/changed lines.
+//! This crate parses `git diff` style unified diffs and extracts scoped lines.
 
 mod unified;
 

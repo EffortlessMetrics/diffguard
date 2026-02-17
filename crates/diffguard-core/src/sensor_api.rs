@@ -129,6 +129,7 @@ mod tests {
             only_tags: vec![],
             enable_tags: vec![],
             disable_tags: vec![],
+            directory_overrides: vec![],
         }
     }
 

@@ -6,6 +6,7 @@ use diffguard_types::Scope;
 pub enum ChangeKind {
     Added,
     Changed,
+    Deleted,
 }
 
 // ============================================================================
@@ -111,16 +112,18 @@ pub enum DiffParseError {
     MalformedHunkHeader(String),
 }
 
-/// Parse a unified diff (git-style) and return added/changed lines in diff order.
+/// Parse a unified diff (git-style) and return scoped lines in diff order.
 ///
 /// `scope` controls whether we return:
 /// - `Scope::Added`: all added lines
 /// - `Scope::Changed`: only added lines that directly follow at least one removed line in the same hunk
+/// - `Scope::Modified`: alias of `Scope::Changed`
+/// - `Scope::Deleted`: removed lines
 ///
 /// Special cases handled:
 /// - Binary files: skipped (no lines extracted)
 /// - Submodule changes: skipped (no lines extracted)
-/// - Deleted files: skipped (no lines extracted)
+/// - Deleted files: skipped unless `scope = deleted`
 /// - Mode-only changes: skipped (no lines extracted)
 /// - Renamed files: uses the new (destination) path
 /// - Malformed content: continues processing subsequent files
@@ -131,10 +134,12 @@ pub fn parse_unified_diff(
     let mut out: Vec<DiffLine> = Vec::new();
     let mut current_path: Option<String> = None;
 
+    let mut old_line_no: u32 = 0;
     let mut new_line_no: u32 = 0;
     let mut in_hunk = false;
 
-    // For "changed" scope: we treat '+' lines as changed if a '-' was seen since the last context line.
+    // For "changed"/"modified" scopes: treat '+' lines as changed if a '-' was seen
+    // since the last context line.
     let mut pending_removed = false;
 
     // Track special file status for the current file
@@ -170,7 +175,7 @@ pub fn parse_unified_diff(
 
         // Detect deleted files (Requirements 4.5)
         if is_deleted_file(raw) {
-            skip_current_file = true;
+            skip_current_file = !matches!(scope, Scope::Deleted);
             continue;
         }
 
@@ -212,6 +217,7 @@ pub fn parse_unified_diff(
             // Try to parse the hunk header, but continue processing on error (Requirements 4.6)
             match parse_hunk_header(raw) {
                 Ok(hdr) => {
+                    old_line_no = hdr.old_start;
                     new_line_no = hdr.new_start;
                     in_hunk = true;
                     pending_removed = false;
@@ -259,7 +265,8 @@ pub fn parse_unified_diff(
                 let is_changed = pending_removed;
                 let include = match scope {
                     Scope::Added => true,
-                    Scope::Changed => is_changed,
+                    Scope::Changed | Scope::Modified => is_changed,
+                    Scope::Deleted => false,
                 };
 
                 if include {
@@ -287,11 +294,21 @@ pub fn parse_unified_diff(
                 }
 
                 // Removed line.
+                if matches!(scope, Scope::Deleted) {
+                    out.push(DiffLine {
+                        path: path.to_string(),
+                        line: old_line_no,
+                        content: content.to_string(),
+                        kind: ChangeKind::Deleted,
+                    });
+                }
                 pending_removed = true;
+                old_line_no = old_line_no.saturating_add(1);
             }
             Some(b' ') => {
                 // Context line.
                 pending_removed = false;
+                old_line_no = old_line_no.saturating_add(1);
                 new_line_no = new_line_no.saturating_add(1);
             }
             _ => {}
@@ -313,6 +330,7 @@ pub fn parse_unified_diff(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct HunkHeader {
+    old_start: u32,
     new_start: u32,
 }
 
@@ -320,21 +338,36 @@ fn parse_hunk_header(line: &str) -> Result<HunkHeader, DiffParseError> {
     // Formats:
     // @@ -1,2 +3,4 @@
     // @@ -1 +3 @@
+    let minus = line
+        .split_whitespace()
+        .nth(1)
+        .ok_or_else(|| DiffParseError::MalformedHunkHeader(line.to_string()))?;
     let plus = line
         .split_whitespace()
         .nth(2)
         .ok_or_else(|| DiffParseError::MalformedHunkHeader(line.to_string()))?;
 
-    // plus is like "+3,4" or "+3"
-    let plus = plus
-        .strip_prefix('+')
-        .ok_or_else(|| DiffParseError::MalformedHunkHeader(line.to_string()))?;
-    let start_str = plus.split(',').next().unwrap_or(plus);
-    let new_start: u32 = start_str
-        .parse()
-        .map_err(|_| DiffParseError::MalformedHunkHeader(line.to_string()))?;
+    let old_start = parse_hunk_range_start(minus, '-', line)?;
+    let new_start = parse_hunk_range_start(plus, '+', line)?;
 
-    Ok(HunkHeader { new_start })
+    Ok(HunkHeader {
+        old_start,
+        new_start,
+    })
+}
+
+fn parse_hunk_range_start(
+    token: &str,
+    expected_prefix: char,
+    full_line: &str,
+) -> Result<u32, DiffParseError> {
+    let range = token
+        .strip_prefix(expected_prefix)
+        .ok_or_else(|| DiffParseError::MalformedHunkHeader(full_line.to_string()))?;
+    let start_str = range.split(',').next().unwrap_or(range);
+    start_str
+        .parse()
+        .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))
 }
 
 fn parse_diff_git_line(line: &str) -> Option<String> {
@@ -562,6 +595,25 @@ diff --git a/src/lib.rs b/src/lib.rs
     }
 
     #[test]
+    fn modified_scope_behaves_like_changed_scope() {
+        let diff = r#"
+
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,1 @@
+-fn a() { 1 }
++fn a() { 2 }
+"#;
+
+        let (changed, changed_stats) = parse_unified_diff(diff, Scope::Changed).unwrap();
+        let (modified, modified_stats) = parse_unified_diff(diff, Scope::Modified).unwrap();
+
+        assert_eq!(changed, modified);
+        assert_eq!(changed_stats, modified_stats);
+    }
+
+    #[test]
     fn does_not_treat_pure_additions_as_changed() {
         let diff = r#"
 
@@ -574,6 +626,35 @@ diff --git a/a.txt b/a.txt
 
         let (changed, _) = parse_unified_diff(diff, Scope::Changed).unwrap();
         assert_eq!(changed.len(), 0);
+    }
+
+    #[test]
+    fn parses_deleted_lines_when_requested() {
+        let diff = r#"
+
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,3 +1,2 @@
+ fn a() {}
+-fn b() {}
+-fn c() {}
++fn c() { println!("updated"); }
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Deleted).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 2);
+
+        assert_eq!(lines[0].path, "src/lib.rs");
+        assert_eq!(lines[0].line, 2);
+        assert_eq!(lines[0].content, "fn b() {}");
+        assert_eq!(lines[0].kind, ChangeKind::Deleted);
+
+        assert_eq!(lines[1].path, "src/lib.rs");
+        assert_eq!(lines[1].line, 3);
+        assert_eq!(lines[1].content, "fn c() {}");
+        assert_eq!(lines[1].kind, ChangeKind::Deleted);
     }
 
     #[test]
@@ -976,8 +1057,8 @@ diff --git a/src/main.rs b/src/main.rs
     }
 
     #[test]
-    fn skips_deleted_files() {
-        // Deleted file should be skipped, but subsequent file should be parsed
+    fn skips_deleted_files_for_added_scope() {
+        // Deleted file should be skipped for Added scope, but subsequent file should be parsed
         let diff = r#"
 diff --git a/old_file.rs b/old_file.rs
 deleted file mode 100644
@@ -1001,6 +1082,32 @@ new file mode 100644
         assert_eq!(stats.lines, 1);
         assert_eq!(lines[0].path, "new_file.rs");
         assert_eq!(lines[0].content, "fn new() {}");
+    }
+
+    #[test]
+    fn deleted_scope_includes_deleted_files() {
+        let diff = r#"
+diff --git a/old_file.rs b/old_file.rs
+deleted file mode 100644
+index abc1234..0000000
+--- a/old_file.rs
++++ /dev/null
+@@ -1,3 +0,0 @@
+-fn old() {}
+-fn deprecated() {}
+-fn removed() {}
+"#;
+
+        let (lines, stats) = parse_unified_diff(diff, Scope::Deleted).unwrap();
+        assert_eq!(stats.files, 1);
+        assert_eq!(stats.lines, 3);
+        assert_eq!(lines[0].line, 1);
+        assert_eq!(lines[1].line, 2);
+        assert_eq!(lines[2].line, 3);
+        assert_eq!(lines[0].content, "fn old() {}");
+        assert_eq!(lines[1].content, "fn deprecated() {}");
+        assert_eq!(lines[2].content, "fn removed() {}");
+        assert!(lines.iter().all(|l| l.kind == ChangeKind::Deleted));
     }
 
     #[test]

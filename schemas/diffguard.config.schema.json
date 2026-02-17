@@ -1,10 +1,11 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ConfigFile",
   "description": "The on-disk configuration file.",
   "type": "object",
   "properties": {
     "defaults": {
+      "$ref": "#/$defs/Defaults",
       "default": {
         "base": "origin/main",
         "diff_context": 0,
@@ -12,29 +13,24 @@
         "head": "HEAD",
         "max_findings": 200,
         "scope": "added"
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/Defaults"
-        }
-      ]
+      }
     },
     "includes": {
-      "description": "Include other config files. Paths are relative to this config file's directory. Rules are merged: later definitions override earlier ones by rule ID.",
+      "description": "Include other config files. Paths are relative to this config file's directory.\nRules are merged: later definitions override earlier ones by rule ID.",
       "type": "array",
       "items": {
         "type": "string"
       }
     },
     "rule": {
-      "default": [],
       "type": "array",
+      "default": [],
       "items": {
-        "$ref": "#/definitions/RuleConfig"
+        "$ref": "#/$defs/RuleConfig"
       }
     }
   },
-  "definitions": {
+  "$defs": {
     "Defaults": {
       "type": "object",
       "properties": {
@@ -50,12 +46,12 @@
             "null"
           ],
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "fail_on": {
           "anyOf": [
             {
-              "$ref": "#/definitions/FailOn"
+              "$ref": "#/$defs/FailOn"
             },
             {
               "type": "null"
@@ -74,12 +70,12 @@
             "null"
           ],
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "scope": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Scope"
+              "$ref": "#/$defs/Scope"
             },
             {
               "type": "null"
@@ -98,17 +94,11 @@
     },
     "RuleConfig": {
       "type": "object",
-      "required": [
-        "id",
-        "message",
-        "patterns",
-        "severity"
-      ],
       "properties": {
         "exclude_paths": {
           "description": "Exclude path globs.",
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -124,17 +114,17 @@
           "type": "string"
         },
         "ignore_comments": {
-          "default": false,
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         },
         "ignore_strings": {
-          "default": false,
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         },
         "languages": {
           "description": "Optional language tags (e.g. \"rust\"). Empty means \"all\".",
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -144,8 +134,8 @@
         },
         "paths": {
           "description": "Include path globs. Empty means \"all\".",
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -158,7 +148,7 @@
           }
         },
         "severity": {
-          "$ref": "#/definitions/Severity"
+          "$ref": "#/$defs/Severity"
         },
         "tags": {
           "description": "Tags for grouping/filtering rules (e.g., \"debug\", \"security\", \"style\").",
@@ -171,7 +161,7 @@
           "description": "Test cases for validating this rule.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/RuleTestCase"
+            "$ref": "#/$defs/RuleTestCase"
           }
         },
         "url": {
@@ -181,15 +171,17 @@
             "null"
           ]
         }
-      }
+      },
+      "required": [
+        "id",
+        "severity",
+        "message",
+        "patterns"
+      ]
     },
     "RuleTestCase": {
       "description": "A test case for validating a rule's behavior.",
       "type": "object",
-      "required": [
-        "input",
-        "should_match"
-      ],
       "properties": {
         "description": {
           "description": "Optional: description of what this test case validates.",
@@ -227,13 +219,19 @@
           "description": "Whether the rule should match this input.",
           "type": "boolean"
         }
-      }
+      },
+      "required": [
+        "input",
+        "should_match"
+      ]
     },
     "Scope": {
       "type": "string",
       "enum": [
         "added",
-        "changed"
+        "changed",
+        "modified",
+        "deleted"
       ]
     },
     "Severity": {

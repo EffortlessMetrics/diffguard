@@ -2,10 +2,10 @@
 
 [![Crates.io](https://img.shields.io/crates/v/diffguard.svg)](https://crates.io/crates/diffguard)
 [![Documentation](https://docs.rs/diffguard/badge.svg)](https://docs.rs/diffguard)
-[![CI](https://github.com/effortless-mgmt/diffguard/actions/workflows/ci.yml/badge.svg)](https://github.com/effortless-mgmt/diffguard/actions/workflows/ci.yml)
+[![CI](https://github.com/effortlessmetrics/diffguard/actions/workflows/ci.yml/badge.svg)](https://github.com/effortlessmetrics/diffguard/actions/workflows/ci.yml)
 [![License](https://img.shields.io/crates/l/diffguard.svg)](LICENSE-MIT)
 
-A diff-scoped governance linter: **rules applied to added/changed lines** in a Git diff.
+A diff-scoped governance linter: **rules applied to scoped lines** in a Git diff.
 
 `diffguard` is designed for modern PR automation:
 
@@ -21,7 +21,7 @@ A diff-scoped governance linter: **rules applied to added/changed lines** in a G
 cargo install diffguard
 
 # From source
-git clone https://github.com/effortless-mgmt/diffguard
+git clone https://github.com/effortlessmetrics/diffguard
 cd diffguard
 cargo install --path crates/diffguard
 ```
@@ -54,7 +54,7 @@ Create `diffguard.toml`:
 ```toml
 [defaults]
 base = "origin/main"
-scope = "added"       # added|changed
+scope = "added"       # added|changed|modified|deleted (changed kept for compatibility)
 fail_on = "error"     # error|warn|never
 max_findings = 200
 diff_context = 0
@@ -101,6 +101,24 @@ severity = "error"
 message = "Project-specific check"
 patterns = ["FIXME"]
 ```
+
+### Per-Directory Overrides
+
+Place `.diffguard.toml` in subdirectories to override rule behavior for that
+directory subtree:
+
+```toml
+[[rule]]
+id = "rust.no_unwrap"
+enabled = false
+```
+
+Supported override fields:
+- `enabled` (bool): enable/disable a rule for that subtree
+- `severity` (`info|warn|error`): override severity by directory
+- `exclude_paths` (`[]string`): extra excludes scoped to that directory
+
+Deeper directories override parent directories.
 
 ### Inline Suppressions
 
@@ -225,7 +243,7 @@ cargo +nightly fuzz run rule_matcher         # Rule evaluation
 
 ## Minimum Supported Rust Version (MSRV)
 
-Rust 1.75 or later.
+Rust 1.92 or later.
 
 ## License
 

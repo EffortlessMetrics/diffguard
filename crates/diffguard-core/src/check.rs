@@ -3,7 +3,10 @@ use std::path::Path;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 
 use diffguard_diff::parse_unified_diff;
-use diffguard_domain::{InputLine, compile_rules, evaluate_lines};
+use diffguard_domain::{
+    DirectoryRuleOverride, InputLine, RuleOverrideMatcher, compile_rules,
+    evaluate_lines_with_overrides,
+};
 use diffguard_types::{
     CheckReceipt, DiffMeta, FailOn, Finding, REASON_TRUNCATED, ToolMeta, Verdict, VerdictCounts,
     VerdictStatus,
@@ -27,6 +30,8 @@ pub struct CheckPlan {
     /// Exclude rules that have any of these tags.
     /// Empty means no filtering by this criterion.
     pub disable_tags: Vec<String>,
+    /// Per-directory rule overrides loaded from `.diffguard.toml` files.
+    pub directory_overrides: Vec<DirectoryRuleOverride>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,6 +77,7 @@ pub fn run_check(
 
     let rules = compile_rules(&filtered_rules)?;
     let rules_evaluated = filtered_rules.len();
+    let override_matcher = RuleOverrideMatcher::compile(&plan.directory_overrides)?;
 
     let lines = diff_lines.into_iter().map(|l| InputLine {
         path: l.path,
@@ -79,7 +85,13 @@ pub fn run_check(
         content: l.content,
     });
 
-    let evaluation = evaluate_lines(lines, &rules, plan.max_findings);
+    let evaluation = evaluate_lines_with_overrides(lines, &rules, plan.max_findings, {
+        if plan.directory_overrides.is_empty() {
+            None
+        } else {
+            Some(&override_matcher)
+        }
+    });
 
     let verdict_status = if evaluation.counts.error > 0 {
         VerdictStatus::Fail
@@ -268,6 +280,7 @@ mod tests {
             only_tags: vec![],
             enable_tags: vec![],
             disable_tags: vec![],
+            directory_overrides: vec![],
         }
     }
 

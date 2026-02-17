@@ -13,16 +13,6 @@ const RENDERABLE_META_REASONS: &[&str] = &[
     REASON_TOOL_ERROR,
 ];
 
-/// Reasons that are meaningful to render in markdown output.
-/// Only meta conditions (truncation, skip reasons, tool errors) should appear.
-const RENDERABLE_META_REASONS: &[&str] = &[
-    REASON_TRUNCATED,
-    REASON_MISSING_BASE,
-    REASON_NO_DIFF_INPUT,
-    REASON_GIT_UNAVAILABLE,
-    REASON_TOOL_ERROR,
-];
-
 pub fn render_markdown_for_receipt(receipt: &CheckReceipt) -> String {
     let status = match receipt.verdict.status {
         VerdictStatus::Pass => "PASS",

@@ -38,6 +38,12 @@ test = false
 doc = false
 
 [[bin]]
+name = "evaluate_lines"
+path = "fuzz_targets/evaluate_lines.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "config_parser"
 path = "fuzz_targets/config_parser.rs"
 test = false

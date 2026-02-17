@@ -1,11 +1,17 @@
 [package]
 name = "diffguard-testkit"
 version.workspace = true
+description = "Shared test utilities for diffguard workspace"
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
 publish = false
-description = "Shared test utilities for diffguard workspace"
 
 [dependencies]
 proptest.workspace = true

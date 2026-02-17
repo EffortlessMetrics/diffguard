@@ -68,7 +68,7 @@ fn generate_minimal() -> String {
 
 [defaults]
 base = "origin/main"
-scope = "added"         # added | changed
+scope = "added"         # added | changed | modified | deleted (changed kept for compatibility)
 fail_on = "error"       # error | warn | never
 max_findings = 200
 diff_context = 0

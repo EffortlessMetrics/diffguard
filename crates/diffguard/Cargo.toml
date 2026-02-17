@@ -48,9 +48,10 @@ globset.workspace = true
 
 # local
 
-diffguard-types = { version = "0.1", path = "../diffguard-types" }
-diffguard-core = { version = "0.1", path = "../diffguard-core" }
-diffguard-domain = { version = "0.1", path = "../diffguard-domain" }
+diffguard-types = { version = "0.2", path = "../diffguard-types" }
+diffguard-core = { version = "0.2", path = "../diffguard-core" }
+diffguard-domain = { version = "0.2", path = "../diffguard-domain" }
+diffguard-diff = { version = "0.2", path = "../diffguard-diff" }
 
 [dev-dependencies]
 assert_cmd.workspace = true

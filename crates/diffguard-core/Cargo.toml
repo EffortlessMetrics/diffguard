@@ -38,9 +38,9 @@ hex = "0.4"
 
 # local crates
 
-diffguard-types = { version = "0.1", path = "../diffguard-types" }
-diffguard-diff = { version = "0.1", path = "../diffguard-diff" }
-diffguard-domain = { version = "0.1", path = "../diffguard-domain" }
+diffguard-types = { version = "0.2", path = "../diffguard-types" }
+diffguard-diff = { version = "0.2", path = "../diffguard-diff" }
+diffguard-domain = { version = "0.2", path = "../diffguard-domain" }
 
 [dev-dependencies]
 insta.workspace = true

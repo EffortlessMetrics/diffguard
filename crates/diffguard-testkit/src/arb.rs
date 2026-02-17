@@ -57,7 +57,12 @@ pub fn arb_severity() -> impl Strategy<Value = Severity> {
 
 /// Strategy for generating Scope values.
 pub fn arb_scope() -> impl Strategy<Value = Scope> {
-    prop_oneof![Just(Scope::Added), Just(Scope::Changed),]
+    prop_oneof![
+        Just(Scope::Added),
+        Just(Scope::Changed),
+        Just(Scope::Modified),
+        Just(Scope::Deleted),
+    ]
 }
 
 /// Strategy for generating FailOn values.

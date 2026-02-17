@@ -1,5 +1,5 @@
 # diffguard configuration file
-# For more information, see: https://github.com/effortless-mgmt/diffguard
+# For more information, see: https://github.com/effortlessmetrics/diffguard
 
 # =============================================================================
 # Suppression Directives
@@ -23,11 +23,19 @@
 #   Python/Shell: # diffguard: ignore ...
 #   JS/Rust/Go:   // diffguard: ignore ...
 #
+# Per-directory overrides:
+#   Place `.diffguard.toml` files in subdirectories to adjust rule behavior
+#   for that subtree only. Example `src/legacy/.diffguard.toml`:
+#
+#     [[rule]]
+#     id = "rust.no_unwrap"
+#     severity = "warn"
+#
 # =============================================================================
 
 [defaults]
 base = "origin/main"
-scope = "added"         # added|changed
+scope = "added"         # added|changed|modified|deleted (changed kept for compatibility)
 fail_on = "error"       # error|warn|never
 max_findings = 200
 diff_context = 0
