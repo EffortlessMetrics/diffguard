@@ -226,7 +226,7 @@ Sample hooks live in `docs/hooks/`:
 ## IDE Integration
 
 - VS Code extension scaffold: `editors/vscode-diffguard`
-- LSP transport binary crate: `crates/diffguard-lsp`
+- LSP diagnostics/code-action server crate: `crates/diffguard-lsp`
 
 ## Repo layout
 
@@ -249,7 +249,7 @@ diffguard-domain         diffguard-diff
             Pure DTOs
 
 diffguard-analytics      Analytics DTOs/helpers (false positives + trends)
-diffguard-lsp            Basic LSP transport for IDE integration
+diffguard-lsp            LSP server: diff-scoped diagnostics + rule actions
 ```
 
 | Crate | Purpose |
@@ -260,7 +260,7 @@ diffguard-lsp            Basic LSP transport for IDE integration
 | `diffguard-core` | Engine: check runs, sensor reports, verdicts, render outputs |
 | `diffguard-analytics` | False-positive baselines and trend history helpers |
 | `diffguard` | CLI binary: arg parsing, config loading, git invocation |
-| `diffguard-lsp` | Language Server Protocol transport (initialize/shutdown lifecycle) |
+| `diffguard-lsp` | Language Server Protocol server (diagnostics, code actions, config-aware checks) |
 | `diffguard-testkit` | Shared test utilities (proptest strategies, fixtures) |
 | `xtask` | Repo automation (`ci`, `schema`, `conform`) |
 

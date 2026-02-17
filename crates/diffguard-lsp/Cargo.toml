@@ -5,7 +5,7 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "Minimal Language Server Protocol server for diffguard"
+description = "Language Server Protocol server for diffguard with diff-scoped diagnostics"
 repository.workspace = true
 homepage.workspace = true
 documentation = "https://docs.rs/diffguard-lsp"
@@ -27,6 +27,16 @@ exclude = [
 
 [dependencies]
 anyhow.workspace = true
+serde.workspace = true
 serde_json.workspace = true
+toml.workspace = true
+regex.workspace = true
+url = "2.5.7"
 lsp-server = "0.7"
 lsp-types = "0.97"
+diffguard-core = { version = "0.2", path = "../diffguard-core" }
+diffguard-domain = { version = "0.2", path = "../diffguard-domain" }
+diffguard-types = { version = "0.2", path = "../diffguard-types" }
+
+[dev-dependencies]
+tempfile.workspace = true

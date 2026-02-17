@@ -1,14 +1,23 @@
 # diffguard-lsp
 
-Minimal Language Server Protocol (LSP) server for diffguard.
+Language Server Protocol (LSP) server for diffguard.
 
-This crate currently provides the protocol transport/lifecycle layer only:
+## Features
 
-- Handles `initialize`, `shutdown`, and `exit`
-- Communicates over stdio using `lsp-server`
-- Advertises `textDocumentSync = Full`
-
-It does not yet publish diagnostics, code actions, or custom requests.
+- Handles `initialize`, `shutdown`, and `exit` over stdio (`lsp-server`)
+- Publishes `textDocument/publishDiagnostics` findings from `diffguard-core`
+- Uses diff-scoped evaluation:
+  - In-memory changed lines while editing
+  - `git diff` scoped lines when the buffer is clean
+- Loads `diffguard.toml` (supports includes and `${VAR}` / `${VAR:-default}` expansion)
+- Applies per-directory `.diffguard.toml` overrides
+- Provides code actions:
+  - `diffguard: Explain <rule-id>`
+  - `diffguard: Open docs for <rule-id>` (when rule URL exists)
+- Supports execute commands:
+  - `diffguard.explainRule`
+  - `diffguard.reloadConfig`
+  - `diffguard.showRuleUrl`
 
 ## Run
 
@@ -16,15 +25,13 @@ It does not yet publish diagnostics, code actions, or custom requests.
 cargo run -p diffguard-lsp
 ```
 
-The server is intended to be launched by an editor client over stdio.
+The server is intended to be started by an editor client over stdio.
 
-## Scope and Roadmap
+## Initialization Options
 
-`diffguard-lsp` is intentionally small today so protocol scaffolding stays
-stable while the rules/engine evolve in the core crates.
+`initializationOptions` (all optional):
 
-Planned expansions include:
-
-- diff-scoped diagnostics from `diffguard-core`
-- rule explanations and quick fixes
-- workspace/config aware behavior
+- `configPath` (`string`): explicit config path
+- `noDefaultRules` (`bool`): disable built-in rules
+- `maxFindings` (`number`): cap findings per diagnostic pass
+- `forceLanguage` (`string`): force preprocessing language
