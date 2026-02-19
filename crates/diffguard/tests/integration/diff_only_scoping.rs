@@ -1,6 +1,6 @@
 //! BDD tests for diff-only scoping behavior.
 //!
-//! Verifies that diffguard only lints added/changed lines, not existing code.
+//! Verifies that diffguard only lints scoped diff lines, not existing code.
 
 use super::test_repo::TestRepo;
 
@@ -113,6 +113,53 @@ fn given_line_changed_to_unwrap_when_scope_changed_then_finding_reported() {
 
     let receipt = result.parse_receipt();
     assert!(receipt.has_finding_with_rule("rust.no_unwrap"));
+}
+
+/// Scenario: Changed line with unwrap() is detected in "modified" scope.
+///
+/// Given: A file with existing safe code
+/// When: A line is modified to include unwrap() and checked with scope=modified
+/// Then: The modified line triggers a finding
+#[test]
+fn given_line_changed_to_unwrap_when_scope_modified_then_finding_reported() {
+    let repo = TestRepo::with_initial_content(&[(
+        "src/lib.rs",
+        "pub fn f() -> Option<u32> { Some(1) }\n",
+    )]);
+
+    repo.write_file("src/lib.rs", "pub fn f() -> u32 { Some(1).unwrap() }\n");
+    let head_sha = repo.commit("change to use unwrap");
+
+    let result = repo.run_check_with_args(&head_sha, &["--scope", "modified"]);
+    result.assert_exit_code(2);
+
+    let receipt = result.parse_receipt();
+    assert!(receipt.has_finding_with_rule("rust.no_unwrap"));
+}
+
+/// Scenario: Removing unwrap() can be flagged in "deleted" scope.
+///
+/// Given: A file with unwrap() in baseline
+/// When: The unwrap() line is removed and checked with scope=deleted
+/// Then: The removed line triggers a finding, while scope=added remains clean
+#[test]
+fn given_unwrap_removed_when_scope_deleted_then_finding_reported() {
+    let repo = TestRepo::with_initial_content(&[(
+        "src/lib.rs",
+        "pub fn f() -> u32 { Some(1).unwrap() }\n",
+    )]);
+
+    repo.write_file("src/lib.rs", "pub fn f() -> Option<u32> { Some(1) }\n");
+    let head_sha = repo.commit("remove unwrap");
+
+    let deleted_result = repo.run_check_with_args(&head_sha, &["--scope", "deleted"]);
+    deleted_result.assert_exit_code(2);
+    let deleted_receipt = deleted_result.parse_receipt();
+    assert!(deleted_receipt.has_finding_with_rule("rust.no_unwrap"));
+    assert!(deleted_receipt.has_finding_at("src/lib.rs", 1));
+
+    let added_result = repo.run_check_with_args(&head_sha, &["--scope", "added"]);
+    added_result.assert_exit_code(0);
 }
 
 /// Scenario: Clean diff produces exit code 0.

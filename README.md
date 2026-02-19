@@ -2,14 +2,15 @@
 
 [![Crates.io](https://img.shields.io/crates/v/diffguard.svg)](https://crates.io/crates/diffguard)
 [![Documentation](https://docs.rs/diffguard/badge.svg)](https://docs.rs/diffguard)
-[![CI](https://github.com/effortless-mgmt/diffguard/actions/workflows/ci.yml/badge.svg)](https://github.com/effortless-mgmt/diffguard/actions/workflows/ci.yml)
+[![CI](https://github.com/effortlessmetrics/diffguard/actions/workflows/ci.yml/badge.svg)](https://github.com/effortlessmetrics/diffguard/actions/workflows/ci.yml)
 [![License](https://img.shields.io/crates/l/diffguard.svg)](LICENSE-MIT)
 
-A diff-scoped governance linter: **rules applied to added/changed lines** in a Git diff.
+A diff-scoped governance linter: **rules applied to scoped lines** in a Git diff.
 
 `diffguard` is designed for modern PR automation:
 
 - **Diff-aware** by default (no repo-wide grep noise)
+- Supports **git refs, staged diffs, or unified diff files/stdin**
 - Emits a stable **JSON receipt** for bots/automation
 - Can render a compact **Markdown summary** for PR comments
 - Can emit **GitHub Actions annotations** (`::error` / `::warning`)
@@ -21,7 +22,7 @@ A diff-scoped governance linter: **rules applied to added/changed lines** in a G
 cargo install diffguard
 
 # From source
-git clone https://github.com/effortless-mgmt/diffguard
+git clone https://github.com/effortlessmetrics/diffguard
 cd diffguard
 cargo install --path crates/diffguard
 ```
@@ -36,6 +37,13 @@ diffguard init --preset minimal
 diffguard check --base origin/main --head HEAD --github-annotations \
   --out artifacts/diffguard/report.json \
   --md artifacts/diffguard/comment.md
+
+# Multi-base comparison (union of changed lines)
+diffguard check --base origin/main --base origin/release/1.0 --head HEAD
+
+# Non-git source: read unified diff from file or stdin
+diffguard check --diff-file patch.diff
+git diff --cached | diffguard check --diff-file -
 ```
 
 Available presets: `minimal`, `rust-quality`, `secrets`, `js-console`, `python-debug`
@@ -54,7 +62,7 @@ Create `diffguard.toml`:
 ```toml
 [defaults]
 base = "origin/main"
-scope = "added"       # added|changed
+scope = "added"       # added|changed|modified|deleted (changed kept for compatibility)
 fail_on = "error"     # error|warn|never
 max_findings = 200
 diff_context = 0
@@ -76,6 +84,41 @@ You can point `diffguard` at a config file:
 ```bash
 diffguard check --config diffguard.toml
 ```
+
+### Advanced Rule Semantics
+
+Rules can opt into richer matching behavior:
+
+```toml
+[[rule]]
+id = "python.eval_untrusted"
+severity = "warn"
+message = "eval() with untrusted input is forbidden."
+languages = ["python"]
+patterns = ["\\beval\\s*\\("]
+paths = ["**/*.py"]
+ignore_comments = true
+ignore_strings = true
+
+# 8.1 Multi-line windows
+multiline = true
+multiline_window = 2
+
+# 8.3 Require context near the primary match
+context_patterns = ["\\buntrusted\\b"]
+context_window = 2
+
+# 8.4 Escalate severity when context is present
+escalate_patterns = ["\\brequest\\.(GET|POST|data)\\b"]
+escalate_window = 1
+escalate_to = "error"
+
+# 8.5 Only evaluate when dependency rules matched in the same file
+depends_on = ["python.has_eval"]
+```
+
+Use `match_mode = "absent"` (8.2) to emit a finding when a pattern is missing
+in a scoped file.
 
 ### Environment Variables
 
@@ -101,6 +144,24 @@ severity = "error"
 message = "Project-specific check"
 patterns = ["FIXME"]
 ```
+
+### Per-Directory Overrides
+
+Place `.diffguard.toml` in subdirectories to override rule behavior for that
+directory subtree:
+
+```toml
+[[rule]]
+id = "rust.no_unwrap"
+enabled = false
+```
+
+Supported override fields:
+- `enabled` (bool): enable/disable a rule for that subtree
+- `severity` (`info|warn|error`): override severity by directory
+- `exclude_paths` (`[]string`): extra excludes scoped to that directory
+
+Deeper directories override parent directories.
 
 ### Inline Suppressions
 
@@ -133,6 +194,9 @@ diffguard supports multiple output formats for different use cases:
 | JUnit | `--junit` | CI/CD integration (Jenkins, GitLab CI) |
 | CSV/TSV | `--csv` / `--tsv` | Spreadsheet import, data analysis |
 | Sensor | `--sensor` | R2 Library Contract envelope (`sensor.report.v1`) |
+| Rule Stats | `--rule-stats` | Per-rule hit aggregation for analytics |
+| False-Positive Baseline | `--false-positive-baseline` / `--write-false-positive-baseline` | Acknowledge and track known false positives |
+| Trend History | `--trend-history` / `trend` | Cross-run metrics and historical summaries |
 
 ## GitHub Actions example
 
@@ -154,6 +218,16 @@ diffguard supports multiple output formats for different use cases:
     sarif_file: artifacts/diffguard/report.sarif
 ```
 
+## Git Hook Samples
+
+Sample hooks live in `docs/hooks/`:
+- `docs/hooks/commit-msg.sample`
+
+## IDE Integration
+
+- VS Code extension scaffold: `editors/vscode-diffguard`
+- LSP diagnostics/code-action server crate: `crates/diffguard-lsp`
+
 ## Repo layout
 
 This repo uses a clean, microcrate workspace layout with strict dependency direction:
@@ -173,6 +247,9 @@ diffguard-domain         diffguard-diff
                   ▼
           diffguard-types
             Pure DTOs
+
+diffguard-analytics      Analytics DTOs/helpers (false positives + trends)
+diffguard-lsp            LSP server: diff-scoped diagnostics + rule actions
 ```
 
 | Crate | Purpose |
@@ -181,7 +258,9 @@ diffguard-domain         diffguard-diff
 | `diffguard-diff` | Parse unified diff format, detect binary/submodule/rename |
 | `diffguard-domain` | Compile rules, evaluate lines, preprocess comments/strings |
 | `diffguard-core` | Engine: check runs, sensor reports, verdicts, render outputs |
+| `diffguard-analytics` | False-positive baselines and trend history helpers |
 | `diffguard` | CLI binary: arg parsing, config loading, git invocation |
+| `diffguard-lsp` | Language Server Protocol server (diagnostics, code actions, config-aware checks) |
 | `diffguard-testkit` | Shared test utilities (proptest strategies, fixtures) |
 | `xtask` | Repo automation (`ci`, `schema`, `conform`) |
 
@@ -225,7 +304,7 @@ cargo +nightly fuzz run rule_matcher         # Rule evaluation
 
 ## Minimum Supported Rust Version (MSRV)
 
-Rust 1.75 or later.
+Rust 1.92 or later.
 
 ## License
 

@@ -1,10 +1,12 @@
 [workspace]
 resolver = "2"
 members = [
+  "crates/diffguard-analytics",
   "crates/diffguard",
   "crates/diffguard-core",
   "crates/diffguard-diff",
   "crates/diffguard-domain",
+  "crates/diffguard-lsp",
   "crates/diffguard-testkit",
   "crates/diffguard-types",
   "xtask",
@@ -13,7 +15,7 @@ members = [
 default-members = ["crates/diffguard"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Steven Zimmerman, CPA <git@effortlesssteven.com>"]
 edition = "2024"
 license = "MIT OR Apache-2.0"

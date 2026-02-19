@@ -5,13 +5,13 @@ authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description.workspace = true
+description = "CLI for diff-scoped governance linting in pull requests"
 repository.workspace = true
 homepage.workspace = true
 documentation.workspace = true
 keywords.workspace = true
 categories.workspace = true
-readme.workspace = true
+readme = "README.md"
 include = [
   "src/**",
   "Cargo.toml",
@@ -48,9 +48,11 @@ globset.workspace = true
 
 # local
 
-diffguard-types = { version = "0.1", path = "../diffguard-types" }
-diffguard-core = { version = "0.1", path = "../diffguard-core" }
-diffguard-domain = { version = "0.1", path = "../diffguard-domain" }
+diffguard-types = { version = "0.2", path = "../diffguard-types" }
+diffguard-analytics = { version = "0.2", path = "../diffguard-analytics" }
+diffguard-core = { version = "0.2", path = "../diffguard-core" }
+diffguard-domain = { version = "0.2", path = "../diffguard-domain" }
+diffguard-diff = { version = "0.2", path = "../diffguard-diff" }
 
 [dev-dependencies]
 assert_cmd.workspace = true

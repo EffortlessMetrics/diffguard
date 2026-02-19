@@ -55,7 +55,7 @@ Configuration controls the linter behavior and rules.
 ```toml
 [defaults]
 base = "origin/main"
-scope = "added"       # added|changed
+scope = "added"       # added|changed|modified|deleted (changed kept for compatibility)
 fail_on = "error"     # error|warn|never
 
 [[rule]]

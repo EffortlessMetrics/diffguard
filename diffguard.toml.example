@@ -1,5 +1,5 @@
 # diffguard configuration file
-# For more information, see: https://github.com/effortless-mgmt/diffguard
+# For more information, see: https://github.com/effortlessmetrics/diffguard
 
 # =============================================================================
 # Suppression Directives
@@ -23,11 +23,19 @@
 #   Python/Shell: # diffguard: ignore ...
 #   JS/Rust/Go:   // diffguard: ignore ...
 #
+# Per-directory overrides:
+#   Place `.diffguard.toml` files in subdirectories to adjust rule behavior
+#   for that subtree only. Example `src/legacy/.diffguard.toml`:
+#
+#     [[rule]]
+#     id = "rust.no_unwrap"
+#     severity = "warn"
+#
 # =============================================================================
 
 [defaults]
 base = "origin/main"
-scope = "added"         # added|changed
+scope = "added"         # added|changed|modified|deleted (changed kept for compatibility)
 fail_on = "error"       # error|warn|never
 max_findings = 200
 diff_context = 0
@@ -64,3 +72,36 @@ paths = ["**/*.rb"]
 exclude_paths = ["**/spec/**", "**/test/**"]
 ignore_comments = true
 ignore_strings = true
+
+# -----------------------------------------------------------------------------
+# Advanced semantics examples
+# -----------------------------------------------------------------------------
+
+# [[rule]]
+# id = "python.eval_untrusted"
+# severity = "warn"
+# message = "eval() with untrusted input is forbidden."
+# languages = ["python"]
+# patterns = ["\\beval\\s*\\("]
+# paths = ["**/*.py"]
+# ignore_comments = true
+# ignore_strings = true
+#
+# # Multi-line matching across consecutive scoped lines
+# multiline = true
+# multiline_window = 2
+#
+# # Require nearby context
+# context_patterns = ["\\buntrusted\\b"]
+# context_window = 2
+#
+# # Escalate when additional context appears
+# escalate_patterns = ["\\brequest\\.(GET|POST|data)\\b"]
+# escalate_window = 1
+# escalate_to = "error"
+#
+# # Only run after dependency rules matched in the same file
+# depends_on = ["python.has_eval"]
+#
+# # Negative matching: emit when pattern is absent in the scoped file
+# # match_mode = "absent"

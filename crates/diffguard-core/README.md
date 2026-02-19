@@ -1,124 +1,88 @@
 # diffguard-core
 
-Application layer for the [diffguard](https://crates.io/crates/diffguard) governance linter.
+Core orchestration and rendering layer for diffguard.
 
-This crate orchestrates the full check workflow: diff parsing → rule compilation → evaluation → output rendering. It sits between the CLI and the domain logic, coordinating the pipeline without performing I/O itself.
+This crate is I/O-free. It coordinates parsing + rule evaluation and returns
+structured outputs for callers (CLI, editors, automation).
 
-## Features
+## Main Responsibilities
 
-- **Check orchestration**: `run_check()` coordinates the full linting pipeline
-- **Multiple output formats**:
-  - JSON receipt (`CheckReceipt`) — versioned schema for automation
-  - Markdown summary — for PR comments
-  - SARIF 2.1.0 — for GitHub Advanced Security and code scanning tools
-  - JUnit XML — for CI/CD integration
-  - CSV/TSV — for spreadsheet import
-- **Verdict computation**: Determines pass/warn/fail based on findings and `fail_on` policy
-- **Path filtering**: Include/exclude files by glob patterns
+- Run checks from unified diff text (`run_check`)
+- Build deterministic receipts/verdicts
+- Render outputs (Markdown, SARIF, JUnit, CSV, TSV)
+- Render `sensor.report.v1` envelopes
+- Compute finding fingerprints
 
-## Usage
+## Primary API
+
+- `CheckPlan`
+- `CheckRun`
+- `run_check(&CheckPlan, &ConfigFile, &str)`
+- `render_markdown_for_receipt()`
+- `render_sarif_for_receipt()` / `render_sarif_json()`
+- `render_junit_for_receipt()`
+- `render_csv_for_receipt()` / `render_tsv_for_receipt()`
+- `render_sensor_report()` / `render_sensor_json()`
+- `run_sensor()` (sensor API helper)
+- `compute_fingerprint()` / `compute_fingerprint_raw()`
+
+## `run_check` Example
 
 ```rust
-use diffguard_core::{run_check, CheckPlan, render_markdown_for_receipt};
-use diffguard_types::{ConfigFile, Scope, FailOn};
+use std::collections::BTreeSet;
 
-// Set up the check plan
+use diffguard_core::{run_check, CheckPlan};
+use diffguard_types::{ConfigFile, FailOn, Scope};
+
 let plan = CheckPlan {
-    diff_text: git_diff_output,
-    config: ConfigFile::built_in(),
     base: "origin/main".to_string(),
     head: "HEAD".to_string(),
     scope: Scope::Added,
+    diff_context: 0,
     fail_on: FailOn::Error,
-    max_findings: Some(100),
-    include_paths: vec![],
-    exclude_paths: vec!["**/vendor/**".to_string()],
+    max_findings: 200,
+    path_filters: vec![],
+    only_tags: vec![],
+    enable_tags: vec![],
+    disable_tags: vec![],
+    directory_overrides: vec![],
+    force_language: None,
+    allowed_lines: None,
+    false_positive_fingerprints: BTreeSet::new(),
 };
 
-// Run the check
-let run = run_check(plan)?;
+let config = ConfigFile::built_in();
+let diff_text = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,2 @@
+ fn a() {}
++let x = maybe.unwrap();
+"#;
 
-// Access results
-println!("Exit code: {}", run.exit_code);
-println!("Findings: {}", run.receipt.findings.len());
-println!("Verdict: {:?}", run.receipt.verdict.status);
-
-// Render outputs
-let markdown = render_markdown_for_receipt(&run.receipt);
+let run = run_check(&plan, &config, diff_text)?;
+println!("exit_code={}", run.exit_code);
+println!("findings={}", run.receipt.findings.len());
 ```
 
-## Exit Codes
+## Exit Code Contract
 
-The `CheckRun.exit_code` follows a stable contract:
+`CheckRun.exit_code` is stable:
 
-| Code | Meaning |
-|------|---------|
-| `0` | Pass — no policy violations |
-| `1` | Tool error — internal failure |
-| `2` | Policy fail — errors found (or warnings when `fail_on: warn`) |
-| `3` | Warn-fail — warnings found with warn-fail policy |
+- `0` pass
+- `2` policy fail
+- `3` warn-fail (when `fail_on=warn`)
 
-## Output Formats
+`1` is reserved for outer tool/runtime failures, typically handled by callers.
 
-### Markdown
+## Dependency Role
 
-```rust
-use diffguard_core::render_markdown_for_receipt;
+`diffguard-core` depends on:
 
-let md = render_markdown_for_receipt(&receipt);
-// Renders a table with: Severity | Rule | Location | Message | Snippet
-```
-
-### SARIF
-
-```rust
-use diffguard_core::{render_sarif_for_receipt, SarifReport};
-
-let sarif: SarifReport = render_sarif_for_receipt(&receipt);
-let json = serde_json::to_string_pretty(&sarif)?;
-// SARIF 2.1.0 format for GitHub Advanced Security
-```
-
-### JUnit XML
-
-```rust
-use diffguard_core::render_junit_for_receipt;
-
-let xml = render_junit_for_receipt(&receipt);
-// JUnit XML for CI/CD systems (Jenkins, GitLab CI, etc.)
-```
-
-### CSV/TSV
-
-```rust
-use diffguard_core::{render_csv_for_receipt, render_tsv_for_receipt};
-
-let csv = render_csv_for_receipt(&receipt);
-let tsv = render_tsv_for_receipt(&receipt);
-// Tabular format for spreadsheet import
-```
-
-## Architecture
-
-This crate depends on all three core crates:
-- `diffguard-types` — DTOs and configuration types
-- `diffguard-diff` — Unified diff parsing
-- `diffguard-domain` — Rule compilation and evaluation
-
-```
-CheckPlan (input)
-    │
-    ▼
-parse_unified_diff() ──► compile_rules() ──► evaluate_lines()
-    │                         │                    │
-    ▼                         ▼                    ▼
-DiffLines              CompiledRules           Findings
-    │                         │                    │
-    └─────────────────────────┴────────────────────┘
-                              │
-                              ▼
-                    compute_verdict() ──► CheckRun (output)
-```
+- `diffguard-diff` for unified diff parsing
+- `diffguard-domain` for rule compilation/evaluation
+- `diffguard-types` for DTOs and schema-bound structures
 
 ## License
 

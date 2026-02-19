@@ -1,7 +1,7 @@
 # .github/settings.yml
 repository:
   description: "Diff-scoped governance linter for PR automation"
-  homepage: "https://github.com/effortless-mgmt/diffguard"
+  homepage: "https://github.com/effortlessmetrics/diffguard"
   topics: rust, linter, diff, git, ci, governance, devex
 
   # Merge strategy settings

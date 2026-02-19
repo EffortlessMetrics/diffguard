@@ -38,7 +38,12 @@ fn arb_severity() -> impl Strategy<Value = Severity> {
 
 /// Strategy for generating valid Scope values.
 fn arb_scope() -> impl Strategy<Value = Scope> {
-    prop_oneof![Just(Scope::Added), Just(Scope::Changed),]
+    prop_oneof![
+        Just(Scope::Added),
+        Just(Scope::Changed),
+        Just(Scope::Modified),
+        Just(Scope::Deleted),
+    ]
 }
 
 /// Strategy for generating valid FailOn values.
@@ -130,6 +135,15 @@ fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     exclude_paths,
                     ignore_comments,
                     ignore_strings,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: None,
                     url: None,
                     tags,
@@ -995,7 +1009,7 @@ mod unit_tests {
         // Create invalid JSON with wrong scope value
         let invalid_json = serde_json::json!({
             "defaults": {
-                "scope": "modified"  // Invalid scope (should be "added" or "changed")
+                "scope": "not_a_real_scope"
             },
             "rule": []
         });
@@ -1275,6 +1289,8 @@ mod unit_tests {
     fn scope_as_str_matches_expected() {
         assert_eq!(Scope::Added.as_str(), "added");
         assert_eq!(Scope::Changed.as_str(), "changed");
+        assert_eq!(Scope::Modified.as_str(), "modified");
+        assert_eq!(Scope::Deleted.as_str(), "deleted");
     }
 
     #[test]

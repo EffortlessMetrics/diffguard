@@ -11,7 +11,7 @@ expression: json
         "driver": {
           "name": "diffguard",
           "version": "0.1.0",
-          "informationUri": "https://github.com/effortless-mgmt/diffguard"
+          "informationUri": "https://github.com/effortlessmetrics/diffguard"
         }
       },
       "results": []

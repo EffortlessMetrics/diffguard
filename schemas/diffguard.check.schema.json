@@ -1,22 +1,15 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CheckReceipt",
   "type": "object",
-  "required": [
-    "diff",
-    "findings",
-    "schema",
-    "tool",
-    "verdict"
-  ],
   "properties": {
     "diff": {
-      "$ref": "#/definitions/DiffMeta"
+      "$ref": "#/$defs/DiffMeta"
     },
     "findings": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Finding"
+        "$ref": "#/$defs/Finding"
       }
     },
     "schema": {
@@ -25,7 +18,7 @@
     "timing": {
       "anyOf": [
         {
-          "$ref": "#/definitions/TimingMetrics"
+          "$ref": "#/$defs/TimingMetrics"
         },
         {
           "type": "null"
@@ -33,23 +26,22 @@
       ]
     },
     "tool": {
-      "$ref": "#/definitions/ToolMeta"
+      "$ref": "#/$defs/ToolMeta"
     },
     "verdict": {
-      "$ref": "#/definitions/Verdict"
+      "$ref": "#/$defs/Verdict"
     }
   },
-  "definitions": {
+  "required": [
+    "schema",
+    "tool",
+    "diff",
+    "findings",
+    "verdict"
+  ],
+  "$defs": {
     "DiffMeta": {
       "type": "object",
-      "required": [
-        "base",
-        "context_lines",
-        "files_scanned",
-        "head",
-        "lines_scanned",
-        "scope"
-      ],
       "properties": {
         "base": {
           "type": "string"
@@ -57,12 +49,12 @@
         "context_lines": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "files_scanned": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "head": {
           "type": "string"
@@ -70,24 +62,23 @@
         "lines_scanned": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "scope": {
-          "$ref": "#/definitions/Scope"
+          "$ref": "#/$defs/Scope"
         }
-      }
+      },
+      "required": [
+        "base",
+        "head",
+        "context_lines",
+        "scope",
+        "files_scanned",
+        "lines_scanned"
+      ]
     },
     "Finding": {
       "type": "object",
-      "required": [
-        "line",
-        "match_text",
-        "message",
-        "path",
-        "rule_id",
-        "severity",
-        "snippet"
-      ],
       "properties": {
         "column": {
           "type": [
@@ -95,12 +86,12 @@
             "null"
           ],
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "line": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "match_text": {
           "type": "string"
@@ -115,18 +106,29 @@
           "type": "string"
         },
         "severity": {
-          "$ref": "#/definitions/Severity"
+          "$ref": "#/$defs/Severity"
         },
         "snippet": {
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "rule_id",
+        "severity",
+        "message",
+        "path",
+        "line",
+        "match_text",
+        "snippet"
+      ]
     },
     "Scope": {
       "type": "string",
       "enum": [
         "added",
-        "changed"
+        "changed",
+        "modified",
+        "deleted"
       ]
     },
     "Severity": {
@@ -140,41 +142,37 @@
     "TimingMetrics": {
       "description": "Timing metrics for performance analysis.",
       "type": "object",
-      "required": [
-        "diff_parse_ms",
-        "evaluation_ms",
-        "rule_compile_ms",
-        "total_ms"
-      ],
       "properties": {
         "diff_parse_ms": {
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "evaluation_ms": {
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "rule_compile_ms": {
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "total_ms": {
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         }
-      }
+      },
+      "required": [
+        "total_ms",
+        "diff_parse_ms",
+        "rule_compile_ms",
+        "evaluation_ms"
+      ]
     },
     "ToolMeta": {
       "type": "object",
-      "required": [
-        "name",
-        "version"
-      ],
       "properties": {
         "name": {
           "type": "string"
@@ -182,18 +180,17 @@
         "version": {
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "name",
+        "version"
+      ]
     },
     "Verdict": {
       "type": "object",
-      "required": [
-        "counts",
-        "reasons",
-        "status"
-      ],
       "properties": {
         "counts": {
-          "$ref": "#/definitions/VerdictCounts"
+          "$ref": "#/$defs/VerdictCounts"
         },
         "reasons": {
           "type": "array",
@@ -202,40 +199,45 @@
           }
         },
         "status": {
-          "$ref": "#/definitions/VerdictStatus"
+          "$ref": "#/$defs/VerdictStatus"
         }
-      }
+      },
+      "required": [
+        "status",
+        "counts",
+        "reasons"
+      ]
     },
     "VerdictCounts": {
       "type": "object",
-      "required": [
-        "error",
-        "info",
-        "warn"
-      ],
       "properties": {
         "error": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "info": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "suppressed": {
           "description": "Number of matches suppressed via inline directives.",
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "warn": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         }
-      }
+      },
+      "required": [
+        "info",
+        "warn",
+        "error"
+      ]
     },
     "VerdictStatus": {
       "oneOf": [
@@ -250,9 +252,7 @@
         {
           "description": "For cockpit mode when inputs are missing or check cannot run.",
           "type": "string",
-          "enum": [
-            "skip"
-          ]
+          "const": "skip"
         }
       ]
     }

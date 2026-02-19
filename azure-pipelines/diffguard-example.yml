@@ -2,7 +2,7 @@
 # This file demonstrates how to use the diffguard template in your pipelines
 #
 # Copy this file to your repository's root as `azure-pipelines.yml` and customize as needed
-# For more information, see: https://github.com/effortless-mgmt/diffguard
+# For more information, see: https://github.com/effortlessmetrics/diffguard
 
 trigger:
   branches:

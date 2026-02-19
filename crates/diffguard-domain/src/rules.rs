@@ -4,7 +4,7 @@ use std::path::Path;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use regex::Regex;
 
-use diffguard_types::{RuleConfig, Severity};
+use diffguard_types::{MatchMode, RuleConfig, Severity};
 
 #[derive(Debug, thiserror::Error)]
 pub enum RuleCompileError {
@@ -24,6 +24,12 @@ pub enum RuleCompileError {
         glob: String,
         source: globset::Error,
     },
+
+    #[error("rule '{rule_id}' has invalid multiline_window '{value}' (must be >= 2)")]
+    InvalidMultilineWindow { rule_id: String, value: u32 },
+
+    #[error("rule '{rule_id}' depends on unknown rule '{dependency}'")]
+    UnknownDependency { rule_id: String, dependency: String },
 }
 
 #[derive(Debug, Clone)]
@@ -37,6 +43,15 @@ pub struct CompiledRule {
     pub exclude: Option<GlobSet>,
     pub ignore_comments: bool,
     pub ignore_strings: bool,
+    pub match_mode: MatchMode,
+    pub multiline: bool,
+    pub multiline_window: usize,
+    pub context_patterns: Vec<Regex>,
+    pub context_window: usize,
+    pub escalate_patterns: Vec<Regex>,
+    pub escalate_window: usize,
+    pub escalate_to: Option<Severity>,
+    pub depends_on: BTreeSet<String>,
 }
 
 impl CompiledRule {
@@ -72,6 +87,10 @@ impl CompiledRule {
 
 pub fn compile_rules(configs: &[RuleConfig]) -> Result<Vec<CompiledRule>, RuleCompileError> {
     let mut out = Vec::with_capacity(configs.len());
+    let known_rule_ids = configs
+        .iter()
+        .map(|cfg| cfg.id.clone())
+        .collect::<BTreeSet<_>>();
 
     for cfg in configs {
         if cfg.patterns.is_empty() {
@@ -80,15 +99,9 @@ pub fn compile_rules(configs: &[RuleConfig]) -> Result<Vec<CompiledRule>, RuleCo
             });
         }
 
-        let mut patterns = Vec::with_capacity(cfg.patterns.len());
-        for p in &cfg.patterns {
-            let r = Regex::new(p).map_err(|e| RuleCompileError::InvalidRegex {
-                rule_id: cfg.id.clone(),
-                pattern: p.clone(),
-                source: e,
-            })?;
-            patterns.push(r);
-        }
+        let patterns = compile_pattern_group(&cfg.id, &cfg.patterns)?;
+        let context_patterns = compile_pattern_group(&cfg.id, &cfg.context_patterns)?;
+        let escalate_patterns = compile_pattern_group(&cfg.id, &cfg.escalate_patterns)?;
 
         let include = compile_globs(&cfg.paths, &cfg.id)?;
         let exclude = compile_globs(&cfg.exclude_paths, &cfg.id)?;
@@ -98,6 +111,25 @@ pub fn compile_rules(configs: &[RuleConfig]) -> Result<Vec<CompiledRule>, RuleCo
             .iter()
             .map(|s| s.to_ascii_lowercase())
             .collect::<BTreeSet<_>>();
+
+        if cfg.multiline
+            && let Some(window) = cfg.multiline_window
+            && window < 2
+        {
+            return Err(RuleCompileError::InvalidMultilineWindow {
+                rule_id: cfg.id.clone(),
+                value: window,
+            });
+        }
+
+        for dependency in &cfg.depends_on {
+            if !known_rule_ids.contains(dependency) {
+                return Err(RuleCompileError::UnknownDependency {
+                    rule_id: cfg.id.clone(),
+                    dependency: dependency.clone(),
+                });
+            }
+        }
 
         out.push(CompiledRule {
             id: cfg.id.clone(),
@@ -109,9 +141,34 @@ pub fn compile_rules(configs: &[RuleConfig]) -> Result<Vec<CompiledRule>, RuleCo
             exclude,
             ignore_comments: cfg.ignore_comments,
             ignore_strings: cfg.ignore_strings,
+            match_mode: cfg.match_mode,
+            multiline: cfg.multiline,
+            multiline_window: cfg.multiline_window.unwrap_or(2).max(2) as usize,
+            context_patterns,
+            context_window: cfg.context_window.unwrap_or(3) as usize,
+            escalate_patterns,
+            escalate_window: cfg.escalate_window.unwrap_or(0) as usize,
+            escalate_to: cfg.escalate_to,
+            depends_on: cfg.depends_on.iter().cloned().collect(),
         });
     }
 
+    Ok(out)
+}
+
+fn compile_pattern_group(
+    rule_id: &str,
+    patterns: &[String],
+) -> Result<Vec<Regex>, RuleCompileError> {
+    let mut out = Vec::with_capacity(patterns.len());
+    for pattern in patterns {
+        let compiled = Regex::new(pattern).map_err(|source| RuleCompileError::InvalidRegex {
+            rule_id: rule_id.to_string(),
+            pattern: pattern.clone(),
+            source,
+        })?;
+        out.push(compiled);
+    }
     Ok(out)
 }
 
@@ -156,6 +213,9 @@ pub fn detect_language(path: &Path) -> Option<&'static str> {
         "xml" | "xsl" | "xslt" | "xsd" | "svg" | "xhtml" => Some("xml"),
         "html" | "htm" => Some("xml"),
         "php" | "phtml" | "php3" | "php4" | "php5" | "php7" | "phps" => Some("php"),
+        "yaml" | "yml" => Some("yaml"),
+        "toml" => Some("toml"),
+        "json" | "jsonc" | "json5" => Some("json"),
         _ => None,
     }
 }
@@ -187,6 +247,15 @@ mod tests {
             exclude_paths: exclude_paths.into_iter().map(|s| s.to_string()).collect(),
             ignore_comments,
             ignore_strings,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -305,8 +374,6 @@ mod tests {
     fn detect_language_unknown() {
         assert_eq!(detect_language(Path::new("file.txt")), None);
         assert_eq!(detect_language(Path::new("file.md")), None);
-        assert_eq!(detect_language(Path::new("file.json")), None);
-        assert_eq!(detect_language(Path::new("file.yaml")), None);
         assert_eq!(detect_language(Path::new("file")), None);
     }
 
@@ -360,6 +427,19 @@ mod tests {
         assert_eq!(detect_language(Path::new("file.JS")), Some("javascript"));
         assert_eq!(detect_language(Path::new("file.TS")), Some("typescript"));
         assert_eq!(detect_language(Path::new("file.CPP")), Some("cpp"));
+        assert_eq!(detect_language(Path::new("file.JSON")), Some("json"));
+        assert_eq!(detect_language(Path::new("file.YAML")), Some("yaml"));
+        assert_eq!(detect_language(Path::new("file.TOML")), Some("toml"));
+    }
+
+    #[test]
+    fn detect_language_yaml_toml_json() {
+        assert_eq!(detect_language(Path::new("config.yaml")), Some("yaml"));
+        assert_eq!(detect_language(Path::new("config.yml")), Some("yaml"));
+        assert_eq!(detect_language(Path::new("config.toml")), Some("toml"));
+        assert_eq!(detect_language(Path::new("config.json")), Some("json"));
+        assert_eq!(detect_language(Path::new("config.jsonc")), Some("json"));
+        assert_eq!(detect_language(Path::new("config.json5")), Some("json"));
     }
 
     // =========================================================================
@@ -385,6 +465,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -422,6 +511,15 @@ mod tests {
                 exclude_paths: vec![],
                 ignore_comments: false,
                 ignore_strings: false,
+                match_mode: Default::default(),
+                multiline: false,
+                multiline_window: None,
+                context_patterns: vec![],
+                context_window: None,
+                escalate_patterns: vec![],
+                escalate_window: None,
+                escalate_to: None,
+                depends_on: vec![],
                 help: None,
                 url: None,
                 tags: vec![],
@@ -437,6 +535,15 @@ mod tests {
                 exclude_paths: vec![],
                 ignore_comments: false,
                 ignore_strings: false,
+                match_mode: Default::default(),
+                multiline: false,
+                multiline_window: None,
+                context_patterns: vec![],
+                context_window: None,
+                escalate_patterns: vec![],
+                escalate_window: None,
+                escalate_to: None,
+                depends_on: vec![],
                 help: None,
                 url: None,
                 tags: vec![],
@@ -466,6 +573,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -498,6 +614,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -531,6 +656,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -564,6 +698,15 @@ mod tests {
             exclude_paths: vec!["**/test/**".to_string(), "**/tests/**".to_string()],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -604,6 +747,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -637,6 +789,15 @@ mod tests {
             exclude_paths: vec!["**/*.test.ts".to_string(), "**/*.spec.ts".to_string()],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -670,6 +831,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -700,6 +870,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -730,6 +909,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -760,6 +948,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -790,6 +987,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -818,6 +1024,15 @@ mod tests {
             exclude_paths: vec!["**/tests/**".to_string()],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -857,6 +1072,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -885,6 +1109,15 @@ mod tests {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -898,5 +1131,82 @@ mod tests {
         assert!(!r.applies_to(Path::new("file.txt"), None));
         assert!(!r.applies_to(Path::new("Makefile"), None));
         assert!(!r.applies_to(Path::new("README.md"), None));
+    }
+
+    #[test]
+    fn compile_rejects_invalid_multiline_window() {
+        let cfg = RuleConfig {
+            id: "test.multiline".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec![],
+            patterns: vec!["a".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: true,
+            multiline_window: Some(1),
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
+            help: None,
+            url: None,
+            tags: vec![],
+            test_cases: vec![],
+        };
+
+        let err = compile_rules(&[cfg]).expect_err("window < 2 should fail");
+        match err {
+            RuleCompileError::InvalidMultilineWindow { rule_id, value } => {
+                assert_eq!(rule_id, "test.multiline");
+                assert_eq!(value, 1);
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn compile_rejects_unknown_dependency() {
+        let cfg = RuleConfig {
+            id: "test.dependent".to_string(),
+            severity: Severity::Warn,
+            message: "m".to_string(),
+            languages: vec![],
+            patterns: vec!["a".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec!["missing.rule".to_string()],
+            help: None,
+            url: None,
+            tags: vec![],
+            test_cases: vec![],
+        };
+
+        let err = compile_rules(&[cfg]).expect_err("unknown dependency should fail");
+        match err {
+            RuleCompileError::UnknownDependency {
+                rule_id,
+                dependency,
+            } => {
+                assert_eq!(rule_id, "test.dependent");
+                assert_eq!(dependency, "missing.rule");
+            }
+            other => panic!("unexpected error: {other:?}"),
+        }
     }
 }

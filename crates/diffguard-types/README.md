@@ -1,87 +1,91 @@
 # diffguard-types
 
-Core types and data structures for the [diffguard](https://crates.io/crates/diffguard) governance linter.
+Serializable DTOs and schema-bound types shared across the diffguard workspace.
 
-This crate provides serializable DTOs (Data Transfer Objects) used throughout the diffguard ecosystem. It is intentionally "dumb" — pure data structures with no logic, forming the foundation that all other diffguard crates depend on.
+This crate intentionally contains data types and constants, not orchestration or
+I/O.
 
-## Types
+## Primary Type Groups
 
-### Configuration
+Configuration:
 
-| Type | Purpose |
-|------|---------|
-| `ConfigFile` | Root configuration structure (maps to `diffguard.toml`) |
-| `RuleConfig` | Individual rule definition with patterns, paths, severity |
-| `Defaults` | Default settings for base ref, scope, fail policy |
+- `ConfigFile`
+- `Defaults`
+- `RuleConfig`
+- `RuleTestCase`
+- `DirectoryOverrideConfig`
+- `RuleOverride`
 
-### Output
+Check/receipt model:
 
-| Type | Purpose |
-|------|---------|
-| `CheckReceipt` | Complete check output (versioned schema via `CHECK_SCHEMA_V1`) |
-| `Finding` | Single rule match with location, severity, snippet |
-| `Verdict` | Pass/warn/fail determination with counts |
-| `VerdictStatus` | Enum: Pass, Warn, Fail |
-| `VerdictCounts` | Aggregated counts by severity |
+- `CheckReceipt`
+- `Finding`
+- `Verdict`
+- `VerdictCounts`
+- `VerdictStatus` (`pass`, `warn`, `fail`, `skip`)
+- `DiffMeta`, `ToolMeta`, `TimingMetrics`
 
-### Enums
+Sensor model:
 
-| Enum | Variants |
-|------|----------|
-| `Severity` | `Info`, `Warn`, `Error` |
-| `Scope` | `Added`, `Changed` |
-| `FailOn` | `Error`, `Warn`, `Never` |
+- `SensorReport`
+- `RunMeta`
+- `CapabilityStatus`
+- `SensorFinding`
+- `SensorLocation`
+- `Artifact`
 
-## Features
+Enums/constants:
 
-- Full `serde` support for JSON/TOML serialization
-- JSON Schema generation via `schemars`
-- Built-in rule set for common languages (via `ConfigFile::built_in()` in the CLI/app pipeline)
+- `Severity`, `Scope`, `FailOn`, `MatchMode`
+- `CHECK_SCHEMA_V1`
+- `SENSOR_REPORT_SCHEMA_V1`
+- stable reason/code/capability tokens
 
-## Built-in Rules
+## Built-In Rules
 
-diffguard ships a built-in rule set for common languages. Use `ConfigFile::built_in()` to access
-the defaults in the CLI/app pipeline. Presets are exposed through the CLI
-(`diffguard init --preset ...`) rather than a `diffguard-types` Rust API.
+`ConfigFile::built_in()` returns the workspace default rule set and default
+settings used by the CLI pipeline.
 
 ## Usage
 
 ```rust
-use diffguard_types::{ConfigFile, Severity, RuleConfig, Scope, FailOn};
+use diffguard_types::{ConfigFile, RuleConfig, Severity};
 
-// Load built-in rules
-let config = ConfigFile::built_in();
+let built_in = ConfigFile::built_in();
 
-// Or define custom rules
-let rule = RuleConfig {
-    id: "no-todo".to_string(),
+let custom_rule = RuleConfig {
+    id: "example.no_todo".to_string(),
     severity: Severity::Warn,
-    message: "Remove TODO comments before merging".to_string(),
+    message: "Resolve TODO comments before merge".to_string(),
+    languages: vec!["rust".to_string()],
     patterns: vec![r"\bTODO\b".to_string()],
     paths: vec!["**/*.rs".to_string()],
     exclude_paths: vec!["**/tests/**".to_string()],
-    languages: vec![],
-    ignore_comments: false,  // We want to find TODOs in comments!
+    ignore_comments: false,
     ignore_strings: true,
+    match_mode: Default::default(),
+    multiline: false,
+    multiline_window: None,
+    context_patterns: vec![],
+    context_window: None,
+    escalate_patterns: vec![],
+    escalate_window: None,
+    escalate_to: None,
+    depends_on: vec![],
+    help: None,
+    url: None,
+    tags: vec![],
+    test_cases: vec![],
 };
 
-// Serialize to TOML for config file
-let toml = toml::to_string_pretty(&config)?;
-
-// Serialize receipt to JSON
-let receipt: CheckReceipt = /* ... */;
-let json = serde_json::to_string_pretty(&receipt)?;
+let _json = serde_json::to_string_pretty(&built_in)?;
+let _toml = toml::to_string_pretty(&custom_rule)?;
 ```
 
-## Schema Versioning
+## Determinism Notes
 
-The `CHECK_SCHEMA_V1` constant identifies the receipt schema version, ensuring consumers can detect breaking changes:
-
-```rust
-use diffguard_types::CHECK_SCHEMA_V1;
-
-assert_eq!(receipt.schema, CHECK_SCHEMA_V1);
-```
+Schema IDs and vocabulary constants are stable integration contracts for
+downstream tooling.
 
 ## License
 

@@ -118,4 +118,4 @@ Rules defined in `diffguard.toml`. See `diffguard.toml.example`. Key fields:
 
 ## MSRV
 
-Rust 1.75 (Minimum Supported Rust Version)
+Rust 1.92 (Minimum Supported Rust Version)

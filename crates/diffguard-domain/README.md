@@ -1,115 +1,69 @@
 # diffguard-domain
 
-Domain logic for the [diffguard](https://crates.io/crates/diffguard) governance linter.
+Pure rule-domain logic for diffguard.
 
-This crate contains the core business logic: rule compilation, line evaluation, text preprocessing, and inline suppression handling. It is I/O-free and designed for high testability with pure functions.
+This crate performs rule compilation, line evaluation, preprocessing, directory
+override resolution, and inline suppression handling. It contains no process,
+filesystem, or environment I/O.
 
-## Modules
+## Public Modules
 
-| Module | Purpose |
-|--------|---------|
-| `rules` | Compile `RuleConfig` → `CompiledRule` with regex/glob matchers |
-| `evaluate` | Match lines against compiled rules, produce findings |
-| `preprocess` | Mask comments/strings before pattern matching |
-| `suppression` | Parse and track `diffguard: ignore` directives |
+- `rules` - compile `RuleConfig` to `CompiledRule`, detect languages
+- `evaluate` - evaluate `InputLine` streams against compiled rules
+- `preprocess` - best-effort comment/string masking by language
+- `overrides` - compile and resolve per-directory rule overrides
+- `suppression` - parse `diffguard: ignore...` directives
 
-## Usage
+## Core Flow
 
 ```rust
 use diffguard_domain::{compile_rules, evaluate_lines, InputLine};
 use diffguard_types::ConfigFile;
 
-// Compile rules from config
 let config = ConfigFile::built_in();
-let rules = compile_rules(&config.rules)?;
+let rules = compile_rules(&config.rule)?;
 
-// Prepare input lines (typically from diffguard-diff)
 let lines = vec![
     InputLine {
         path: "src/main.rs".to_string(),
-        line_no: 10,
-        content: "    .unwrap()".to_string(),
-        kind: ChangeKind::Added,
+        line: 10,
+        content: "let x = maybe.unwrap();".to_string(),
     },
 ];
 
-// Evaluate and get findings
-let evaluation = evaluate_lines(&rules, &lines);
-
-println!("Findings: {}", evaluation.findings.len());
-println!("Errors: {}", evaluation.counts.errors);
-println!("Warnings: {}", evaluation.counts.warnings);
-println!("Suppressed: {}", evaluation.counts.suppressed);
+let evaluation = evaluate_lines(lines, &rules, 200);
+println!("findings={}", evaluation.findings.len());
+println!("warn={}", evaluation.counts.warn);
+println!("error={}", evaluation.counts.error);
+println!("suppressed={}", evaluation.counts.suppressed);
 ```
 
-## Rule Compilation
+## Advanced Evaluation Entrypoints
 
-Rules are compiled once and reused for all lines:
+- `evaluate_lines_with_overrides(...)`
+- `evaluate_lines_with_overrides_and_language(...)`
 
-```rust
-use diffguard_domain::{compile_rules, CompiledRule};
+These are used by callers that provide compiled directory overrides or a forced
+language override for preprocessing/rule language filtering.
 
-let rules: Vec<CompiledRule> = compile_rules(&config.rules)?;
+## Language and Preprocessing
 
-// CompiledRule contains:
-// - Pre-compiled regex patterns
-// - GlobSets for path include/exclude
-// - Language filters
-// - Preprocessor options
-```
+- `detect_language(&Path) -> Option<&'static str>`
+- `Preprocessor` + `PreprocessOptions` for masking comments and/or strings
 
-## Language Detection
+Masking is intentionally heuristic and deterministic, not a full parser.
 
-Automatic language detection from file extensions:
+## Suppression Directives
 
-```rust
-use diffguard_domain::detect_language;
+Supported inline suppressions include:
 
-let lang = detect_language("src/main.rs");  // Some(Language::Rust)
-let lang = detect_language("app.py");       // Some(Language::Python)
-let lang = detect_language("unknown.xyz");  // None
-```
+- `diffguard: ignore <rule_id>`
+- `diffguard: ignore-next-line <rule_id>`
+- `diffguard: ignore rule1, rule2`
+- `diffguard: ignore *`
+- `diffguard: ignore-all`
 
-Supported languages: Rust, Python, JavaScript, TypeScript, Go, Ruby, C, C++, C#, Java, Kotlin, Shell
-
-## Preprocessing
-
-Best-effort comment/string masking using C-like syntax heuristics:
-
-```rust
-use diffguard_domain::{Preprocessor, PreprocessOptions, Language};
-
-let preprocessor = Preprocessor::new(Language::Rust, PreprocessOptions {
-    ignore_comments: true,
-    ignore_strings: true,
-});
-
-// Original: let x = "TODO: fix"; // TODO: important
-// Masked:   let x = "         "; //
-let masked = preprocessor.sanitize(line);
-```
-
-**Note:** Preprocessing is intentionally simple and best-effort. It uses C-like syntax heuristics rather than full language parsers.
-
-## Inline Suppressions
-
-Support for inline directives to suppress specific findings:
-
-```rust
-// Suppress on same line
-let x = get_value().unwrap(); // diffguard: ignore rust.no_unwrap
-
-// Suppress on next line
-// diffguard: ignore-next-line rust.no_unwrap
-let x = get_value().unwrap();
-
-// Suppress multiple rules
-let x = foo(); // diffguard: ignore rule1, rule2
-
-// Suppress all rules
-let x = foo(); // diffguard: ignore *
-// or: diffguard: ignore-all
-```
+Suppressed matches are tracked in `VerdictCounts.suppressed`.
 
 ## License
 

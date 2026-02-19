@@ -1,10 +1,11 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ConfigFile",
   "description": "The on-disk configuration file.",
   "type": "object",
   "properties": {
     "defaults": {
+      "$ref": "#/$defs/Defaults",
       "default": {
         "base": "origin/main",
         "diff_context": 0,
@@ -12,29 +13,24 @@
         "head": "HEAD",
         "max_findings": 200,
         "scope": "added"
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/Defaults"
-        }
-      ]
+      }
     },
     "includes": {
-      "description": "Include other config files. Paths are relative to this config file's directory. Rules are merged: later definitions override earlier ones by rule ID.",
+      "description": "Include other config files. Paths are relative to this config file's directory.\nRules are merged: later definitions override earlier ones by rule ID.",
       "type": "array",
       "items": {
         "type": "string"
       }
     },
     "rule": {
-      "default": [],
       "type": "array",
+      "default": [],
       "items": {
-        "$ref": "#/definitions/RuleConfig"
+        "$ref": "#/$defs/RuleConfig"
       }
     }
   },
-  "definitions": {
+  "$defs": {
     "Defaults": {
       "type": "object",
       "properties": {
@@ -50,12 +46,12 @@
             "null"
           ],
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "fail_on": {
           "anyOf": [
             {
-              "$ref": "#/definitions/FailOn"
+              "$ref": "#/$defs/FailOn"
             },
             {
               "type": "null"
@@ -74,12 +70,12 @@
             "null"
           ],
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "scope": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Scope"
+              "$ref": "#/$defs/Scope"
             },
             {
               "type": "null"
@@ -96,19 +92,77 @@
         "never"
       ]
     },
+    "MatchMode": {
+      "oneOf": [
+        {
+          "description": "Emit a finding when at least one pattern matches (default behavior).",
+          "type": "string",
+          "const": "any"
+        },
+        {
+          "description": "Emit a finding when none of the patterns match within the scoped file.",
+          "type": "string",
+          "const": "absent"
+        }
+      ]
+    },
     "RuleConfig": {
       "type": "object",
-      "required": [
-        "id",
-        "message",
-        "patterns",
-        "severity"
-      ],
       "properties": {
+        "context_patterns": {
+          "description": "Optional context patterns that must match near a primary match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "context_window": {
+          "description": "Context search window (lines before/after the matched line).\nIf omitted and `context_patterns` are set, a default of 3 is used.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
+        "depends_on": {
+          "description": "Rule dependencies. This rule is only evaluated in files where all dependencies matched.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "escalate_patterns": {
+          "description": "Optional patterns that escalate severity when found near a match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "escalate_to": {
+          "description": "Escalation target severity. Defaults to `error` when escalation patterns match.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Severity"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "escalate_window": {
+          "description": "Escalation search window (lines before/after the matched line).\nIf omitted and `escalate_patterns` are set, a default of 0 (same line) is used.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
         "exclude_paths": {
           "description": "Exclude path globs.",
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -124,28 +178,45 @@
           "type": "string"
         },
         "ignore_comments": {
-          "default": false,
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         },
         "ignore_strings": {
-          "default": false,
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         },
         "languages": {
           "description": "Optional language tags (e.g. \"rust\"). Empty means \"all\".",
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
         },
+        "match_mode": {
+          "description": "Matching mode:\n- `any` (default): emit when patterns match\n- `absent`: emit when patterns do not match in the scoped file",
+          "$ref": "#/$defs/MatchMode"
+        },
         "message": {
           "type": "string"
         },
+        "multiline": {
+          "description": "Enable multi-line matching across consecutive scoped lines.",
+          "type": "boolean"
+        },
+        "multiline_window": {
+          "description": "Number of consecutive scoped lines to include in a multiline window.\nIf omitted and `multiline=true`, a default of 2 lines is used.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0
+        },
         "paths": {
           "description": "Include path globs. Empty means \"all\".",
-          "default": [],
           "type": "array",
+          "default": [],
           "items": {
             "type": "string"
           }
@@ -158,7 +229,7 @@
           }
         },
         "severity": {
-          "$ref": "#/definitions/Severity"
+          "$ref": "#/$defs/Severity"
         },
         "tags": {
           "description": "Tags for grouping/filtering rules (e.g., \"debug\", \"security\", \"style\").",
@@ -171,7 +242,7 @@
           "description": "Test cases for validating this rule.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/RuleTestCase"
+            "$ref": "#/$defs/RuleTestCase"
           }
         },
         "url": {
@@ -181,15 +252,17 @@
             "null"
           ]
         }
-      }
+      },
+      "required": [
+        "id",
+        "severity",
+        "message",
+        "patterns"
+      ]
     },
     "RuleTestCase": {
       "description": "A test case for validating a rule's behavior.",
       "type": "object",
-      "required": [
-        "input",
-        "should_match"
-      ],
       "properties": {
         "description": {
           "description": "Optional: description of what this test case validates.",
@@ -227,13 +300,19 @@
           "description": "Whether the rule should match this input.",
           "type": "boolean"
         }
-      }
+      },
+      "required": [
+        "input",
+        "should_match"
+      ]
     },
     "Scope": {
       "type": "string",
       "enum": [
         "added",
-        "changed"
+        "changed",
+        "modified",
+        "deleted"
       ]
     },
     "Severity": {

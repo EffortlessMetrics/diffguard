@@ -1,7 +1,7 @@
 #![allow(clippy::collapsible_if)]
 
-use std::collections::HashMap;
-use std::io::{self, BufRead, Write};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::io::{self, BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
@@ -11,16 +11,23 @@ use chrono::Utc;
 use clap::{Parser, Subcommand, ValueEnum};
 use tracing::{debug, info};
 
+use diffguard_analytics::{
+    FALSE_POSITIVE_BASELINE_SCHEMA_V1, FalsePositiveBaseline, TREND_HISTORY_SCHEMA_V1,
+    TrendHistory, append_trend_run, baseline_from_receipt, false_positive_fingerprint_set,
+    merge_false_positive_baselines, normalize_false_positive_baseline, normalize_trend_history,
+    summarize_trend_history, trend_run_from_receipt,
+};
 use diffguard_core::{
     CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt, render_junit_for_receipt,
     render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
 };
-use diffguard_domain::compile_rules;
+use diffguard_diff::parse_unified_diff;
+use diffguard_domain::{DirectoryRuleOverride, compile_rules};
 use diffguard_types::{
     Artifact, CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_UNAVAILABLE, CHECK_ID_INTERNAL,
-    CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta, FailOn,
-    REASON_MISSING_BASE, REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, RuleConfig, Scope, ToolMeta,
-    Verdict, VerdictCounts, VerdictStatus,
+    CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta,
+    DirectoryOverrideConfig, FailOn, MatchMode, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT,
+    REASON_TOOL_ERROR, RuleConfig, Scope, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
 };
 
 mod config_loader;
@@ -47,7 +54,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Evaluate rules against added/changed lines in a git diff.
+    /// Evaluate rules against diff-scoped lines in a git diff.
     Check(Box<CheckArgs>),
 
     /// Print the effective rules (built-in + optional config merge).
@@ -73,6 +80,9 @@ enum Commands {
 
     /// Run test cases defined in rule configurations.
     Test(TestArgs),
+
+    /// Summarize historical check trends from a trend history file.
+    Trend(TrendArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -97,9 +107,15 @@ enum RulesFormat {
 
 #[derive(Parser, Debug)]
 struct CheckArgs {
-    /// Base git ref (defaults to config defaults, else origin/main).
-    #[arg(long)]
-    base: Option<String>,
+    /// Base git ref (repeatable for multi-base comparison).
+    ///
+    /// Examples:
+    ///   --base origin/main
+    ///   --base origin/main --base origin/release/1.0
+    ///
+    /// When omitted, defaults to config defaults, else origin/main.
+    #[arg(long, action = clap::ArgAction::Append)]
+    base: Vec<String>,
 
     /// Head git ref (defaults to config defaults, else HEAD).
     #[arg(long)]
@@ -108,9 +124,15 @@ struct CheckArgs {
     /// Check only staged changes (for pre-commit hooks).
     ///
     /// Uses `git diff --cached` instead of base...head range.
-    /// Mutually exclusive with --base and --head.
-    #[arg(long, conflicts_with_all = ["base", "head"])]
+    /// Mutually exclusive with --base, --head, and --diff-file.
+    #[arg(long, conflicts_with_all = ["base", "head", "diff_file"])]
     staged: bool,
+
+    /// Read unified diff input from a file (or '-' for stdin) instead of git.
+    ///
+    /// Mutually exclusive with --staged, --base, and --head.
+    #[arg(long, value_name = "PATH", conflicts_with_all = ["staged", "base", "head"])]
+    diff_file: Option<PathBuf>,
 
     /// Path to a config file. If omitted, uses ./diffguard.toml if present.
     #[arg(long)]
@@ -154,8 +176,8 @@ struct CheckArgs {
     #[arg(long, action = clap::ArgAction::Append)]
     disable_tags: Vec<String>,
 
-    /// Enable rules with these tags (reserved for future use). Repeatable.
-    #[arg(long, action = clap::ArgAction::Append, hide = true)]
+    /// Add rules with these tags even when --only-tags is set. Repeatable.
+    #[arg(long, action = clap::ArgAction::Append)]
     enable_tags: Vec<String>,
 
     /// Where to write the JSON receipt.
@@ -225,6 +247,57 @@ struct CheckArgs {
     )]
     tsv: Option<PathBuf>,
 
+    /// Write per-rule hit statistics as JSON.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/rule-stats.json
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/rule-stats.json"
+    )]
+    rule_stats: Option<PathBuf>,
+
+    /// Read a false-positive baseline file and suppress matching findings.
+    #[arg(long, value_name = "PATH")]
+    false_positive_baseline: Option<PathBuf>,
+
+    /// Write/merge a false-positive baseline file from this run's findings.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/false-positives.json
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/false-positives.json"
+    )]
+    write_false_positive_baseline: Option<PathBuf>,
+
+    /// Append this run to a trend history file for cross-run analytics.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/trend-history.json
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/trend-history.json"
+    )]
+    trend_history: Option<PathBuf>,
+
+    /// Maximum number of runs to retain when writing trend history.
+    #[arg(long)]
+    trend_max_runs: Option<usize>,
+
+    /// Filter scoped lines to specific blame author patterns. Repeatable.
+    ///
+    /// Matches case-insensitive substrings against `author` and `author-mail`.
+    #[arg(long, action = clap::ArgAction::Append)]
+    blame_author: Vec<String>,
+
+    /// Filter scoped lines to commits no older than N days.
+    #[arg(long)]
+    blame_max_age_days: Option<u32>,
+
     /// Execution mode.
     ///
     /// In standard mode, exit codes reflect the verdict (0=pass, 2=fail, 3=warn-fail).
@@ -248,7 +321,7 @@ struct CheckArgs {
     ///
     /// This overrides the auto-detected language from file extensions.
     /// Valid values: rust, python, javascript, typescript, go, ruby, c, cpp,
-    /// csharp, java, kotlin, shell, swift, scala, sql, xml, php
+    /// csharp, java, kotlin, shell, swift, scala, sql, xml, php, yaml, toml, json
     #[arg(long, value_enum)]
     language: Option<LanguageArg>,
 }
@@ -294,6 +367,23 @@ struct CsvArgs {
     /// Output as TSV instead of CSV.
     #[arg(long)]
     tsv: bool,
+}
+
+#[derive(Parser, Debug)]
+struct TrendArgs {
+    /// Path to the trend history JSON file.
+    #[arg(long, default_value = "artifacts/diffguard/trend-history.json")]
+    history: PathBuf,
+
+    /// Output format for trend summary.
+    #[arg(long, value_enum, default_value_t = TrendFormat::Text)]
+    format: TrendFormat,
+}
+
+#[derive(Clone, Copy, Debug, ValueEnum)]
+enum TrendFormat {
+    Text,
+    Json,
 }
 
 #[derive(Parser, Debug)]
@@ -392,6 +482,8 @@ enum Mode {
 enum ScopeArg {
     Added,
     Changed,
+    Modified,
+    Deleted,
 }
 
 impl From<ScopeArg> for Scope {
@@ -399,6 +491,8 @@ impl From<ScopeArg> for Scope {
         match v {
             ScopeArg::Added => Scope::Added,
             ScopeArg::Changed => Scope::Changed,
+            ScopeArg::Modified => Scope::Modified,
+            ScopeArg::Deleted => Scope::Deleted,
         }
     }
 }
@@ -440,6 +534,9 @@ enum LanguageArg {
     Sql,
     Xml,
     Php,
+    Yaml,
+    Toml,
+    Json,
 }
 
 impl LanguageArg {
@@ -463,6 +560,9 @@ impl LanguageArg {
             LanguageArg::Sql => "sql",
             LanguageArg::Xml => "xml",
             LanguageArg::Php => "php",
+            LanguageArg::Yaml => "yaml",
+            LanguageArg::Toml => "toml",
+            LanguageArg::Json => "json",
         }
     }
 }
@@ -484,6 +584,9 @@ where
     T: Into<std::ffi::OsString> + Clone,
 {
     let cli = Cli::parse_from(args);
+
+    // Initialize logging based on flags
+    init_logging(cli.verbose, cli.debug);
 
     // Initialize logging based on flags
     init_logging(cli.verbose, cli.debug);
@@ -516,6 +619,10 @@ where
             Ok(0)
         }
         Commands::Test(args) => cmd_test(args),
+        Commands::Trend(args) => {
+            cmd_trend(args)?;
+            Ok(0)
+        }
     }
 }
 
@@ -607,6 +714,11 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
             errors.push(format!("Rule '{}': duplicate rule ID", rule.id));
         }
     }
+    let known_rule_ids = cfg
+        .rule
+        .iter()
+        .map(|r| r.id.as_str())
+        .collect::<std::collections::HashSet<_>>();
 
     // Validate each rule
     for rule in &cfg.rule {
@@ -624,6 +736,38 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
                 errors.push(format!(
                     "Rule '{}': invalid regex pattern '{}': {}",
                     rule.id, pattern, e
+                ));
+            }
+        }
+        for pattern in &rule.context_patterns {
+            if let Err(e) = regex::Regex::new(pattern) {
+                errors.push(format!(
+                    "Rule '{}': invalid context pattern '{}': {}",
+                    rule.id, pattern, e
+                ));
+            }
+        }
+        for pattern in &rule.escalate_patterns {
+            if let Err(e) = regex::Regex::new(pattern) {
+                errors.push(format!(
+                    "Rule '{}': invalid escalation pattern '{}': {}",
+                    rule.id, pattern, e
+                ));
+            }
+        }
+
+        if rule.multiline && rule.multiline_window.is_some_and(|window| window < 2) {
+            errors.push(format!(
+                "Rule '{}': multiline_window must be >= 2 when multiline=true",
+                rule.id
+            ));
+        }
+
+        for dependency in &rule.depends_on {
+            if !known_rule_ids.contains(dependency.as_str()) {
+                errors.push(format!(
+                    "Rule '{}': unknown dependency '{}'",
+                    rule.id, dependency
                 ));
             }
         }
@@ -756,6 +900,40 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
     out.push_str("\nPatterns:\n");
     for p in &rule.patterns {
         out.push_str(&format!("  - {}\n", p));
+    }
+
+    out.push_str("\nSemantics:\n");
+    let match_mode = match rule.match_mode {
+        MatchMode::Any => "any",
+        MatchMode::Absent => "absent",
+    };
+    out.push_str(&format!("  - Match mode: {match_mode}\n"));
+    out.push_str(&format!(
+        "  - Multiline: {}{}\n",
+        if rule.multiline { "yes" } else { "no" },
+        rule.multiline_window
+            .map(|w| format!(" (window={w})"))
+            .unwrap_or_default()
+    ));
+    if !rule.context_patterns.is_empty() {
+        out.push_str(&format!(
+            "  - Context patterns (window={}): {}\n",
+            rule.context_window.unwrap_or(3),
+            rule.context_patterns.join(", ")
+        ));
+    }
+    if !rule.escalate_patterns.is_empty() {
+        out.push_str(&format!(
+            "  - Escalation to {} (window={}): {}\n",
+            rule.escalate_to
+                .unwrap_or(diffguard_types::Severity::Error)
+                .as_str(),
+            rule.escalate_window.unwrap_or(0),
+            rule.escalate_patterns.join(", ")
+        ));
+    }
+    if !rule.depends_on.is_empty() {
+        out.push_str(&format!("  - Depends on: {}\n", rule.depends_on.join(", ")));
     }
 
     out.push_str("\nApplies to:\n");
@@ -897,7 +1075,8 @@ fn resolve_out_path(args: &CheckArgs, mode: Mode) -> PathBuf {
 /// Adjusts extras output paths for cockpit mode.
 ///
 /// When `--sensor` is active (cockpit mode), the default paths for
-/// `--sarif`, `--junit`, `--csv`, and `--tsv` are moved under
+/// `--sarif`, `--junit`, `--csv`, `--tsv`, `--rule-stats`,
+/// `--write-false-positive-baseline`, and `--trend-history` are moved under
 /// `artifacts/diffguard/extras/` to keep the top-level `artifacts/diffguard/`
 /// clean for the bus (`report.json` + `comment.md` only).
 ///
@@ -926,13 +1105,28 @@ fn resolve_extras_paths(args: &mut CheckArgs, mode: Mode) {
             "artifacts/diffguard/report.tsv",
             "artifacts/diffguard/extras/report.tsv",
         ),
+        (
+            "artifacts/diffguard/rule-stats.json",
+            "artifacts/diffguard/extras/rule-stats.json",
+        ),
+        (
+            "artifacts/diffguard/false-positives.json",
+            "artifacts/diffguard/extras/false-positives.json",
+        ),
+        (
+            "artifacts/diffguard/trend-history.json",
+            "artifacts/diffguard/extras/trend-history.json",
+        ),
     ];
 
-    let fields: [&mut Option<PathBuf>; 4] = [
+    let fields: [&mut Option<PathBuf>; 7] = [
         &mut args.sarif,
         &mut args.junit,
         &mut args.csv,
         &mut args.tsv,
+        &mut args.rule_stats,
+        &mut args.write_false_positive_baseline,
+        &mut args.trend_history,
     ];
 
     for (field, (standard_default, cockpit_default)) in
@@ -961,6 +1155,316 @@ fn build_rule_metadata(cfg: &ConfigFile) -> HashMap<String, RuleMetadata> {
             )
         })
         .collect()
+}
+
+fn load_directory_overrides_for_diff(
+    diff_text: &str,
+    scope: Scope,
+) -> Result<Vec<DirectoryRuleOverride>> {
+    let (diff_lines, _) =
+        parse_unified_diff(diff_text, scope).context("parse diff for directory overrides")?;
+
+    let mut candidates = BTreeSet::<PathBuf>::new();
+    for line in diff_lines {
+        collect_override_candidates_for_path(&line.path, &mut candidates);
+    }
+
+    let mut candidate_paths: Vec<PathBuf> = candidates.into_iter().collect();
+    candidate_paths.sort_by(|a, b| {
+        let a_parent = a.parent().unwrap_or_else(|| Path::new(""));
+        let b_parent = b.parent().unwrap_or_else(|| Path::new(""));
+        directory_depth(a_parent)
+            .cmp(&directory_depth(b_parent))
+            .then_with(|| a.to_string_lossy().cmp(&b.to_string_lossy()))
+    });
+
+    let mut overrides = Vec::new();
+
+    for override_path in candidate_paths {
+        if !override_path.is_file() {
+            continue;
+        }
+
+        let text = std::fs::read_to_string(&override_path).with_context(|| {
+            format!("read directory override config {}", override_path.display())
+        })?;
+        let expanded = expand_env_vars(&text).with_context(|| {
+            format!(
+                "expand env vars in directory override config {}",
+                override_path.display()
+            )
+        })?;
+
+        let parsed: DirectoryOverrideConfig = toml::from_str(&expanded).with_context(|| {
+            format!(
+                "parse directory override config {}",
+                override_path.display()
+            )
+        })?;
+
+        let directory =
+            normalize_override_directory(override_path.parent().unwrap_or_else(|| Path::new("")));
+
+        for rule in parsed.rules {
+            overrides.push(DirectoryRuleOverride {
+                directory: directory.clone(),
+                rule_id: rule.id,
+                enabled: rule.enabled,
+                severity: rule.severity,
+                exclude_paths: rule.exclude_paths,
+            });
+        }
+    }
+
+    Ok(overrides)
+}
+
+fn collect_override_candidates_for_path(file_path: &str, out: &mut BTreeSet<PathBuf>) {
+    let path = Path::new(file_path);
+    let mut current = path.parent();
+
+    if current.is_none() {
+        out.insert(PathBuf::from(".diffguard.toml"));
+        return;
+    }
+
+    while let Some(dir) = current {
+        let mut candidate = PathBuf::new();
+        if !dir.as_os_str().is_empty() {
+            candidate.push(dir);
+        }
+        candidate.push(".diffguard.toml");
+        out.insert(candidate);
+
+        if dir.as_os_str().is_empty() {
+            break;
+        }
+        current = dir.parent();
+    }
+}
+
+fn normalize_override_directory(path: &Path) -> String {
+    let raw = path.to_string_lossy().replace('\\', "/");
+    let trimmed = raw.trim_matches('/');
+    if trimmed.is_empty() || trimmed == "." {
+        String::new()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn directory_depth(path: &Path) -> usize {
+    path.components().count()
+}
+
+#[derive(Debug, Clone)]
+struct BlameFilters {
+    author_patterns: Vec<String>,
+    max_age_days: Option<u32>,
+}
+
+impl BlameFilters {
+    fn from_args(args: &CheckArgs) -> Option<Self> {
+        let author_patterns: Vec<String> = args
+            .blame_author
+            .iter()
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        if author_patterns.is_empty() && args.blame_max_age_days.is_none() {
+            return None;
+        }
+
+        Some(Self {
+            author_patterns,
+            max_age_days: args.blame_max_age_days,
+        })
+    }
+
+    fn matches(&self, line: &BlameLineMeta, now_unix_seconds: i64) -> bool {
+        if !self.author_patterns.is_empty() {
+            let haystack = format!(
+                "{} {}",
+                line.author.to_ascii_lowercase(),
+                line.author_mail.to_ascii_lowercase()
+            );
+            if !self
+                .author_patterns
+                .iter()
+                .any(|pattern| haystack.contains(pattern))
+            {
+                return false;
+            }
+        }
+
+        if let Some(max_age_days) = self.max_age_days {
+            if line.author_time <= 0 {
+                return false;
+            }
+            let age_seconds = now_unix_seconds.saturating_sub(line.author_time).max(0);
+            let age_days = age_seconds / 86_400;
+            if age_days > i64::from(max_age_days) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+struct BlameLineMeta {
+    author: String,
+    author_mail: String,
+    author_time: i64,
+}
+
+fn load_false_positive_baseline(path: &Path) -> Result<FalsePositiveBaseline> {
+    if !path.exists() {
+        return Ok(FalsePositiveBaseline::default());
+    }
+
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("read false-positive baseline {}", path.display()))?;
+    let baseline: FalsePositiveBaseline = serde_json::from_str(&text)
+        .with_context(|| format!("parse false-positive baseline {}", path.display()))?;
+    let baseline = normalize_false_positive_baseline(baseline);
+    if baseline.schema != FALSE_POSITIVE_BASELINE_SCHEMA_V1 {
+        bail!(
+            "unsupported false-positive baseline schema '{}'; expected '{}'",
+            baseline.schema,
+            FALSE_POSITIVE_BASELINE_SCHEMA_V1
+        );
+    }
+    Ok(baseline)
+}
+
+fn load_trend_history(path: &Path) -> Result<TrendHistory> {
+    if !path.exists() {
+        return Ok(TrendHistory::default());
+    }
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("read trend history {}", path.display()))?;
+    let history: TrendHistory = serde_json::from_str(&text)
+        .with_context(|| format!("parse trend history {}", path.display()))?;
+    let history = normalize_trend_history(history);
+    if history.schema != TREND_HISTORY_SCHEMA_V1 {
+        bail!(
+            "unsupported trend history schema '{}'; expected '{}'",
+            history.schema,
+            TREND_HISTORY_SCHEMA_V1
+        );
+    }
+    Ok(history)
+}
+
+fn parse_blame_porcelain(blame_text: &str) -> Result<BTreeMap<u32, BlameLineMeta>> {
+    let mut out = BTreeMap::<u32, BlameLineMeta>::new();
+    let lines: Vec<&str> = blame_text.lines().collect();
+    let mut idx = 0usize;
+
+    while idx < lines.len() {
+        let header = lines[idx];
+        let header_parts: Vec<&str> = header.split_whitespace().collect();
+        if header_parts.len() < 4 {
+            idx += 1;
+            continue;
+        }
+
+        let final_line = match header_parts[2].parse::<u32>() {
+            Ok(v) => v,
+            Err(_) => {
+                idx += 1;
+                continue;
+            }
+        };
+        let group_lines = header_parts[3].parse::<u32>().unwrap_or(1);
+
+        idx += 1;
+        let mut meta = BlameLineMeta::default();
+        let mut found_source_line = false;
+
+        while idx < lines.len() {
+            let row = lines[idx];
+            if row.starts_with('\t') {
+                found_source_line = true;
+                idx += 1;
+                break;
+            }
+            if let Some(v) = row.strip_prefix("author ") {
+                meta.author = v.to_string();
+            } else if let Some(v) = row.strip_prefix("author-mail ") {
+                meta.author_mail = v.trim_matches('<').trim_matches('>').to_string();
+            } else if let Some(v) = row.strip_prefix("author-time ") {
+                meta.author_time = v.parse::<i64>().unwrap_or(0);
+            }
+            idx += 1;
+        }
+
+        if found_source_line {
+            for offset in 0..group_lines {
+                out.insert(final_line.saturating_add(offset), meta.clone());
+            }
+        }
+    }
+
+    Ok(out)
+}
+
+fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
+    let output = Command::new("git")
+        .args(["blame", "--line-porcelain", head_ref, "--", path])
+        .output()
+        .with_context(|| format!("run git blame for {}", path))?;
+
+    if !output.status.success() {
+        bail!(
+            "git blame failed for '{}' at '{}': {}",
+            path,
+            head_ref,
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+fn collect_blame_allowed_lines(
+    diff_text: &str,
+    scope: Scope,
+    head_ref: &str,
+    filters: &BlameFilters,
+) -> Result<BTreeSet<(String, u32)>> {
+    let (diff_lines, _) =
+        parse_unified_diff(diff_text, scope).context("parse diff for blame filtering")?;
+
+    let mut lines_by_path = BTreeMap::<String, BTreeSet<u32>>::new();
+    for line in diff_lines {
+        lines_by_path
+            .entry(line.path)
+            .or_default()
+            .insert(line.line);
+    }
+
+    let now = Utc::now().timestamp();
+    let mut allowed = BTreeSet::<(String, u32)>::new();
+
+    for (path, lines) in lines_by_path {
+        let blame_text = git_blame_porcelain(head_ref, &path)?;
+        let blame_map = parse_blame_porcelain(&blame_text)
+            .with_context(|| format!("parse git blame for {}", path))?;
+        for line in lines {
+            let Some(meta) = blame_map.get(&line) else {
+                continue;
+            };
+            if filters.matches(meta, now) {
+                allowed.insert((path.clone(), line));
+            }
+        }
+    }
+
+    Ok(allowed)
 }
 
 fn maybe_force_sensor_json_error() -> Option<serde_json::Error> {
@@ -1148,12 +1652,17 @@ fn cockpit_error_detail(err: &anyhow::Error) -> String {
         .unwrap_or_else(|| err.to_string())
 }
 
+fn render_base_refs(bases: &[String]) -> String {
+    match bases {
+        [] => "origin/main".to_string(),
+        [single] => single.clone(),
+        _ => bases.join(","),
+    }
+}
+
 /// Builds a fail receipt for tool/runtime errors in cockpit mode.
 fn build_tool_error_receipt(args: &CheckArgs, detail: &str) -> CheckReceipt {
-    let base = args
-        .base
-        .clone()
-        .unwrap_or_else(|| "origin/main".to_string());
+    let base = render_base_refs(&args.base);
     let head = args.head.clone().unwrap_or_else(|| "HEAD".to_string());
 
     CheckReceipt {
@@ -1229,10 +1738,7 @@ fn build_tool_error_sensor_report(
 ) -> diffguard_types::SensorReport {
     use diffguard_core::compute_fingerprint_raw;
 
-    let base = args
-        .base
-        .clone()
-        .unwrap_or_else(|| "origin/main".to_string());
+    let base = render_base_refs(&args.base);
     let head = args.head.clone().unwrap_or_else(|| "HEAD".to_string());
 
     let fingerprint_input = format!("{CHECK_ID_INTERNAL}:{CODE_TOOL_RUNTIME_ERROR}:{detail}");
@@ -1288,10 +1794,7 @@ fn build_tool_error_sensor_report(
 
 /// Builds a skip receipt when the check cannot run due to missing prerequisites.
 fn build_skip_receipt(args: &CheckArgs, reason_token: &str, _detail: &str) -> CheckReceipt {
-    let base = args
-        .base
-        .clone()
-        .unwrap_or_else(|| "origin/main".to_string());
+    let base = render_base_refs(&args.base);
     let head = args.head.clone().unwrap_or_else(|| "HEAD".to_string());
 
     CheckReceipt {
@@ -1358,7 +1861,28 @@ fn cmd_check_inner(
         scope, fail_on, max_findings, diff_context
     );
 
-    // Handle --staged mode vs base/head mode
+    let forced_language = args.language.map(LanguageArg::as_str).map(str::to_string);
+
+    if args.trend_max_runs.is_some_and(|v| v == 0) {
+        bail!("--trend-max-runs must be >= 1");
+    }
+
+    let false_positive_fingerprints = if let Some(baseline_path) = &args.false_positive_baseline {
+        let baseline = load_false_positive_baseline(baseline_path)?;
+        let fingerprints = false_positive_fingerprint_set(&baseline);
+        info!(
+            "Loaded {} false-positive fingerprints from {}",
+            fingerprints.len(),
+            baseline_path.display()
+        );
+        fingerprints
+    } else {
+        BTreeSet::new()
+    };
+
+    let blame_filters = BlameFilters::from_args(args);
+
+    // Handle --staged / --diff-file / base-head modes
     let (base, head, diff_text) = if args.staged {
         info!("Checking staged changes");
         let diff_text = git_staged_diff(diff_context).map_err(|e| {
@@ -1368,13 +1892,26 @@ fn cmd_check_inner(
             })
         })?;
         ("(staged)".to_string(), "HEAD".to_string(), diff_text)
-    } else {
-        // Merge defaults (CLI overrides config).
-        let base = args
-            .base
-            .clone()
-            .or_else(|| cfg.defaults.base.clone())
-            .unwrap_or_else(|| "origin/main".to_string());
+    } else if let Some(diff_file) = &args.diff_file {
+        let diff_text = if diff_file == Path::new("-") {
+            info!("Reading unified diff from stdin");
+            let mut buf = String::new();
+            io::stdin().read_to_string(&mut buf).map_err(|e| {
+                anyhow::Error::new(CockpitSkipError {
+                    token: REASON_NO_DIFF_INPUT,
+                    source: e.into(),
+                })
+            })?;
+            buf
+        } else {
+            info!("Reading unified diff from file: {}", diff_file.display());
+            std::fs::read_to_string(diff_file).map_err(|e| {
+                anyhow::Error::new(CockpitSkipError {
+                    token: REASON_NO_DIFF_INPUT,
+                    source: e.into(),
+                })
+            })?
+        };
 
         let head = args
             .head
@@ -1382,17 +1919,83 @@ fn cmd_check_inner(
             .or_else(|| cfg.defaults.head.clone())
             .unwrap_or_else(|| "HEAD".to_string());
 
-        info!("Checking diff: {}...{}", base, head);
-        let diff_text = git_diff(&base, &head, diff_context).map_err(|e| {
-            anyhow::Error::new(CockpitSkipError {
-                token: REASON_MISSING_BASE,
-                source: e,
-            })
-        })?;
+        let base = if diff_file == Path::new("-") {
+            "(stdin)".to_string()
+        } else {
+            format!("(file:{})", diff_file.display())
+        };
+
         (base, head, diff_text)
+    } else {
+        // Merge defaults (CLI overrides config).
+        let bases = if args.base.is_empty() {
+            vec![
+                cfg.defaults
+                    .base
+                    .clone()
+                    .unwrap_or_else(|| "origin/main".to_string()),
+            ]
+        } else {
+            args.base.clone()
+        };
+
+        let head = args
+            .head
+            .clone()
+            .or_else(|| cfg.defaults.head.clone())
+            .unwrap_or_else(|| "HEAD".to_string());
+
+        if bases.len() > 1 {
+            info!(
+                "Checking multi-base diff against {} base refs: {}",
+                bases.len(),
+                bases.join(", ")
+            );
+        }
+
+        let mut diff_parts = Vec::with_capacity(bases.len());
+        for base in &bases {
+            info!("Checking diff: {}...{}", base, head);
+            let diff = git_diff(base, &head, diff_context).map_err(|e| {
+                anyhow::Error::new(CockpitSkipError {
+                    token: REASON_MISSING_BASE,
+                    source: e,
+                })
+            })?;
+            diff_parts.push(diff);
+        }
+
+        let diff_text = diff_parts.join("\n");
+        (render_base_refs(&bases), head, diff_text)
     };
 
     debug!("Diff text length: {} bytes", diff_text.len());
+
+    let allowed_lines = if let Some(filters) = &blame_filters {
+        if args.diff_file.is_some() {
+            bail!("blame-aware filters are not supported with --diff-file");
+        }
+        if args.staged {
+            bail!("blame-aware filters are not supported with --staged");
+        }
+        if matches!(scope, Scope::Deleted) {
+            bail!("blame-aware filters are not supported with --scope deleted");
+        }
+
+        let allowed = collect_blame_allowed_lines(&diff_text, scope, &head, filters)?;
+        info!("Blame filter retained {} scoped line(s)", allowed.len());
+        Some(allowed)
+    } else {
+        None
+    };
+
+    let directory_overrides = load_directory_overrides_for_diff(&diff_text, scope)?;
+    if !directory_overrides.is_empty() {
+        info!(
+            "Loaded {} per-directory override(s)",
+            directory_overrides.len()
+        );
+    }
 
     let plan = CheckPlan {
         base: base.clone(),
@@ -1405,13 +2008,18 @@ fn cmd_check_inner(
         only_tags: args.only_tags.clone(),
         enable_tags: args.enable_tags.clone(),
         disable_tags: args.disable_tags.clone(),
+        directory_overrides,
+        force_language: forced_language,
+        allowed_lines,
+        false_positive_fingerprints,
     };
 
     let run = run_check(&plan, &cfg, &diff_text)?;
 
     info!(
-        "Check complete: {} findings, verdict={:?}",
+        "Check complete: {} findings, {} false-positive filtered, verdict={:?}",
         run.receipt.findings.len(),
+        run.false_positive_findings,
         run.receipt.verdict.status
     );
 
@@ -1482,11 +2090,80 @@ fn cmd_check_inner(
         });
     }
 
+    if let Some(rule_stats_path) = &args.rule_stats {
+        let stats_rows: Vec<_> = run
+            .rule_hits
+            .iter()
+            .map(|s| {
+                serde_json::json!({
+                    "rule_id": s.rule_id,
+                    "total": s.total,
+                    "emitted": s.emitted,
+                    "suppressed": s.suppressed,
+                    "false_positive": s.false_positive,
+                    "counts": {
+                        "info": s.info,
+                        "warn": s.warn,
+                        "error": s.error,
+                    }
+                })
+            })
+            .collect();
+        let stats_json =
+            serde_json::to_string_pretty(&stats_rows).context("serialize rule hit statistics")?;
+        write_text(rule_stats_path, &stats_json)?;
+        artifacts.push(Artifact {
+            path: to_artifact_path(rule_stats_path),
+            format: "json".to_string(),
+        });
+    }
+
+    let ended_at = Utc::now();
+    let duration_ms = (ended_at - *started_at).num_milliseconds().max(0) as u64;
+
+    if let Some(write_baseline_path) = &args.write_false_positive_baseline {
+        let generated = baseline_from_receipt(&run.receipt);
+        let merged = if write_baseline_path.exists() {
+            let existing = load_false_positive_baseline(write_baseline_path)?;
+            merge_false_positive_baselines(&existing, &generated)
+        } else {
+            generated
+        };
+        write_json(write_baseline_path, &merged)?;
+        artifacts.push(Artifact {
+            path: to_artifact_path(write_baseline_path),
+            format: "json".to_string(),
+        });
+        info!(
+            "Wrote false-positive baseline with {} entries to {}",
+            merged.entries.len(),
+            write_baseline_path.display()
+        );
+    }
+
+    if let Some(trend_history_path) = &args.trend_history {
+        let history = load_trend_history(trend_history_path)?;
+        let run_sample = trend_run_from_receipt(
+            &run.receipt,
+            &started_at.to_rfc3339(),
+            &ended_at.to_rfc3339(),
+            duration_ms,
+        );
+        let updated = append_trend_run(history, run_sample, args.trend_max_runs);
+        write_json(trend_history_path, &updated)?;
+        artifacts.push(Artifact {
+            path: to_artifact_path(trend_history_path),
+            format: "json".to_string(),
+        });
+        info!(
+            "Updated trend history to {} run(s) at {}",
+            updated.runs.len(),
+            trend_history_path.display()
+        );
+    }
+
     // Write sensor report if requested
     if let Some(sensor_path) = &args.sensor {
-        let ended_at = Utc::now();
-        let duration_ms = (ended_at - *started_at).num_milliseconds().max(0) as u64;
-
         let mut capabilities = HashMap::new();
         capabilities.insert(
             CAP_GIT.to_string(),
@@ -1570,6 +2247,48 @@ fn cmd_csv(args: CsvArgs) -> Result<()> {
     match args.output {
         Some(path) => write_text(&path, &output)?,
         None => print!("{output}"),
+    }
+
+    Ok(())
+}
+
+fn cmd_trend(args: TrendArgs) -> Result<()> {
+    let history = load_trend_history(&args.history)?;
+    let summary = summarize_trend_history(&history);
+
+    match args.format {
+        TrendFormat::Json => {
+            let value = serde_json::json!({
+                "history": history,
+                "summary": summary,
+            });
+            println!("{}", serde_json::to_string_pretty(&value)?);
+        }
+        TrendFormat::Text => {
+            println!("Trend history: {}", args.history.display());
+            println!("Runs: {}", summary.run_count);
+            println!(
+                "Totals: findings={}, info={}, warn={}, error={}, suppressed={}",
+                summary.total_findings,
+                summary.totals.info,
+                summary.totals.warn,
+                summary.totals.error,
+                summary.totals.suppressed
+            );
+
+            if let Some(latest) = summary.latest {
+                println!(
+                    "Latest: status={:?}, findings={}, base={}, head={}, ended_at={}",
+                    latest.status, latest.findings, latest.base, latest.head, latest.ended_at
+                );
+            }
+            if let Some(delta) = summary.delta_from_previous {
+                println!(
+                    "Delta: findings={:+}, info={:+}, warn={:+}, error={:+}, suppressed={:+}",
+                    delta.findings, delta.info, delta.warn, delta.error, delta.suppressed
+                );
+            }
+        }
     }
 
     Ok(())
@@ -1980,9 +2699,10 @@ mod tests {
 
     fn base_check_args() -> CheckArgs {
         CheckArgs {
-            base: None,
+            base: vec![],
             head: None,
             staged: false,
+            diff_file: None,
             config: None,
             no_default_rules: false,
             scope: None,
@@ -2000,6 +2720,13 @@ mod tests {
             junit: None,
             csv: None,
             tsv: None,
+            rule_stats: None,
+            false_positive_baseline: None,
+            write_false_positive_baseline: None,
+            trend_history: None,
+            trend_max_runs: None,
+            blame_author: vec![],
+            blame_max_age_days: None,
             mode: Mode::Standard,
             sensor: None,
             language: None,
@@ -2022,16 +2749,23 @@ mod tests {
         String::from_utf8_lossy(&output.stdout).trim().to_string()
     }
 
-    fn with_current_dir<F, R>(dir: &std::path::Path, f: F) -> R
+    fn with_current_dir_unlocked<F, R>(dir: &std::path::Path, f: F) -> R
     where
         F: FnOnce() -> R,
     {
-        let _guard = ENV_LOCK.lock().unwrap();
         let prev = std::env::current_dir().expect("current dir");
         std::env::set_current_dir(dir).expect("set current dir");
         let out = f();
         std::env::set_current_dir(prev).expect("restore current dir");
         out
+    }
+
+    fn with_current_dir<F, R>(dir: &std::path::Path, f: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        let _guard = ENV_LOCK.lock().unwrap();
+        with_current_dir_unlocked(dir, f)
     }
 
     fn setup_repo_with_match() -> (TempDir, String, String, PathBuf) {
@@ -2113,11 +2847,74 @@ paths = ["**/*.rs"]
     }
 
     #[test]
+    fn collect_override_candidates_walks_ancestor_directories() {
+        let mut out = BTreeSet::new();
+        collect_override_candidates_for_path("src/deep/module/lib.rs", &mut out);
+
+        assert!(out.contains(&PathBuf::from(".diffguard.toml")));
+        assert!(out.contains(&PathBuf::from("src/.diffguard.toml")));
+        assert!(out.contains(&PathBuf::from("src/deep/.diffguard.toml")));
+        assert!(out.contains(&PathBuf::from("src/deep/module/.diffguard.toml")));
+    }
+
+    #[test]
+    fn load_directory_overrides_for_diff_loads_root_then_deeper_overrides() {
+        let dir = TempDir::new().expect("temp");
+        std::fs::create_dir_all(dir.path().join("src/legacy")).expect("mkdir legacy");
+
+        std::fs::write(
+            dir.path().join(".diffguard.toml"),
+            r#"
+[[rule]]
+id = "rust.no_unwrap"
+enabled = false
+"#,
+        )
+        .expect("write root override");
+
+        std::fs::write(
+            dir.path().join("src/legacy/.diffguard.toml"),
+            r#"
+[[rule]]
+id = "rust.no_unwrap"
+enabled = true
+severity = "warn"
+"#,
+        )
+        .expect("write nested override");
+
+        let diff = r#"
+diff --git a/src/legacy/lib.rs b/src/legacy/lib.rs
+--- a/src/legacy/lib.rs
++++ b/src/legacy/lib.rs
+@@ -0,0 +1 @@
++let x = y.unwrap();
+"#;
+
+        let overrides = with_current_dir(dir.path(), || {
+            load_directory_overrides_for_diff(diff, Scope::Added).expect("load overrides")
+        });
+
+        assert_eq!(overrides.len(), 2);
+        assert_eq!(overrides[0].directory, "");
+        assert_eq!(overrides[0].rule_id, "rust.no_unwrap");
+        assert_eq!(overrides[0].enabled, Some(false));
+
+        assert_eq!(overrides[1].directory, "src/legacy");
+        assert_eq!(overrides[1].enabled, Some(true));
+        assert_eq!(overrides[1].severity, Some(Severity::Warn));
+    }
+
+    #[test]
     fn scope_arg_converts_to_scope() {
         let added: Scope = ScopeArg::Added.into();
         let changed: Scope = ScopeArg::Changed.into();
+        let modified: Scope = ScopeArg::Modified.into();
+        let deleted: Scope = ScopeArg::Deleted.into();
         assert!(matches!(added, Scope::Added));
         assert!(matches!(changed, Scope::Changed));
+        assert!(matches!(modified, Scope::Modified));
+        assert!(matches!(deleted, Scope::Deleted));
     }
 
     #[test]
@@ -2333,6 +3130,15 @@ patterns = ["test"]
             exclude_paths: vec!["**/tests/**".to_string()],
             ignore_comments: true,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: Some("Use ? operator instead.".to_string()),
             url: Some("https://example.com".to_string()),
             tags: vec![],
@@ -2366,6 +3172,15 @@ patterns = ["test"]
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -2394,6 +3209,15 @@ patterns = ["test"]
                 exclude_paths: vec![],
                 ignore_comments: false,
                 ignore_strings: false,
+                match_mode: Default::default(),
+                multiline: false,
+                multiline_window: None,
+                context_patterns: vec![],
+                context_window: None,
+                escalate_patterns: vec![],
+                escalate_window: None,
+                escalate_to: None,
+                depends_on: vec![],
                 help: None,
                 url: None,
                 tags: vec![],
@@ -2409,6 +3233,15 @@ patterns = ["test"]
                 exclude_paths: vec![],
                 ignore_comments: false,
                 ignore_strings: false,
+                match_mode: Default::default(),
+                multiline: false,
+                multiline_window: None,
+                context_patterns: vec![],
+                context_window: None,
+                escalate_patterns: vec![],
+                escalate_window: None,
+                escalate_to: None,
+                depends_on: vec![],
                 help: None,
                 url: None,
                 tags: vec![],
@@ -2433,6 +3266,15 @@ patterns = ["test"]
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -2539,6 +3381,9 @@ patterns = ["test"]
         assert_eq!(LanguageArg::Sql.as_str(), "sql");
         assert_eq!(LanguageArg::Xml.as_str(), "xml");
         assert_eq!(LanguageArg::Php.as_str(), "php");
+        assert_eq!(LanguageArg::Yaml.as_str(), "yaml");
+        assert_eq!(LanguageArg::Toml.as_str(), "toml");
+        assert_eq!(LanguageArg::Json.as_str(), "json");
     }
 
     #[test]
@@ -2602,6 +3447,10 @@ patterns = ["test"]
         args.junit = Some(PathBuf::from("artifacts/diffguard/report.xml"));
         args.csv = Some(PathBuf::from("artifacts/diffguard/report.csv"));
         args.tsv = Some(PathBuf::from("artifacts/diffguard/report.tsv"));
+        args.rule_stats = Some(PathBuf::from("artifacts/diffguard/rule-stats.json"));
+        args.write_false_positive_baseline =
+            Some(PathBuf::from("artifacts/diffguard/false-positives.json"));
+        args.trend_history = Some(PathBuf::from("artifacts/diffguard/trend-history.json"));
 
         resolve_extras_paths(&mut args, Mode::Cockpit);
 
@@ -2620,6 +3469,18 @@ patterns = ["test"]
         assert_eq!(
             args.tsv.as_ref().unwrap(),
             Path::new("artifacts/diffguard/extras/report.tsv")
+        );
+        assert_eq!(
+            args.rule_stats.as_ref().unwrap(),
+            Path::new("artifacts/diffguard/extras/rule-stats.json")
+        );
+        assert_eq!(
+            args.write_false_positive_baseline.as_ref().unwrap(),
+            Path::new("artifacts/diffguard/extras/false-positives.json")
+        );
+        assert_eq!(
+            args.trend_history.as_ref().unwrap(),
+            Path::new("artifacts/diffguard/extras/trend-history.json")
         );
     }
 
@@ -2647,6 +3508,15 @@ patterns = ["test"]
                 exclude_paths: vec![],
                 ignore_comments: false,
                 ignore_strings: false,
+                match_mode: Default::default(),
+                multiline: false,
+                multiline_window: None,
+                context_patterns: vec![],
+                context_window: None,
+                escalate_patterns: vec![],
+                escalate_window: None,
+                escalate_to: None,
+                depends_on: vec![],
                 help: Some("help".to_string()),
                 url: Some("https://example.com".to_string()),
                 tags: vec!["tag1".to_string(), "tag2".to_string()],
@@ -2659,6 +3529,74 @@ patterns = ["test"]
         assert_eq!(entry.help.as_deref(), Some("help"));
         assert_eq!(entry.url.as_deref(), Some("https://example.com"));
         assert_eq!(entry.tags, vec!["tag1".to_string(), "tag2".to_string()]);
+    }
+
+    #[test]
+    fn load_false_positive_baseline_missing_returns_empty() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("missing-baseline.json");
+        let baseline = load_false_positive_baseline(&path).expect("baseline");
+        assert_eq!(baseline.schema, FALSE_POSITIVE_BASELINE_SCHEMA_V1);
+        assert!(baseline.entries.is_empty());
+    }
+
+    #[test]
+    fn load_false_positive_baseline_rejects_wrong_schema() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("baseline.json");
+        std::fs::write(&path, r#"{"schema":"wrong.schema","entries":[]}"#).unwrap();
+        let err = load_false_positive_baseline(&path).unwrap_err();
+        assert!(
+            err.to_string()
+                .contains("unsupported false-positive baseline schema")
+        );
+    }
+
+    #[test]
+    fn parse_blame_porcelain_extracts_line_metadata() {
+        let porcelain = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa 1 10 1\n\
+author Alice\n\
+author-mail <alice@example.com>\n\
+author-time 1700000000\n\
+summary Commit\n\
+filename src/lib.rs\n\
+\tlet x = 1;\n\
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb 2 11 2\n\
+author Bob\n\
+author-mail <bob@example.com>\n\
+author-time 1700500000\n\
+summary Commit\n\
+filename src/lib.rs\n\
+\tlet y = 2;\n";
+        let map = parse_blame_porcelain(porcelain).expect("parse");
+        assert_eq!(map.get(&10).map(|m| m.author.as_str()), Some("Alice"));
+        assert_eq!(
+            map.get(&10).map(|m| m.author_mail.as_str()),
+            Some("alice@example.com")
+        );
+        assert_eq!(map.get(&11).map(|m| m.author.as_str()), Some("Bob"));
+        assert_eq!(map.get(&12).map(|m| m.author.as_str()), Some("Bob"));
+    }
+
+    #[test]
+    fn blame_filters_match_author_and_age() {
+        let filters = BlameFilters {
+            author_patterns: vec!["alice".to_string()],
+            max_age_days: Some(30),
+        };
+        let now = 1_800_000_000i64;
+        let line = BlameLineMeta {
+            author: "Alice Example".to_string(),
+            author_mail: "alice@example.com".to_string(),
+            author_time: now - (10 * 86_400),
+        };
+        assert!(filters.matches(&line, now));
+
+        let stale = BlameLineMeta {
+            author_time: now - (120 * 86_400),
+            ..line.clone()
+        };
+        assert!(!filters.matches(&stale, now));
     }
 
     #[test]
@@ -2751,6 +3689,15 @@ patterns = ["test"]
                     exclude_paths: vec![],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: None,
                     url: None,
                     tags: vec![],
@@ -2766,6 +3713,15 @@ patterns = ["test"]
                     exclude_paths: vec![],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: None,
                     url: None,
                     tags: vec![],
@@ -2819,6 +3775,15 @@ patterns = ["test"]
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -2841,6 +3806,15 @@ patterns = ["test"]
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],
@@ -3189,10 +4163,11 @@ should_match = true
         let junit_path = dir.path().join("artifacts/diffguard/report.xml");
         let csv_path = dir.path().join("artifacts/diffguard/report.csv");
         let tsv_path = dir.path().join("artifacts/diffguard/report.tsv");
+        let stats_path = dir.path().join("artifacts/diffguard/rule-stats.json");
         let sensor_path = dir.path().join("artifacts/diffguard/sensor.json");
 
         let mut args = base_check_args();
-        args.base = Some(base_sha);
+        args.base = vec![base_sha];
         args.head = Some(head_sha);
         args.config = Some(config_path);
         args.out = Some(out_path.clone());
@@ -3201,6 +4176,7 @@ should_match = true
         args.junit = Some(junit_path.clone());
         args.csv = Some(csv_path.clone());
         args.tsv = Some(tsv_path.clone());
+        args.rule_stats = Some(stats_path.clone());
         args.sensor = Some(sensor_path.clone());
         args.github_annotations = true;
         args.language = Some(LanguageArg::Rust);
@@ -3217,7 +4193,140 @@ should_match = true
         assert!(junit_path.exists());
         assert!(csv_path.exists());
         assert!(tsv_path.exists());
+        assert!(stats_path.exists());
         assert!(sensor_path.exists());
+    }
+
+    #[test]
+    fn cmd_check_inner_applies_false_positive_baseline() {
+        let (dir, base_sha, head_sha, config_path) = setup_repo_with_match();
+        let out_path = dir.path().join("artifacts/diffguard/report.json");
+        let baseline_path = dir.path().join("artifacts/diffguard/false-positives.json");
+
+        let mut first_args = base_check_args();
+        first_args.base = vec![base_sha.clone()];
+        first_args.head = Some(head_sha.clone());
+        first_args.config = Some(config_path.clone());
+        first_args.no_default_rules = true;
+        first_args.out = Some(out_path.clone());
+        first_args.fail_on = Some(FailOnArg::Warn);
+
+        let started_at = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+        let first_code = with_current_dir(dir.path(), || {
+            cmd_check_inner(&first_args, Mode::Standard, &started_at, &out_path).unwrap()
+        });
+        assert_eq!(first_code, 3);
+
+        let receipt_text = std::fs::read_to_string(&out_path).unwrap();
+        let receipt: CheckReceipt = serde_json::from_str(&receipt_text).unwrap();
+        assert_eq!(receipt.findings.len(), 1);
+        let finding = receipt.findings[0].clone();
+        let fingerprint = diffguard_core::compute_fingerprint(&finding);
+
+        let baseline = FalsePositiveBaseline {
+            schema: FALSE_POSITIVE_BASELINE_SCHEMA_V1.to_string(),
+            entries: vec![diffguard_analytics::FalsePositiveEntry {
+                fingerprint,
+                rule_id: finding.rule_id,
+                path: finding.path,
+                line: finding.line,
+                note: Some("intentional false positive".to_string()),
+            }],
+        };
+        write_json(&baseline_path, &baseline).unwrap();
+
+        let mut second_args = base_check_args();
+        second_args.base = vec![base_sha];
+        second_args.head = Some(head_sha);
+        second_args.config = Some(config_path);
+        second_args.no_default_rules = true;
+        second_args.out = Some(out_path.clone());
+        second_args.fail_on = Some(FailOnArg::Warn);
+        second_args.false_positive_baseline = Some(baseline_path);
+
+        let second_code = with_current_dir(dir.path(), || {
+            cmd_check_inner(&second_args, Mode::Standard, &started_at, &out_path).unwrap()
+        });
+        assert_eq!(second_code, 0);
+
+        let filtered_text = std::fs::read_to_string(&out_path).unwrap();
+        let filtered: CheckReceipt = serde_json::from_str(&filtered_text).unwrap();
+        assert!(filtered.findings.is_empty());
+        assert_eq!(filtered.verdict.counts.warn, 0);
+    }
+
+    #[test]
+    fn cmd_check_inner_reads_diff_file_and_applies_language_override() {
+        let dir = TempDir::new().unwrap();
+        let config_path = write_config(
+            dir.path(),
+            r#"
+[[rule]]
+id = "rust.no_unwrap"
+severity = "warn"
+message = "no unwrap"
+languages = ["rust"]
+patterns = ["\\.unwrap\\("]
+paths = ["**/*.custom"]
+ignore_comments = true
+ignore_strings = true
+"#,
+        );
+
+        let diff_path = dir.path().join("input.diff");
+        std::fs::write(
+            &diff_path,
+            r#"
+diff --git a/src/code.custom b/src/code.custom
+--- a/src/code.custom
++++ b/src/code.custom
+@@ -0,0 +1,1 @@
++let x = y.unwrap();
+"#,
+        )
+        .unwrap();
+
+        let out_path = dir.path().join("artifacts/diffguard/report.json");
+        let mut args = base_check_args();
+        args.diff_file = Some(diff_path);
+        args.config = Some(config_path);
+        args.no_default_rules = true;
+        args.language = Some(LanguageArg::Rust);
+
+        let started_at = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+        let code = with_current_dir(dir.path(), || {
+            cmd_check_inner(&args, Mode::Standard, &started_at, &out_path).unwrap()
+        });
+        assert_eq!(code, 0);
+
+        let receipt_text = std::fs::read_to_string(&out_path).unwrap();
+        let receipt: CheckReceipt = serde_json::from_str(&receipt_text).unwrap();
+        assert_eq!(receipt.findings.len(), 1);
+        assert_eq!(receipt.findings[0].rule_id, "rust.no_unwrap");
+    }
+
+    #[test]
+    fn cmd_check_inner_multi_base_dedupes_findings() {
+        let (dir, base_sha, head_sha, config_path) = setup_repo_with_match();
+        let out_path = dir.path().join("artifacts/diffguard/report.json");
+
+        let mut args = base_check_args();
+        args.base = vec![base_sha.clone(), base_sha];
+        args.head = Some(head_sha);
+        args.config = Some(config_path);
+        args.no_default_rules = true;
+        args.out = Some(out_path.clone());
+
+        let started_at = Utc.with_ymd_and_hms(2024, 1, 1, 0, 0, 0).unwrap();
+        let code = with_current_dir(dir.path(), || {
+            cmd_check_inner(&args, Mode::Standard, &started_at, &out_path).unwrap()
+        });
+        assert_eq!(code, 0);
+
+        let receipt_text = std::fs::read_to_string(&out_path).unwrap();
+        let receipt: CheckReceipt = serde_json::from_str(&receipt_text).unwrap();
+        assert_eq!(receipt.findings.len(), 1);
+        assert_eq!(receipt.verdict.counts.warn, 1);
     }
 
     #[test]
@@ -3228,12 +4337,12 @@ should_match = true
 
         let mut args = base_check_args();
         args.mode = Mode::Cockpit;
-        args.base = Some("missing-ref".to_string());
+        args.base = vec!["missing-ref".to_string()];
         args.head = Some("HEAD".to_string());
         args.config = Some(config_path);
         args.out = Some(out_path.clone());
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 0);
         assert!(out_path.exists());
 
@@ -3258,7 +4367,7 @@ should_match = true
         let (dir, base_sha, head_sha, config_path) = setup_repo_with_match();
 
         let mut standard_args = base_check_args();
-        standard_args.base = Some(base_sha.clone());
+        standard_args.base = vec![base_sha.clone()];
         standard_args.head = Some(head_sha.clone());
         standard_args.config = Some(config_path.clone());
         standard_args.no_default_rules = true;
@@ -3269,7 +4378,7 @@ should_match = true
         assert!(dir.path().join("artifacts/diffguard/report.json").exists());
 
         let mut cockpit_args = base_check_args();
-        cockpit_args.base = Some(base_sha);
+        cockpit_args.base = vec![base_sha];
         cockpit_args.head = Some(head_sha);
         cockpit_args.config = Some(config_path);
         cockpit_args.no_default_rules = true;
@@ -3288,13 +4397,13 @@ should_match = true
 
         let mut args = base_check_args();
         args.mode = Mode::Cockpit;
-        args.base = Some("missing-ref".to_string());
+        args.base = vec!["missing-ref".to_string()];
         args.head = Some("HEAD".to_string());
         args.config = Some(config_path);
         args.sensor = Some(sensor_path.clone());
         args.out = Some(out_path);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 0);
         assert!(sensor_path.exists());
     }
@@ -3455,6 +4564,28 @@ should_match = true
     }
 
     #[test]
+    fn run_with_args_dispatches_trend_command() {
+        let dir = TempDir::new().unwrap();
+        let history_path = dir.path().join("trend-history.json");
+        std::fs::write(
+            &history_path,
+            r#"{"schema":"diffguard.trend_history.v1","runs":[]}"#,
+        )
+        .unwrap();
+
+        let exit_code = run_with_args([
+            "diffguard",
+            "trend",
+            "--history",
+            history_path.to_str().unwrap(),
+            "--format",
+            "json",
+        ])
+        .unwrap();
+        assert_eq!(exit_code, 0);
+    }
+
+    #[test]
     fn cmd_validate_accepts_valid_globs_and_strict_no_warnings() {
         let dir = TempDir::new().unwrap();
         let config_path = write_config(
@@ -3596,7 +4727,7 @@ patterns = ["alpha"]
         args.sensor = Some(sensor_dir);
         args.out = Some(out_dir);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 1);
     }
 
@@ -3615,7 +4746,7 @@ patterns = ["alpha"]
         args.out = Some(out_file.clone());
         args.config = Some(missing_config);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 0);
         assert!(out_file.exists());
     }
@@ -3637,7 +4768,7 @@ patterns = ["alpha"]
         args.sensor = Some(sensor_path);
         args.out = Some(out_file.clone());
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         unsafe {
             std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
         }
@@ -3663,7 +4794,7 @@ patterns = ["alpha"]
         args.out = Some(out_file.clone());
         args.config = Some(missing_config);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         unsafe {
             std::env::remove_var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR");
         }
@@ -3683,7 +4814,7 @@ patterns = ["alpha"]
         args.out = Some(out_file.clone());
         args.config = Some(missing_config);
 
-        let code = with_current_dir(dir.path(), || cmd_check(args).unwrap());
+        let code = with_current_dir_unlocked(dir.path(), || cmd_check(args).unwrap());
         assert_eq!(code, 0);
         assert!(out_file.exists());
     }

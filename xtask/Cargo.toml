@@ -1,9 +1,16 @@
 [package]
 name = "xtask"
 version.workspace = true
+description = "Automation tasks for diffguard repository maintenance"
+authors.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme = "README.md"
+keywords.workspace = true
+categories.workspace = true
 publish = false
 
 [dependencies]
@@ -17,3 +24,4 @@ tempfile.workspace = true
 jsonschema = "0.18"
 
 diffguard-types = { path = "../crates/diffguard-types" }
+diffguard-analytics = { path = "../crates/diffguard-analytics" }
