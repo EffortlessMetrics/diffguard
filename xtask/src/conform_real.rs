@@ -1295,7 +1295,21 @@ fn test_data_diffguard_shape() -> Result<()> {
 /// Get the path to the diffguard binary.
 fn cargo_bin_path() -> String {
     // Use cargo to find the binary
-    std::env::var("CARGO_BIN_EXE_diffguard").unwrap_or_else(|_| "diffguard".to_string())
+    if let Ok(bin) = std::env::var("CARGO_BIN_EXE_diffguard") {
+        return bin;
+    }
+
+    // Fall back to building and finding in target/debug
+    let _ = ensure_diffguard_built();
+    let binary = workspace_root()
+        .join("target")
+        .join("debug")
+        .join(if cfg!(windows) {
+            "diffguard.exe"
+        } else {
+            "diffguard"
+        });
+    binary.to_string_lossy().into_owned()
 }
 
 /// Run diffguard with the given arguments.
