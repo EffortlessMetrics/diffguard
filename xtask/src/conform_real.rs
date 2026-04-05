@@ -1294,33 +1294,41 @@ fn test_data_diffguard_shape() -> Result<()> {
 
 /// Get the path to the diffguard binary.
 fn cargo_bin_path() -> String {
-    // Use cargo to find the binary
+    // Prefer env var if it points to the actual diffguard binary
+    // (not xtask, which is what CARGO_BIN_EXE_diffguard points to
+    // when running `cargo test -p xtask`)
     if let Ok(bin) = std::env::var("CARGO_BIN_EXE_diffguard") {
-        return bin;
+        if bin.contains("diffguard") && !bin.contains("xtask") {
+            return bin;
+        }
     }
 
-    // Fall back to building and finding in target/debug
+    // Fall back to workspace-relative target/debug path
     let _ = ensure_diffguard_built();
-    let binary = workspace_root()
+    workspace_root()
         .join("target")
         .join("debug")
         .join(if cfg!(windows) {
             "diffguard.exe"
         } else {
             "diffguard"
-        });
-    binary.to_string_lossy().into_owned()
+        })
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// Run diffguard with the given arguments.
 fn run_diffguard(dir: &Path, args: &[&str]) -> Result<Output> {
+    // Prefer env var if it points to the actual diffguard binary
     if let Ok(bin) = std::env::var("CARGO_BIN_EXE_diffguard") {
-        let output = Command::new(bin)
-            .args(args)
-            .current_dir(dir)
-            .output()
-            .context("run diffguard")?;
-        return Ok(output);
+        if bin.contains("diffguard") && !bin.contains("xtask") {
+            let output = Command::new(bin)
+                .args(args)
+                .current_dir(dir)
+                .output()
+                .context("run diffguard")?;
+            return Ok(output);
+        }
     }
 
     ensure_diffguard_built()?;
