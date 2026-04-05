@@ -25,3 +25,6 @@ mod config_file_loading;
 
 #[path = "integration/multiple_file_types.rs"]
 mod multiple_file_types;
+
+#[path = "integration/directory_overrides.rs"]
+mod directory_overrides;

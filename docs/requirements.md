@@ -5,16 +5,19 @@ This document captures the functional and non-functional requirements for diffgu
 ## Mission Statement
 
 diffguard is a **diff-scoped governance linter** for PR automation. It applies configurable rules
-only to added or changed lines in Git diffs, enabling teams to enforce coding standards on new
-code without creating noise from legacy issues.
+to scoped lines in Git diffs (added/modified/deleted), enabling teams to enforce coding standards
+on new code or intentional removals without creating noise from legacy issues.
 
 ## Truth Layer
 
 The source of truth for diffguard is always the **unified diff** between two Git refs.
 This means:
 
-1. Only lines that appear as additions (`+`) in the diff are candidates for rule evaluation
-2. Context lines and removed lines are not evaluated
+1. Only lines selected by scope are candidates for rule evaluation:
+   - additions (`+`) for `added`
+   - modified additions (`+` that follow removals) for `changed`/`modified`
+   - removals (`-`) for `deleted`
+2. Context lines are never evaluated
 3. The tool never reads source files directly; all content comes from the diff
 
 This design ensures:
@@ -46,9 +49,8 @@ The following are explicitly **not** in scope for diffguard:
 
 1. **Full AST analysis** - diffguard uses regex patterns, not language parsers
 2. **Auto-fixing** - diffguard reports findings but does not modify code
-3. **Blame/authorship tracking** - diffguard does not attribute findings to specific authors
-4. **Diff generation** - diffguard consumes diffs; use `git diff` to generate them
-5. **Replacement for linters** - diffguard complements language-specific linters (rustfmt, eslint, etc.)
+3. **Diff generation** - diffguard consumes diffs; use `git diff` to generate them
+4. **Replacement for linters** - diffguard complements language-specific linters (rustfmt, eslint, etc.)
 
 ## Functional Requirements
 
@@ -57,8 +59,10 @@ The following are explicitly **not** in scope for diffguard:
 | ID | Requirement |
 |----|-------------|
 | 1.1 | The `check` subcommand MUST accept `--base` and `--head` refs |
+| 1.1a | The `check` subcommand MUST support repeated `--base` for multi-base comparison |
+| 1.1b | The `check` subcommand MUST support `--diff-file <PATH|->` for non-git unified diff input |
 | 1.2 | The `check` subcommand MUST accept `--config` path or default to `./diffguard.toml` |
-| 1.3 | The `check` subcommand MUST support `--scope` with values `added` or `changed` |
+| 1.3 | The `check` subcommand MUST support `--scope` with values `added`, `changed`, `modified`, or `deleted` |
 | 1.4 | The `check` subcommand MUST support `--fail-on` with values `error`, `warn`, or `never` |
 | 1.5 | The `check` subcommand MUST support `--max-findings` to cap output |
 | 1.6 | The `check` subcommand MUST support `--paths` for glob-based path filtering |
@@ -67,6 +71,10 @@ The following are explicitly **not** in scope for diffguard:
 | 1.9 | The `check` subcommand MUST support `--github-annotations` for CI integration |
 | 1.10 | The `rules` subcommand MUST print effective rules in TOML or JSON format |
 | 1.11 | The CLI MUST support `--no-default-rules` to disable built-in rules |
+| 1.12 | The `check` subcommand MUST support false-positive baselines for suppression and export |
+| 1.13 | The `check` subcommand MUST support trend history append for cross-run analytics |
+| 1.14 | The `check` subcommand MUST support blame-aware line filtering by author and age |
+| 1.15 | The CLI MUST provide a `trend` command to summarize trend history |
 
 ### 2. Configuration
 
@@ -99,7 +107,7 @@ The following are explicitly **not** in scope for diffguard:
 | 4.2 | Submodule changes MUST be skipped |
 | 4.3 | Renamed files MUST use the new (destination) path |
 | 4.4 | Mode-only changes (chmod) MUST be skipped |
-| 4.5 | Deleted files MUST be skipped (no negative line numbers) |
+| 4.5 | Deleted files MUST be skipped unless `scope=deleted` |
 | 4.6 | Malformed hunk headers MUST NOT crash parsing; subsequent files MUST still be processed |
 
 ### 5. Escape Hatches
@@ -120,6 +128,9 @@ The following are explicitly **not** in scope for diffguard:
 | 6.3 | Verdict MUST include: status (pass/warn/fail), counts, reasons |
 | 6.4 | Markdown summary MUST include: header with status, scan stats, findings table |
 | 6.5 | GitHub annotations MUST use the workflow command format: `::level file=...,line=...::[message]` |
+| 6.6 | The CLI SHOULD support per-rule hit statistics output for analytics |
+| 6.7 | The CLI SHOULD support serializing false-positive baseline data |
+| 6.8 | The CLI SHOULD support serializing historical trend data |
 
 ## Stability Policy
 

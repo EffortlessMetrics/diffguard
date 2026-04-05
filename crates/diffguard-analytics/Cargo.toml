@@ -1,0 +1,38 @@
+[package]
+name = "diffguard-analytics"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Analytics helpers for diffguard (false-positive baselines and trend history)"
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/diffguard-analytics"
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+include = [
+  "src/**",
+  "Cargo.toml",
+  "README.md",
+  "../../LICENSE-*",
+]
+exclude = [
+  "**/*.snap.new",
+  "**/target/**",
+  "**/artifacts/**",
+  "**/fuzz/**",
+]
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars.workspace = true
+sha2 = "0.10"
+hex = "0.4"
+
+diffguard-types = { version = "0.2", path = "../diffguard-types" }
+
+[dev-dependencies]
+proptest.workspace = true

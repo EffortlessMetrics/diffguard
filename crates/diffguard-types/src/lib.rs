@@ -63,6 +63,8 @@ impl Severity {
 pub enum Scope {
     Added,
     Changed,
+    Modified,
+    Deleted,
 }
 
 impl Scope {
@@ -70,6 +72,8 @@ impl Scope {
         match self {
             Scope::Added => "added",
             Scope::Changed => "changed",
+            Scope::Modified => "modified",
+            Scope::Deleted => "deleted",
         }
     }
 }
@@ -90,6 +94,16 @@ impl FailOn {
             FailOn::Never => "never",
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum MatchMode {
+    /// Emit a finding when at least one pattern matches (default behavior).
+    #[default]
+    Any,
+    /// Emit a finding when none of the patterns match within the scoped file.
+    Absent,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -210,6 +224,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Use the ? operator to propagate errors, or use expect() with a \
                         meaningful message that explains the invariant. Consider using \
@@ -241,6 +264,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Remove debug output before merging. For logging, use the log or \
                         tracing crate instead. If you need to keep the output, consider \
@@ -266,6 +298,15 @@ impl ConfigFile {
                     exclude_paths: vec![],
                     ignore_comments: false,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Address TODO/FIXME comments before merging, or create tracking \
                         issues for planned work. The todo! and unimplemented! macros will \
@@ -289,6 +330,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/tests/**".to_string(), "**/test_*.py".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Use the logging module instead of print() for production code. \
                         Configure logging levels appropriately (DEBUG, INFO, WARNING, ERROR)."
@@ -311,6 +361,15 @@ impl ConfigFile {
                     exclude_paths: vec![],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Remove pdb debugger statements before merging. These will cause \
                         the application to pause and wait for interactive input in production."
@@ -330,6 +389,15 @@ impl ConfigFile {
                     exclude_paths: vec![],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Remove breakpoint() calls before merging. The breakpoint() function \
                         (Python 3.7+) invokes the debugger and will pause execution in production."
@@ -361,6 +429,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Use a proper logging library (e.g., winston, pino, bunyan) instead \
                         of console.log. For client-side code, consider using a logger that \
@@ -388,6 +465,15 @@ impl ConfigFile {
                     exclude_paths: vec![],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Remove debugger statements before merging. These will pause \
                         execution in the browser's developer tools, which is not intended \
@@ -414,6 +500,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/test/**".to_string(), "**/spec/**".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Remove binding.pry debugger statements before merging. These will \
                         pause execution and open an interactive REPL in production."
@@ -433,6 +528,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/test/**".to_string(), "**/spec/**".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Remove byebug debugger statements before merging. These will \
                         pause execution and open an interactive debugger in production."
@@ -455,6 +559,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/test/**".to_string(), "**/tests/**".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Use a logging framework (e.g., SLF4J, Log4j, java.util.logging) instead \
                         of System.out.println for production code. Logging frameworks provide \
@@ -478,6 +591,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/Tests/**".to_string(), "**/*.Tests/**".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Use a logging framework (e.g., Serilog, NLog, Microsoft.Extensions.Logging) \
                         instead of Console.WriteLine for production code. Logging frameworks provide \
@@ -501,6 +623,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/*_test.go".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Use the log package or a structured logging library (e.g., zap, \
                         zerolog, logrus) instead of fmt.Print* for production code."
@@ -520,6 +651,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/*_test.go".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Return errors instead of panicking. Use panic only for truly \
                         unrecoverable situations. Consider using errors.New() or fmt.Errorf() \
@@ -543,6 +683,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/test/**".to_string(), "**/tests/**".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Use a logging framework (e.g., SLF4J, Logback, kotlin-logging) instead \
                         of println() for production code. Logging frameworks provide log levels, \
@@ -566,6 +715,15 @@ impl ConfigFile {
                     exclude_paths: vec![],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "AWS Access Key IDs should never be committed to source control. \
                         Use environment variables, AWS IAM roles, or a secrets manager \
@@ -586,6 +744,15 @@ impl ConfigFile {
                     exclude_paths: vec![],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "GitHub tokens should never be committed to source control. \
                         Use environment variables or GitHub Actions secrets to manage tokens. \
@@ -610,6 +777,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "API keys should not be hardcoded in source files. \
                         Use environment variables or a secrets manager to inject credentials \
@@ -634,6 +810,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Private keys must never be committed to source control. \
                         Store private keys securely using a secrets manager, encrypted storage, \
@@ -658,6 +843,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Slack tokens should never be committed to source control. \
                         Use environment variables or a secrets manager. If a token was \
@@ -681,6 +875,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Stripe live API keys should never be committed to source control. \
                         Use environment variables or a secrets manager. If a key was \
@@ -704,6 +907,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Google API keys should not be committed to source control. \
                         Use environment variables or Google Cloud Secret Manager. \
@@ -727,6 +939,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Twilio API keys should not be committed to source control. \
                         Use environment variables or a secrets manager. If compromised, \
@@ -750,6 +971,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "npm tokens should not be committed to source control. \
                         Use environment variables or npm's built-in .npmrc configuration. \
@@ -773,6 +1003,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: false,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "PyPI tokens should not be committed to source control. \
                         Use environment variables or a secrets manager. \
@@ -798,6 +1037,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Passwords should not be hardcoded in source files. \
                         Use environment variables, a secrets manager, or secure configuration \
@@ -822,6 +1070,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "JWT tokens should not be hardcoded in source files. \
                         They may contain sensitive claims or grant unauthorized access. \
@@ -850,6 +1107,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Hardcoded IP addresses make code inflexible and can expose internal \
                         network topology. Use configuration files, environment variables, \
@@ -875,6 +1141,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "Use HTTPS instead of HTTP for secure communication. \
                         HTTP transmits data in plaintext, making it vulnerable to \
@@ -900,6 +1175,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/*test*".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "eval() and the Function constructor execute arbitrary code, \
                         creating severe security risks. Use safer alternatives like \
@@ -920,6 +1204,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/*test*".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "eval() and exec() execute arbitrary Python code, creating severe \
                         security risks. Use ast.literal_eval() for safe literal evaluation \
@@ -940,6 +1233,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/*test*".to_string(), "**/spec/**".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "eval and instance_eval execute arbitrary Ruby code, creating severe \
                         security risks. Use safer metaprogramming techniques like \
@@ -960,6 +1262,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/*test*".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "eval() and create_function() execute arbitrary PHP code, creating \
                         severe security risks. Use anonymous functions or other safe alternatives."
@@ -983,6 +1294,15 @@ impl ConfigFile {
                     exclude_paths: vec!["**/*test*".to_string()],
                     ignore_comments: true,
                     ignore_strings: true,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "eval in shell scripts executes arbitrary commands, creating \
                         severe security risks especially with user input. Use safer \
@@ -1009,6 +1329,15 @@ impl ConfigFile {
                     ],
                     ignore_comments: true,
                     ignore_strings: false,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: Some(
                         "String concatenation in SQL queries can lead to SQL injection attacks. \
                         Use parameterized queries or prepared statements instead."
@@ -1084,6 +1413,47 @@ pub struct RuleConfig {
     #[serde(default)]
     pub ignore_strings: bool,
 
+    /// Matching mode:
+    /// - `any` (default): emit when patterns match
+    /// - `absent`: emit when patterns do not match in the scoped file
+    #[serde(default, skip_serializing_if = "is_match_mode_any")]
+    pub match_mode: MatchMode,
+
+    /// Enable multi-line matching across consecutive scoped lines.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub multiline: bool,
+
+    /// Number of consecutive scoped lines to include in a multiline window.
+    /// If omitted and `multiline=true`, a default of 2 lines is used.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub multiline_window: Option<u32>,
+
+    /// Optional context patterns that must match near a primary match.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub context_patterns: Vec<String>,
+
+    /// Context search window (lines before/after the matched line).
+    /// If omitted and `context_patterns` are set, a default of 3 is used.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<u32>,
+
+    /// Optional patterns that escalate severity when found near a match.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub escalate_patterns: Vec<String>,
+
+    /// Escalation search window (lines before/after the matched line).
+    /// If omitted and `escalate_patterns` are set, a default of 0 (same line) is used.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub escalate_window: Option<u32>,
+
+    /// Escalation target severity. Defaults to `error` when escalation patterns match.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub escalate_to: Option<Severity>,
+
+    /// Rule dependencies. This rule is only evaluated in files where all dependencies matched.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub depends_on: Vec<String>,
+
     /// Optional help text explaining how to fix violations.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub help: Option<String>,
@@ -1125,6 +1495,14 @@ pub struct RuleTestCase {
     /// Optional: description of what this test case validates.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+}
+
+fn is_false(v: &bool) -> bool {
+    !*v
+}
+
+fn is_match_mode_any(mode: &MatchMode) -> bool {
+    matches!(mode, MatchMode::Any)
 }
 
 // ============================================================================
@@ -1272,6 +1650,8 @@ mod tests {
 
         assert_eq!(Scope::Added.as_str(), "added");
         assert_eq!(Scope::Changed.as_str(), "changed");
+        assert_eq!(Scope::Modified.as_str(), "modified");
+        assert_eq!(Scope::Deleted.as_str(), "deleted");
 
         assert_eq!(FailOn::Error.as_str(), "error");
         assert_eq!(FailOn::Warn.as_str(), "warn");

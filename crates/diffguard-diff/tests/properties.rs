@@ -368,6 +368,36 @@ proptest! {
     // Parsing a multi-file diff twice should return identical results
     // **Validates: Requirements 2.1**
     #[test]
+    fn property_modified_scope_matches_changed_scope(
+        path in full_path_strategy(),
+        removed_lines in prop::collection::vec(line_content_strategy(), 1..3),
+        added_lines in prop::collection::vec(line_content_strategy(), 1..3),
+    ) {
+        let non_empty_removed: Vec<&str> = removed_lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+        let non_empty_added: Vec<&str> = added_lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_removed.is_empty());
+        prop_assume!(!non_empty_added.is_empty());
+
+        let diff = make_changed_diff(&path, &non_empty_removed, &non_empty_added);
+        let changed = parse_unified_diff(&diff, Scope::Changed);
+        let modified = parse_unified_diff(&diff, Scope::Modified);
+
+        prop_assert!(changed.is_ok(), "Changed parse should succeed");
+        prop_assert!(modified.is_ok(), "Modified parse should succeed");
+        prop_assert_eq!(changed.unwrap(), modified.unwrap());
+    }
+
+    // Feature: comprehensive-test-coverage, Property 3: Diff Parsing Consistency
+    // Parsing a multi-file diff twice should return identical results
+    // **Validates: Requirements 2.1**
+    #[test]
     fn property_parse_consistency_multi_file(
         path1 in full_path_strategy(),
         path2 in full_path_strategy(),
@@ -1715,6 +1745,8 @@ proptest! {
         // Parse arbitrary UTF-8 input - should never panic
         let _ = parse_unified_diff(&input, Scope::Added);
         let _ = parse_unified_diff(&input, Scope::Changed);
+        let _ = parse_unified_diff(&input, Scope::Modified);
+        let _ = parse_unified_diff(&input, Scope::Deleted);
         // If we reach here without panicking, the test passes
     }
 
@@ -1730,6 +1762,8 @@ proptest! {
         // Parse should not panic
         let _ = parse_unified_diff(&input, Scope::Added);
         let _ = parse_unified_diff(&input, Scope::Changed);
+        let _ = parse_unified_diff(&input, Scope::Modified);
+        let _ = parse_unified_diff(&input, Scope::Deleted);
     }
 
     #[test]
@@ -1746,6 +1780,8 @@ proptest! {
         // Parse should not panic
         let _ = parse_unified_diff(&input, Scope::Added);
         let _ = parse_unified_diff(&input, Scope::Changed);
+        let _ = parse_unified_diff(&input, Scope::Modified);
+        let _ = parse_unified_diff(&input, Scope::Deleted);
     }
 
     #[test]
@@ -1765,6 +1801,8 @@ proptest! {
         // Parse should not panic (may return error, but not panic)
         let _ = parse_unified_diff(&input, Scope::Added);
         let _ = parse_unified_diff(&input, Scope::Changed);
+        let _ = parse_unified_diff(&input, Scope::Modified);
+        let _ = parse_unified_diff(&input, Scope::Deleted);
     }
 }
 
@@ -1909,6 +1947,52 @@ proptest! {
                 line.kind,
                 ChangeKind::Added,
                 "Pure additions should have ChangeKind::Added"
+            );
+        }
+    }
+
+    #[test]
+    fn property_deleted_scope_only_has_deleted_kind(
+        path in full_path_strategy(),
+        removed_lines in prop::collection::vec(line_content_strategy(), 1..5),
+    ) {
+        let non_empty_removed: Vec<&str> = removed_lines.iter()
+            .filter(|l| !l.is_empty())
+            .map(|s| s.as_str())
+            .collect();
+
+        prop_assume!(!non_empty_removed.is_empty());
+
+        let removed_count = non_empty_removed.len();
+        let removed_content: String = non_empty_removed
+            .iter()
+            .map(|line| format!("-{}\n", line))
+            .collect();
+        let diff = format!(
+            "diff --git a/{path} b/{path}\n\
+             --- a/{path}\n\
+             +++ b/{path}\n\
+             @@ -1,{removed_count} +1,0 @@\n\
+             {removed_content}",
+            path = path,
+            removed_count = removed_count,
+            removed_content = removed_content
+        );
+
+        let result = parse_unified_diff(&diff, Scope::Deleted);
+        prop_assert!(result.is_ok(), "Parsing should succeed");
+
+        let (diff_lines, _) = result.unwrap();
+        prop_assert_eq!(
+            diff_lines.len(),
+            removed_count,
+            "Deleted scope should return all removed lines"
+        );
+        for line in &diff_lines {
+            prop_assert_eq!(
+                line.kind,
+                ChangeKind::Deleted,
+                "Lines from Scope::Deleted should have ChangeKind::Deleted"
             );
         }
     }

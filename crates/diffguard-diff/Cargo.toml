@@ -30,7 +30,7 @@ exclude = [
 anyhow.workspace = true
 thiserror.workspace = true
 
-diffguard-types = { version = "0.1", path = "../diffguard-types" }
+diffguard-types = { version = "0.2", path = "../diffguard-types" }
 
 [dev-dependencies]
 insta.workspace = true

@@ -17,8 +17,8 @@ use diffguard_types::Scope;
 /// Structured fuzz input that generates diff-like content.
 #[derive(Arbitrary, Debug)]
 struct DiffInput {
-    /// Use Added or Changed scope.
-    use_added_scope: bool,
+    /// Scope selector (mapped to Added/Changed/Modified/Deleted).
+    scope_selector: u8,
     /// File entries in the diff.
     files: Vec<FuzzFile>,
 }
@@ -148,10 +148,11 @@ impl DiffInput {
 
 fuzz_target!(|input: DiffInput| {
     let diff_text = input.to_diff_string();
-    let scope = if input.use_added_scope {
-        Scope::Added
-    } else {
-        Scope::Changed
+    let scope = match input.scope_selector % 4 {
+        0 => Scope::Added,
+        1 => Scope::Changed,
+        2 => Scope::Modified,
+        _ => Scope::Deleted,
     };
 
     // Parse the generated diff - should not panic
@@ -178,10 +179,11 @@ fuzz_target!(|input: DiffInput| {
     }
 
     // Also test with the other scope for comparison
-    let other_scope = if input.use_added_scope {
-        Scope::Changed
-    } else {
-        Scope::Added
+    let other_scope = match scope {
+        Scope::Added => Scope::Changed,
+        Scope::Changed => Scope::Modified,
+        Scope::Modified => Scope::Deleted,
+        Scope::Deleted => Scope::Added,
     };
     let _ = parse_unified_diff(&diff_text, other_scope);
 });

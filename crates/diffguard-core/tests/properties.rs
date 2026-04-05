@@ -39,7 +39,12 @@ fn arb_verdict_status() -> impl Strategy<Value = VerdictStatus> {
 
 /// Strategy for generating valid Scope values.
 fn arb_scope() -> impl Strategy<Value = Scope> {
-    prop_oneof![Just(Scope::Added), Just(Scope::Changed),]
+    prop_oneof![
+        Just(Scope::Added),
+        Just(Scope::Changed),
+        Just(Scope::Modified),
+        Just(Scope::Deleted),
+    ]
 }
 
 /// Strategy for generating valid FailOn values.

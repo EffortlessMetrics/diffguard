@@ -1,0 +1,59 @@
+name: Bug Report
+description: Report a bug in diffguard (enters conveyor at Gate: Framed)
+labels: ["gate:framed", "bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Gate: Framed — Bug Report
+        Bug reports enter the conveyor at Framed. Fill in the reproduction steps
+        and expected vs actual behavior to frame the issue.
+
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Actual behavior
+      description: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to trigger the bug.
+      placeholder: |
+        1. Run `diffguard check --base main --head HEAD`
+        2. ...
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: diffguard version
+      placeholder: "Run: cargo run -p diffguard -- --version"
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: What's the blast radius? Which crate(s) are affected?
+      placeholder: |
+        In scope:
+        - Fix the root cause in ...
+
+        Out of scope:
+        - Refactoring unrelated code
+    validations:
+      required: true

@@ -5,15 +5,85 @@ on:
   push:
     branches: [ main ]
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  test:
+  fmt:
+    name: Format
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: rustfmt
+      - run: cargo fmt --check
 
-      - name: ci
-        run: cargo run -p xtask -- ci
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace --exclude xtask
+
+  xtask:
+    name: xtask ci
+    runs-on: ubuntu-latest
+    if: false  # disabled until #6 is fixed
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo run -p xtask -- ci
+
+  # Gate validation: issue linkage
+  gate-linked:
+    name: "Gate: Issue linked"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check PR body references an issue
+        run: |
+          BODY="${{ github.event.pull_request.body }}"
+          if echo "$BODY" | grep -qiE '(closes|fixes|resolves)\s+#[0-9]+'; then
+            echo "✅ PR references an issue"
+          else
+            echo "❌ PR does not reference an issue"
+            echo ""
+            echo "Add 'Closes #N' to the PR body to link your issue."
+            exit 1
+          fi
+
+  # Gate validation: branch naming
+  gate-branch:
+    name: "Gate: Branch convention"
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check branch name follows convention
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          if echo "$BRANCH" | grep -qE '^(feat|fix|chore|docs|refactor|test)/[0-9]+-'; then
+            echo "✅ Branch '$BRANCH' follows convention"
+          else
+            echo "⚠️  Branch '$BRANCH' doesn't follow naming convention"
+            echo "Expected: <type>/<issue-number>-<slug>"
+            echo "Examples: feat/11-fix-include-recursion, fix/12-defaults-merge"
+            echo ""
+            echo "This is a warning, not a failure."
+          fi

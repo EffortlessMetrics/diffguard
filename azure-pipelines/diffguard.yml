@@ -7,7 +7,7 @@
 #       baseBranch: 'origin/main'
 #       failOn: 'error'
 #
-# For more information, see: https://github.com/effortless-mgmt/diffguard
+# For more information, see: https://github.com/effortlessmetrics/diffguard
 
 parameters:
   # Base git ref for comparison
@@ -124,9 +124,9 @@ steps:
 
         # Construct download URL
         if [ "$VERSION" = "latest" ]; then
-          DOWNLOAD_URL="https://github.com/effortless-mgmt/diffguard/releases/latest/download/diffguard-${OS}-${ARCH}"
+          DOWNLOAD_URL="https://github.com/effortlessmetrics/diffguard/releases/latest/download/diffguard-${OS}-${ARCH}"
         else
-          DOWNLOAD_URL="https://github.com/effortless-mgmt/diffguard/releases/download/${VERSION}/diffguard-${OS}-${ARCH}"
+          DOWNLOAD_URL="https://github.com/effortlessmetrics/diffguard/releases/download/${VERSION}/diffguard-${OS}-${ARCH}"
         fi
 
         # Add .exe suffix for Windows

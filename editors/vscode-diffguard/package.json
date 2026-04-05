@@ -1,0 +1,30 @@
+{
+  "name": "diffguard-vscode",
+  "displayName": "diffguard",
+  "description": "Basic VS Code integration for diffguard checks",
+  "version": "0.1.0",
+  "publisher": "effortlessmetrics",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onCommand:diffguard.runCheck"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "diffguard.runCheck",
+        "title": "diffguard: Run Staged Check"
+      }
+    ]
+  },
+  "scripts": {
+    "lint": "echo \"No lint configured\""
+  },
+  "license": "MIT OR Apache-2.0"
+}

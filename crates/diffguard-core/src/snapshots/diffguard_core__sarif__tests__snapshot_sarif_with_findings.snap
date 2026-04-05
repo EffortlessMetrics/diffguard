@@ -11,7 +11,7 @@ expression: json
         "driver": {
           "name": "diffguard",
           "version": "0.1.0",
-          "informationUri": "https://github.com/effortless-mgmt/diffguard",
+          "informationUri": "https://github.com/effortlessmetrics/diffguard",
           "rules": [
             {
               "id": "python.no_print",
@@ -55,7 +55,7 @@ expression: json
               "physicalLocation": {
                 "artifactLocation": {
                   "uri": "src/lib.rs",
-                  "uri_base_id": "%SRCROOT%"
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
                   "startLine": 15,
@@ -82,7 +82,7 @@ expression: json
               "physicalLocation": {
                 "artifactLocation": {
                   "uri": "src/main.rs",
-                  "uri_base_id": "%SRCROOT%"
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
                   "startLine": 23,
@@ -109,7 +109,7 @@ expression: json
               "physicalLocation": {
                 "artifactLocation": {
                   "uri": "scripts/deploy.py",
-                  "uri_base_id": "%SRCROOT%"
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
                   "startLine": 8,

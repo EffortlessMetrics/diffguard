@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TrendHistory",
+  "type": "object",
+  "properties": {
+    "runs": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/TrendRun"
+      }
+    },
+    "schema": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema"
+  ],
+  "$defs": {
+    "Scope": {
+      "type": "string",
+      "enum": [
+        "added",
+        "changed",
+        "modified",
+        "deleted"
+      ]
+    },
+    "TrendRun": {
+      "type": "object",
+      "properties": {
+        "base": {
+          "type": "string"
+        },
+        "counts": {
+          "$ref": "#/$defs/VerdictCounts"
+        },
+        "duration_ms": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0
+        },
+        "ended_at": {
+          "type": "string"
+        },
+        "files_scanned": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "findings": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "head": {
+          "type": "string"
+        },
+        "lines_scanned": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "scope": {
+          "$ref": "#/$defs/Scope"
+        },
+        "started_at": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/VerdictStatus"
+        }
+      },
+      "required": [
+        "started_at",
+        "ended_at",
+        "duration_ms",
+        "base",
+        "head",
+        "scope",
+        "status",
+        "counts",
+        "files_scanned",
+        "lines_scanned",
+        "findings"
+      ]
+    },
+    "VerdictCounts": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "info": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "suppressed": {
+          "description": "Number of matches suppressed via inline directives.",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "warn": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "info",
+        "warn",
+        "error"
+      ]
+    },
+    "VerdictStatus": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "pass",
+            "warn",
+            "fail"
+          ]
+        },
+        {
+          "description": "For cockpit mode when inputs are missing or check cannot run.",
+          "type": "string",
+          "const": "skip"
+        }
+      ]
+    }
+  }
+}

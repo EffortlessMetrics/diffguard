@@ -2,7 +2,7 @@
 
 ## Crate Purpose
 
-Unified diff parser that extracts added/changed lines from git diff output. Handles edge cases like binary files, submodules, renames, and mode-only changes.
+Unified diff parser that extracts scoped lines from git diff output. Handles edge cases like binary files, submodules, renames, and mode-only changes.
 
 ## Key Constraints
 
@@ -20,12 +20,12 @@ Unified diff parser that extracts added/changed lines from git diff output. Hand
 ## Public API
 
 ```rust
-pub fn parse_unified_diff(input: &str, scope: Scope) -> Result<Vec<DiffLine>>
+pub fn parse_unified_diff(input: &str, scope: Scope) -> Result<(Vec<DiffLine>, DiffStats)>
 ```
 
 Supporting types:
 - `DiffLine` - Represents one line in the diff with file, line number, content
-- `ChangeKind` - Enum: Added, Changed
+- `ChangeKind` - Enum: Added, Changed, Deleted
 - `DiffStats` - Aggregate statistics
 
 Detection helpers:
@@ -67,4 +67,4 @@ Fuzz testing is critical - run it after any parsing changes to ensure no panics 
 - Renamed files (tracked correctly)
 - Mode-only changes (no content lines)
 - Missing newline at EOF
-- Deleted files (skipped for "added" scope)
+- Deleted files (skipped unless scope is `Deleted`)

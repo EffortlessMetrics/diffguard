@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::process::Command;
 
 use anyhow::{Context, Result, bail};
-use clap::{Parser, Subcommand};
+use clap::{ArgAction, Parser, Subcommand};
 use schemars::schema_for;
 
 mod conform;
@@ -32,6 +32,13 @@ enum Cmd {
         #[arg(long)]
         quick: bool,
     },
+
+    /// Run cargo-mutants across workspace crates (or selected packages).
+    Mutants {
+        /// Package name(s) to run. Repeatable. Defaults to all workspace crates.
+        #[arg(long = "package", short = 'p', action = ArgAction::Append)]
+        package: Vec<String>,
+    },
 }
 
 #[cfg(not(test))]
@@ -50,6 +57,7 @@ where
         Cmd::Ci => ci(),
         Cmd::Schema { out_dir } => schema(out_dir),
         Cmd::Conform { quick } => conform::run_conformance(quick),
+        Cmd::Mutants { package } => mutants(package),
     }
 }
 
@@ -77,18 +85,55 @@ fn schema(out_dir: PathBuf) -> Result<()> {
     let cfg_schema = schema_for!(diffguard_types::ConfigFile);
     let receipt_schema = schema_for!(diffguard_types::CheckReceipt);
     let sensor_schema = schema_for!(diffguard_types::SensorReport);
+    let baseline_schema = schema_for!(diffguard_analytics::FalsePositiveBaseline);
+    let trend_schema = schema_for!(diffguard_analytics::TrendHistory);
 
     let cfg_path = out_dir.join("diffguard.config.schema.json");
     let receipt_path = out_dir.join("diffguard.check.schema.json");
     let sensor_path = out_dir.join("sensor.report.v1.schema.json");
+    let baseline_path = out_dir.join("diffguard.false-positive-baseline.v1.schema.json");
+    let trend_path = out_dir.join("diffguard.trend-history.v1.schema.json");
 
     write_pretty_json(&cfg_path, &cfg_schema)?;
     write_pretty_json(&receipt_path, &receipt_schema)?;
     write_pretty_json(&sensor_path, &sensor_schema)?;
+    write_pretty_json(&baseline_path, &baseline_schema)?;
+    write_pretty_json(&trend_path, &trend_schema)?;
 
     eprintln!("wrote {}", cfg_path.display());
     eprintln!("wrote {}", receipt_path.display());
     eprintln!("wrote {}", sensor_path.display());
+    eprintln!("wrote {}", baseline_path.display());
+    eprintln!("wrote {}", trend_path.display());
+    Ok(())
+}
+
+fn default_mutants_packages() -> Vec<String> {
+    vec![
+        "diffguard-analytics".to_string(),
+        "diffguard".to_string(),
+        "diffguard-core".to_string(),
+        "diffguard-diff".to_string(),
+        "diffguard-domain".to_string(),
+        "diffguard-lsp".to_string(),
+        "diffguard-testkit".to_string(),
+        "diffguard-types".to_string(),
+        "xtask".to_string(),
+    ]
+}
+
+fn mutants(package: Vec<String>) -> Result<()> {
+    let packages = if package.is_empty() {
+        default_mutants_packages()
+    } else {
+        package
+    };
+
+    for pkg in packages {
+        eprintln!("running cargo mutants -p {pkg}");
+        run("cargo", &["mutants", "-p", &pkg])?;
+    }
+
     Ok(())
 }
 
@@ -172,6 +217,16 @@ mod tests {
         assert!(dir.path().join("diffguard.config.schema.json").exists());
         assert!(dir.path().join("diffguard.check.schema.json").exists());
         assert!(dir.path().join("sensor.report.v1.schema.json").exists());
+        assert!(
+            dir.path()
+                .join("diffguard.false-positive-baseline.v1.schema.json")
+                .exists()
+        );
+        assert!(
+            dir.path()
+                .join("diffguard.trend-history.v1.schema.json")
+                .exists()
+        );
     }
 
     #[test]
@@ -181,11 +236,81 @@ mod tests {
             .expect("run schema");
 
         assert!(dir.path().join("diffguard.config.schema.json").exists());
+        assert!(
+            dir.path()
+                .join("diffguard.false-positive-baseline.v1.schema.json")
+                .exists()
+        );
     }
 
     #[test]
     fn run_with_args_dispatches_conform_quick() {
         run_with_args(["xtask", "conform", "--quick"]).expect("run conform");
+    }
+
+    #[test]
+    fn default_mutants_packages_lists_workspace_crates() {
+        let packages = default_mutants_packages();
+        for expected in [
+            "diffguard-analytics",
+            "diffguard",
+            "diffguard-core",
+            "diffguard-diff",
+            "diffguard-domain",
+            "diffguard-lsp",
+            "diffguard-testkit",
+            "diffguard-types",
+            "xtask",
+        ] {
+            assert!(packages.contains(&expected.to_string()));
+        }
+    }
+
+    #[test]
+    fn run_with_args_dispatches_mutants_with_fake_cargo() {
+        let _guard = ENV_LOCK.lock().unwrap();
+        let dir = TempDir::new().expect("temp");
+        let bin_dir = dir.path().join("bin");
+        std::fs::create_dir_all(&bin_dir).expect("create bin dir");
+
+        let cargo_path = {
+            #[cfg(windows)]
+            {
+                bin_dir.join("cargo.cmd")
+            }
+            #[cfg(not(windows))]
+            {
+                bin_dir.join("cargo")
+            }
+        };
+        let script = {
+            #[cfg(windows)]
+            {
+                "@echo off\r\nexit /b 0\r\n"
+            }
+            #[cfg(not(windows))]
+            {
+                "#!/bin/sh\nexit 0\n"
+            }
+        };
+        std::fs::write(&cargo_path, script).expect("write fake cargo");
+        #[cfg(not(windows))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&cargo_path).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&cargo_path, perms).unwrap();
+        }
+
+        unsafe {
+            std::env::set_var("DIFFGUARD_XTASK_CARGO", &cargo_path);
+        }
+        let result = run_with_args(["xtask", "mutants", "-p", "diffguard-core"]);
+        unsafe {
+            std::env::remove_var("DIFFGUARD_XTASK_CARGO");
+        }
+
+        result.expect("run mutants");
     }
 
     #[test]

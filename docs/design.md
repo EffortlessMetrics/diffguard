@@ -45,9 +45,14 @@ This document describes the technical design and internal workings of diffguard.
 
 ### 1. Diff Acquisition
 
-The CLI invokes `git diff --unified=N base...head` and captures stdout.
-The three-dot (`...`) syntax ensures the diff is between the merge-base and head,
-which is typically what CI pipelines want for PR checks.
+The CLI supports three diff sources:
+
+- `git diff --unified=N base...head` (default)
+- `git diff --cached --unified=N` (`--staged`)
+- Unified diff text from file/stdin (`--diff-file <path|->`)
+
+For multi-base comparisons (`--base` repeated), diffguard computes each base-to-head
+diff and evaluates the union of changed lines (deduplicated by path/line/content).
 
 Key parameters:
 - `base`: Git ref (branch, tag, or SHA) representing the target branch
@@ -95,6 +100,11 @@ The preprocessor is **language-aware** and handles:
 | Go | `//`, `/* */` | `"..."`, `` `...` `` (raw) |
 | Ruby | `#` | `"..."`, `'...'` |
 | C/C++ | `//`, `/* */` | `"..."`, `'c'` |
+| SQL | `--`, `/* */` | `'...'` |
+| XML/HTML | `<!-- -->` | `"..."`, `'...'` |
+| PHP | `//`, `#`, `/* */` | `"..."`, `'...'` |
+| YAML/TOML | `#` | C-style best-effort |
+| JSON/JSONC | `//`, `/* */` | C-style best-effort |
 
 **Stateful processing:**
 The preprocessor maintains state across lines to handle multi-line comments
@@ -232,6 +242,12 @@ Language is detected from file extensions:
 | `.cs` | csharp |
 | `.java` | java |
 | `.kt`, `.kts` | kotlin |
+| `.sql` | sql |
+| `.xml`, `.html`, `.xsl`, ... | xml |
+| `.php`, `.phtml`, ... | php |
+| `.yaml`, `.yml` | yaml |
+| `.toml` | toml |
+| `.json`, `.jsonc`, `.json5` | json |
 
 Unknown extensions return `None`, which:
 - Matches rules with empty `languages` filter

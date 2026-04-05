@@ -1,21 +1,14 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "SensorReport",
   "description": "The `sensor.report.v1` envelope for Cockpit ecosystem integration.",
   "type": "object",
-  "required": [
-    "findings",
-    "run",
-    "schema",
-    "tool",
-    "verdict"
-  ],
   "properties": {
     "artifacts": {
       "description": "List of artifacts produced.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Artifact"
+        "$ref": "#/$defs/Artifact"
       }
     },
     "data": {
@@ -25,16 +18,12 @@
       "description": "Findings in sensor format.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/SensorFinding"
+        "$ref": "#/$defs/SensorFinding"
       }
     },
     "run": {
       "description": "Run timing and capability information.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/RunMeta"
-        }
-      ]
+      "$ref": "#/$defs/RunMeta"
     },
     "schema": {
       "description": "Schema identifier, always \"sensor.report.v1\".",
@@ -42,29 +31,24 @@
     },
     "tool": {
       "description": "Tool metadata.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ToolMeta"
-        }
-      ]
+      "$ref": "#/$defs/ToolMeta"
     },
     "verdict": {
       "description": "Overall verdict.",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Verdict"
-        }
-      ]
+      "$ref": "#/$defs/Verdict"
     }
   },
-  "definitions": {
+  "required": [
+    "schema",
+    "tool",
+    "run",
+    "verdict",
+    "findings"
+  ],
+  "$defs": {
     "Artifact": {
       "description": "An artifact produced by the sensor.",
       "type": "object",
-      "required": [
-        "format",
-        "path"
-      ],
       "properties": {
         "format": {
           "description": "Format of the artifact (e.g., \"json\", \"sarif\", \"markdown\").",
@@ -74,14 +58,15 @@
           "description": "Path to the artifact file.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "path",
+        "format"
+      ]
     },
     "CapabilityStatus": {
       "description": "Status of a capability (e.g., git availability).",
       "type": "object",
-      "required": [
-        "status"
-      ],
       "properties": {
         "detail": {
           "description": "Human-readable detail for diagnostics.",
@@ -101,29 +86,27 @@
           "description": "Status: \"available\", \"unavailable\", or \"skipped\".",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "status"
+      ]
     },
     "RunMeta": {
       "description": "Run timing and capability status.",
       "type": "object",
-      "required": [
-        "duration_ms",
-        "ended_at",
-        "started_at"
-      ],
       "properties": {
         "capabilities": {
           "description": "Capability status map (e.g., \"git\" -> available/unavailable).",
           "type": "object",
           "additionalProperties": {
-            "$ref": "#/definitions/CapabilityStatus"
+            "$ref": "#/$defs/CapabilityStatus"
           }
         },
         "duration_ms": {
           "description": "Duration in milliseconds.",
           "type": "integer",
           "format": "uint64",
-          "minimum": 0.0
+          "minimum": 0
         },
         "ended_at": {
           "description": "ISO 8601 timestamp when the run ended.",
@@ -133,19 +116,16 @@
           "description": "ISO 8601 timestamp when the run started.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "started_at",
+        "ended_at",
+        "duration_ms"
+      ]
     },
     "SensorFinding": {
       "description": "A finding in sensor.report.v1 format.",
       "type": "object",
-      "required": [
-        "check_id",
-        "code",
-        "fingerprint",
-        "location",
-        "message",
-        "severity"
-      ],
       "properties": {
         "check_id": {
           "description": "Check identifier (constant: \"diffguard.pattern\").",
@@ -171,11 +151,7 @@
         },
         "location": {
           "description": "Location in the source.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/SensorLocation"
-            }
-          ]
+          "$ref": "#/$defs/SensorLocation"
         },
         "message": {
           "description": "Human-readable message.",
@@ -183,11 +159,7 @@
         },
         "severity": {
           "description": "Finding severity.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/Severity"
-            }
-          ]
+          "$ref": "#/$defs/Severity"
         },
         "url": {
           "description": "Optional URL for more information.",
@@ -196,15 +168,19 @@
             "null"
           ]
         }
-      }
+      },
+      "required": [
+        "check_id",
+        "code",
+        "severity",
+        "message",
+        "location",
+        "fingerprint"
+      ]
     },
     "SensorLocation": {
       "description": "Location in sensor.report.v1 format.",
       "type": "object",
-      "required": [
-        "line",
-        "path"
-      ],
       "properties": {
         "column": {
           "description": "Optional column number (1-based).",
@@ -213,19 +189,23 @@
             "null"
           ],
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "line": {
           "description": "Line number (1-based).",
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "path": {
           "description": "Repo-relative path with forward slashes.",
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "path",
+        "line"
+      ]
     },
     "Severity": {
       "type": "string",
@@ -237,10 +217,6 @@
     },
     "ToolMeta": {
       "type": "object",
-      "required": [
-        "name",
-        "version"
-      ],
       "properties": {
         "name": {
           "type": "string"
@@ -248,18 +224,17 @@
         "version": {
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "name",
+        "version"
+      ]
     },
     "Verdict": {
       "type": "object",
-      "required": [
-        "counts",
-        "reasons",
-        "status"
-      ],
       "properties": {
         "counts": {
-          "$ref": "#/definitions/VerdictCounts"
+          "$ref": "#/$defs/VerdictCounts"
         },
         "reasons": {
           "type": "array",
@@ -268,40 +243,45 @@
           }
         },
         "status": {
-          "$ref": "#/definitions/VerdictStatus"
+          "$ref": "#/$defs/VerdictStatus"
         }
-      }
+      },
+      "required": [
+        "status",
+        "counts",
+        "reasons"
+      ]
     },
     "VerdictCounts": {
       "type": "object",
-      "required": [
-        "error",
-        "info",
-        "warn"
-      ],
       "properties": {
         "error": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "info": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "suppressed": {
           "description": "Number of matches suppressed via inline directives.",
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "warn": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         }
-      }
+      },
+      "required": [
+        "info",
+        "warn",
+        "error"
+      ]
     },
     "VerdictStatus": {
       "oneOf": [
@@ -316,9 +296,7 @@
         {
           "description": "For cockpit mode when inputs are missing or check cannot run.",
           "type": "string",
-          "enum": [
-            "skip"
-          ]
+          "const": "skip"
         }
       ]
     }

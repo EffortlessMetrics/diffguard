@@ -1,2 +1,7 @@
 # Protect repository settings
 /.github/settings.yml @EffortlessSteven
+
+# Conveyor templates and CI — maintain governance discipline
+/.github/ISSUE_TEMPLATE/ @EffortlessSteven
+/.github/PULL_REQUEST_TEMPLATE* @EffortlessSteven
+/.github/workflows/ @EffortlessSteven

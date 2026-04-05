@@ -1,7 +1,7 @@
 # .github/settings.yml
 repository:
   description: "Diff-scoped governance linter for PR automation"
-  homepage: "https://github.com/effortless-mgmt/diffguard"
+  homepage: "https://github.com/effortlessmetrics/diffguard"
   topics: rust, linter, diff, git, ci, governance, devex
 
   # Merge strategy settings
@@ -20,6 +20,10 @@ branches:
         require_code_owner_reviews: true
       required_status_checks:
         strict: true
-        contexts: [] # Add specific CI check names here if known (e.g., "ci (ubuntu-latest)")
+        contexts:
+          - "Format"
+          - "Clippy"
+          - "Test"
+          - "Gate: Issue linked"
       enforce_admins: false
       restrictions: null

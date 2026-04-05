@@ -57,7 +57,12 @@ pub fn arb_severity() -> impl Strategy<Value = Severity> {
 
 /// Strategy for generating Scope values.
 pub fn arb_scope() -> impl Strategy<Value = Scope> {
-    prop_oneof![Just(Scope::Added), Just(Scope::Changed),]
+    prop_oneof![
+        Just(Scope::Added),
+        Just(Scope::Changed),
+        Just(Scope::Modified),
+        Just(Scope::Deleted),
+    ]
 }
 
 /// Strategy for generating FailOn values.
@@ -294,6 +299,15 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     exclude_paths,
                     ignore_comments,
                     ignore_strings,
+                    match_mode: Default::default(),
+                    multiline: false,
+                    multiline_window: None,
+                    context_patterns: vec![],
+                    context_window: None,
+                    escalate_patterns: vec![],
+                    escalate_window: None,
+                    escalate_to: None,
+                    depends_on: vec![],
                     help: None,
                     url: None,
                     tags,
@@ -316,6 +330,15 @@ pub fn arb_minimal_rule_config() -> impl Strategy<Value = RuleConfig> {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
+            match_mode: Default::default(),
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
             help: None,
             url: None,
             tags: vec![],

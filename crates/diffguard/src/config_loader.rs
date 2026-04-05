@@ -5,7 +5,7 @@
 //! - Circular include detection
 //! - Merge semantics (later definitions override earlier ones)
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
@@ -18,6 +18,10 @@ const MAX_INCLUDE_DEPTH: usize = 10;
 
 /// Load a configuration file with include resolution.
 ///
+/// Uses ancestor-stack cycle detection: a file is a cycle only if it
+/// appears in the current include chain. The same file can be included
+/// through different branches (valid DAG configuration).
+///
 /// # Arguments
 /// * `path` - Path to the main config file
 /// * `expand_env` - Function to expand environment variables in the config text
@@ -28,14 +32,16 @@ pub fn load_config_with_includes<F>(path: &Path, expand_env: F) -> Result<Config
 where
     F: Fn(&str) -> Result<String> + Copy,
 {
-    let mut visited = HashSet::new();
-    load_config_recursive(path, expand_env, &mut visited, 0)
+    let mut ancestor_stack = Vec::new();
+    let mut load_cache: HashMap<PathBuf, ConfigFile> = HashMap::new();
+    load_config_recursive(path, expand_env, &mut ancestor_stack, &mut load_cache, 0)
 }
 
 fn load_config_recursive<F>(
     path: &Path,
     expand_env: F,
-    visited: &mut HashSet<PathBuf>,
+    ancestor_stack: &mut Vec<PathBuf>,
+    load_cache: &mut std::collections::HashMap<PathBuf, ConfigFile>,
     depth: usize,
 ) -> Result<ConfigFile>
 where
@@ -55,9 +61,27 @@ where
         .canonicalize()
         .with_context(|| format!("canonicalize path '{}'", path.display()))?;
 
-    // Check for circular includes
-    if !visited.insert(canonical.clone()) {
-        bail!("Circular include detected: '{}'", path.display());
+    // Check for circular includes (ancestor stack, not global visited set)
+    if ancestor_stack.contains(&canonical) {
+        bail!(
+            "Circular include detected: '{}' (chain: {})",
+            path.display(),
+            ancestor_stack
+                .iter()
+                .map(|p| p.display().to_string())
+                .collect::<Vec<_>>()
+                .join(" → ")
+        );
+    }
+
+    // Check cache — reuse loaded configs for DAG configurations
+    if let Some(cached) = load_cache.get(&canonical) {
+        debug!(
+            "Reusing cached config for '{}' (depth {})",
+            path.display(),
+            depth
+        );
+        return Ok(cached.clone());
     }
 
     debug!("Loading config from '{}' (depth {})", path.display(), depth);
@@ -73,8 +97,12 @@ where
 
     // If no includes, return as-is
     if config.includes.is_empty() {
+        load_cache.insert(canonical, config.clone());
         return Ok(config);
     }
+
+    // Push current path onto ancestor stack before processing includes
+    ancestor_stack.push(canonical.clone());
 
     // Get the directory of the current config for relative path resolution
     let base_dir = path.parent().unwrap_or(Path::new("."));
@@ -102,9 +130,18 @@ where
             );
         }
 
-        let included = load_config_recursive(&full_path, expand_env, visited, depth + 1)?;
+        let included = load_config_recursive(
+            &full_path,
+            expand_env,
+            ancestor_stack,
+            load_cache,
+            depth + 1,
+        )?;
         merged = merge_configs(merged, included);
     }
+
+    // Pop current path from ancestor stack
+    ancestor_stack.pop();
 
     // Merge the main config on top of includes (main config wins)
     let main_without_includes = ConfigFile {
@@ -118,12 +155,16 @@ where
 }
 
 /// Merge two configs. Rules from `other` override rules from `base` by ID.
+/// Defaults are merged field-wise: `Some` in `other` overrides `base`, `None` inherits.
 fn merge_configs(base: ConfigFile, other: ConfigFile) -> ConfigFile {
-    // Defaults: other overrides base
-    let defaults = if other.defaults != diffguard_types::Defaults::default() {
-        other.defaults
-    } else {
-        base.defaults
+    // Defaults: field-wise merge (None means "inherit from parent")
+    let defaults = diffguard_types::Defaults {
+        base: other.defaults.base.or(base.defaults.base),
+        head: other.defaults.head.or(base.defaults.head),
+        scope: other.defaults.scope.or(base.defaults.scope),
+        fail_on: other.defaults.fail_on.or(base.defaults.fail_on),
+        max_findings: other.defaults.max_findings.or(base.defaults.max_findings),
+        diff_context: other.defaults.diff_context.or(base.defaults.diff_context),
     };
 
     // Rules: merge by ID, other overrides base
@@ -472,5 +513,227 @@ patterns = ["test"]
 
         let merged = merge_configs(base, other);
         assert_eq!(merged.defaults.base.as_deref(), Some("origin/main"));
+    }
+
+    #[test]
+    fn test_merge_defaults_field_wise() {
+        // Parent sets base + scope, child sets only fail_on
+        // With field-wise merge, child's fail_on overrides,
+        // parent's base and scope are preserved
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                base: Some("origin/develop".to_string()),
+                head: Some("HEAD".to_string()),
+                scope: Some(diffguard_types::Scope::Modified),
+                fail_on: Some(diffguard_types::FailOn::Error),
+                max_findings: Some(200),
+                diff_context: Some(0),
+            },
+            rule: vec![],
+        };
+
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                fail_on: Some(diffguard_types::FailOn::Warn),
+                ..Default::default() // all other fields are Some(default_value)
+            },
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+        // child's fail_on wins (it's Some in child)
+        assert_eq!(merged.defaults.fail_on, Some(diffguard_types::FailOn::Warn));
+        // child's other fields also win because they're Some in child
+        assert_eq!(merged.defaults.base.as_deref(), Some("origin/main"));
+    }
+
+    #[test]
+    fn test_merge_defaults_none_inherits() {
+        // Parent sets base + scope, child has None for most fields
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                base: Some("origin/develop".to_string()),
+                head: Some("HEAD".to_string()),
+                scope: Some(diffguard_types::Scope::Modified),
+                fail_on: Some(diffguard_types::FailOn::Error),
+                max_findings: Some(200),
+                diff_context: Some(0),
+            },
+            rule: vec![],
+        };
+
+        // Simulate a child config that only sets fail_on in TOML
+        // (other fields are None when missing from TOML)
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                base: None,
+                head: None,
+                scope: None,
+                fail_on: Some(diffguard_types::FailOn::Warn),
+                max_findings: None,
+                diff_context: None,
+            },
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+        assert_eq!(
+            merged.defaults.base.as_deref(),
+            Some("origin/develop"),
+            "base should inherit from parent"
+        );
+        assert_eq!(
+            merged.defaults.scope,
+            Some(diffguard_types::Scope::Modified),
+            "scope should inherit from parent"
+        );
+        assert_eq!(
+            merged.defaults.fail_on,
+            Some(diffguard_types::FailOn::Warn),
+            "fail_on should be overridden by child"
+        );
+        assert_eq!(
+            merged.defaults.max_findings,
+            Some(200),
+            "max_findings should inherit from parent"
+        );
+    }
+
+    #[test]
+    fn test_dag_includes_same_file_twice() {
+        // main → {team-a, team-b} → shared-base
+        // This is a valid DAG, not a cycle
+        let temp = TempDir::new().unwrap();
+
+        // shared-base.toml
+        fs::write(
+            temp.path().join("shared-base.toml"),
+            r#"
+[[rule]]
+id = "shared.rule"
+severity = "warn"
+message = "Shared rule"
+patterns = ["shared"]
+"#,
+        )
+        .unwrap();
+
+        // team-a.toml includes shared-base
+        fs::write(
+            temp.path().join("team-a.toml"),
+            r#"
+includes = ["shared-base.toml"]
+
+[[rule]]
+id = "team-a.rule"
+severity = "warn"
+message = "Team A"
+patterns = ["alpha"]
+"#,
+        )
+        .unwrap();
+
+        // team-b.toml includes shared-base
+        fs::write(
+            temp.path().join("team-b.toml"),
+            r#"
+includes = ["shared-base.toml"]
+
+[[rule]]
+id = "team-b.rule"
+severity = "warn"
+message = "Team B"
+patterns = ["beta"]
+"#,
+        )
+        .unwrap();
+
+        // main.toml includes both team-a and team-b
+        fs::write(
+            temp.path().join("main.toml"),
+            r#"
+includes = ["team-a.toml", "team-b.toml"]
+"#,
+        )
+        .unwrap();
+
+        let result = load_config_with_includes(&temp.path().join("main.toml"), no_expand);
+        assert!(
+            result.is_ok(),
+            "DAG includes should not be treated as cycles: {:?}",
+            result.err()
+        );
+
+        let config = result.unwrap();
+        // Should have all 3 rules: shared (once), team-a, team-b
+        let rule_ids: Vec<&str> = config.rule.iter().map(|r| r.id.as_str()).collect();
+        assert!(
+            rule_ids.contains(&"shared.rule"),
+            "should include shared rule"
+        );
+        assert!(
+            rule_ids.contains(&"team-a.rule"),
+            "should include team-a rule"
+        );
+        assert!(
+            rule_ids.contains(&"team-b.rule"),
+            "should include team-b rule"
+        );
+    }
+
+    #[test]
+    fn test_cycle_detection_still_works() {
+        // main → a → b → main (real cycle)
+        let temp = TempDir::new().unwrap();
+
+        fs::write(
+            temp.path().join("main.toml"),
+            r#"
+includes = ["a.toml"]
+
+[[rule]]
+id = "main.rule"
+severity = "warn"
+message = "Main"
+patterns = ["main"]
+"#,
+        )
+        .unwrap();
+
+        fs::write(
+            temp.path().join("a.toml"),
+            r#"
+includes = ["b.toml"]
+
+[[rule]]
+id = "a.rule"
+severity = "warn"
+message = "A"
+patterns = ["a"]
+"#,
+        )
+        .unwrap();
+
+        fs::write(
+            temp.path().join("b.toml"),
+            r#"
+includes = ["main.toml"]
+
+[[rule]]
+id = "b.rule"
+severity = "warn"
+message = "B"
+patterns = ["b"]
+"#,
+        )
+        .unwrap();
+
+        let result = load_config_with_includes(&temp.path().join("main.toml"), no_expand);
+        assert!(result.is_err(), "real cycles should still be detected");
+        assert!(result.unwrap_err().to_string().contains("Circular include"));
     }
 }

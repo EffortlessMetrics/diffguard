@@ -1,97 +1,56 @@
 # diffguard-diff
 
-Unified diff parser for the [diffguard](https://crates.io/crates/diffguard) governance linter.
+Unified diff parser used by diffguard.
 
-This crate parses `git diff` style unified diffs and extracts added/changed lines with their metadata. It is I/O-free (pure parsing) and fuzz-tested to ensure it never panics on malformed input.
+This crate parses git-style unified diffs and extracts scoped lines in diff
+order. It is pure parsing logic with no I/O.
 
-## Features
+## What It Returns
 
-- Parse unified diff format from `git diff` output
-- Extract added and modified lines with line numbers and file paths
-- Filter by scope: `Added` (new lines only) or `Changed` (new + modified)
-- Detect and handle special cases:
-  - Binary files (skipped)
-  - Submodule changes (skipped)
-  - File renames (tracked correctly)
-  - Mode-only changes (no content lines)
-  - Missing newline at EOF
-  - Deleted files (skipped for "added" scope)
-- **Never panics** — malformed input returns errors
+- `Vec<DiffLine>` with `path`, `line`, `content`, and `ChangeKind`
+- `DiffStats` with file/line totals
 
-## Usage
+Scope behavior:
+
+- `Scope::Added` - all added (`+`) lines
+- `Scope::Changed` / `Scope::Modified` - added lines that replace removed lines
+- `Scope::Deleted` - removed (`-`) lines
+
+## Main API
 
 ```rust
 use diffguard_diff::{parse_unified_diff, ChangeKind};
 use diffguard_types::Scope;
 
-let diff_text = r#"
-diff --git a/src/main.rs b/src/main.rs
-index 1234567..abcdefg 100644
---- a/src/main.rs
-+++ b/src/main.rs
-@@ -1,3 +1,4 @@
- fn main() {
-+    println!("Hello, world!");
- }
+let diff = r#"
+diff --git a/src/lib.rs b/src/lib.rs
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,1 +1,2 @@
+ fn existing() {}
++fn added() {}
 "#;
 
-// Parse with "Added" scope - only truly new lines
-let lines = parse_unified_diff(diff_text, Scope::Added)?;
-
-for line in &lines {
-    println!("{}:{} - {}", line.path, line.line_no, line.content);
-}
+let (lines, stats) = parse_unified_diff(diff, Scope::Added)?;
+assert_eq!(stats.files, 1);
+assert_eq!(lines[0].kind, ChangeKind::Added);
 ```
 
-## API
+## Special Cases Handled
 
-### Main Function
+- binary file markers
+- submodule diffs
+- deleted files (included only for `Scope::Deleted`)
+- mode-only changes
+- renames (`rename from` / `rename to`)
+- quoted/escaped git paths
+- malformed hunks (skip bad hunk and continue parsing later content)
 
-```rust
-pub fn parse_unified_diff(input: &str, scope: Scope) -> Result<Vec<DiffLine>>
-```
+## Robustness Contract
 
-### Output Types
-
-```rust
-pub struct DiffLine {
-    pub path: String,       // File path (e.g., "src/main.rs")
-    pub line_no: usize,     // Line number in new file
-    pub content: String,    // Line content (without +/- prefix)
-    pub kind: ChangeKind,   // Added or Changed
-}
-
-pub enum ChangeKind {
-    Added,    // New line (+ in diff)
-    Changed,  // Modified context (when scope=Changed)
-}
-
-pub struct DiffStats {
-    pub files_changed: usize,
-    pub lines_added: usize,
-    pub lines_removed: usize,
-}
-```
-
-### Detection Helpers
-
-```rust
-pub fn is_binary_file(line: &str) -> bool
-pub fn is_submodule(line: &str) -> bool
-pub fn is_new_file(line: &str) -> bool
-pub fn is_deleted_file(line: &str) -> bool
-pub fn is_mode_change_only(line: &str) -> bool
-pub fn parse_rename_from(line: &str) -> Option<String>
-pub fn parse_rename_to(line: &str) -> Option<String>
-```
-
-## Robustness
-
-This crate is fuzz-tested to ensure it handles malformed input gracefully:
-
-```bash
-cargo +nightly fuzz run unified_diff_parser
-```
+- No panics for malformed diff content
+- Deterministic output ordering
+- Fuzz-tested (`fuzz_targets/unified_diff_parser`)
 
 ## License
 
