@@ -1,0 +1,76 @@
+name: Feature or Improvement
+description: Propose a change to diffguard (enters conveyor at Gate: Framed)
+labels: ["gate:framed"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Gate: Framed
+        Every change starts here. Fill in the scope section to frame the problem.
+        A branch should not be created until this issue is triaged and labeled `gate:verified`.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What's wrong or missing? Be specific about the current behavior and why it's insufficient.
+      placeholder: "Describe the problem with enough detail that someone unfamiliar can understand it."
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: |
+        Bound the change. What is in scope and what is explicitly out of scope?
+        This prevents scope creep during implementation.
+      placeholder: |
+        In scope:
+        - ...
+
+        Out of scope:
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know this is done? Be concrete — tests, behavior, output format.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: crate
+    attributes:
+      label: Affected crate(s)
+      options:
+        - diffguard (CLI)
+        - diffguard-core
+        - diffguard-domain
+        - diffguard-diff
+        - diffguard-types
+        - diffguard-analytics
+        - diffguard-lsp
+        - diffguard-testkit
+        - xtask
+        - Multiple / workspace
+    validations:
+      required: true
+
+  - type: dropdown
+    id: gate
+    attributes:
+      label: Starting gate
+      description: Where does this issue enter the conveyor? Most start at Framed.
+      options:
+        - "Framed (default)"
+        - "Verified (research already done)"
+        - "Designed (spec/tests already exist)"
+    validations:
+      required: true
