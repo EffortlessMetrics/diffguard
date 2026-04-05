@@ -160,15 +160,20 @@ impl ServerState {
 }
 
 pub fn run_server(connection: Connection) -> Result<()> {
-    let init = initialize_payload()?;
-    let initialize_params = connection.initialize(init)?;
-    let initialize_params: InitializeParams =
-        serde_json::from_value(initialize_params).context("parse initialize params")?;
+    // Use the lower-level initialize_start/initialize_finish methods
+    // to send a custom InitializeResult with server_info.
+    let (id, init_params) = connection.initialize_start()?;
+    let init_params: InitializeParams =
+        serde_json::from_value(init_params).context("parse initialize params")?;
 
-    let (mut state, startup_warning) = ServerState::from_initialize(&initialize_params);
+    let (mut state, startup_warning) = ServerState::from_initialize(&init_params);
     if let Some(message) = startup_warning {
         show_message(&connection, MessageType::WARNING, &message)?;
     }
+
+    // Send InitializeResult with server_info
+    let init_response = initialize_payload()?;
+    connection.initialize_finish(id, init_response)?;
 
     for message in &connection.receiver {
         match message {
@@ -243,6 +248,9 @@ fn server_capabilities() -> ServerCapabilities {
 }
 
 fn initialize_payload() -> Result<serde_json::Value> {
+    // When using initialize_finish(), we send the full InitializeResult
+    // including server_info. The lsp-server library doesn't wrap this
+    // in a capabilities object.
     let result = InitializeResult {
         capabilities: server_capabilities(),
         server_info: Some(ServerInfo {

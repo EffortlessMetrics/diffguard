@@ -1,9 +1,7 @@
 use anyhow::Result;
 use lsp_server::Connection;
 
-mod config;
-mod server;
-mod text;
+use diffguard_lsp::server;
 
 fn main() -> Result<()> {
     let (connection, io_threads) = Connection::stdio();

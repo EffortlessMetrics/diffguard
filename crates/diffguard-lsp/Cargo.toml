@@ -25,6 +25,14 @@ exclude = [
   "**/fuzz/**",
 ]
 
+[lib]
+name = "diffguard_lsp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "diffguard-lsp"
+path = "src/main.rs"
+
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true
@@ -39,4 +47,6 @@ diffguard-domain = { version = "0.2", path = "../diffguard-domain" }
 diffguard-types = { version = "0.2", path = "../diffguard-types" }
 
 [dev-dependencies]
+diffguard-testkit = { path = "../diffguard-testkit" }
 tempfile.workspace = true
+insta.workspace = true
