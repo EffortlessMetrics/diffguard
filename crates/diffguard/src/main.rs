@@ -4584,6 +4584,9 @@ should_match = true
 
     #[test]
     fn cmd_validate_accepts_valid_globs_and_strict_no_warnings() {
+        // Acquire ENV_LOCK to prevent DIFFGUARD_TEST_FORCE_COMPILE_ERROR from
+        // leaking from cmd_validate_forced_compile_error when tests run in parallel.
+        let _guard = ENV_LOCK.lock().unwrap();
         let dir = TempDir::new().unwrap();
         let config_path = write_config(
             dir.path(),

@@ -1,6 +1,8 @@
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail};
 use diffguard_core::{CheckPlan, run_check};
@@ -915,7 +917,29 @@ fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Res
     }
     command.arg("--unified=0").arg("--").arg(relative_path);
 
-    let output = command.output().context("run git diff")?;
+    // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
+    const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);
+    let mut child = command.spawn().context("spawn git diff")?;
+    let deadline = Instant::now() + GIT_DIFF_TIMEOUT;
+
+    let output = loop {
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                // Process has exited; wait_with_output() returns immediately
+                break child.wait_with_output().context("wait for git diff")?;
+            }
+            Ok(None) => {
+                // Still running
+                if Instant::now() >= deadline {
+                    let _ = child.kill();
+                    bail!("git diff timed out after {}s", GIT_DIFF_TIMEOUT.as_secs());
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+            Err(e) => bail!("checking git diff status: {e}"),
+        }
+    };
+
     if !output.status.success() {
         bail!(
             "git diff failed (exit={}): {}",
