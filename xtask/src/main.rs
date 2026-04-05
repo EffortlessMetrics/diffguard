@@ -167,6 +167,11 @@ mod tests {
 
     static ENV_LOCK: Mutex<()> = Mutex::new(());
 
+    /// Lock the ENV mutex, recovering from poison if needed.
+    fn lock_env() -> std::sync::MutexGuard<'static, ()> {
+        ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner())
+    }
+
     #[cfg(windows)]
     fn ok_command() -> (&'static str, Vec<&'static str>) {
         ("cmd", vec!["/C", "exit 0"])
@@ -315,7 +320,7 @@ mod tests {
 
     #[test]
     fn run_with_args_dispatches_ci_with_fake_cargo() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let dir = TempDir::new().expect("temp");
         let bin_dir = dir.path().join("bin");
         std::fs::create_dir_all(&bin_dir).expect("create bin dir");
@@ -363,7 +368,7 @@ mod tests {
 
     #[test]
     fn ci_reports_failure_when_clippy_fails() {
-        let _guard = ENV_LOCK.lock().unwrap();
+        let _guard = lock_env();
         let dir = TempDir::new().expect("temp");
         let bin_dir = dir.path().join("bin");
         std::fs::create_dir_all(&bin_dir).expect("create bin dir");
