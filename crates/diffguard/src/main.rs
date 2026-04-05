@@ -588,9 +588,6 @@ where
     // Initialize logging based on flags
     init_logging(cli.verbose, cli.debug);
 
-    // Initialize logging based on flags
-    init_logging(cli.verbose, cli.debug);
-
     match cli.command {
         Commands::Check(args) => cmd_check(*args),
         Commands::Rules(args) => {
