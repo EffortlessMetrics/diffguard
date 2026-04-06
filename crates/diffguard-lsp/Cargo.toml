@@ -18,13 +18,6 @@ include = [
   "README.md",
   "../../LICENSE-*",
 ]
-exclude = [
-  "**/*.snap.new",
-  "**/target/**",
-  "**/artifacts/**",
-  "**/fuzz/**",
-]
-
 [lib]
 name = "diffguard_lsp"
 path = "src/lib.rs"

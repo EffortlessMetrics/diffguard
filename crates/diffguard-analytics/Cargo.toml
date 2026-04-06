@@ -18,13 +18,6 @@ include = [
   "README.md",
   "../../LICENSE-*",
 ]
-exclude = [
-  "**/*.snap.new",
-  "**/target/**",
-  "**/artifacts/**",
-  "**/fuzz/**",
-]
-
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true

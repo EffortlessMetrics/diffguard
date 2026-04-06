@@ -16,7 +16,6 @@ include = [
   "src/**",
   "Cargo.toml",
   "README.md",
-  "CLAUDE.md",
   "../../README.md",
   "../../CLAUDE.md",
   "../../LICENSE-*",
@@ -26,14 +25,6 @@ include = [
   "../../schemas/**",
   "../../.kiro/specs/**",
 ]
-exclude = [
-  "**/*.snap.new",
-  "**/target/**",
-  "**/artifacts/**",
-  "**/fuzz/corpus/**",
-  "**/fuzz/artifacts/**",
-]
-
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
