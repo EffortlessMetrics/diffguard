@@ -1,9 +1,13 @@
 {
   "name": "diffguard-vscode",
-  "displayName": "diffguard",
-  "description": "Basic VS Code integration for diffguard checks",
-  "version": "0.1.0",
+  "displayName": "DiffGuard",
+  "description": "VS Code integration for DiffGuard LSP diagnostics",
+  "version": "0.2.0",
   "publisher": "effortlessmetrics",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/effortlessmetrics/diffguard"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -12,19 +16,64 @@
     "Programming Languages"
   ],
   "activationEvents": [
-    "onCommand:diffguard.runCheck"
+    "onStartupFinished"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "diffguard.runCheck",
-        "title": "diffguard: Run Staged Check"
+        "command": "diffguard.explainRule",
+        "title": "DiffGuard: Explain Rule"
+      },
+      {
+        "command": "diffguard.reloadConfig",
+        "title": "DiffGuard: Reload Config"
+      },
+      {
+        "command": "diffguard.showRuleUrl",
+        "title": "DiffGuard: Show Rule URL"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "DiffGuard",
+      "properties": {
+        "diffguard.serverPath": {
+          "type": "string",
+          "default": "diffguard-lsp",
+          "description": "Path to the diffguard-lsp binary."
+        },
+        "diffguard.configPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a diffguard.toml config file."
+        },
+        "diffguard.noDefaultRules": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disable built-in default rules."
+        },
+        "diffguard.maxFindings": {
+          "type": "number",
+          "default": 100,
+          "description": "Maximum number of findings to report."
+        },
+        "diffguard.forceLanguage": {
+          "type": "string",
+          "default": "",
+          "description": "Force analysis language (e.g. 'en', 'de')."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.0.0"
   },
   "scripts": {
-    "lint": "echo \"No lint configured\""
+    "lint": "echo \"No lint configured\"",
+    "package": "vsce package"
   },
-  "license": "MIT OR Apache-2.0"
+  "license": "MIT"
 }
