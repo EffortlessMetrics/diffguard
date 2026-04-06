@@ -16,14 +16,6 @@ include = [
   "src/**",
   "Cargo.toml",
   "README.md",
-  "../../README.md",
-  "../../CLAUDE.md",
-  "../../LICENSE-*",
-  "../../CHANGELOG.md",
-  "../../diffguard.toml.example",
-  "../../docs/**",
-  "../../schemas/**",
-  "../../.kiro/specs/**",
 ]
 [dependencies]
 anyhow.workspace = true

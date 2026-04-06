@@ -16,7 +16,6 @@ include = [
   "src/**",
   "Cargo.toml",
   "README.md",
-  "../../LICENSE-*",
 ]
 [lib]
 name = "diffguard_lsp"
