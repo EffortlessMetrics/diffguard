@@ -46,38 +46,31 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Publish diffguard-types
-        run: cargo publish -p diffguard-types
-      - name: Wait for indexing
-        run: sleep 30
-
-      - name: Publish diffguard-diff
-        run: cargo publish -p diffguard-diff
-      - name: Wait for indexing
-        run: sleep 30
-
-      - name: Publish diffguard-domain
-        run: cargo publish -p diffguard-domain
-      - name: Wait for indexing
-        run: sleep 30
-
-      - name: Publish diffguard-core
-        run: cargo publish -p diffguard-core
-      - name: Wait for indexing
-        run: sleep 30
-
-      - name: Publish diffguard-analytics
-        run: cargo publish -p diffguard-analytics
-      - name: Wait for indexing
-        run: sleep 30
-
-      - name: Publish diffguard (CLI)
-        run: cargo publish -p diffguard
-      - name: Wait for indexing
-        run: sleep 30
-
-      - name: Publish diffguard-lsp
-        run: cargo publish -p diffguard-lsp
+      - name: Publish crates
+        run: |
+          publish_with_retry() {
+            local crate="$1"
+            for attempt in 1 2 3 4 5; do
+              echo "--- Publishing $crate (attempt $attempt) ---"
+              if cargo publish -p "$crate"; then
+                echo "  Published $crate"
+                return 0
+              fi
+              if cargo publish -p "$crate" 2>&1 | grep -q "already published"; then
+                echo "  $crate already published, skipping"
+                return 0
+              fi
+              echo "  Failed, waiting 60s before retry..."
+              sleep 60
+            done
+            echo "  FAILED: $crate after 5 attempts"
+            return 1
+          }
+          for crate in diffguard-types diffguard-diff diffguard-domain diffguard-core diffguard-analytics diffguard diffguard-lsp; do
+            publish_with_retry "$crate"
+            echo "  Waiting 45s for crates.io indexing..."
+            sleep 45
+          done
 
   dry-run:
     name: Dry Run
