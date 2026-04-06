@@ -1,4 +1,3 @@
-const path = require("path");
 const vscode = require("vscode");
 const {
   LanguageClient,
@@ -38,7 +37,8 @@ function activate(context) {
   );
 
   client.start().then(null, (err) => {
-    if (String(err).includes("ENOENT") || String(err).includes("not found") || String(err).includes("cannot find")) {
+    const errMsg = String(err);
+    if (errMsg.includes("ENOENT") || errMsg.includes("not found") || errMsg.includes("cannot find")) {
       vscode.window.showErrorMessage(
         `DiffGuard: Language server binary "${serverPath}" not found. Please install diffguard-lsp or set diffguard.serverPath in settings.`
       );

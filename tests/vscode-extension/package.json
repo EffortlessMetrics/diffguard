@@ -1,0 +1,13 @@
+{
+  "name": "vscode-extension-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Red tests for vscode-diffguard LSP client rewrite",
+  "scripts": {
+    "test": "node run-all.js",
+    "test:package-json": "node validate-package-json.js",
+    "test:extension-js": "node validate-extension-js.js",
+    "test:manifest": "node validate-manifest.js",
+    "test:files": "node validate-files.js"
+  }
+}
