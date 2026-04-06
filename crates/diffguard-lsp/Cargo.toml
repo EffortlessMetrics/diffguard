@@ -12,19 +12,6 @@ documentation = "https://docs.rs/diffguard-lsp"
 keywords.workspace = true
 categories.workspace = true
 readme = "README.md"
-include = [
-  "src/**",
-  "Cargo.toml",
-  "README.md",
-  "../../LICENSE-*",
-]
-exclude = [
-  "**/*.snap.new",
-  "**/target/**",
-  "**/artifacts/**",
-  "**/fuzz/**",
-]
-
 [lib]
 name = "diffguard_lsp"
 path = "src/lib.rs"
