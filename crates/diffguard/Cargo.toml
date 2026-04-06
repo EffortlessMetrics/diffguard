@@ -12,11 +12,6 @@ documentation.workspace = true
 keywords.workspace = true
 categories.workspace = true
 readme = "README.md"
-include = [
-  "src/**",
-  "Cargo.toml",
-  "README.md",
-]
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true

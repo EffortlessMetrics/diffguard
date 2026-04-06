@@ -12,11 +12,6 @@ documentation = "https://docs.rs/diffguard-analytics"
 keywords.workspace = true
 categories.workspace = true
 readme = "README.md"
-include = [
-  "src/**",
-  "Cargo.toml",
-  "README.md",
-]
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
