@@ -1,0 +1,197 @@
+name: diffguard
+description: Diff-scoped governance linter for pull requests. Only checks added/changed lines.
+author: EffortlessMetrics
+
+branding:
+  icon: shield
+  color: orange
+
+inputs:
+  base:
+    description: Base ref for diff comparison (default: PR base branch or main)
+    required: false
+    default: ""
+  head:
+    description: Head ref for diff comparison (default: current SHA)
+    required: false
+    default: ""
+  config:
+    description: Path to diffguard.toml config file
+    required: false
+    default: ""
+  fail-on:
+    description: "When to fail: error, warn, or never"
+    required: false
+    default: "error"
+  sarif-file:
+    description: Path to write SARIF output (enables Code Scanning upload if set)
+    required: false
+    default: ""
+  version:
+    description: diffguard version to install
+    required: false
+    default: "0.2.0"
+  github-annotations:
+    description: Emit GitHub Actions annotations
+    required: false
+    default: "true"
+  post-comment:
+    description: Post findings as PR comment
+    required: false
+    default: "false"
+
+outputs:
+  outcome:
+    description: "pass or fail"
+    value: ${{ steps.check.outcome }}
+  findings-count:
+    description: Number of findings (from JSON receipt)
+    value: ${{ steps.check.outputs.findings-count }}
+  receipt-file:
+    description: Path to JSON receipt
+    value: ${{ steps.check.outputs.receipt-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Install diffguard
+      shell: bash
+      run: |
+        if ! command -v diffguard &> /dev/null; then
+          echo "::group::Installing diffguard v${{ inputs.version }}"
+          cargo install diffguard --version "${{ inputs.version }}"
+          echo "::endgroup::"
+        else
+          echo "diffguard $(diffguard --version) already installed"
+        fi
+
+    - name: Resolve base ref
+      id: refs
+      shell: bash
+      run: |
+        # Base: input > PR base > main
+        if [ -n "${{ inputs.base }}" ]; then
+          BASE="${{ inputs.base }}"
+        elif [ -n "${{ github.base_ref }}" ]; then
+          BASE="origin/${{ github.base_ref }}"
+        else
+          BASE="origin/main"
+        fi
+
+        # Head: input > current SHA
+        if [ -n "${{ inputs.head }}" ]; then
+          HEAD="${{ inputs.head }}"
+        else
+          HEAD="${{ github.sha }}"
+        fi
+
+        echo "base=${BASE}" >> "$GITHUB_OUTPUT"
+        echo "head=${HEAD}" >> "$GITHUB_OUTPUT"
+        echo "Comparing: ${BASE}..${HEAD}"
+
+    - name: Run diffguard check
+      id: check
+      shell: bash
+      continue-on-error: true
+      run: |
+        RECEIPT="${{ runner.temp }}/diffguard-receipt.json"
+        mkdir -p "$(dirname "$RECEIPT")"
+
+        ARGS=(
+          check
+          --base "${{ steps.refs.outputs.base }}"
+          --head "${{ steps.refs.outputs.head }}"
+          --out "$RECEIPT"
+          --fail-on "${{ inputs.fail-on }}"
+        )
+
+        if [ -n "${{ inputs.config }}" ]; then
+          ARGS+=(--config "${{ inputs.config }}")
+        fi
+
+        if [ -n "${{ inputs.sarif-file }}" ]; then
+          mkdir -p "$(dirname "${{ inputs.sarif-file }}")"
+          ARGS+=(--sarif "${{ inputs.sarif-file }}")
+        fi
+
+        if [ "${{ inputs.github-annotations }}" = "true" ]; then
+          ARGS+=(--github-annotations)
+        fi
+
+        echo "::group::diffguard check"
+        diffguard "${ARGS[@]}"
+        echo "::endgroup::"
+
+        echo "receipt-file=${RECEIPT}" >> "$GITHUB_OUTPUT"
+
+        # Extract findings count
+        if [ -f "$RECEIPT" ]; then
+          COUNT=$(jq '.verdicts.total // 0' "$RECEIPT" 2>/dev/null || echo "0")
+          echo "findings-count=${COUNT}" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Upload SARIF
+      if: inputs.sarif-file != '' && hashFiles(inputs.sarif-file) != ''
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+        category: diffguard
+
+    - name: Post PR comment
+      if: inputs.post-comment == 'true' && github.event_name == 'pull_request' && hashFiles(steps.check.outputs.receipt-file) != ''
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const receiptPath = '${{ steps.check.outputs.receipt-file }}';
+          const receipt = JSON.parse(fs.readFileSync(receiptPath, 'utf8'));
+
+          // Build comment body from receipt
+          const findings = receipt.findings || [];
+          const verdicts = receipt.verdicts || {};
+          const lines = [`## Diffguard Results`];
+
+          if (findings.length === 0) {
+            lines.push('No policy violations found. ✅');
+          } else {
+            lines.push(`Found **${findings.length}** finding(s):`);
+            lines.push('');
+            lines.push('| Severity | Rule | File | Line | Message |');
+            lines.push('|----------|------|------|------|---------|');
+            for (const f of findings) {
+              lines.push(`| ${f.severity} | \`${f.rule_id}\` | ${f.file || ''} | ${f.line || ''} | ${f.message || ''} |`);
+            }
+          }
+
+          const body = lines.join('\n');
+
+          // Upsert comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          const existing = comments.find(c => c.body.includes('## Diffguard Results'));
+
+          if (existing) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existing.id,
+              body,
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+          }
+
+    - name: Fail if violations found
+      if: steps.check.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::error::diffguard found policy violations"
+        exit 1

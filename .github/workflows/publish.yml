@@ -52,16 +52,20 @@ jobs:
             local crate="$1"
             for attempt in 1 2 3 4 5; do
               echo "--- Publishing $crate (attempt $attempt) ---"
-              if cargo publish -p "$crate"; then
-                echo "  Published $crate"
+              local output
+              output=$(cargo publish -p "$crate" 2>&1) && { echo "  Published $crate"; return 0; }
+              echo "$output"
+              if echo "$output" | grep -qiE "already (published|exists)"; then
+                echo "  $crate already on crates.io, skipping"
                 return 0
               fi
-              if cargo publish -p "$crate" 2>&1 | grep -q "already published"; then
-                echo "  $crate already published, skipping"
-                return 0
+              if echo "$output" | grep -q "429"; then
+                echo "  Rate limited, waiting 90s..."
+                sleep 90
+              else
+                echo "  Failed, waiting 60s..."
+                sleep 60
               fi
-              echo "  Failed, waiting 60s before retry..."
-              sleep 60
             done
             echo "  FAILED: $crate after 5 attempts"
             return 1

@@ -1,0 +1,25 @@
+# diffguard pre-commit hook
+#
+# Add to your .pre-commit-config.yaml:
+#
+#   repos:
+#     - repo: https://github.com/EffortlessMetrics/diffguard
+#       rev: v0.2.0
+#       hooks:
+#         - id: diffguard
+#
+# Or with custom config:
+#
+#     - repo: https://github.com/EffortlessMetrics/diffguard
+#       rev: v0.2.0
+#       hooks:
+#         - id: diffguard
+#           args: [--config, diffguard.toml, --fail-on, warn]
+
+- id: diffguard
+  name: diffguard
+  description: Diff-scoped governance linter — only checks staged changes
+  entry: diffguard check --staged
+  language: rust
+  types: [text]
+  pass_filenames: false
