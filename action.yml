@@ -28,9 +28,9 @@ inputs:
     required: false
     default: ""
   version:
-    description: diffguard version to install
+    description: diffguard version to install (tag, e.g. v0.2.0)
     required: false
-    default: "0.2.0"
+    default: "v0.2.0"
   github-annotations:
     description: Emit GitHub Actions annotations
     required: false
@@ -54,16 +54,67 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Install diffguard
+    - name: Resolve target triple
+      id: target
       shell: bash
       run: |
-        if ! command -v diffguard &> /dev/null; then
-          echo "::group::Installing diffguard v${{ inputs.version }}"
-          cargo install diffguard --version "${{ inputs.version }}"
+        OS="$(uname -s)"
+        ARCH="$(uname -m)"
+        case "$OS" in
+          Linux)  TARGET="x86_64-unknown-linux-gnu" ;;
+          Darwin)
+            case "$ARCH" in
+              arm64)  TARGET="aarch64-apple-darwin" ;;
+              *)      TARGET="x86_64-apple-darwin" ;;
+            esac
+            ;;
+          *) echo "::warning::Unsupported OS: $OS — falling back to cargo install" ;;
+        esac
+        echo "triple=${TARGET}" >> "$GITHUB_OUTPUT"
+
+    - name: Install diffguard
+      id: install
+      shell: bash
+      continue-on-error: true
+      run: |
+        if command -v diffguard &> /dev/null; then
+          echo "diffguard $(diffguard --version) already installed"
+          exit 0
+        fi
+
+        TARGET="${{ steps.target.outputs.triple }}"
+        if [ -z "$TARGET" ]; then
+          echo "::warning::No pre-built binary for this platform"
+          exit 1
+        fi
+
+        VERSION="${{ inputs.version }}"
+        ASSET="diffguard-${VERSION}-${TARGET}.tar.gz"
+        URL="https://github.com/EffortlessMetrics/diffguard/releases/download/${VERSION}/${ASSET}"
+
+        echo "::group::Downloading ${ASSET}"
+        if curl -sSL -o "/tmp/${ASSET}" "$URL" 2>/dev/null; then
+          tar xzf "/tmp/${ASSET}" -C /tmp
+          sudo mv /tmp/diffguard /usr/local/bin/diffguard
+          chmod +x /usr/local/bin/diffguard
+          echo "Installed diffguard $(diffguard --version) from release binary"
           echo "::endgroup::"
         else
-          echo "diffguard $(diffguard --version) already installed"
+          echo "::endgroup::"
+          echo "::warning::Release binary not found at ${URL}"
+          exit 1
         fi
+
+    - name: Fallback to cargo install
+      if: steps.install.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::group::Installing diffguard via cargo"
+        VERSION="${{ inputs.version }}"
+        # Strip leading 'v' for cargo version
+        CARGO_VERSION="${VERSION#v}"
+        cargo install diffguard --version "$CARGO_VERSION"
+        echo "::endgroup::"
 
     - name: Resolve base ref
       id: refs
