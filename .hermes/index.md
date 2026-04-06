@@ -2,6 +2,14 @@
 
 Artifacts from reasoning, planning, and fixing — permanent repo history.
 
+## Agent Customization
+
+| File | Purpose |
+|------|---------|
+| `agent-context.md` | Canonical repo-specific agent instructions (architecture, commands, invariants, testing, governance) |
+
+Root files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`) are thin pointers here.
+
 ## Flows
 
 | File | Title | Date |
