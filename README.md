@@ -198,11 +198,38 @@ diffguard supports multiple output formats for different use cases:
 | False-Positive Baseline | `--false-positive-baseline` / `--write-false-positive-baseline` | Acknowledge and track known false positives |
 | Trend History | `--trend-history` / `trend` | Cross-run metrics and historical summaries |
 
-## GitHub Actions example
+## CI Integration
+
+### GitHub Action (recommended)
+
+```yaml
+# .github/workflows/diffguard.yml
+name: diffguard
+on: [pull_request]
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  diffguard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: EffortlessMetrics/diffguard@v0.2.0
+        with:
+          fail-on: error
+          sarif-file: diffguard.sarif.json
+          post-comment: "true"
+```
+
+### Manual (any CI)
 
 ```yaml
 - name: diffguard
   run: |
+    cargo install diffguard
     diffguard check \
       --base origin/main \
       --head HEAD \
@@ -218,10 +245,16 @@ diffguard supports multiple output formats for different use cases:
     sarif_file: artifacts/diffguard/report.sarif
 ```
 
-## Git Hook Samples
+### Pre-commit
 
-Sample hooks live in `docs/hooks/`:
-- `docs/hooks/commit-msg.sample`
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/EffortlessMetrics/diffguard
+    rev: v0.2.0
+    hooks:
+      - id: diffguard
+```
 
 ## IDE Integration
 
@@ -300,6 +333,7 @@ Three fuzz targets are available:
 cargo +nightly fuzz run unified_diff_parser  # Diff parsing
 cargo +nightly fuzz run preprocess           # Comment/string masking
 cargo +nightly fuzz run rule_matcher         # Rule evaluation
+cargo +nightly fuzz run evaluate_lines       # Line evaluation pipeline
 ```
 
 ## Minimum Supported Rust Version (MSRV)
