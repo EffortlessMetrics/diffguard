@@ -424,7 +424,6 @@ proptest! {
     ) {
         use diffguard_domain::evaluate::evaluate_lines;
         use diffguard_domain::rules::compile_rules;
-        use diffguard_types::{MatchMode, RuleConfig, Severity};
 
         let input_lines: Vec<diffguard_domain::InputLine> = (1..=num_lines)
             .map(|i| diffguard_domain::InputLine {
