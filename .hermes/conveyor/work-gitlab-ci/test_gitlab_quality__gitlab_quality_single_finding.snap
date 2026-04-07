@@ -1,0 +1,21 @@
+---
+source: crates/diffguard-core/tests/test_gitlab_quality.rs
+expression: json
+---
+[
+  {
+    "description": "Use of console.log detected",
+    "fingerprint": "2c2974db2047a8af23dd7f769b3c0ec3d5f882fbc4dcb6832eb19b805c95f971",
+    "severity": "minor",
+    "location": {
+      "path": "src/index.js",
+      "lines": {
+        "begin": 42
+      }
+    },
+    "check_name": "no-console-log",
+    "content": {
+      "body": "the matched code"
+    }
+  }
+]

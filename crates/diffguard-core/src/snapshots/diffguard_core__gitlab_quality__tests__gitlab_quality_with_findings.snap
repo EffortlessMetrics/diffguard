@@ -1,0 +1,30 @@
+---
+source: crates/diffguard-core/src/gitlab_quality.rs
+expression: json
+---
+[
+  {
+    "description": "Avoid unwrap/expect in production code.",
+    "fingerprint": "62e2d69557c0f04afc9867bf4ed5d88dc230e747dd59d03c0cb497bb4af94879",
+    "severity": "major",
+    "location": {
+      "path": "src/main.rs",
+      "lines": {
+        "begin": 42
+      }
+    },
+    "check_name": "rust.no_unwrap"
+  },
+  {
+    "description": "Use of console.log detected.",
+    "fingerprint": "3d9ac9a3a07bffdfe0d5c8f0731ae10d03c7860beb9e2f6c98da4c382a54ba2d",
+    "severity": "minor",
+    "location": {
+      "path": "src/index.js",
+      "lines": {
+        "begin": 15
+      }
+    },
+    "check_name": "js.no_console"
+  }
+]

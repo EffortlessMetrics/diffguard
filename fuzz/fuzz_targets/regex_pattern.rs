@@ -23,6 +23,7 @@ fuzz_target!(|data: &[u8]| {
         // Create a minimal rule config with the fuzzed pattern
         let rule = RuleConfig {
             id: "fuzz.regex".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "fuzz test".to_string(),
             languages: vec![],

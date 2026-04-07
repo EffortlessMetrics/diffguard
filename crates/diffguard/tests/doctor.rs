@@ -394,7 +394,7 @@ match = "test"
     )
     .unwrap();
 
-    let rel_path = format!("my config \u{1f4be}/diffguard.toml");
+    let rel_path = "my config \u{1f4be}/diffguard.toml".to_string();
     let (code, stdout) = run_doctor(dir, &["--config", &rel_path]);
     assert_eq!(
         code, 0,

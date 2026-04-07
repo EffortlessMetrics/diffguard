@@ -18,8 +18,9 @@ use diffguard_analytics::{
     summarize_trend_history, trend_run_from_receipt,
 };
 use diffguard_core::{
-    CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt, render_junit_for_receipt,
-    render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
+    CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt,
+    render_gitlab_quality_json, render_junit_for_receipt, render_sarif_json, render_sensor_json,
+    render_tsv_for_receipt, run_check,
 };
 use diffguard_diff::parse_unified_diff;
 use diffguard_domain::{DirectoryRuleOverride, compile_rules};
@@ -249,6 +250,17 @@ struct CheckArgs {
         default_missing_value = "artifacts/diffguard/report.tsv"
     )]
     tsv: Option<PathBuf>,
+
+    /// Write a GitLab Code Quality JSON report.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/report.gitlab-quality.json
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/report.gitlab-quality.json"
+    )]
+    gitlab_quality: Option<PathBuf>,
 
     /// Write per-rule hit statistics as JSON.
     ///
@@ -2206,6 +2218,16 @@ fn cmd_check_inner(
         });
     }
 
+    if let Some(gitlab_path) = &args.gitlab_quality {
+        let gitlab =
+            render_gitlab_quality_json(&run.receipt).context("render GitLab Code Quality JSON")?;
+        write_text(gitlab_path, &gitlab)?;
+        artifacts.push(Artifact {
+            path: to_artifact_path(gitlab_path),
+            format: "gitlab-quality".to_string(),
+        });
+    }
+
     if let Some(rule_stats_path) = &args.rule_stats {
         let stats_rows: Vec<_> = run
             .rule_hits
@@ -2836,6 +2858,7 @@ mod tests {
             junit: None,
             csv: None,
             tsv: None,
+            gitlab_quality: None,
             rule_stats: None,
             false_positive_baseline: None,
             write_false_positive_baseline: None,
@@ -3240,6 +3263,7 @@ patterns = ["test"]
             id: "test.rule".to_string(),
             severity: Severity::Warn,
             message: "Test message".to_string(),
+            description: String::new(),
             languages: vec!["rust".to_string()],
             patterns: vec![r"\.unwrap\(".to_string()],
             paths: vec!["**/*.rs".to_string()],
@@ -3282,6 +3306,7 @@ patterns = ["test"]
             id: "minimal.rule".to_string(),
             severity: Severity::Error,
             message: "Minimal rule".to_string(),
+            description: String::new(),
             languages: vec![],
             patterns: vec!["pattern".to_string()],
             paths: vec![],
@@ -3319,6 +3344,7 @@ patterns = ["test"]
                 id: "rust.no_unwrap".to_string(),
                 severity: Severity::Error,
                 message: "".to_string(),
+                description: String::new(),
                 languages: vec![],
                 patterns: vec![],
                 paths: vec![],
@@ -3343,6 +3369,7 @@ patterns = ["test"]
                 id: "rust.no_dbg".to_string(),
                 severity: Severity::Warn,
                 message: "".to_string(),
+                description: String::new(),
                 languages: vec![],
                 patterns: vec![],
                 paths: vec![],
@@ -3376,6 +3403,7 @@ patterns = ["test"]
             id: "rust.no_unwrap".to_string(),
             severity: Severity::Error,
             message: "".to_string(),
+            description: String::new(),
             languages: vec![],
             patterns: vec![],
             paths: vec![],
@@ -3618,6 +3646,7 @@ patterns = ["test"]
                 id: "rule.one".to_string(),
                 severity: Severity::Warn,
                 message: "msg".to_string(),
+                description: String::new(),
                 languages: vec![],
                 patterns: vec!["x".to_string()],
                 paths: vec![],
@@ -3799,6 +3828,7 @@ filename src/lib.rs\n\
                     id: "rust.no_unwrap".to_string(),
                     severity: Severity::Info,
                     message: "custom message".to_string(),
+                    description: String::new(),
                     languages: vec!["rust".to_string()],
                     patterns: vec![r"\.unwrap\(".to_string()],
                     paths: vec!["**/*.rs".to_string()],
@@ -3821,6 +3851,7 @@ filename src/lib.rs\n\
                 },
                 RuleConfig {
                     id: "custom.rule".to_string(),
+                    description: String::new(),
                     severity: Severity::Warn,
                     message: "custom".to_string(),
                     languages: vec![],
@@ -3883,6 +3914,7 @@ filename src/lib.rs\n\
     fn find_similar_rules_contains_match() {
         let rules = vec![RuleConfig {
             id: "alpha.rule".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "".to_string(),
             languages: vec![],
@@ -3914,6 +3946,7 @@ filename src/lib.rs\n\
     fn find_similar_rules_edit_distance_match() {
         let rules = vec![RuleConfig {
             id: "alpha.rule".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "".to_string(),
             languages: vec![],

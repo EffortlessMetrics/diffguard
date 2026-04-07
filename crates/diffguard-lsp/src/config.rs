@@ -484,6 +484,7 @@ mod tests {
     fn format_rule_explanation_contains_semantics() {
         let rule = RuleConfig {
             id: "rust.no_unwrap".to_string(),
+            description: String::new(),
             severity: Severity::Error,
             message: "Avoid unwrap".to_string(),
             languages: vec!["rust".to_string()],
@@ -519,6 +520,7 @@ mod tests {
         let rules = vec![
             RuleConfig {
                 id: "rust.no_unwrap".to_string(),
+                description: String::new(),
                 severity: Severity::Warn,
                 message: "msg".to_string(),
                 languages: vec![],
@@ -543,6 +545,7 @@ mod tests {
             },
             RuleConfig {
                 id: "security.no_eval".to_string(),
+                description: String::new(),
                 severity: Severity::Warn,
                 message: "msg".to_string(),
                 languages: vec![],

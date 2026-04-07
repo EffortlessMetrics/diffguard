@@ -1031,6 +1031,7 @@ fn valid_regex_strategy() -> impl Strategy<Value = String> {
 fn make_rule_config(id: &str, patterns: Vec<String>) -> RuleConfig {
     RuleConfig {
         id: id.to_string(),
+        description: String::new(),
         severity: Severity::Warn,
         message: "Test message".to_string(),
         languages: vec![],
@@ -1059,6 +1060,7 @@ fn make_rule_config(id: &str, patterns: Vec<String>) -> RuleConfig {
 fn make_rule_config_with_paths(id: &str, patterns: Vec<String>, paths: Vec<String>) -> RuleConfig {
     RuleConfig {
         id: id.to_string(),
+        description: String::new(),
         severity: Severity::Warn,
         message: "Test message".to_string(),
         languages: vec![],
@@ -1091,6 +1093,7 @@ fn make_rule_config_with_exclude_paths(
 ) -> RuleConfig {
     RuleConfig {
         id: id.to_string(),
+        description: String::new(),
         severity: Severity::Warn,
         message: "Test message".to_string(),
         languages: vec![],
@@ -1508,6 +1511,7 @@ fn valid_rule_config_strategy() -> impl Strategy<Value = RuleConfig> {
         ),
     )
         .prop_map(|(id, severity, message, patterns)| RuleConfig {
+            description: String::new(),
             id,
             severity,
             message,
@@ -1643,6 +1647,7 @@ proptest! {
         // Create a rule that matches many things
         let rule = RuleConfig {
             id: "test.any".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "matched".to_string(),
             languages: vec![],
@@ -1891,6 +1896,7 @@ proptest! {
     ) {
         let config = RuleConfig {
             id: "test.rule".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "test".to_string(),
             languages: languages.clone(),

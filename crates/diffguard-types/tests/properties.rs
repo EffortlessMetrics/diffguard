@@ -126,6 +126,7 @@ fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                 tags,
             )| {
                 RuleConfig {
+                    description: String::new(),
                     id,
                     severity,
                     message,

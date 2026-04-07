@@ -100,6 +100,21 @@ Diffguard dogfoods its own governance. See:
 - `CONTRIBUTING.md` — contributor flow
 - `.github/settings.yml` — branch protection, required checks
 
+## Conveyor Runs
+
+Work items are tracked in the gated change conveyor at `~/.hermes/runtime-overlays/conveyor/`.
+Artifacts for each run are stored in two places:
+- **Canonical**: `~/.hermes/state/conveyor/<work-id>/` (pipeline reads/writes here)
+- **Mirror**: `.hermes/conveyor/<work-id>/` (repo history, browsable)
+
+To check active conveyor runs for this repo:
+```bash
+cd ~/.hermes/runtime-overlays/conveyor
+python3 orchestrate.py <work-id> --status
+```
+
+See the `conveyor-run` skill for full command reference.
+
 ## MSRV
 
 Rust 1.92 (Minimum Supported Rust Version)

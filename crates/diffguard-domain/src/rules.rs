@@ -239,6 +239,7 @@ mod tests {
     ) -> RuleConfig {
         RuleConfig {
             id: id.to_string(),
+            description: String::new(),
             severity,
             message: message.to_string(),
             languages: languages.into_iter().map(|s| s.to_string()).collect(),
@@ -454,6 +455,7 @@ mod tests {
         // When multiple patterns could match, the first pattern in the list wins
         let cfg = RuleConfig {
             id: "test.overlapping".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "found match".to_string(),
             languages: vec![],
@@ -503,6 +505,7 @@ mod tests {
         let configs = vec![
             RuleConfig {
                 id: "rule.first".to_string(),
+                description: String::new(),
                 severity: Severity::Warn,
                 message: "first rule".to_string(),
                 languages: vec![],
@@ -527,6 +530,7 @@ mod tests {
             },
             RuleConfig {
                 id: "rule.second".to_string(),
+                description: String::new(),
                 severity: Severity::Error,
                 message: "second rule".to_string(),
                 languages: vec![],
@@ -562,6 +566,7 @@ mod tests {
         // Test that pattern order matters: general pattern first catches everything
         let cfg = RuleConfig {
             id: "test.general_first".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "found".to_string(),
             languages: vec![],
@@ -606,6 +611,7 @@ mod tests {
         // Test **/*.rs matches files in any subdirectory
         let cfg = RuleConfig {
             id: "test.glob".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec![],
@@ -648,6 +654,7 @@ mod tests {
         // Test src/**/*.ts matches only files under src/
         let cfg = RuleConfig {
             id: "test.glob".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec![],
@@ -690,6 +697,7 @@ mod tests {
         // Test excluding **/test/** and **/tests/**
         let cfg = RuleConfig {
             id: "test.glob".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec![],
@@ -734,6 +742,7 @@ mod tests {
         // Test matching multiple file extensions
         let cfg = RuleConfig {
             id: "test.glob".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec![],
@@ -781,6 +790,7 @@ mod tests {
         // Test excluding specific file patterns like *.test.* and *.spec.*
         let cfg = RuleConfig {
             id: "test.glob".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec![],
@@ -823,6 +833,7 @@ mod tests {
         // When no include paths are specified, rule applies to all files
         let cfg = RuleConfig {
             id: "test.glob".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec![],
@@ -862,6 +873,7 @@ mod tests {
         // When no languages are specified, rule applies to all languages
         let cfg = RuleConfig {
             id: "test.lang".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec![], // Empty - matches all
@@ -901,6 +913,7 @@ mod tests {
         // Rule with single language filter
         let cfg = RuleConfig {
             id: "test.lang".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec!["rust".to_string()],
@@ -940,6 +953,7 @@ mod tests {
         // Rule with multiple language filters
         let cfg = RuleConfig {
             id: "test.lang".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec!["javascript".to_string(), "typescript".to_string()],
@@ -979,6 +993,7 @@ mod tests {
         // Language matching should be case-insensitive
         let cfg = RuleConfig {
             id: "test.lang".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec!["RUST".to_string()], // Uppercase in config
@@ -1016,6 +1031,7 @@ mod tests {
         // Both language and path filters must match
         let cfg = RuleConfig {
             id: "test.combined".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec!["rust".to_string()],
@@ -1064,6 +1080,7 @@ mod tests {
         // Rule with an unknown/custom language identifier
         let cfg = RuleConfig {
             id: "test.lang".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec!["customlang".to_string()],
@@ -1101,6 +1118,7 @@ mod tests {
         // When language filter is set but file has no detected language
         let cfg = RuleConfig {
             id: "test.lang".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec!["rust".to_string()],
@@ -1137,6 +1155,7 @@ mod tests {
     fn compile_rejects_invalid_multiline_window() {
         let cfg = RuleConfig {
             id: "test.multiline".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec![],
@@ -1174,6 +1193,7 @@ mod tests {
     fn compile_rejects_unknown_dependency() {
         let cfg = RuleConfig {
             id: "test.dependent".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "m".to_string(),
             languages: vec![],
