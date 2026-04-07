@@ -200,8 +200,8 @@ proptest! {
             "Parsed line count should match generated count"
         );
         prop_assert_eq!(
-            stats.lines,
-            num_lines,
+            stats.lines as u32,
+            num_lines as u32,
             "Stats line count should match"
         );
     }

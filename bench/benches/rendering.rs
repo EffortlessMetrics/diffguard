@@ -24,7 +24,7 @@
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use diffguard_core::{render_markdown_for_receipt, render_sarif_for_receipt};
 use diffguard_types::{
-    CheckReceipt, DiffMeta, Finding, MatchMode, Scope, Severity, TimingMetrics, ToolMeta, Verdict,
+    CheckReceipt, DiffMeta, Finding, Scope, Severity, TimingMetrics, ToolMeta, Verdict,
     VerdictCounts, VerdictStatus,
 };
 

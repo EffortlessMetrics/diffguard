@@ -37,7 +37,7 @@
 //! - All inputs are generated in-memory (no file I/O)
 
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
-use diffguard_domain::preprocess::{Language, Preprocessor};
+use diffguard_domain::preprocess::Language;
 
 use diffguard_bench::fixtures::generate_lines_with_comment_density;
 use diffguard_bench::fixtures::preprocessor_helpers::{fresh_preprocessor, reset_preprocessor};
