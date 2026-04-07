@@ -9,6 +9,7 @@ members = [
   "crates/diffguard-lsp",
   "crates/diffguard-testkit",
   "crates/diffguard-types",
+  "bench",
   "xtask",
 ]
 
@@ -42,3 +43,4 @@ assert_cmd = "2.1.2"
 insta = { version = "1.46.3", features = ["json"] }
 tempfile = "3.25.0"
 proptest = "1.10.0"
+criterion = "0.5"

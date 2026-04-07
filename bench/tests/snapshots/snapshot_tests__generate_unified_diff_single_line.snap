@@ -1,0 +1,11 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 36
+expression: result
+---
+diff --git a/src/main.rs b/src/main.rs
+index 1234567..abcdefg 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -1,1 +1,1 @@
++line 1 content here with some padding to simulate real code

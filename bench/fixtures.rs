@@ -53,7 +53,10 @@ pub fn generate_unified_diff(num_lines: usize, path: &str) -> String {
 
     // Generate content lines
     for i in 1..=num_lines {
-        output.push_str(&format!("+line {} content here with some padding to simulate real code\n", i));
+        output.push_str(&format!(
+            "+line {} content here with some padding to simulate real code\n",
+            i
+        ));
     }
 
     output
@@ -77,7 +80,13 @@ pub fn generate_mixed_unified_diff(num_lines: usize, path: &str) -> String {
     let chunk_size = 10;
     for chunk in (1..=num_lines).step_by(chunk_size) {
         let end = (chunk + chunk_size - 1).min(num_lines);
-        output.push_str(&format!("@@ -{},{} +{},{} @@\n", chunk, end - chunk + 1, chunk, end - chunk + 1));
+        output.push_str(&format!(
+            "@@ -{},{} +{},{} @@\n",
+            chunk,
+            end - chunk + 1,
+            chunk,
+            end - chunk + 1
+        ));
 
         for i in chunk..=end {
             let kind = i % 3;
@@ -114,7 +123,10 @@ pub fn convert_diff_line_to_input_line(diff_line: DiffLine) -> InputLine {
 /// This is a convenience wrapper around `convert_diff_line_to_input_line`
 /// that operates on an entire slice, returning a Vec of InputLines.
 pub fn convert_diff_lines_to_input_lines(diff_lines: &[DiffLine]) -> Vec<InputLine> {
-    diff_lines.iter().map(|dl| convert_diff_line_to_input_line(dl.clone())).collect()
+    diff_lines
+        .iter()
+        .map(|dl| convert_diff_line_to_input_line(dl.clone()))
+        .collect()
 }
 
 /// Generate synthetic InputLines for evaluation benchmarks.
@@ -173,7 +185,10 @@ pub fn generate_lines_with_comment_density(
             if is_comment {
                 if i % 5 == 0 && language != "python" {
                     // Block comment
-                    format!("{}{} block comment {} {}", comment_prefix, block_comment_start, i, block_comment_end)
+                    format!(
+                        "{}{} block comment {} {}",
+                        comment_prefix, block_comment_start, i, block_comment_end
+                    )
                 } else {
                     format!("{}{} line comment {}", comment_prefix, i, block_comment_end)
                 }
@@ -189,12 +204,12 @@ pub fn generate_lines_with_comment_density(
 /// This is used for rendering benchmarks where we pre-construct the receipt
 /// outside the measured timing path.
 pub fn generate_receipt_with_findings(
-    num_findings: usize,
+    _num_findings: usize,
     findings: Vec<diffguard_types::Finding>,
 ) -> diffguard_types::CheckReceipt {
     use diffguard_types::{
-        CheckReceipt, DiffMeta, Finding, Severity, TimingMetrics, ToolMeta, Verdict, VerdictCounts,
-        VerdictStatus, Scope,
+        CheckReceipt, DiffMeta, Scope, TimingMetrics, ToolMeta, Verdict, VerdictCounts,
+        VerdictStatus,
     };
 
     CheckReceipt {
