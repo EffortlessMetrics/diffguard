@@ -18,8 +18,8 @@ use diffguard_analytics::{
     summarize_trend_history, trend_run_from_receipt,
 };
 use diffguard_core::{
-    CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt, render_junit_for_receipt,
-    render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
+    CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt, render_gitlab_quality_json,
+    render_junit_for_receipt, render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
 };
 use diffguard_diff::parse_unified_diff;
 use diffguard_domain::{DirectoryRuleOverride, compile_rules};
@@ -249,6 +249,17 @@ struct CheckArgs {
         default_missing_value = "artifacts/diffguard/report.tsv"
     )]
     tsv: Option<PathBuf>,
+
+    /// Write a GitLab Code Quality JSON report.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/report.gitlab-quality.json
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/report.gitlab-quality.json"
+    )]
+    gitlab_quality: Option<PathBuf>,
 
     /// Write per-rule hit statistics as JSON.
     ///
@@ -2206,6 +2217,16 @@ fn cmd_check_inner(
         });
     }
 
+    if let Some(gitlab_path) = &args.gitlab_quality {
+        let gitlab = render_gitlab_quality_json(&run.receipt)
+            .context("render GitLab Code Quality JSON")?;
+        write_text(gitlab_path, &gitlab)?;
+        artifacts.push(Artifact {
+            path: to_artifact_path(gitlab_path),
+            format: "gitlab-quality".to_string(),
+        });
+    }
+
     if let Some(rule_stats_path) = &args.rule_stats {
         let stats_rows: Vec<_> = run
             .rule_hits
@@ -2836,6 +2857,7 @@ mod tests {
             junit: None,
             csv: None,
             tsv: None,
+            gitlab_quality: None,
             rule_stats: None,
             false_positive_baseline: None,
             write_false_positive_baseline: None,
