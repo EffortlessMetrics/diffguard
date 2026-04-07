@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`--gitlab-quality` output format** — GitLab Code Quality JSON for MR code quality reports:
+  - Schema matches `docs.gitlab.com/ee/ci/testing/code_quality.html`
+  - Severity mapping: Error→major, Warn→minor, Info→info
+  - SHA256 fingerprints for deduplication across runs
+  - GitLab pipeline artifact integration
+
 - **`diffguard doctor` subcommand** — checks environment prerequisites:
   - Git availability and version
   - Current directory is inside a git work tree
