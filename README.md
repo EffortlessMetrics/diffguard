@@ -48,6 +48,17 @@ git diff --cached | diffguard check --diff-file -
 
 Available presets: `minimal`, `rust-quality`, `secrets`, `js-console`, `python-debug`
 
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `doctor` | Check environment prerequisites (git, repo context, config validity) |
+| `check` | Run diff-scoped lint checks against a unified diff |
+| `rules` | List available rules |
+| `init` | Initialize a `diffguard.toml` config file (supports presets) |
+| `validate` | Validate a configuration file |
+| `explain` | Get detailed explanation of a rule (supports fuzzy matching) |
+
 ### Exit codes
 
 - `0` pass (or only warnings when `fail_on = "error"`)
