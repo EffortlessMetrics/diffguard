@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`bench` crate for performance benchmarking** — Criterion-based benchmark infrastructure:
+  - Parsing benchmarks: measures `parse_unified_diff()` at 0, 100, 1K, 10K, 100K lines
+  - Evaluation benchmarks: measures `evaluate_lines()` at 0, 1, 10, 100, 500 rules
+  - Rendering benchmarks: measures markdown/SARIF output at 0, 10, 100, 1000 findings
+  - Preprocessing benchmarks: measures comment/string masking at 0%, 25%, 50%, 75% density
+  - All inputs are synthetic (generated in-memory); no file I/O in measurement paths
+  - Run with `cargo bench --workspace`; HTML report with `cargo bench --workspace -- --html`
+
 - **`--gitlab-quality` output format** — GitLab Code Quality JSON for MR code quality reports:
   - Schema matches `docs.gitlab.com/ee/ci/testing/code_quality.html`
   - Severity mapping: Error→major, Warn→minor, Info→info
