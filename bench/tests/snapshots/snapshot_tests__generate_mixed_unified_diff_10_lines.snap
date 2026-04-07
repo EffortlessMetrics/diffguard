@@ -1,0 +1,20 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 58
+expression: result
+---
+diff --git a/src/lib.rs b/src/lib.rs
+index 1234567..abcdefg 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,10 +1,10 @@
+-line 1 removed content
+ line 2 context
++line 3 added content
+-line 4 removed content
+ line 5 context
++line 6 added content
+-line 7 removed content
+ line 8 context
++line 9 added content
+-line 10 removed content

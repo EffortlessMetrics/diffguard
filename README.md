@@ -337,6 +337,55 @@ cargo run -p xtask -- conform
 | Mutation tests | `cargo mutants` |
 | Fuzz tests | `cargo +nightly fuzz run unified_diff_parser` |
 
+### Performance
+
+The `bench/` crate provides criterion-based benchmarks to measure and protect diffguard's performance characteristics.
+
+```bash
+# Run all benchmarks
+cargo bench --workspace
+
+# Generate HTML report (opens in browser)
+cargo bench --workspace -- --html
+
+# Run specific benchmark category
+cargo bench -p diffguard-bench -- parsing
+cargo bench -p diffguard-bench -- evaluation
+cargo bench -p diffguard-bench -- rendering
+cargo bench -p diffguard-bench -- preprocessing
+```
+
+#### Benchmark Categories
+
+| Category | Measures | Sizes Tested |
+|----------|----------|--------------|
+| **Parsing** | `parse_unified_diff()` throughput | 0, 100, 1K, 10K, 100K lines |
+| **Evaluation** | `evaluate_lines()` latency | 0, 1, 10, 100, 500 rules |
+| **Rendering** | Markdown/SARIF output time | 0, 10, 100, 1000 findings |
+| **Preprocessing** | Comment/string masking | 0%, 25%, 50%, 75% density |
+
+#### Baseline Numbers (GitHub Actions ubuntu-latest-8c)
+
+| Benchmark | Size | Typical Time |
+|-----------|------|--------------|
+| `parse_unified_diff` | 1K lines | ~1ms |
+| `parse_unified_diff` | 100K lines | ~80ms |
+| `evaluate_lines` | 100 rules, 1K lines | ~5ms |
+| `render_markdown_for_receipt` | 100 findings | ~2ms |
+| `sanitize_line` (Rust) | 1K lines, 50% comments | ~3ms |
+
+*Note: Baseline numbers are indicative. Microbenchmark variance on shared CI runners is ±10-30%. Focus on relative comparisons across commits rather than absolute values.*
+
+#### Interpreting Results
+
+Criterion produces comparative reports showing:
+- **Mean time**: Average execution time per iteration
+- **Std dev**: Standard deviation across iterations  
+- **Median time**: 50th percentile (more stable than mean for skewed distributions)
+- **Slope**: How time scales with input size (from multiple sizes in a group)
+
+The HTML report (`target/criterion/index.html`) provides interactive charts for detailed comparison between baseline and new code.
+
 ### Fuzzing
 
 Three fuzz targets are available:

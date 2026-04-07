@@ -1,0 +1,46 @@
+[package]
+name = "diffguard-bench"
+version = "0.2.0"
+edition = "2024"
+publish = false
+
+[package.metadata.bench]
+# Enable criterion's comprehensive reporting
+features = ["html", "csv"]
+
+[[bench]]
+name = "parsing"
+harness = false
+
+[[bench]]
+name = "evaluation"
+harness = false
+
+[[bench]]
+name = "rendering"
+harness = false
+
+[[bench]]
+name = "preprocessing"
+harness = false
+
+[lib]
+# Benchmarks don't need a library, but we have fixtures module
+path = "lib.rs"
+
+[dependencies]
+# Criterion is the benchmark framework
+criterion = "0.5"
+
+# Workspace crates as dependencies for benchmarking
+diffguard-diff = { path = "../crates/diffguard-diff", version = "0.2.0" }
+diffguard-domain = { path = "../crates/diffguard-domain", version = "0.2.0" }
+diffguard-core = { path = "../crates/diffguard-core", version = "0.2.0" }
+diffguard-types = { path = "../crates/diffguard-types", version = "0.2.0" }
+
+[dev-dependencies]
+proptest = "1.5"
+diffguard-core = { path = "../crates/diffguard-core", version = "0.2.0" }
+diffguard-testkit = { path = "../crates/diffguard-testkit", version = "0.2.0" }
+insta.workspace = true
+serde_json.workspace = true

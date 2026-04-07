@@ -1,0 +1,12 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 173
+expression: output
+---
+## diffguard — PASS
+
+Scanned **1** file(s), **100** line(s) (scope: `added`, base: `abc123`, head: `def456`)
+
+| Severity | Rule | Location | Message | Snippet |
+|---|---|---|---|---|
+| error | `rust.no_unwrap` | `src/lib.rs:42` | Avoid unwrap in production code | `x.unwrap()` |
