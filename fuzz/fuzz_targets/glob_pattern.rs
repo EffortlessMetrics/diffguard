@@ -23,6 +23,7 @@ fuzz_target!(|data: &[u8]| {
         // Create a minimal rule config with the fuzzed glob in paths
         let rule_with_include = RuleConfig {
             id: "fuzz.glob.include".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "fuzz test".to_string(),
             languages: vec![],
@@ -52,6 +53,7 @@ fuzz_target!(|data: &[u8]| {
         // Also test as exclude_paths glob
         let rule_with_exclude = RuleConfig {
             id: "fuzz.glob.exclude".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "fuzz test".to_string(),
             languages: vec![],

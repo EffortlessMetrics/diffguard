@@ -3828,6 +3828,7 @@ filename src/lib.rs\n\
                 },
                 RuleConfig {
                     id: "custom.rule".to_string(),
+                    description: String::new(),
                     severity: Severity::Warn,
                     message: "custom".to_string(),
                     languages: vec![],
@@ -3890,6 +3891,7 @@ filename src/lib.rs\n\
     fn find_similar_rules_contains_match() {
         let rules = vec![RuleConfig {
             id: "alpha.rule".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "".to_string(),
             languages: vec![],
@@ -3921,6 +3923,7 @@ filename src/lib.rs\n\
     fn find_similar_rules_edit_distance_match() {
         let rules = vec![RuleConfig {
             id: "alpha.rule".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "".to_string(),
             languages: vec![],

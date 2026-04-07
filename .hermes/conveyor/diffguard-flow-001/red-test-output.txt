@@ -1,0 +1,12 @@
+Test files created:
+- tests/integration.rs (test harness)
+- tests/protocol_lifecycle.rs (9 tests)
+- tests/diagnostic_accuracy.rs (9 tests)
+- tests/code_actions.rs (9 tests)
+- tests/edge_cases.rs (12 tests)
+Total: 39 test functions
+
+Known issues:
+1. diffguard-lsp is binary crate, needs lib.rs for integration tests
+2. Tests reference internal server::run_server which is not exported
+3. Some test helpers may need adjustment for actual server behavior

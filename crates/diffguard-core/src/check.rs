@@ -361,6 +361,7 @@ mod tests {
             defaults: diffguard_types::Defaults::default(),
             rule: vec![diffguard_types::RuleConfig {
                 id: "test.rule".to_string(),
+                description: String::new(),
                 severity,
                 message: "Test message".to_string(),
                 languages: vec!["rust".to_string()],
@@ -498,6 +499,7 @@ diff --git a/src/lib.rs b/src/lib.rs
             defaults: diffguard_types::Defaults::default(),
             rule: vec![diffguard_types::RuleConfig {
                 id: "test.rule".to_string(),
+                description: String::new(),
                 severity: diffguard_types::Severity::Warn,
                 message: "Test message".to_string(),
                 languages: vec!["rust".to_string()],
@@ -748,6 +750,7 @@ diff --git a/src/lib.rs b/src/lib.rs
     fn make_rule_with_tags(id: &str, tags: Vec<&str>) -> diffguard_types::RuleConfig {
         diffguard_types::RuleConfig {
             id: id.to_string(),
+            description: String::new(),
             severity: diffguard_types::Severity::Warn,
             message: "Test message".to_string(),
             languages: vec![],

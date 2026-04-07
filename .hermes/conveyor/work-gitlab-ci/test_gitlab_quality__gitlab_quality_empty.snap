@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-core/tests/test_gitlab_quality.rs
+expression: json
+---
+[]
