@@ -1,69 +1,58 @@
-const fs = require("fs");
-const os = require("os");
-const path = require("path");
-const { execFile } = require("child_process");
 const vscode = require("vscode");
+const {
+  LanguageClient,
+  TransportKind,
+} = require("vscode-languageclient/node");
 
-function runDiffguard(workspacePath, output) {
-  return new Promise((resolve, reject) => {
-    const reportPath = path.join(os.tmpdir(), "diffguard-vscode-report.json");
-    const args = ["check", "--staged", "--out", reportPath];
-
-    execFile("diffguard", args, { cwd: workspacePath }, (error, stdout, stderr) => {
-      if (stdout) {
-        output.append(stdout.trimEnd());
-      }
-      if (stderr) {
-        output.append(stderr.trimEnd());
-      }
-
-      if (error) {
-        reject(error);
-        return;
-      }
-
-      try {
-        const receipt = JSON.parse(fs.readFileSync(reportPath, "utf8"));
-        resolve(receipt);
-      } catch (parseError) {
-        reject(parseError);
-      }
-    });
-  });
-}
+let client;
 
 function activate(context) {
-  const output = vscode.window.createOutputChannel("diffguard");
+  const config = vscode.workspace.getConfiguration("diffguard");
+  const serverPath = config.get("serverPath", "diffguard-lsp");
 
-  const command = vscode.commands.registerCommand("diffguard.runCheck", async () => {
-    const workspace = vscode.workspace.workspaceFolders?.[0];
-    if (!workspace) {
-      vscode.window.showErrorMessage("diffguard: open a workspace first");
-      return;
-    }
+  const serverOptions = {
+    command: serverPath,
+    args: ["--stdio"],
+    transport: TransportKind.stdio,
+  };
 
-    output.clear();
-    output.appendLine("Running diffguard check --staged ...");
-    output.show(true);
+  const clientOptions = {
+    documentSelector: [{ scheme: "file" }],
+    synchronize: {
+      configurationSection: "diffguard",
+    },
+    initializationOptions: {
+      configPath: config.get("configPath", ""),
+      noDefaultRules: config.get("noDefaultRules", false),
+      maxFindings: config.get("maxFindings", 100),
+      forceLanguage: config.get("forceLanguage", ""),
+    },
+  };
 
-    try {
-      const receipt = await runDiffguard(workspace.uri.fsPath, output);
-      const counts = receipt?.verdict?.counts || {};
-      const summary = `diffguard: info=${counts.info || 0}, warn=${counts.warn || 0}, error=${counts.error || 0}`;
-      output.appendLine(summary);
-      vscode.window.showInformationMessage(summary);
-    } catch (error) {
-      const message = `diffguard failed: ${error.message || String(error)}`;
-      output.appendLine(message);
-      vscode.window.showErrorMessage(message);
+  client = new LanguageClient(
+    "diffguard",
+    "DiffGuard Language Server",
+    serverOptions,
+    clientOptions
+  );
+
+  client.start().then(null, (err) => {
+    const errMsg = String(err);
+    if (errMsg.includes("ENOENT") || errMsg.includes("not found") || errMsg.includes("cannot find")) {
+      vscode.window.showErrorMessage(
+        `DiffGuard: Language server binary "${serverPath}" not found. Please install diffguard-lsp or set diffguard.serverPath in settings.`
+      );
     }
   });
 
-  context.subscriptions.push(command);
-  context.subscriptions.push(output);
+  context.subscriptions.push(client);
 }
 
-function deactivate() {}
+function deactivate() {
+  if (client) {
+    return client.dispose();
+  }
+}
 
 module.exports = {
   activate,
