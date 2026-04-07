@@ -16,7 +16,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Preprocessing benchmarks: measures comment/string masking at 0%, 25%, 50%, 75% density
   - All inputs are synthetic (generated in-memory); no file I/O in measurement paths
   - Run with `cargo bench --workspace`; HTML report with `cargo bench --workspace -- --html`
-
 - **`--gitlab-quality` output format** — GitLab Code Quality JSON for MR code quality reports:
   - Schema matches `docs.gitlab.com/ee/ci/testing/code_quality.html`
   - Severity mapping: Error→major, Warn→minor, Info→info
