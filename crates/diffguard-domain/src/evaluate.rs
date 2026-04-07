@@ -600,6 +600,7 @@ mod tests {
     ) -> RuleConfig {
         RuleConfig {
             id: id.to_string(),
+            description: String::new(),
             severity,
             message: message.to_string(),
             languages: languages.into_iter().map(|s| s.to_string()).collect(),
@@ -1433,6 +1434,7 @@ mod tests {
     fn multiline_rule_matches_across_consecutive_lines() {
         let rule = RuleConfig {
             id: "js.console_then_return".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "console.log before return".to_string(),
             languages: vec!["javascript".to_string()],
@@ -1482,6 +1484,7 @@ mod tests {
     fn absent_mode_emits_when_pattern_missing() {
         let rule = RuleConfig {
             id: "rust.missing_timeout".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "timeout should be configured".to_string(),
             languages: vec!["rust".to_string()],
@@ -1525,6 +1528,7 @@ mod tests {
     fn context_patterns_require_nearby_match() {
         let rule = RuleConfig {
             id: "sql.where_required_for_delete".to_string(),
+            description: String::new(),
             severity: Severity::Error,
             message: "DELETE requires WHERE nearby".to_string(),
             languages: vec!["sql".to_string()],
@@ -1574,6 +1578,7 @@ mod tests {
     fn escalation_patterns_raise_effective_severity() {
         let rule = RuleConfig {
             id: "python.exec_usage".to_string(),
+            description: String::new(),
             severity: Severity::Warn,
             message: "Avoid exec".to_string(),
             languages: vec!["python".to_string()],
@@ -1617,6 +1622,7 @@ mod tests {
         let rules = compile_rules(&[
             RuleConfig {
                 id: "python.has_eval".to_string(),
+                description: String::new(),
                 severity: Severity::Warn,
                 message: "eval used".to_string(),
                 languages: vec!["python".to_string()],
@@ -1641,6 +1647,7 @@ mod tests {
             },
             RuleConfig {
                 id: "python.eval_untrusted".to_string(),
+                description: String::new(),
                 severity: Severity::Error,
                 message: "eval with untrusted input".to_string(),
                 languages: vec!["python".to_string()],

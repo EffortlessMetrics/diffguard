@@ -991,6 +991,7 @@ mod tests {
             defaults: diffguard_types::Defaults::default(),
             rule: vec![diffguard_types::RuleConfig {
                 id: "rust.no_unwrap".to_string(),
+                description: String::new(),
                 severity: Severity::Warn,
                 message: "Avoid unwrap".to_string(),
                 languages: vec![],

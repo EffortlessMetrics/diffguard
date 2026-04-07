@@ -101,6 +101,7 @@ mod tests {
             defaults: diffguard_types::Defaults::default(),
             rule: vec![RuleConfig {
                 id: "test.rule".to_string(),
+                description: String::new(),
                 severity: Severity::Warn,
                 message: "Test match".to_string(),
                 languages: vec![],
@@ -252,6 +253,7 @@ mod tests {
                 defaults: diffguard_types::Defaults::default(),
                 rule: vec![RuleConfig {
                     id: "bad.rule".to_string(),
+                    description: String::new(),
                     severity: Severity::Error,
                     message: "Bad pattern".to_string(),
                     languages: vec![],

@@ -1,0 +1,51 @@
+---
+source: crates/diffguard-core/tests/test_gitlab_quality.rs
+expression: json
+---
+[
+  {
+    "description": "Info message",
+    "fingerprint": "a2419f4418f0f7cd82effa89916933df8c6672c522b8f01d18764d14fc6611fd",
+    "severity": "info",
+    "location": {
+      "path": "a.rs",
+      "lines": {
+        "begin": 1
+      }
+    },
+    "check_name": "info-rule",
+    "content": {
+      "body": "the matched code"
+    }
+  },
+  {
+    "description": "Warning message",
+    "fingerprint": "33fe0827323d33847a5d7309305850d7bae8311520e53e9b01c1660d1a6d3d39",
+    "severity": "minor",
+    "location": {
+      "path": "b.rs",
+      "lines": {
+        "begin": 2
+      }
+    },
+    "check_name": "warn-rule",
+    "content": {
+      "body": "the matched code"
+    }
+  },
+  {
+    "description": "Error message",
+    "fingerprint": "43762896ee3d741df0a4b0cba167055722078b087c703a8bfe0795d5b263b704",
+    "severity": "major",
+    "location": {
+      "path": "c.rs",
+      "lines": {
+        "begin": 3
+      }
+    },
+    "check_name": "error-rule",
+    "content": {
+      "body": "the matched code"
+    }
+  }
+]

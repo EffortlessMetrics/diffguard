@@ -56,6 +56,7 @@ impl FuzzRule {
 
         Some(RuleConfig {
             id: self.id.clone(),
+            description: String::new(),
             severity,
             message: self.message.clone(),
             languages: self.languages.clone(),
