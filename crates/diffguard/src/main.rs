@@ -18,8 +18,9 @@ use diffguard_analytics::{
     summarize_trend_history, trend_run_from_receipt,
 };
 use diffguard_core::{
-    CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt, render_gitlab_quality_json,
-    render_junit_for_receipt, render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
+    CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt,
+    render_gitlab_quality_json, render_junit_for_receipt, render_sarif_json, render_sensor_json,
+    render_tsv_for_receipt, run_check,
 };
 use diffguard_diff::parse_unified_diff;
 use diffguard_domain::{DirectoryRuleOverride, compile_rules};
@@ -2218,8 +2219,8 @@ fn cmd_check_inner(
     }
 
     if let Some(gitlab_path) = &args.gitlab_quality {
-        let gitlab = render_gitlab_quality_json(&run.receipt)
-            .context("render GitLab Code Quality JSON")?;
+        let gitlab =
+            render_gitlab_quality_json(&run.receipt).context("render GitLab Code Quality JSON")?;
         write_text(gitlab_path, &gitlab)?;
         artifacts.push(Artifact {
             path: to_artifact_path(gitlab_path),

@@ -34,6 +34,7 @@ pub struct GitLabFinding {
 /// GitLab severity levels.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "lowercase")]
+#[allow(dead_code)]
 pub enum GitLabSeverity {
     Info,
     Minor,
@@ -78,11 +79,7 @@ impl From<Severity> for GitLabSeverity {
 
 /// Renders a CheckReceipt as a GitLab Code Quality report.
 pub fn render_gitlab_quality_for_receipt(receipt: &CheckReceipt) -> GitLabQualityReport {
-    receipt
-        .findings
-        .iter()
-        .map(|f| finding_to_gitlab(f))
-        .collect()
+    receipt.findings.iter().map(finding_to_gitlab).collect()
 }
 
 /// Renders a GitLab Code Quality report as a JSON string.
@@ -108,7 +105,9 @@ fn finding_to_gitlab(finding: &Finding) -> GitLabFinding {
         severity: finding.severity.into(),
         location: GitLabLocation {
             path: finding.path.clone(),
-            lines: Some(GitLabLines { begin: finding.line }),
+            lines: Some(GitLabLines {
+                begin: finding.line,
+            }),
         },
         check_name: finding.rule_id.clone(),
         content,
@@ -132,8 +131,8 @@ fn compute_fingerprint(finding: &Finding) -> String {
 mod tests {
     use super::*;
     use diffguard_types::{
-        CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-        VerdictStatus, CHECK_SCHEMA_V1,
+        CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
+        VerdictCounts, VerdictStatus,
     };
 
     fn make_test_receipt(findings: Vec<Finding>) -> CheckReceipt {
@@ -158,9 +157,18 @@ mod tests {
                     VerdictStatus::Fail
                 },
                 counts: VerdictCounts {
-                    info: findings.iter().filter(|f| f.severity == Severity::Info).count() as u32,
-                    warn: findings.iter().filter(|f| f.severity == Severity::Warn).count() as u32,
-                    error: findings.iter().filter(|f| f.severity == Severity::Error).count() as u32,
+                    info: findings
+                        .iter()
+                        .filter(|f| f.severity == Severity::Info)
+                        .count() as u32,
+                    warn: findings
+                        .iter()
+                        .filter(|f| f.severity == Severity::Warn)
+                        .count() as u32,
+                    error: findings
+                        .iter()
+                        .filter(|f| f.severity == Severity::Error)
+                        .count() as u32,
                     suppressed: 0,
                 },
                 reasons: vec![],
@@ -192,9 +200,27 @@ mod tests {
     #[test]
     fn gitlab_quality_severity_mapping() {
         let receipt = make_test_receipt(vec![
-            make_finding("rust.no_unwrap", Severity::Error, "Avoid unwrap.", "src/main.rs", 42),
-            make_finding("js.no_console", Severity::Warn, "console.log", "src/index.js", 15),
-            make_finding("python.no_print", Severity::Info, "Use logging.", "src/app.py", 20),
+            make_finding(
+                "rust.no_unwrap",
+                Severity::Error,
+                "Avoid unwrap.",
+                "src/main.rs",
+                42,
+            ),
+            make_finding(
+                "js.no_console",
+                Severity::Warn,
+                "console.log",
+                "src/index.js",
+                15,
+            ),
+            make_finding(
+                "python.no_print",
+                Severity::Info,
+                "Use logging.",
+                "src/app.py",
+                20,
+            ),
         ]);
         let report = render_gitlab_quality_for_receipt(&receipt);
 
@@ -248,8 +274,20 @@ mod tests {
     #[test]
     fn snapshot_gitlab_quality_with_findings() {
         let receipt = make_test_receipt(vec![
-            make_finding("rust.no_unwrap", Severity::Error, "Avoid unwrap/expect in production code.", "src/main.rs", 42),
-            make_finding("js.no_console", Severity::Warn, "Use of console.log detected.", "src/index.js", 15),
+            make_finding(
+                "rust.no_unwrap",
+                Severity::Error,
+                "Avoid unwrap/expect in production code.",
+                "src/main.rs",
+                42,
+            ),
+            make_finding(
+                "js.no_console",
+                Severity::Warn,
+                "Use of console.log detected.",
+                "src/index.js",
+                15,
+            ),
         ]);
         let json = render_gitlab_quality_json(&receipt).expect("should serialize");
         insta::assert_snapshot!("gitlab_quality_with_findings", json);

@@ -5,8 +5,8 @@
 
 use diffguard_core::render_gitlab_quality_json;
 use diffguard_types::{
-    CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-    VerdictStatus, CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
+    VerdictCounts, VerdictStatus,
 };
 
 fn make_receipt(findings: Vec<Finding>) -> CheckReceipt {
@@ -31,9 +31,18 @@ fn make_receipt(findings: Vec<Finding>) -> CheckReceipt {
                 VerdictStatus::Fail
             },
             counts: VerdictCounts {
-                info: findings.iter().filter(|f| f.severity == Severity::Info).count() as u32,
-                warn: findings.iter().filter(|f| f.severity == Severity::Warn).count() as u32,
-                error: findings.iter().filter(|f| f.severity == Severity::Error).count() as u32,
+                info: findings
+                    .iter()
+                    .filter(|f| f.severity == Severity::Info)
+                    .count() as u32,
+                warn: findings
+                    .iter()
+                    .filter(|f| f.severity == Severity::Warn)
+                    .count() as u32,
+                error: findings
+                    .iter()
+                    .filter(|f| f.severity == Severity::Error)
+                    .count() as u32,
                 suppressed: 0,
             },
             reasons: vec![],
@@ -60,7 +69,10 @@ fn finding(rule_id: &str, severity: Severity, message: &str, path: &str, line: u
 fn snapshot_gitlab_quality_empty() {
     let receipt = make_receipt(vec![]);
     let json = render_gitlab_quality_json(&receipt).unwrap();
-    assert!(json.contains("[]"), "empty findings should produce empty array");
+    assert!(
+        json.contains("[]"),
+        "empty findings should produce empty array"
+    );
     insta::assert_snapshot!("gitlab_quality_empty", json);
 }
 
@@ -103,7 +115,10 @@ fn snapshot_gitlab_quality_fingerprint_deterministic() {
     let receipt2 = make_receipt(vec![f.clone()]);
     let json1 = render_gitlab_quality_json(&receipt1).unwrap();
     let json2 = render_gitlab_quality_json(&receipt2).unwrap();
-    assert_eq!(json1, json2, "identical findings must produce identical JSON");
+    assert_eq!(
+        json1, json2,
+        "identical findings must produce identical JSON"
+    );
 }
 
 #[test]
@@ -117,5 +132,8 @@ fn snapshot_gitlab_quality_prettyprinted() {
     )]);
     let json = render_gitlab_quality_json(&receipt).unwrap();
     assert!(json.contains('\n'), "output should be pretty-printed");
-    assert!(json.contains("  "), "pretty-printed JSON should have indentation");
+    assert!(
+        json.contains("  "),
+        "pretty-printed JSON should have indentation"
+    );
 }
