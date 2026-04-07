@@ -83,6 +83,9 @@ enum Commands {
 
     /// Summarize historical check trends from a trend history file.
     Trend(TrendArgs),
+
+    /// Check environment prerequisites (git, config, etc.).
+    Doctor(DoctorArgs),
 }
 
 #[derive(Parser, Debug)]
@@ -444,6 +447,13 @@ enum ValidateFormat {
 }
 
 #[derive(Parser, Debug)]
+struct DoctorArgs {
+    /// Path to a config file. If omitted, uses ./diffguard.toml if present.
+    #[arg(long)]
+    config: Option<PathBuf>,
+}
+
+#[derive(Parser, Debug)]
 struct TestArgs {
     /// Path to a config file. If omitted, uses ./diffguard.toml if present.
     #[arg(long)]
@@ -620,6 +630,7 @@ where
             cmd_trend(args)?;
             Ok(0)
         }
+        Commands::Doctor(args) => cmd_doctor(args),
     }
 }
 
@@ -677,34 +688,10 @@ fn compile_rules_checked(
     compile_rules(rules)
 }
 
-fn cmd_validate(args: ValidateArgs) -> Result<i32> {
-    info!("Validating configuration file");
-
-    // Determine config path
-    let config_path = args.config.clone().or_else(|| {
-        let p = PathBuf::from("diffguard.toml");
-        if p.exists() { Some(p) } else { None }
-    });
-
-    let Some(path) = config_path else {
-        bail!("No configuration file found. Specify --config or create diffguard.toml");
-    };
-
-    debug!("Loading config from: {}", path.display());
-
-    // Read and parse the config file (with env var expansion)
-    let text = std::fs::read_to_string(&path)
-        .with_context(|| format!("read config {}", path.display()))?;
-
-    let expanded = expand_env_vars(&text)?;
-
-    let cfg: ConfigFile =
-        toml::from_str(&expanded).with_context(|| format!("parse config {}", path.display()))?;
-
+/// Validate rules in a parsed config file and return a list of error messages.
+/// Shared between cmd_validate and cmd_doctor.
+fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     let mut errors: Vec<String> = Vec::new();
-    let mut warnings: Vec<String> = Vec::new();
-
-    // Check for duplicate rule IDs
     let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
     for rule in &cfg.rule {
         if !seen_ids.insert(&rule.id) {
@@ -717,17 +704,12 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
         .map(|r| r.id.as_str())
         .collect::<std::collections::HashSet<_>>();
 
-    // Validate each rule
     for rule in &cfg.rule {
-        debug!("Validating rule: {}", rule.id);
-
-        // Check patterns are not empty
         if rule.patterns.is_empty() {
             errors.push(format!("Rule '{}': no patterns defined", rule.id));
             continue;
         }
 
-        // Validate regex patterns
         for pattern in &rule.patterns {
             if let Err(e) = regex::Regex::new(pattern) {
                 errors.push(format!(
@@ -769,7 +751,6 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
             }
         }
 
-        // Validate path globs
         for glob in &rule.paths {
             if let Err(e) = globset::Glob::new(glob) {
                 errors.push(format!(
@@ -779,7 +760,6 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
             }
         }
 
-        // Validate exclude_paths globs
         for glob in &rule.exclude_paths {
             if let Err(e) = globset::Glob::new(glob) {
                 errors.push(format!(
@@ -788,9 +768,51 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
                 ));
             }
         }
+    }
 
-        // Strict mode: best-practice warnings
-        if args.strict {
+    // Also try to compile all rules to catch any other issues
+    if errors.is_empty() {
+        if let Err(e) = compile_rules_checked(&cfg.rule) {
+            errors.push(format!("Rule compilation error: {}", e));
+        }
+    }
+
+    errors
+}
+
+fn cmd_validate(args: ValidateArgs) -> Result<i32> {
+    info!("Validating configuration file");
+
+    // Determine config path
+    let config_path = args.config.clone().or_else(|| {
+        let p = PathBuf::from("diffguard.toml");
+        if p.exists() { Some(p) } else { None }
+    });
+
+    let Some(path) = config_path else {
+        bail!("No configuration file found. Specify --config or create diffguard.toml");
+    };
+
+    debug!("Loading config from: {}", path.display());
+
+    // Read and parse the config file (with env var expansion)
+    let text = std::fs::read_to_string(&path)
+        .with_context(|| format!("read config {}", path.display()))?;
+
+    let expanded = expand_env_vars(&text)?;
+
+    let cfg: ConfigFile =
+        toml::from_str(&expanded).with_context(|| format!("parse config {}", path.display()))?;
+
+    let mut errors: Vec<String> = Vec::new();
+    let mut warnings: Vec<String> = Vec::new();
+
+    // Reuse shared rule validation
+    errors.extend(validate_config_rules(&cfg));
+
+    // Strict mode: best-practice warnings
+    if args.strict {
+        for rule in &cfg.rule {
             if rule.message.is_empty() {
                 warnings.push(format!("Rule '{}': empty message", rule.id));
             }
@@ -806,13 +828,6 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
                     rule.id
                 ));
             }
-        }
-    }
-
-    // Also try to compile all rules to catch any other issues
-    if errors.is_empty() {
-        if let Err(e) = compile_rules_checked(&cfg.rule) {
-            errors.push(format!("Rule compilation error: {}", e));
         }
     }
 
@@ -854,6 +869,110 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
     }
 
     if errors.is_empty() { Ok(0) } else { Ok(1) }
+}
+
+/// Validate the environment for running diffguard.
+/// Returns 0 if all checks pass, 1 if any check fails.
+fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
+    let mut all_pass = true;
+
+    // Check 1: Git availability
+    let git_available = Command::new("git")
+        .arg("--version")
+        .output()
+        .map(|out| out.status.success())
+        .unwrap_or(false);
+    if git_available {
+        // Re-run to get version string for display (git --version is cheap)
+        let version = String::from_utf8_lossy(
+            &Command::new("git")
+                .arg("--version")
+                .output()
+                .map(|o| o.stdout)
+                .unwrap_or_default(),
+        )
+        .trim()
+        .to_string();
+        println!("git: PASS ({})", version);
+    } else {
+        println!("git: FAIL (git not found)");
+        all_pass = false;
+    }
+
+    // Check 2: Git repository
+    let in_git_repo = Command::new("git")
+        .args(["rev-parse", "--is-inside-work-tree"])
+        .output()
+        .map(|out| out.status.success() && String::from_utf8_lossy(&out.stdout).trim() == "true")
+        .unwrap_or(false);
+    if in_git_repo {
+        println!("git-repo: PASS");
+    } else {
+        println!("git-repo: FAIL (not inside a git repository)");
+        all_pass = false;
+    }
+
+    // Check 3: Config file detection and validation
+    let config_path = args.config.clone().or_else(|| {
+        let p = PathBuf::from("diffguard.toml");
+        if p.exists() { Some(p) } else { None }
+    });
+
+    all_pass &= validate_config_for_doctor(&config_path, args.config.is_some());
+
+    if all_pass { Ok(0) } else { Ok(1) }
+}
+
+/// Validate config file for the doctor command.
+/// Returns true if the config check passes (or no config is expected).
+fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bool) -> bool {
+    let Some(path) = config_path else {
+        // Explicit --config pointing to missing file
+        if explicit_config {
+            println!("config: FAIL (config file not found)");
+            return false;
+        }
+        // No config file and none expected — defaults are fine
+        println!("config: PASS (using defaults)");
+        return true;
+    };
+
+    // Read config file
+    let text = match std::fs::read_to_string(path) {
+        Ok(t) => t,
+        Err(e) => {
+            println!("config: FAIL ({})", e);
+            return false;
+        }
+    };
+
+    // Expand environment variables
+    let expanded = match expand_env_vars(&text) {
+        Ok(s) => s,
+        Err(e) => {
+            println!("config: FAIL ({})", e);
+            return false;
+        }
+    };
+
+    // Parse TOML
+    let cfg: ConfigFile = match toml::from_str(&expanded) {
+        Ok(c) => c,
+        Err(e) => {
+            println!("config: FAIL ({})", e);
+            return false;
+        }
+    };
+
+    // Validate rules using shared function
+    let config_errors = validate_config_rules(&cfg);
+    if config_errors.is_empty() {
+        println!("config: PASS");
+        true
+    } else {
+        println!("config: FAIL ({})", config_errors.join("; "));
+        false
+    }
 }
 
 fn cmd_explain(args: ExplainArgs) -> Result<()> {

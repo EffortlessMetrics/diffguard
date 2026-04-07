@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(No unreleased changes.)
+### Added
+
+- **`diffguard doctor` subcommand** — checks environment prerequisites:
+  - Git availability and version
+  - Current directory is inside a git work tree
+  - Configuration file presence and validity (regex compilation, duplicate IDs, etc.)
+  - Supports `--config` flag for explicit config path
 
 ## [0.2.0] - 2026-04-06
 
