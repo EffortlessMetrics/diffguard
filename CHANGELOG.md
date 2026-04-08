@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **GitHub Actions hardening** for production-ready workflows:
+  - SHA pinning for third-party Actions (`actions/github-script@v7`, `github/codeql-action/upload-sarif@v3`) to prevent supply chain attacks
+  - Explicit `permissions` block with least-privilege scopes (`contents: read`, `pull-requests: write`, `security-events: write`)
+  - Windows target triple detection for MSYS/MINGW environments
+  - Concurrency control on SARIF upload to prevent race conditions across workflow runs
+  - Improved error handling with user-visible warning messages for fallback installation paths
+
 ### Added
 
 - **`bench` crate for performance benchmarking** — Criterion-based benchmark infrastructure:
