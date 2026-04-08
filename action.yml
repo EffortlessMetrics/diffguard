@@ -80,7 +80,6 @@ runs:
     - name: Install diffguard
       id: install
       shell: bash
-      continue-on-error: true
       run: |
         if command -v diffguard &> /dev/null; then
           echo "diffguard $(diffguard --version) already installed"
@@ -116,7 +115,7 @@ runs:
       if: steps.install.outcome == 'failure'
       shell: bash
       run: |
-        echo "::warning::Pre-built binary unavailable for ${TARGET}. Installing via cargo (slower, ~2-5 min)"
+        echo "::warning::Pre-built binary unavailable for ${{ steps.target.outputs.triple }}. Installing via cargo (slower, ~2-5 min)"
         echo "::group::Installing diffguard via cargo"
         VERSION="${{ inputs.version }}"
         # Strip leading 'v' for cargo version
