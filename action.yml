@@ -54,9 +54,9 @@ outputs:
 runs:
   using: composite
   permissions:
-    contents: read       # Fetch diffs
-    pull-requests: write # Post comments
-    security-events: write # SARIF upload via codeql-action
+    contents: read
+    pull-requests: write
+    security-events: write
   steps:
     - name: Resolve target triple
       id: target
@@ -98,17 +98,19 @@ runs:
         URL="https://github.com/EffortlessMetrics/diffguard/releases/download/${VERSION}/${ASSET}"
 
         echo "::group::Downloading ${ASSET}"
-        if curl -sSL -o "/tmp/${ASSET}" "$URL" 2>/dev/null; then
-          tar xzf "/tmp/${ASSET}" -C /tmp
-          sudo mv /tmp/diffguard /usr/local/bin/diffguard
-          chmod +x /usr/local/bin/diffguard
-          echo "Installed diffguard $(diffguard --version) from release binary"
+        if ! curl -sSLf -o "/tmp/${ASSET}" "$URL"; then
+          echo "::error::Failed to download ${ASSET} from ${URL}"
           echo "::endgroup::"
-        else
-          echo "::endgroup::"
-          echo "::warning::Release binary not found at ${URL}"
           exit 1
         fi
+        echo "::endgroup::"
+
+        INSTALL_DIR="$(mktemp -d)"
+        tar xzf "/tmp/${ASSET}" -C "$INSTALL_DIR"
+        mv "$INSTALL_DIR/diffguard" /usr/local/bin/diffguard
+        chmod +x /usr/local/bin/diffguard
+        rm -rf "$INSTALL_DIR"
+        echo "Installed diffguard $(diffguard --version) from release binary"
 
     - name: Fallback to cargo install
       if: steps.install.outcome == 'failure'
