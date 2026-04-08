@@ -42,6 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Configuration file presence and validity (regex compilation, duplicate IDs, etc.)
   - Supports `--config` flag for explicit config path
 
+- **`--baseline` and `--grandfather` modes** — enterprise adoption support:
+  - `--baseline` mode: establish a snapshot of current code quality as the reference point; all findings relative to baseline are reported, baseline findings are suppressed
+  - `--grandfather` mode: treat the first-seen state as golden; new findings vs grandfather state are flagged, grandfather findings are suppressed
+  - Exit codes: 0 (clean vs baseline/grandfather), 1 (new findings detected), 2 (error)
+  - Affects all output formats (markdown, SARIF, GitLab Quality JSON, JUnit, CSV)
+  - Rationale: enterprises need to onboard existing codebases without flagging pre-existing issues
+
 ## [0.2.0] - 2026-04-06
 
 ### Added
