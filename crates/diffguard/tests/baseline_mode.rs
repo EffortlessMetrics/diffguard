@@ -64,6 +64,40 @@ fn init_repo_with_findings() -> (TempDir, String, String) {
     (td, base, head)
 }
 
+/// Init a repo where BASE has println (baseline finding) and HEAD adds unwrap (new finding).
+/// This gives us two distinct rule_id:path:line combos to test mixed BASELINE/NEW classification.
+/// NOTE: diffguard only scans ADDED lines, so for both findings to appear in the current
+/// scan, both lines must be added in the HEAD commit.
+fn init_repo_with_mixed_findings() -> (TempDir, String, String) {
+    let td = TempDir::new().expect("temp");
+    let dir = td.path();
+
+    run_git(dir, &["init"]);
+    run_git(dir, &["config", "user.email", "test@example.com"]);
+    run_git(dir, &["config", "user.name", "Test"]);
+
+    // BASE: empty function (no violations)
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/lib.rs"), "pub fn f() -> u32 { 42 }\n").unwrap();
+
+    run_git(dir, &["add", "."]);
+    run_git(dir, &["commit", "-m", "base"]);
+    let base = run_git(dir, &["rev-parse", "HEAD"]);
+
+    // HEAD: add both println (baseline finding) and unwrap (new finding) as new lines
+    std::fs::write(
+        dir.join("src/lib.rs"),
+        "println!(\"baseline\");\npub fn f() -> u32 { Some(1).unwrap() }\n",
+    )
+    .unwrap();
+
+    run_git(dir, &["add", "."]);
+    run_git(dir, &["commit", "-m", "change"]);
+    let head = run_git(dir, &["rev-parse", "HEAD"]);
+
+    (td, base, head)
+}
+
 fn create_baseline_receipt(dir: &std::path::Path, findings: Vec<serde_json::Value>) -> String {
     let receipt = json!({
         "schema": "diffguard.check.v1",
@@ -934,19 +968,21 @@ fn empty_baseline_all_findings_are_new() {
 
 #[test]
 fn mixed_baseline_and_new_findings() {
-    let (td, base, head) = init_repo_with_findings();
+    // Use the mixed findings fixture: BASE has println, HEAD adds unwrap.
+    let (td, base, head) = init_repo_with_mixed_findings();
     let dir = td.path();
 
-    // Create baseline with println (warn) - should be baseline
-    // But we still have unwrap (error) - should be new
+    // Baseline receipt contains the println finding from BASE state.
+    // This simulates "println was already there before".
+    // Note: diffguard uses "rust.no_dbg" for println/dbg! macros.
     let baseline_finding = json!({
-        "rule_id": "rust.no_println",
+        "rule_id": "rust.no_dbg",
         "severity": "warn",
-        "message": "Avoid println in production code",
+        "message": "Remove dbg!/println! before merging.",
         "path": "src/lib.rs",
         "line": 1,
-        "match_text": "println!(\"hi\")",
-        "snippet": "println!(\"hi\");"
+        "match_text": "println!(\"baseline\")",
+        "snippet": "println!(\"baseline\");"
     });
 
     let baseline_path = dir.join("baseline.json");
@@ -987,11 +1023,11 @@ fn mixed_baseline_and_new_findings() {
         .arg("--md")
         .arg("artifacts/diffguard/comment.md");
 
-    // Exit code should be 2 because there's a new error (unwrap)
+    // Exit code should be 2 because there's a new error (unwrap) in addition to baseline warn
     cmd.assert().code(2);
 
     let markdown = std::fs::read_to_string(dir.join("artifacts/diffguard/comment.md")).unwrap();
-    // Should contain both BASELINE and NEW annotations
+    // Should contain both BASELINE (println) and NEW (unwrap) annotations
     assert!(
         markdown.contains("[BASELINE]"),
         "Should have baseline findings marked.\nGot:\n{}",
