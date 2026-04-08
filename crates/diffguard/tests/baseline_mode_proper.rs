@@ -6,8 +6,8 @@
 
 use assert_cmd::Command;
 use assert_cmd::cargo;
-use tempfile::TempDir;
 use serde_json::json;
+use tempfile::TempDir;
 
 /// Runs a git command in the given directory.
 fn run_git(dir: &std::path::Path, args: &[&str]) -> String {
@@ -38,11 +38,7 @@ fn init_repo_with_added_violation() -> (TempDir, String, String) {
 
     // Create initial file WITHOUT the violation
     std::fs::create_dir_all(dir.join("src")).unwrap();
-    std::fs::write(
-        dir.join("src/lib.rs"),
-        "pub fn f() -> u32 { 42 }\n",
-    )
-    .unwrap();
+    std::fs::write(dir.join("src/lib.rs"), "pub fn f() -> u32 { 42 }\n").unwrap();
 
     run_git(dir, &["add", "."]);
     run_git(dir, &["commit", "-m", "base"]);
@@ -74,11 +70,7 @@ fn init_repo_with_violation_then_change() -> (TempDir, String, String) {
 
     // Create initial file WITHOUT the violation
     std::fs::create_dir_all(dir.join("src")).unwrap();
-    std::fs::write(
-        dir.join("src/lib.rs"),
-        "pub fn f() -> u32 { 42 }\n",
-    )
-    .unwrap();
+    std::fs::write(dir.join("src/lib.rs"), "pub fn f() -> u32 { 42 }\n").unwrap();
 
     run_git(dir, &["add", "."]);
     run_git(dir, &["commit", "-m", "base"]);
@@ -139,8 +131,11 @@ fn new_violations_cause_exit_2() {
     });
 
     let baseline_path = dir.join("baseline.json");
-    std::fs::write(&baseline_path, serde_json::to_string_pretty(&empty_baseline).unwrap())
-        .unwrap();
+    std::fs::write(
+        &baseline_path,
+        serde_json::to_string_pretty(&empty_baseline).unwrap(),
+    )
+    .unwrap();
 
     // Run with empty baseline - should exit 2 (new errors found)
     let mut cmd = Command::new(cargo::cargo_bin("diffguard"));
@@ -184,8 +179,11 @@ fn new_violations_show_new_annotation() {
     });
 
     let baseline_path = dir.join("baseline.json");
-    std::fs::write(&baseline_path, serde_json::to_string_pretty(&empty_baseline).unwrap())
-        .unwrap();
+    std::fs::write(
+        &baseline_path,
+        serde_json::to_string_pretty(&empty_baseline).unwrap(),
+    )
+    .unwrap();
 
     // Run with empty baseline - new violation should appear
     let mut cmd = Command::new(cargo::cargo_bin("diffguard"));
@@ -225,7 +223,7 @@ fn baseline_from_actual_findings_matches_on_repeat() {
         .arg("--base")
         .arg(&base)
         .arg("--head")
-        .arg("HEAD~1")  // Use the commit that introduced the violation
+        .arg("HEAD~1") // Use the commit that introduced the violation
         .arg("--out")
         .arg("artifacts/diffguard/first_run.json");
 
@@ -234,8 +232,8 @@ fn baseline_from_actual_findings_matches_on_repeat() {
     // Read the first run receipt to get actual findings
     let receipt_text = std::fs::read_to_string(dir.join("artifacts/diffguard/first_run.json"))
         .expect("should have first run receipt");
-    let receipt: serde_json::Value = serde_json::from_str(&receipt_text)
-        .expect("first run receipt should be valid JSON");
+    let receipt: serde_json::Value =
+        serde_json::from_str(&receipt_text).expect("first run receipt should be valid JSON");
 
     // Create baseline from the actual findings
     let baseline_receipt = json!({
@@ -247,8 +245,11 @@ fn baseline_from_actual_findings_matches_on_repeat() {
     });
 
     let baseline_path = dir.join("baseline.json");
-    std::fs::write(&baseline_path, serde_json::to_string_pretty(&baseline_receipt).unwrap())
-        .unwrap();
+    std::fs::write(
+        &baseline_path,
+        serde_json::to_string_pretty(&baseline_receipt).unwrap(),
+    )
+    .unwrap();
 
     // Second run against HEAD (which has the violation plus a comment):
     // The violation fingerprint should still match because the unwrap line is unchanged
@@ -258,7 +259,7 @@ fn baseline_from_actual_findings_matches_on_repeat() {
         .arg("--base")
         .arg(&base)
         .arg("--head")
-        .arg(&head)  // Use HEAD which has the violation
+        .arg(&head) // Use HEAD which has the violation
         .arg(format!("--baseline={}", baseline_path.to_string_lossy()))
         .arg("--out")
         .arg("artifacts/diffguard/second_run.json");
@@ -288,8 +289,8 @@ fn baseline_annotations_appear_in_markdown() {
 
     let receipt_text = std::fs::read_to_string(dir.join("artifacts/diffguard/first_run.json"))
         .expect("should have first run receipt");
-    let receipt: serde_json::Value = serde_json::from_str(&receipt_text)
-        .expect("first run receipt should be valid JSON");
+    let receipt: serde_json::Value =
+        serde_json::from_str(&receipt_text).expect("first run receipt should be valid JSON");
 
     // Create baseline from actual findings
     let baseline_receipt = json!({
@@ -301,8 +302,11 @@ fn baseline_annotations_appear_in_markdown() {
     });
 
     let baseline_path = dir.join("baseline.json");
-    std::fs::write(&baseline_path, serde_json::to_string_pretty(&baseline_receipt).unwrap())
-        .unwrap();
+    std::fs::write(
+        &baseline_path,
+        serde_json::to_string_pretty(&baseline_receipt).unwrap(),
+    )
+    .unwrap();
 
     // Run with baseline against HEAD
     let mut cmd2 = Command::new(cargo::cargo_bin("diffguard"));
@@ -351,8 +355,8 @@ fn mixed_findings_show_both_annotations() {
 
     let receipt_text = std::fs::read_to_string(dir.join("artifacts/diffguard/first_run.json"))
         .expect("should have first run receipt");
-    let receipt: serde_json::Value = serde_json::from_str(&receipt_text)
-        .expect("first run receipt should be valid JSON");
+    let receipt: serde_json::Value =
+        serde_json::from_str(&receipt_text).expect("first run receipt should be valid JSON");
 
     // Use the actual findings as baseline
     let baseline_receipt = json!({
@@ -364,8 +368,11 @@ fn mixed_findings_show_both_annotations() {
     });
 
     let baseline_path = dir.join("baseline.json");
-    std::fs::write(&baseline_path, serde_json::to_string_pretty(&baseline_receipt).unwrap())
-        .unwrap();
+    std::fs::write(
+        &baseline_path,
+        serde_json::to_string_pretty(&baseline_receipt).unwrap(),
+    )
+    .unwrap();
 
     // Run with baseline - should exit 0 (all findings are baseline)
     let mut cmd2 = Command::new(cargo::cargo_bin("diffguard"));
@@ -420,8 +427,8 @@ fn report_mode_new_only_hides_baseline_findings_proper() {
 
     let receipt_text = std::fs::read_to_string(dir.join("artifacts/diffguard/first_run.json"))
         .expect("should have first run receipt");
-    let receipt: serde_json::Value = serde_json::from_str(&receipt_text)
-        .expect("first run receipt should be valid JSON");
+    let receipt: serde_json::Value =
+        serde_json::from_str(&receipt_text).expect("first run receipt should be valid JSON");
 
     // Create baseline from actual findings
     let baseline_receipt = json!({
@@ -433,8 +440,11 @@ fn report_mode_new_only_hides_baseline_findings_proper() {
     });
 
     let baseline_path = dir.join("baseline.json");
-    std::fs::write(&baseline_path, serde_json::to_string_pretty(&baseline_receipt).unwrap())
-        .unwrap();
+    std::fs::write(
+        &baseline_path,
+        serde_json::to_string_pretty(&baseline_receipt).unwrap(),
+    )
+    .unwrap();
 
     // Run with baseline and new-only report mode
     let mut cmd2 = Command::new(cargo::cargo_bin("diffguard"));

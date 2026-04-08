@@ -26,10 +26,10 @@ use diffguard_diff::parse_unified_diff;
 use diffguard_domain::{DirectoryRuleOverride, compile_rules};
 use diffguard_types::{
     Artifact, CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_UNAVAILABLE, CHECK_ID_INTERNAL,
-    CHECK_SCHEMA_V1, CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile,
-    DiffMeta, DirectoryOverrideConfig, FailOn, Finding, MatchMode, REASON_MISSING_BASE,
-    REASON_NO_DIFF_INPUT, REASON_TOOL_ERROR, RuleConfig, Scope, Severity, ToolMeta, Verdict,
-    VerdictCounts, VerdictStatus,
+    CHECK_SCHEMA_V1, CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta,
+    DirectoryOverrideConfig, FailOn, Finding, MatchMode, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT,
+    REASON_TOOL_ERROR, RuleConfig, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
+    VerdictStatus,
 };
 
 mod config_loader;
@@ -1530,8 +1530,8 @@ fn load_baseline_receipt(path: &Path) -> Result<(BTreeSet<String>, Vec<Finding>)
         bail!("baseline receipt not found: {}", path.display());
     }
 
-    let text =
-        std::fs::read_to_string(path).with_context(|| format!("read baseline receipt {}", path.display()))?;
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("read baseline receipt {}", path.display()))?;
     let receipt: CheckReceipt = serde_json::from_str(&text)
         .with_context(|| format!("parse baseline receipt {}", path.display()))?;
 
@@ -1596,7 +1596,11 @@ fn compare_against_baseline(
         }
     }
 
-    BaselineStats { baseline_findings, new_findings, new_counts }
+    BaselineStats {
+        baseline_findings,
+        new_findings,
+        new_counts,
+    }
 }
 
 /// Determines the exit code for baseline mode based only on new findings.
@@ -2382,10 +2386,8 @@ fn cmd_check_inner(
     // Baseline mode: post-process findings after run_check() returns
     let baseline_adjusted_exit_code = if let Some(baseline_path) = &args.baseline {
         // Load baseline receipt and fingerprints
-        let (baseline_fingerprints, _baseline_findings) =
-            load_baseline_receipt(baseline_path).map_err(|e| {
-                anyhow::anyhow!("failed to load baseline: {}", e)
-            })?;
+        let (baseline_fingerprints, _baseline_findings) = load_baseline_receipt(baseline_path)
+            .map_err(|e| anyhow::anyhow!("failed to load baseline: {}", e))?;
 
         // Partition current findings into baseline vs new
         let stats = compare_against_baseline(&run.receipt.findings, &baseline_fingerprints);
@@ -2408,13 +2410,11 @@ fn cmd_check_inner(
             };
 
         // Re-render markdown with baseline annotations
-        let annotated_markdown = if findings_to_show.is_empty() && baseline_findings_to_show.is_some() {
+        let annotated_markdown = if findings_to_show.is_empty()
+            && baseline_findings_to_show.is_some()
+        {
             // Show baseline findings when there are no new findings
-            render_markdown_with_baseline_annotations(
-                &run.receipt,
-                &stats.baseline_findings,
-                &[],
-            )
+            render_markdown_with_baseline_annotations(&run.receipt, &stats.baseline_findings, &[])
         } else if let Some(baseline_findings) = baseline_findings_to_show {
             render_markdown_with_baseline_annotations(
                 &run.receipt,

@@ -8,8 +8,8 @@
 
 use assert_cmd::Command;
 use assert_cmd::cargo;
-use tempfile::TempDir;
 use serde_json::json;
+use tempfile::TempDir;
 
 // ============================================================================
 // Test Fixtures - Helper Functions
@@ -152,8 +152,12 @@ fn baseline_flag_missing_file_exits_with_code_1() {
         .arg("artifacts/diffguard/report.json");
 
     let output = cmd.output().unwrap();
-    assert_eq!(output.status.code(), Some(1), "Should exit with code 1 for missing baseline file");
-    
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "Should exit with code 1 for missing baseline file"
+    );
+
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("not found") || stderr.contains("does not exist"),
@@ -183,13 +187,20 @@ fn baseline_receipt_invalid_json_exits_code_1() {
         .arg(&base)
         .arg("--head")
         .arg(&head)
-        .arg(format!("--baseline={}", invalid_json_path.to_string_lossy()))
+        .arg(format!(
+            "--baseline={}",
+            invalid_json_path.to_string_lossy()
+        ))
         .arg("--out")
         .arg("artifacts/diffguard/report.json");
 
     let output = cmd.output().unwrap();
-    assert_eq!(output.status.code(), Some(1), "Should exit with code 1 for invalid JSON");
-    
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "Should exit with code 1 for invalid JSON"
+    );
+
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("parse") || stderr.contains("JSON"),
@@ -224,7 +235,11 @@ fn baseline_receipt_wrong_schema_version_exits_code_1() {
     });
 
     let path = dir.join("wrong_schema_baseline.json");
-    std::fs::write(&path, serde_json::to_string_pretty(&wrong_schema_receipt).unwrap()).unwrap();
+    std::fs::write(
+        &path,
+        serde_json::to_string_pretty(&wrong_schema_receipt).unwrap(),
+    )
+    .unwrap();
 
     let mut cmd = Command::new(cargo::cargo_bin!("diffguard"));
     cmd.current_dir(dir)
@@ -238,8 +253,12 @@ fn baseline_receipt_wrong_schema_version_exits_code_1() {
         .arg("artifacts/diffguard/report.json");
 
     let output = cmd.output().unwrap();
-    assert_eq!(output.status.code(), Some(1), "Should exit with code 1 for wrong schema version");
-    
+    assert_eq!(
+        output.status.code(),
+        Some(1),
+        "Should exit with code 1 for wrong schema version"
+    );
+
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
         stderr.contains("schema") || stderr.contains("version"),
