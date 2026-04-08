@@ -8,7 +8,27 @@
 //! 1. Markdown with only NEW findings (empty baseline)
 //! 2. Markdown with only BASELINE findings (no new findings)
 //! 3. Markdown with mixed BASELINE and NEW findings
-//! 4. Markdown with --report-mode=new-only (hides baseline findings)
+
+/// Normalizes git commit hashes in markdown output to stable placeholders.
+///
+/// Each test run creates a fresh temp git repo with different commit hashes.
+/// This function replaces the variable git hashes with a stable placeholder
+/// so that snapshot tests are deterministic across runs.
+fn normalize_git_hashes(markdown: &str) -> String {
+    use regex::Regex;
+    // Replace git hashes (40 hex chars) and short refs (HEAD, HEAD~N) with placeholders
+    let hash_re = Regex::new(r"(base|head): `[[:xdigit:]]{40}`").unwrap();
+    let normalized = hash_re
+        .replace_all(markdown, "$1: `GIT_HASH_PLACEHOLDER`")
+        .to_string();
+    // Also replace short refs like HEAD~1 and HEAD
+    let short_re = Regex::new(r"(base|head): `(HEAD|HEAD~?\d*)`").unwrap();
+    short_re
+        .replace_all(&normalized, "$1: `GIT_HASH_PLACEHOLDER`")
+        .to_string()
+}
+
+/// 4. Markdown with --report-mode=new-only (hides baseline findings)
 
 use assert_cmd::Command;
 use assert_cmd::cargo;
@@ -172,7 +192,7 @@ fn baseline_mode_empty_baseline_all_new() {
 
     insta::assert_snapshot!(
         "baseline_mode_empty_baseline_all_new",
-        format!("exit_code={:?}\n\n{}", exit_code, markdown)
+        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
     );
 }
 
@@ -227,7 +247,7 @@ fn baseline_mode_only_baseline_findings() {
     // Note: The exit code may not be 0 due to known bug - we snapshot the current behavior
     insta::assert_snapshot!(
         "baseline_mode_only_baseline_findings",
-        format!("exit_code={:?}\n\n{}", exit_code, markdown)
+        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
     );
 }
 
@@ -299,7 +319,7 @@ fn baseline_mode_mixed_findings() {
 
     insta::assert_snapshot!(
         "baseline_mode_mixed_findings",
-        format!("exit_code={:?}\n\n{}", exit_code, markdown)
+        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
     );
 }
 
@@ -371,7 +391,7 @@ fn baseline_mode_report_mode_new_only() {
 
     insta::assert_snapshot!(
         "baseline_mode_report_mode_new_only",
-        format!("exit_code={:?}\n\n{}", exit_code, markdown)
+        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
     );
 }
 
@@ -442,7 +462,7 @@ fn baseline_mode_finding_row_baseline_annotation() {
 
     insta::assert_snapshot!(
         "baseline_mode_finding_row_baseline",
-        format!("exit_code={:?}\n\n{}", exit_code, markdown)
+        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
     );
 }
 
@@ -500,5 +520,5 @@ fn baseline_mode_finding_row_new_annotation() {
     let markdown = std::fs::read_to_string(dir.join("artifacts/diffguard/comment.md"))
         .expect("should be able to read markdown output");
 
-    insta::assert_snapshot!("baseline_mode_finding_row_new_annotation", markdown);
+    insta::assert_snapshot!("baseline_mode_finding_row_new_annotation", normalize_git_hashes(&markdown));
 }

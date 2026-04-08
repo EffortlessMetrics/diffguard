@@ -1521,11 +1521,20 @@ fn load_trend_history(path: &Path) -> Result<TrendHistory> {
     Ok(history)
 }
 
+/// A stable baseline key: rule_id, path, and line number.
+///
+/// We intentionally omit match_text because match_text can change as code
+/// evolves (e.g., `Some(1).unwrap()` → `Some(2).unwrap()`) while the
+/// same rule firing at the same location should still be treated as a
+/// pre-existing (grandfathered) violation.
+type BaselineKey = (String, String, u32);
+
 /// Loads a baseline receipt from a JSON file.
 ///
-/// Returns the baseline findings and their fingerprint set for comparison.
+/// Returns the baseline findings and a stable key set for comparison.
+/// Stable keys use (rule_id, path, line) to avoid match_text fragility.
 /// Validates that the schema version is compatible.
-fn load_baseline_receipt(path: &Path) -> Result<(BTreeSet<String>, Vec<Finding>)> {
+fn load_baseline_receipt(path: &Path) -> Result<(BTreeSet<BaselineKey>, Vec<Finding>)> {
     if !path.exists() {
         bail!("baseline receipt not found: {}", path.display());
     }
@@ -1544,20 +1553,22 @@ fn load_baseline_receipt(path: &Path) -> Result<(BTreeSet<String>, Vec<Finding>)
         );
     }
 
-    // Compute fingerprint set from baseline findings
-    let baseline_fingerprints: BTreeSet<String> = receipt
+    // Compute stable key set from baseline findings (rule_id, path, line).
+    // This is stable across code changes unlike fingerprint_for_finding() which
+    // includes match_text.
+    let baseline_keys: BTreeSet<BaselineKey> = receipt
         .findings
         .iter()
-        .map(fingerprint_for_finding)
+        .map(|f| (f.rule_id.clone(), f.path.clone(), f.line))
         .collect();
 
     info!(
-        "Loaded {} baseline findings (fingerprints) from {}",
-        baseline_fingerprints.len(),
+        "Loaded {} baseline findings (stable keys) from {}",
+        baseline_keys.len(),
         path.display()
     );
 
-    Ok((baseline_fingerprints, receipt.findings))
+    Ok((baseline_keys, receipt.findings))
 }
 
 /// Statistics from comparing current findings against a baseline.
@@ -1573,17 +1584,20 @@ struct BaselineStats {
 
 /// Compares current findings against a baseline, partitioning them into
 /// baseline (pre-existing) and new findings.
+///
+/// Uses stable (rule_id, path, line) keys rather than full fingerprints
+/// to avoid match_text fragility across code versions.
 fn compare_against_baseline(
     findings: &[Finding],
-    baseline_fingerprints: &BTreeSet<String>,
+    baseline_keys: &BTreeSet<BaselineKey>,
 ) -> BaselineStats {
     let mut baseline_findings = Vec::new();
     let mut new_findings = Vec::new();
     let mut new_counts = VerdictCounts::default();
 
     for finding in findings {
-        let fingerprint = fingerprint_for_finding(finding);
-        if baseline_fingerprints.contains(&fingerprint) {
+        let key = (finding.rule_id.clone(), finding.path.clone(), finding.line);
+        if baseline_keys.contains(&key) {
             baseline_findings.push(finding.clone());
         } else {
             new_findings.push(finding.clone());
