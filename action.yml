@@ -54,9 +54,9 @@ outputs:
 runs:
   using: composite
   permissions:
-    contents: read
-    pull-requests: write
-    security-events: write
+    contents: read       # Fetch diffs
+    pull-requests: write # Post comments
+    security-events: write # SARIF upload via codeql-action
   steps:
     - name: Resolve target triple
       id: target
