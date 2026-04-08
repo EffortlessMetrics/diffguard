@@ -3155,6 +3155,8 @@ mod tests {
             gitlab_quality: None,
             rule_stats: None,
             false_positive_baseline: None,
+            baseline: None,
+            report_mode: None,
             write_false_positive_baseline: None,
             trend_history: None,
             trend_max_runs: None,
