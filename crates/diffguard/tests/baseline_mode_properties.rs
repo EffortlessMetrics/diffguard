@@ -103,7 +103,7 @@ proptest! {
         line: u32,
         match_text in arbitrary_string()
     ) {
-        let mut f1 = diffguard_types::Finding {
+        let f1 = diffguard_types::Finding {
             rule_id: rule_id.clone(),
             severity: diffguard_types::Severity::Error,
             message: "msg".to_string(),
@@ -132,7 +132,7 @@ proptest! {
         line: u32,
         match_text in arbitrary_string()
     ) {
-        let mut f1 = diffguard_types::Finding {
+        let f1 = diffguard_types::Finding {
             rule_id: rule_id.clone(),
             severity: diffguard_types::Severity::Error,
             message: "msg".to_string(),
@@ -161,7 +161,7 @@ proptest! {
         line: u32,
         match_text in arbitrary_string()
     ) {
-        let mut f1 = diffguard_types::Finding {
+        let f1 = diffguard_types::Finding {
             rule_id: rule_id.clone(),
             severity: diffguard_types::Severity::Error,
             message: "msg".to_string(),
@@ -190,7 +190,7 @@ proptest! {
         line: u32,
         match_text in arbitrary_string()
     ) {
-        let mut f1 = diffguard_types::Finding {
+        let f1 = diffguard_types::Finding {
             rule_id: rule_id.clone(),
             severity: diffguard_types::Severity::Error,
             message: "msg".to_string(),

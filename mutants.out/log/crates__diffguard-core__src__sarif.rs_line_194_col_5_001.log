@@ -1,0 +1,617 @@
+
+*** crates/diffguard-core/src/sarif.rs:194:5: replace render_sarif_json -> Result<String, serde_json::Error> with Ok("xyzzy".into())
+
+*** mutation diff:
+--- crates/diffguard-core/src/sarif.rs
++++ replace render_sarif_json -> Result<String, serde_json::Error> with Ok("xyzzy".into())
+@@ -186,18 +186,17 @@
+             results,
+             invocations: None,
+         }],
+     }
+ }
+ 
+ /// Renders a SARIF report as a JSON string.
+ pub fn render_sarif_json(receipt: &CheckReceipt) -> Result<String, serde_json::Error> {
+-    let report = render_sarif_for_receipt(receipt);
+-    serde_json::to_string_pretty(&report)
++    Ok("xyzzy".into()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Collects unique rule definitions from findings.
+ fn collect_rules_from_findings(findings: &[Finding]) -> Vec<SarifRule> {
+     let mut seen = BTreeMap::new();
+ 
+     for f in findings {
+         if !seen.contains_key(&f.rule_id) {
+
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=diffguard-core@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh cfg-if v1.0.4
+       Fresh memchr v2.8.0
+       Fresh version_check v0.9.5
+       Fresh proc-macro2 v1.0.106
+       Fresh regex-syntax v0.8.10
+       Fresh itoa v1.0.18
+       Fresh aho-corasick v1.1.4
+       Fresh linux-raw-sys v0.12.1
+       Fresh bitflags v2.11.0
+       Fresh quote v1.0.45
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh zmij v1.0.21
+       Fresh typenum v1.19.0
+       Fresh dyn-clone v1.0.20
+       Fresh regex-automata v0.4.14
+       Fresh fastrand v2.3.0
+       Fresh autocfg v1.5.0
+       Fresh syn v2.0.117
+       Fresh getrandom v0.3.4
+       Fresh serde_json v1.0.149
+       Fresh generic-array v0.14.7
+       Fresh getrandom v0.4.2
+       Fresh rustix v1.1.4
+       Fresh once_cell v1.21.4
+       Fresh bstr v1.12.1
+       Fresh winnow v1.0.1
+       Fresh log v0.4.29
+       Fresh toml_datetime v0.7.5+spec-1.1.0
+       Fresh wait-timeout v0.2.1
+       Fresh serde_spanned v1.1.1
+       Fresh serde_derive v1.0.228
+       Fresh serde_derive_internals v0.29.1
+       Fresh ref-cast-impl v1.0.25
+       Fresh rand_core v0.9.5
+       Fresh thiserror-impl v2.0.18
+       Fresh anyhow v1.0.102
+       Fresh tempfile v3.27.0
+       Fresh crypto-common v0.1.7
+       Fresh zerocopy v0.8.48
+       Fresh block-buffer v0.10.4
+       Fresh globset v0.4.18
+       Fresh toml_parser v1.1.2+spec-1.1.0
+       Fresh regex v1.12.3
+       Fresh toml_writer v1.1.1+spec-1.1.0
+       Fresh winnow v0.7.15
+       Fresh bit-vec v0.8.0
+       Fresh serde v1.0.228
+       Fresh schemars_derive v1.2.1
+       Fresh ref-cast v1.0.25
+       Fresh thiserror v2.0.18
+       Fresh ppv-lite86 v0.2.21
+       Fresh digest v0.10.7
+       Fresh fnv v1.0.7
+       Fresh quick-error v1.2.3
+       Fresh cpufeatures v0.2.17
+       Fresh toml v0.9.12+spec-1.1.0
+       Fresh rand_xorshift v0.4.0
+       Fresh rand v0.9.2
+       Fresh bit-set v0.8.0
+       Fresh num-traits v0.2.19
+       Fresh console v0.16.3
+       Fresh hex v0.4.3
+       Fresh unarray v0.1.4
+       Fresh schemars v1.2.1
+       Fresh rand_chacha v0.9.0
+       Fresh rusty-fork v0.3.1
+       Fresh sha2 v0.10.9
+       Fresh similar v2.7.0
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-types)
+       Fresh proptest v1.11.0
+       Fresh insta v1.47.2
+       Fresh diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-diff)
+       Fresh diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-domain)
+       Dirty diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-core): the file `crates/diffguard-core/src/sarif.rs` has changed (1775668675.604267831s, 4s after last build at 1775668671.662121456s)
+   Compiling diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-core)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0ea501e1fb5d6a5b -C extra-filename=-eb54202daf525fcb --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2f10298022ccb1a6 -C extra-filename=-e53d6514fc2b0b9b --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rmeta --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rmeta --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rmeta --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rmeta --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rmeta --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rmeta`
+warning: unused variable: `receipt`
+   --> crates/diffguard-core/src/sarif.rs:193:26
+    |
+193 | pub fn render_sarif_json(receipt: &CheckReceipt) -> Result<String, serde_json::Error> {
+    |                          ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_receipt`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `diffguard-core` (lib) generated 1 warning (run `cargo fix --lib -p diffguard-core` to apply 1 suggestion)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name test_gitlab_quality --edition=2024 crates/diffguard-core/tests/test_gitlab_quality.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=9b26c3c95e78bc30 -C extra-filename=-6a3f0d36436d66ee --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_core=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_core-e53d6514fc2b0b9b.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name properties --edition=2024 crates/diffguard-core/tests/properties.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=abaf2e3684954bdf -C extra-filename=-0043aa4d449e60f8 --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_core=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_core-e53d6514fc2b0b9b.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name snapshot_tests --edition=2024 crates/diffguard-core/tests/snapshot_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0cfd6104445ba124 -C extra-filename=-69921491f58785ae --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_core=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_core-e53d6514fc2b0b9b.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+warning: `diffguard-core` (lib test) generated 1 warning (1 duplicate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2.15s
+  Executable `/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/diffguard_core-eb54202daf525fcb`
+  Executable `/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/properties-0043aa4d449e60f8`
+  Executable `/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/snapshot_tests-69921491f58785ae`
+  Executable `/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/test_gitlab_quality-6a3f0d36436d66ee`
+
+*** result: Success
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --verbose --package=diffguard-core@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh cfg-if v1.0.4
+       Fresh memchr v2.8.0
+       Fresh version_check v0.9.5
+       Fresh itoa v1.0.18
+       Fresh regex-syntax v0.8.10
+       Fresh aho-corasick v1.1.4
+       Fresh linux-raw-sys v0.12.1
+       Fresh bitflags v2.11.0
+       Fresh quote v1.0.45
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh zmij v1.0.21
+       Fresh typenum v1.19.0
+       Fresh dyn-clone v1.0.20
+       Fresh regex-automata v0.4.14
+       Fresh rustix v1.1.4
+       Fresh fastrand v2.3.0
+       Fresh autocfg v1.5.0
+       Fresh once_cell v1.21.4
+       Fresh bstr v1.12.1
+       Fresh log v0.4.29
+       Fresh syn v2.0.117
+       Fresh serde_json v1.0.149
+       Fresh generic-array v0.14.7
+       Fresh getrandom v0.3.4
+       Fresh getrandom v0.4.2
+       Fresh zerocopy v0.8.48
+       Fresh winnow v1.0.1
+       Fresh wait-timeout v0.2.1
+       Fresh serde_spanned v1.1.1
+       Fresh toml_datetime v0.7.5+spec-1.1.0
+       Fresh regex v1.12.3
+       Fresh globset v0.4.18
+       Fresh quick-error v1.2.3
+       Fresh toml_writer v1.1.1+spec-1.1.0
+       Fresh bit-vec v0.8.0
+       Fresh serde_derive v1.0.228
+       Fresh ref-cast-impl v1.0.25
+       Fresh serde_derive_internals v0.29.1
+       Fresh thiserror-impl v2.0.18
+       Fresh rand_core v0.9.5
+       Fresh anyhow v1.0.102
+       Fresh block-buffer v0.10.4
+       Fresh tempfile v3.27.0
+       Fresh crypto-common v0.1.7
+       Fresh toml_parser v1.1.2+spec-1.1.0
+       Fresh ppv-lite86 v0.2.21
+       Fresh winnow v0.7.15
+       Fresh fnv v1.0.7
+       Fresh cpufeatures v0.2.17
+       Fresh bit-set v0.8.0
+       Fresh console v0.16.3
+       Fresh serde v1.0.228
+       Fresh ref-cast v1.0.25
+       Fresh schemars_derive v1.2.1
+       Fresh thiserror v2.0.18
+       Fresh digest v0.10.7
+       Fresh toml v0.9.12+spec-1.1.0
+       Fresh rusty-fork v0.3.1
+       Fresh rand_chacha v0.9.0
+       Fresh rand v0.9.2
+       Fresh rand_xorshift v0.4.0
+       Fresh num-traits v0.2.19
+       Fresh hex v0.4.3
+       Fresh similar v2.7.0
+       Fresh unarray v0.1.4
+       Fresh schemars v1.2.1
+       Fresh sha2 v0.10.9
+       Fresh proptest v1.11.0
+       Fresh insta v1.47.2
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-types)
+       Fresh diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-domain)
+       Fresh diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-diff)
+warning: unused variable: `receipt`
+   --> crates/diffguard-core/src/sarif.rs:193:26
+    |
+193 | pub fn render_sarif_json(receipt: &CheckReceipt) -> Result<String, serde_json::Error> {
+    |                          ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_receipt`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `diffguard-core` (lib) generated 1 warning (run `cargo fix --lib -p diffguard-core` to apply 1 suggestion)
+warning: `diffguard-core` (lib test) generated 1 warning (1 duplicate)
+       Fresh diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.24s
+     Running `/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/diffguard_core-eb54202daf525fcb`
+
+running 126 tests
+test check::tests::compile_filter_globs_rejects_invalid ... ok
+test check::tests::exit_code_semantics ... ok
+test check::tests::filter_rule_by_tags_disable_tags_excludes ... ok
+test check::tests::filter_rule_by_tags_combined_filters ... ok
+test check::tests::filter_rule_by_tags_disable_tags_no_match ... ok
+test check::tests::filter_rule_by_tags_enable_tags_additive_with_only_tags ... ok
+test check::tests::filter_rule_by_tags_no_filters ... ok
+test check::tests::filter_rule_by_tags_enable_tags_no_effect_without_only_tags ... ok
+test check::tests::filter_rule_by_tags_only_tags_case_insensitive ... ok
+test check::tests::filter_rule_by_tags_only_tags_matches ... ok
+test check::tests::filter_rule_by_tags_rule_without_tags ... ok
+test check::tests::filter_rule_by_tags_only_tags_no_match ... ok
+test check::tests::run_check_filters_by_allowed_lines ... ok
+test check::tests::run_check_force_language_applies_rules_for_unknown_extensions ... ok
+test check::tests::run_check_dedupes_duplicate_diff_lines ... ok
+test check::tests::run_check_filters_acknowledged_false_positive_fingerprints ... ok
+test check::tests::run_check_includes_truncation_reason ... ok
+test check::tests::run_check_passes_with_no_findings ... ok
+test check::tests::run_check_sets_warn_verdict_and_reasons ... ok
+test csv::tests::csv_escapes_commas ... ok
+test csv::tests::csv_escapes_quotes ... ok
+test csv::tests::csv_has_correct_row_count ... ok
+test csv::tests::csv_escapes_newlines ... ok
+test check::tests::run_check_sets_error_verdict_and_reasons ... ok
+test check::tests::run_check_with_path_filters_filters_findings ... ok
+test csv::tests::csv_has_header_row ... ok
+test csv::tests::csv_empty_receipt_has_header_only ... ok
+test csv::tests::escape_csv_field_with_carriage_return ... ok
+test csv::tests::escape_csv_field_plain_text ... ok
+test csv::tests::escape_csv_field_with_comma ... ok
+test check::tests::run_check_without_path_filters_keeps_findings ... ok
+test csv::tests::escape_csv_field_with_newline ... ok
+test csv::tests::escape_tsv_field_with_backslash ... ok
+test csv::tests::escape_tsv_field_with_carriage_return ... ok
+test csv::tests::escape_tsv_field_plain_text ... ok
+test csv::tests::escape_tsv_field_with_tab ... ok
+test csv::tests::escape_csv_field_with_quote ... ok
+test csv::tests::escape_tsv_field_with_newline ... ok
+test csv::tests::tsv_has_header_row ... ok
+test fingerprint::tests::compute_fingerprint_raw_produces_64_hex ... ok
+test fingerprint::tests::fingerprint_differs_for_different_match_text ... ok
+test fingerprint::tests::fingerprint_differs_for_different_path ... ok
+test csv::tests::tsv_empty_receipt_has_header_only ... ok
+test fingerprint::tests::fingerprint_differs_for_different_line ... ok
+test csv::tests::tsv_escapes_tabs ... ok
+test fingerprint::tests::fingerprint_ignores_severity ... ok
+test fingerprint::tests::fingerprint_ignores_message ... ok
+test csv::tests::tsv_has_correct_row_count ... ok
+test csv::tests::tsv_escapes_newlines ... ok
+test fingerprint::tests::fingerprint_differs_for_different_rule_id ... ok
+test fingerprint::tests::fingerprint_is_64_hex_chars ... ok
+test gitlab_quality::tests::gitlab_quality_empty_receipt ... ok
+test fingerprint::tests::fingerprint_is_stable ... ok
+test gitlab_quality::tests::gitlab_quality_json_serialization ... ok
+test gitlab_quality::tests::gitlab_quality_fingerprint_consistency ... ok
+test gitlab_quality::tests::gitlab_quality_severity_mapping ... ok
+test junit::tests::escape_xml_handles_all_special_chars ... ok
+test junit::tests::junit_empty_receipt_has_pass_testcase ... ok
+test junit::tests::junit_escapes_xml_special_chars ... ok
+test check::tests::property_annotations_format_matches_expected ... ok
+test junit::tests::junit_groups_by_rule_id ... ok
+test junit::tests::junit_failure_includes_details ... ok
+test junit::tests::junit_has_correct_failure_count ... ok
+test junit::tests::junit_has_correct_test_count ... ok
+test junit::tests::junit_info_severity_does_not_emit_failure ... ok
+test junit::tests::junit_xml_declaration ... ok
+test junit::tests::junit_has_testsuites_root ... ok
+test render::tests::markdown_filters_non_meta_reasons ... ok
+test render::tests::markdown_hides_suppressed_when_zero ... ok
+test render::tests::markdown_renders_all_meta_reasons ... ok
+test render::tests::renders_markdown_table ... ok
+test render::tests::render_finding_row_escapes_pipes_and_backticks ... ok
+test render::tests::markdown_shows_suppressed_count ... ok
+test check::tests::snapshot_annotations_with_multiple_severities ... ok
+test csv::tests::snapshot_csv_no_findings ... ok
+test check::tests::snapshot_json_receipt_pretty ... ok
+test csv::tests::snapshot_csv_with_findings ... ok
+test csv::tests::snapshot_csv_special_chars ... ok
+test csv::tests::snapshot_tsv_no_findings ... ok
+test fingerprint::tests::snapshot_fingerprint_value ... ok
+test csv::tests::snapshot_tsv_with_findings ... ok
+test junit::tests::snapshot_junit_no_findings ... ok
+test gitlab_quality::tests::snapshot_gitlab_quality_with_findings ... ok
+test gitlab_quality::tests::snapshot_gitlab_quality_no_findings ... ok
+test sarif::tests::sarif_has_correct_schema_and_version ... ok
+test sarif::tests::sarif_contains_all_findings ... ok
+test sarif::tests::sarif_location_without_column ... ok
+test junit::tests::snapshot_junit_with_findings ... ok
+test sarif::tests::sarif_json_is_valid ... FAILED
+test sarif::tests::sarif_severity_mapping_note ... ok
+test sarif::tests::sarif_empty_receipt_has_no_results ... ok
+test render::tests::snapshot_markdown_with_suppressions ... ok
+test csv::tests::snapshot_tsv_special_chars ... ok
+test render::tests::snapshot_markdown_no_findings ... ok
+test sarif::tests::sarif_location_includes_line_and_column ... ok
+test render::tests::snapshot_markdown_with_findings ... ok
+test sarif::tests::sarif_tool_info_is_correct ... ok
+test render::tests::snapshot_verdict_rendering ... ok
+test sarif::tests::sarif_severity_mapping_error ... ok
+test sensor::tests::normalize_path_converts_backslashes ... ok
+test sensor::tests::sensor_finding_has_correct_check_id ... ok
+test sensor::tests::sensor_report_includes_diff_data ... ok
+test sarif::tests::sarif_rules_are_deduplicated ... ok
+test sarif::tests::sarif_severity_mapping_warning ... ok
+test sensor::tests::sensor_finding_has_fingerprint ... ok
+test sensor::tests::sensor_finding_includes_help_and_url ... ok
+test sensor::tests::sensor_finding_includes_data ... ok
+test sensor::tests::sensor_finding_maps_rule_id_to_code ... ok
+test sensor::tests::sensor_report_includes_tags_matched ... ok
+test sensor::tests::sensor_report_preserves_tool_meta ... ok
+test sensor::tests::sensor_report_includes_run_meta ... ok
+test sensor::tests::snapshot_sensor_report_no_findings ... ok
+test sensor::tests::snapshot_sensor_report_skip_status ... ok
+test sensor_api::tests::extract_rule_metadata_maps_config_rules ... ok
+test sensor::tests::sensor_report_has_correct_schema ... ok
+test sensor_api::tests::run_sensor_preserves_timing_from_context ... ok
+test sensor::tests::sensor_report_omits_tags_matched_when_metadata_missing ... ok
+test sensor_api::tests::run_sensor_populates_rule_metadata ... ok
+test sensor::tests::snapshot_sensor_report_with_findings ... ok
+test sensor_api::tests::run_sensor_propagates_check_error ... ok
+test sensor_api::tests::run_sensor_with_no_substrate ... ok
+test sensor_api::tests::run_sensor_returns_sensor_report ... ok
+test sensor_api::tests::substrate_defaults_return_none ... ok
+test sarif::tests::snapshot_sarif_no_findings ... FAILED
+test sarif::tests::snapshot_sarif_info_findings ... FAILED
+test sarif::tests::snapshot_sarif_with_findings ... FAILED
+
+failures:
+
+---- sarif::tests::sarif_json_is_valid stdout ----
+
+thread 'sarif::tests::sarif_json_is_valid' (871055) panicked at crates/diffguard-core/src/sarif.rs:518:64:
+should be valid JSON: Error("expected value", line: 1, column: 1)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- sarif::tests::snapshot_sarif_no_findings stdout ----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Snapshot Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Snapshot file: crates/diffguard-core/src/snapshots/diffguard_core__sarif__tests__snapshot_sarif_no_findings.snap
+Snapshot: snapshot_sarif_no_findings
+Source: crates/diffguard-core/src/sarif.rs:534
+────────────────────────────────────────────────────────────────────────────────
+Expression: json
+────────────────────────────────────────────────────────────────────────────────
+-old snapshot
++new results
+────────────┬───────────────────────────────────────────────────────────────────
+    1       │-{
+    2       │-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    3       │-  "version": "2.1.0",
+    4       │-  "runs": [
+    5       │-    {
+    6       │-      "tool": {
+    7       │-        "driver": {
+    8       │-          "name": "diffguard",
+    9       │-          "version": "0.1.0",
+   10       │-          "informationUri": "https://github.com/effortlessmetrics/diffguard"
+   11       │-        }
+   12       │-      },
+   13       │-      "results": []
+   14       │-    }
+   15       │-  ]
+   16       │-}
+          1 │+xyzzy
+────────────┴───────────────────────────────────────────────────────────────────
+Stopped on the first failure. Run `cargo insta test` to run all snapshots.
+
+thread 'sarif::tests::snapshot_sarif_no_findings' (871064) panicked at /home/hermes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/insta-1.47.2/src/runtime.rs:719:13:
+snapshot assertion for 'snapshot_sarif_no_findings' failed in line 534
+
+---- sarif::tests::snapshot_sarif_info_findings stdout ----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Snapshot Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Snapshot file: crates/diffguard-core/src/snapshots/diffguard_core__sarif__tests__snapshot_sarif_info_findings.snap
+Snapshot: snapshot_sarif_info_findings
+Source: crates/diffguard-core/src/sarif.rs:542
+────────────────────────────────────────────────────────────────────────────────
+Expression: json
+────────────────────────────────────────────────────────────────────────────────
+-old snapshot
++new results
+────────────┬───────────────────────────────────────────────────────────────────
+    1       │-{
+    2       │-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    3       │-  "version": "2.1.0",
+    4       │-  "runs": [
+    5       │-    {
+    6       │-      "tool": {
+    7       │-        "driver": {
+    8       │-          "name": "diffguard",
+    9       │-          "version": "0.1.0",
+   10       │-          "informationUri": "https://github.com/effortlessmetrics/diffguard",
+   11       │-          "rules": [
+   12       │-            {
+   13       │-              "id": "info.todo",
+   14       │-              "shortDescription": {
+   15       │-                "text": "Found a TODO comment."
+   16       │-              },
+   17       │-              "defaultConfiguration": {
+   18       │-                "level": "note"
+   19       │-              }
+   20       │-            }
+   21       │-          ]
+   22       │-        }
+   23       │-      },
+   24       │-      "results": [
+   25       │-        {
+   26       │-          "ruleId": "info.todo",
+   27       │-          "level": "note",
+   28       │-          "message": {
+   29       │-            "text": "Found a TODO comment."
+   30       │-          },
+   31       │-          "locations": [
+   32       │-            {
+   33       │-              "physicalLocation": {
+   34       │-                "artifactLocation": {
+   35       │-                  "uri": "src/lib.rs",
+   36       │-                  "uriBaseId": "%SRCROOT%"
+   37       │-                },
+   38       │-                "region": {
+   39       │-                  "startLine": 5,
+   40       │-                  "snippet": {
+   41       │-                    "text": "// TODO: refactor this"
+   42       │-                  }
+   43       │-                }
+   44       │-              }
+   45       │-            }
+   46       │-          ],
+   47       │-          "partialFingerprints": {
+   48       │-            "primaryLocationLineHash": "info.todo:src/lib.rs:5"
+   49       │-          }
+   50       │-        }
+   51       │-      ]
+   52       │-    }
+   53       │-  ]
+   54       │-}
+          1 │+xyzzy
+────────────┴───────────────────────────────────────────────────────────────────
+Stopped on the first failure. Run `cargo insta test` to run all snapshots.
+
+thread 'sarif::tests::snapshot_sarif_info_findings' (871063) panicked at /home/hermes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/insta-1.47.2/src/runtime.rs:719:13:
+snapshot assertion for 'snapshot_sarif_info_findings' failed in line 542
+
+---- sarif::tests::snapshot_sarif_with_findings stdout ----
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Snapshot Summary ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Snapshot file: crates/diffguard-core/src/snapshots/diffguard_core__sarif__tests__snapshot_sarif_with_findings.snap
+Snapshot: snapshot_sarif_with_findings
+Source: crates/diffguard-core/src/sarif.rs:526
+────────────────────────────────────────────────────────────────────────────────
+Expression: json
+────────────────────────────────────────────────────────────────────────────────
+-old snapshot
++new results
+────────────┬───────────────────────────────────────────────────────────────────
+    1       │-{
+    2       │-  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+    3       │-  "version": "2.1.0",
+    4       │-  "runs": [
+    5       │-    {
+    6       │-      "tool": {
+    7       │-        "driver": {
+    8       │-          "name": "diffguard",
+    9       │-          "version": "0.1.0",
+   10       │-          "informationUri": "https://github.com/effortlessmetrics/diffguard",
+   11       │-          "rules": [
+   12       │-            {
+   13       │-              "id": "python.no_print",
+   14       │-              "shortDescription": {
+   15       │-                "text": "Remove print() before merging."
+   16       │-              },
+   17       │-              "defaultConfiguration": {
+   18       │-                "level": "warning"
+   19       │-              }
+   20       │-            },
+   21       │-            {
+   22       │-              "id": "rust.no_dbg",
+   23       │-              "shortDescription": {
+   24       │-                "text": "Remove dbg!/println! before merging."
+   25       │-              },
+   26       │-              "defaultConfiguration": {
+   27       │-                "level": "warning"
+   28       │-              }
+   29       │-            },
+   30       │-            {
+   31       │-              "id": "rust.no_unwrap",
+   32       │-              "shortDescription": {
+   33       │-                "text": "Avoid unwrap/expect in production code."
+   34       │-              },
+   35       │-              "defaultConfiguration": {
+   36       │-                "level": "error"
+   37       │-              }
+   38       │-            }
+   39       │-          ]
+   40       │-        }
+   41       │-      },
+   42       │-      "results": [
+   43       │-        {
+   44       │-          "ruleId": "rust.no_unwrap",
+   45       │-          "level": "error",
+   46       │-          "message": {
+   47       │-            "text": "Avoid unwrap/expect in production code."
+   48       │-          },
+   49       │-          "locations": [
+   50       │-            {
+   51       │-              "physicalLocation": {
+   52       │-                "artifactLocation": {
+   53       │-                  "uri": "src/lib.rs",
+   54       │-                  "uriBaseId": "%SRCROOT%"
+   55       │-                },
+   56       │-                "region": {
+   57       │-                  "startLine": 15,
+   58       │-                  "startColumn": 10,
+   59       │-                  "snippet": {
+   60       │-                    "text": "let value = result.unwrap();"
+   61       │-                  }
+   62       │-                }
+   63       │-              }
+   64       │-            }
+   65       │-          ],
+   66       │-          "partialFingerprints": {
+   67       │-            "primaryLocationLineHash": "rust.no_unwrap:src/lib.rs:15"
+   68       │-          }
+   69       │-        },
+   70       │-        {
+   71       │-          "ruleId": "rust.no_dbg",
+   72       │-          "level": "warning",
+   73       │-          "message": {
+   74       │-            "text": "Remove dbg!/println! before merging."
+   75       │-          },
+   76       │-          "locations": [
+   77       │-            {
+   78       │-              "physicalLocation": {
+   79       │-                "artifactLocation": {
+   80       │-                  "uri": "src/main.rs",
+   81       │-                  "uriBaseId": "%SRCROOT%"
+   82       │-                },
+   83       │-                "region": {
+   84       │-                  "startLine": 23,
+   85       │-                  "startColumn": 5,
+   86       │-                  "snippet": {
+   87       │-                    "text": "    dbg!(config);"
+   88       │-                  }
+   89       │-                }
+   90       │-              }
+   91       │-            }
+   92       │-          ],
+   93       │-          "partialFingerprints": {
+   94       │-            "primaryLocationLineHash": "rust.no_dbg:src/main.rs:23"
+   95       │-          }
+   96       │-        },
+   97       │-        {
+   98       │-          "ruleId": "python.no_print",
+   99       │-          "level": "warning",
+  100       │-          "message": {
+  101       │-            "text": "Remove print() before merging."
+  102       │-          },
+  103       │-          "locations": [
+  104       │-            {
+  105       │-              "physicalLocation": {
+  106       │-                "artifactLocation": {
+  107       │-                  "uri": "scripts/deploy.py",
+  108       │-                  "uriBaseId": "%SRCROOT%"
+  109       │-                },
+  110       │-                "region": {
+  111       │-                  "startLine": 8,
+  112       │-                  "snippet": {
+  113       │-                    "text": "print(\"Deploying...\")"
+  114       │-                  }
+  115       │-                }
+  116       │-              }
+  117       │-            }
+  118       │-          ],
+  119       │-          "partialFingerprints": {
+  120       │-            "primaryLocationLineHash": "python.no_print:scripts/deploy.py:8"
+  121       │-          }
+  122       │-        }
+  123       │-      ]
+  124       │-    }
+  125       │-  ]
+  126       │-}
+          1 │+xyzzy
+────────────┴───────────────────────────────────────────────────────────────────
+Stopped on the first failure. Run `cargo insta test` to run all snapshots.
+
+thread 'sarif::tests::snapshot_sarif_with_findings' (871065) panicked at /home/hermes/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/insta-1.47.2/src/runtime.rs:719:13:
+snapshot assertion for 'snapshot_sarif_with_findings' failed in line 526
+
+
+failures:
+    sarif::tests::sarif_json_is_valid
+    sarif::tests::snapshot_sarif_info_findings
+    sarif::tests::snapshot_sarif_no_findings
+    sarif::tests::snapshot_sarif_with_findings
+
+test result: FAILED. 122 passed; 4 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.15s
+
+error: test failed, to rerun pass `-p diffguard-core --lib`
+
+*** result: Failure(101)

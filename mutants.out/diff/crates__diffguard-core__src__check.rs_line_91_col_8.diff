@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/check.rs
++++ delete ! in run_check
+@@ -83,17 +83,17 @@
+ 
+ pub fn run_check(
+     plan: &CheckPlan,
+     config: &diffguard_types::ConfigFile,
+     diff_text: &str,
+ ) -> Result<CheckRun, anyhow::Error> {
+     let (mut diff_lines, _stats) = parse_unified_diff(diff_text, plan.scope)?;
+ 
+-    if !plan.path_filters.is_empty() {
++    if  /* ~ changed by cargo-mutants ~ */plan.path_filters.is_empty() {
+         let filters = compile_filter_globs(&plan.path_filters)?;
+         diff_lines.retain(|l| filters.is_match(Path::new(&l.path)));
+     }
+ 
+     if let Some(allowed_lines) = &plan.allowed_lines {
+         diff_lines.retain(|l| allowed_lines.contains(&(l.path.clone(), l.line)));
+     }
+ 

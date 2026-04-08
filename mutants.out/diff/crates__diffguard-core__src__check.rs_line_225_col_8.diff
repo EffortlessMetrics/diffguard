@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/check.rs
++++ delete ! in run_check
+@@ -217,17 +217,17 @@
+             suppressed: s.suppressed,
+             info: s.info,
+             warn: s.warn,
+             error: s.error,
+             false_positive: 0,
+         })
+         .collect();
+ 
+-    if !per_rule_false_positive.is_empty() {
++    if  /* ~ changed by cargo-mutants ~ */per_rule_false_positive.is_empty() {
+         for stat in &mut rule_hits {
+             if let Some((filtered, info, warn, error)) = per_rule_false_positive.get(&stat.rule_id)
+             {
+                 stat.emitted = stat.emitted.saturating_sub(*filtered);
+                 stat.info = stat.info.saturating_sub(*info);
+                 stat.warn = stat.warn.saturating_sub(*warn);
+                 stat.error = stat.error.saturating_sub(*error);
+                 stat.false_positive = stat.false_positive.saturating_add(*filtered);

@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace match guard (b'0'..=b'7').contains(&d) with false in unescape_git_path
+@@ -525,17 +525,17 @@
+             b'n' => out.push(b'\n'),
+             b't' => out.push(b'\t'),
+             b'r' => out.push(b'\r'),
+             b' ' => out.push(b' '),
+             b'0'..=b'7' => {
+                 let mut val = (next - b'0') as u32;
+                 for _ in 0..2 {
+                     match iter.peek().copied() {
+-                        Some(d) if (b'0'..=b'7').contains(&d) => {
++                        Some(d) if false /* ~ changed by cargo-mutants ~ */ => {
+                             val = val * 8 + (d - b'0') as u32;
+                             iter.next();
+                         }
+                         _ => break,
+                     }
+                 }
+                 out.push((val & 0xFF) as u8);
+             }

@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/check.rs
++++ replace > with >= in compute_exit_code
+@@ -297,17 +297,17 @@
+     true
+ }
+ 
+ fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> i32 {
+     if matches!(fail_on, FailOn::Never) {
+         return 0;
+     }
+ 
+-    if counts.error > 0 {
++    if counts.error >= /* ~ changed by cargo-mutants ~ */ 0 {
+         return 2;
+     }
+ 
+     if matches!(fail_on, FailOn::Warn) && counts.warn > 0 {
+         return 3;
+     }
+ 
+     0

@@ -1,0 +1,139 @@
+
+*** crates/diffguard-core/src/sensor_api.rs:38:9: replace Substrate::repo_root -> Option<&std::path::Path> with Some(Box::leak(Box::new(Default::default())))
+
+*** mutation diff:
+--- crates/diffguard-core/src/sensor_api.rs
++++ replace Substrate::repo_root -> Option<&std::path::Path> with Some(Box::leak(Box::new(Default::default())))
+@@ -30,17 +30,17 @@
+ /// No sensor may *require* a `Substrate` to function.
+ pub trait Substrate {
+     /// Pre-computed list of changed file paths (forward-slash normalized).
+     fn changed_files(&self) -> Option<&[String]> {
+         None
+     }
+     /// Repository root path.
+     fn repo_root(&self) -> Option<&std::path::Path> {
+-        None
++        Some(Box::leak(Box::new(Default::default()))) /* ~ changed by cargo-mutants ~ */
+     }
+     /// Arbitrary metadata from the substrate provider.
+     fn metadata(&self) -> Option<&serde_json::Value> {
+         None
+     }
+ }
+ 
+ /// R2 Library Contract: run the diffguard sensor and return a `SensorReport`.
+
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=diffguard-core@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh cfg-if v1.0.4
+       Fresh memchr v2.8.0
+       Fresh version_check v0.9.5
+       Fresh proc-macro2 v1.0.106
+       Fresh itoa v1.0.18
+       Fresh regex-syntax v0.8.10
+       Fresh aho-corasick v1.1.4
+       Fresh quote v1.0.45
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh zmij v1.0.21
+       Fresh typenum v1.19.0
+       Fresh linux-raw-sys v0.12.1
+       Fresh dyn-clone v1.0.20
+       Fresh bitflags v2.11.0
+       Fresh regex-automata v0.4.14
+       Fresh once_cell v1.21.4
+       Fresh syn v2.0.117
+       Fresh generic-array v0.14.7
+       Fresh getrandom v0.3.4
+       Fresh serde_json v1.0.149
+       Fresh rustix v1.1.4
+       Fresh getrandom v0.4.2
+       Fresh autocfg v1.5.0
+       Fresh fastrand v2.3.0
+       Fresh bstr v1.12.1
+       Fresh winnow v1.0.1
+       Fresh log v0.4.29
+       Fresh wait-timeout v0.2.1
+       Fresh regex v1.12.3
+       Fresh toml_datetime v0.7.5+spec-1.1.0
+       Fresh serde_spanned v1.1.1
+       Fresh serde_derive v1.0.228
+       Fresh ref-cast-impl v1.0.25
+       Fresh serde_derive_internals v0.29.1
+       Fresh thiserror-impl v2.0.18
+       Fresh rand_core v0.9.5
+       Fresh tempfile v3.27.0
+       Fresh crypto-common v0.1.7
+       Fresh anyhow v1.0.102
+       Fresh zerocopy v0.8.48
+       Fresh block-buffer v0.10.4
+       Fresh globset v0.4.18
+       Fresh toml_parser v1.1.2+spec-1.1.0
+       Fresh fnv v1.0.7
+       Fresh quick-error v1.2.3
+       Fresh winnow v0.7.15
+       Fresh bit-vec v0.8.0
+       Fresh serde v1.0.228
+       Fresh schemars_derive v1.2.1
+       Fresh ref-cast v1.0.25
+       Fresh thiserror v2.0.18
+       Fresh ppv-lite86 v0.2.21
+       Fresh digest v0.10.7
+       Fresh toml_writer v1.1.1+spec-1.1.0
+       Fresh cpufeatures v0.2.17
+       Fresh rand v0.9.2
+       Fresh rusty-fork v0.3.1
+       Fresh bit-set v0.8.0
+       Fresh rand_xorshift v0.4.0
+       Fresh console v0.16.3
+       Fresh unarray v0.1.4
+       Fresh hex v0.4.3
+       Fresh similar v2.7.0
+       Fresh schemars v1.2.1
+       Fresh toml v0.9.12+spec-1.1.0
+       Fresh num-traits v0.2.19
+       Fresh rand_chacha v0.9.0
+       Fresh sha2 v0.10.9
+       Fresh insta v1.47.2
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-types)
+       Fresh proptest v1.11.0
+       Fresh diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-diff)
+       Fresh diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-domain)
+       Dirty diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-core): the file `crates/diffguard-core/src/sensor_api.rs` has changed (1775668717.384818714s, 2s after last build at 1775668715.264740037s)
+   Compiling diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-core)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0ea501e1fb5d6a5b -C extra-filename=-eb54202daf525fcb --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2f10298022ccb1a6 -C extra-filename=-e53d6514fc2b0b9b --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rmeta --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rmeta --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rmeta --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rmeta --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rmeta --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rmeta`
+error[E0277]: the trait bound `Path: Default` is not satisfied
+  --> crates/diffguard-core/src/sensor_api.rs:38:33
+   |
+38 |         Some(Box::leak(Box::new(Default::default()))) /* ~ changed by cargo-mutants ~ */
+   |                                 ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `Path`
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> crates/diffguard-core/src/sensor_api.rs:38:33
+   |
+38 |         Some(Box::leak(Box::new(Default::default()))) /* ~ changed by cargo-mutants ~ */
+   |                        -------- ^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |                        |
+   |                        required by a bound introduced by this call
+   |
+   = help: within `Path`, the trait `Sized` is not implemented for `[u8]`
+note: required because it appears within the type `Path`
+  --> /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/std/src/path.rs:2303:12
+note: required by a bound in `Box::<T>::new`
+  --> /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/alloc/src/boxed.rs:261:5
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `diffguard-core` (lib) due to 2 previous errors
+
+Caused by:
+  process didn't exit successfully: `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2f10298022ccb1a6 -C extra-filename=-e53d6514fc2b0b9b --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rmeta --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rmeta --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rmeta --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rmeta --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rmeta --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rmeta` (exit status: 1)
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `diffguard-core` (lib test) due to 2 previous errors
+
+Caused by:
+  process didn't exit successfully: `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0ea501e1fb5d6a5b -C extra-filename=-eb54202daf525fcb --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib` (exit status: 1)
+
+*** result: Failure(101)

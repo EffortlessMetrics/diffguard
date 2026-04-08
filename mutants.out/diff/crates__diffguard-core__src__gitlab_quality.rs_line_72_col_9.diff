@@ -1,0 +1,25 @@
+--- crates/diffguard-core/src/gitlab_quality.rs
++++ replace <impl From<Severity> for GitLabSeverity>::from -> Self with Default::default()
+@@ -64,21 +64,17 @@
+ #[derive(Debug, Clone, Serialize)]
+ pub struct GitLabContent {
+     /// Body of the content.
+     pub body: String,
+ }
+ 
+ impl From<Severity> for GitLabSeverity {
+     fn from(severity: Severity) -> Self {
+-        match severity {
+-            Severity::Info => GitLabSeverity::Info,
+-            Severity::Warn => GitLabSeverity::Minor,
+-            Severity::Error => GitLabSeverity::Major,
+-        }
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ /// Renders a CheckReceipt as a GitLab Code Quality report.
+ pub fn render_gitlab_quality_for_receipt(receipt: &CheckReceipt) -> GitLabQualityReport {
+     receipt.findings.iter().map(finding_to_gitlab).collect()
+ }
+ 

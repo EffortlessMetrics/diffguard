@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace >= with < in tokenize_git_paths
+@@ -450,17 +450,17 @@
+         if ch.is_whitespace() {
+             if !buf.is_empty() {
+                 tokens.push(GitPathToken {
+                     value: buf.clone(),
+                     quoted,
+                 });
+                 buf.clear();
+                 quoted = false;
+-                if tokens.len() >= limit {
++                if tokens.len() < /* ~ changed by cargo-mutants ~ */ limit {
+                     return tokens;
+                 }
+             }
+             continue;
+         }
+ 
+         if ch == '"' {
+             in_quote = true;

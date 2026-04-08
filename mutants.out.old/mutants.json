@@ -1,0 +1,2722 @@
+[
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_binary_file -> bool with true\n@@ -16,17 +16,17 @@\n /// Detects if a line indicates a binary file in the diff.\n ///\n /// Binary files are marked with lines like:\n /// - \"Binary files a/foo.png and b/foo.png differ\"\n /// - \"Binary files /dev/null and b/foo.png differ\"\n ///\n /// Requirements: 4.1\n pub fn is_binary_file(line: &str) -> bool {\n-    line.starts_with(\"Binary files \") && line.contains(\" differ\")\n+    true /* ~ changed by cargo-mutants ~ */\n }\n \n /// Detects if a line indicates a submodule change.\n ///\n /// Submodule changes are marked with lines like:\n /// - \"Subproject commit abc123...\"\n ///\n /// Requirements: 4.2\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_binary_file",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 25
+        },
+        "start": {
+          "column": 1,
+          "line": 16
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:24:5: replace is_binary_file -> bool with true",
+    "package": "diffguard-diff",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 66,
+        "line": 24
+      },
+      "start": {
+        "column": 5,
+        "line": 24
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_binary_file -> bool with false\n@@ -16,17 +16,17 @@\n /// Detects if a line indicates a binary file in the diff.\n ///\n /// Binary files are marked with lines like:\n /// - \"Binary files a/foo.png and b/foo.png differ\"\n /// - \"Binary files /dev/null and b/foo.png differ\"\n ///\n /// Requirements: 4.1\n pub fn is_binary_file(line: &str) -> bool {\n-    line.starts_with(\"Binary files \") && line.contains(\" differ\")\n+    false /* ~ changed by cargo-mutants ~ */\n }\n \n /// Detects if a line indicates a submodule change.\n ///\n /// Submodule changes are marked with lines like:\n /// - \"Subproject commit abc123...\"\n ///\n /// Requirements: 4.2\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_binary_file",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 25
+        },
+        "start": {
+          "column": 1,
+          "line": 16
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:24:5: replace is_binary_file -> bool with false",
+    "package": "diffguard-diff",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 66,
+        "line": 24
+      },
+      "start": {
+        "column": 5,
+        "line": 24
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace && with || in is_binary_file\n@@ -16,17 +16,17 @@\n /// Detects if a line indicates a binary file in the diff.\n ///\n /// Binary files are marked with lines like:\n /// - \"Binary files a/foo.png and b/foo.png differ\"\n /// - \"Binary files /dev/null and b/foo.png differ\"\n ///\n /// Requirements: 4.1\n pub fn is_binary_file(line: &str) -> bool {\n-    line.starts_with(\"Binary files \") && line.contains(\" differ\")\n+    line.starts_with(\"Binary files \") || /* ~ changed by cargo-mutants ~ */ line.contains(\" differ\")\n }\n \n /// Detects if a line indicates a submodule change.\n ///\n /// Submodule changes are marked with lines like:\n /// - \"Subproject commit abc123...\"\n ///\n /// Requirements: 4.2\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_binary_file",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 25
+        },
+        "start": {
+          "column": 1,
+          "line": 16
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:24:39: replace && with || in is_binary_file",
+    "package": "diffguard-diff",
+    "replacement": "||",
+    "span": {
+      "end": {
+        "column": 41,
+        "line": 24
+      },
+      "start": {
+        "column": 39,
+        "line": 24
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_submodule -> bool with true\n@@ -26,17 +26,17 @@\n \n /// Detects if a line indicates a submodule change.\n ///\n /// Submodule changes are marked with lines like:\n /// - \"Subproject commit abc123...\"\n ///\n /// Requirements: 4.2\n pub fn is_submodule(line: &str) -> bool {\n-    line.starts_with(\"Subproject commit \")\n+    true /* ~ changed by cargo-mutants ~ */\n }\n \n /// Detects if a line indicates a deleted file mode.\n ///\n /// Deleted files are marked with lines like:\n /// - \"deleted file mode 100644\"\n ///\n /// Requirements: 4.5\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_submodule",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 35
+        },
+        "start": {
+          "column": 1,
+          "line": 27
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:34:5: replace is_submodule -> bool with true",
+    "package": "diffguard-diff",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 43,
+        "line": 34
+      },
+      "start": {
+        "column": 5,
+        "line": 34
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_submodule -> bool with false\n@@ -26,17 +26,17 @@\n \n /// Detects if a line indicates a submodule change.\n ///\n /// Submodule changes are marked with lines like:\n /// - \"Subproject commit abc123...\"\n ///\n /// Requirements: 4.2\n pub fn is_submodule(line: &str) -> bool {\n-    line.starts_with(\"Subproject commit \")\n+    false /* ~ changed by cargo-mutants ~ */\n }\n \n /// Detects if a line indicates a deleted file mode.\n ///\n /// Deleted files are marked with lines like:\n /// - \"deleted file mode 100644\"\n ///\n /// Requirements: 4.5\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_submodule",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 35
+        },
+        "start": {
+          "column": 1,
+          "line": 27
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:34:5: replace is_submodule -> bool with false",
+    "package": "diffguard-diff",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 43,
+        "line": 34
+      },
+      "start": {
+        "column": 5,
+        "line": 34
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_deleted_file -> bool with true\n@@ -36,17 +36,17 @@\n \n /// Detects if a line indicates a deleted file mode.\n ///\n /// Deleted files are marked with lines like:\n /// - \"deleted file mode 100644\"\n ///\n /// Requirements: 4.5\n pub fn is_deleted_file(line: &str) -> bool {\n-    line.starts_with(\"deleted file mode \")\n+    true /* ~ changed by cargo-mutants ~ */\n }\n \n /// Detects if a line indicates a new file mode.\n ///\n /// New files are marked with lines like:\n /// - \"new file mode 100644\"\n pub fn is_new_file(line: &str) -> bool {\n     line.starts_with(\"new file mode \")\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_deleted_file",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 45
+        },
+        "start": {
+          "column": 1,
+          "line": 37
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:44:5: replace is_deleted_file -> bool with true",
+    "package": "diffguard-diff",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 43,
+        "line": 44
+      },
+      "start": {
+        "column": 5,
+        "line": 44
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_deleted_file -> bool with false\n@@ -36,17 +36,17 @@\n \n /// Detects if a line indicates a deleted file mode.\n ///\n /// Deleted files are marked with lines like:\n /// - \"deleted file mode 100644\"\n ///\n /// Requirements: 4.5\n pub fn is_deleted_file(line: &str) -> bool {\n-    line.starts_with(\"deleted file mode \")\n+    false /* ~ changed by cargo-mutants ~ */\n }\n \n /// Detects if a line indicates a new file mode.\n ///\n /// New files are marked with lines like:\n /// - \"new file mode 100644\"\n pub fn is_new_file(line: &str) -> bool {\n     line.starts_with(\"new file mode \")\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_deleted_file",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 45
+        },
+        "start": {
+          "column": 1,
+          "line": 37
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:44:5: replace is_deleted_file -> bool with false",
+    "package": "diffguard-diff",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 43,
+        "line": 44
+      },
+      "start": {
+        "column": 5,
+        "line": 44
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_new_file -> bool with true\n@@ -44,17 +44,17 @@\n     line.starts_with(\"deleted file mode \")\n }\n \n /// Detects if a line indicates a new file mode.\n ///\n /// New files are marked with lines like:\n /// - \"new file mode 100644\"\n pub fn is_new_file(line: &str) -> bool {\n-    line.starts_with(\"new file mode \")\n+    true /* ~ changed by cargo-mutants ~ */\n }\n \n /// Detects if a diff section represents a mode-only change (no content changes).\n ///\n /// Mode-only changes have lines like:\n /// - \"old mode 100644\"\n /// - \"new mode 100755\"\n ///\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_new_file",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 53
+        },
+        "start": {
+          "column": 1,
+          "line": 47
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:52:5: replace is_new_file -> bool with true",
+    "package": "diffguard-diff",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 39,
+        "line": 52
+      },
+      "start": {
+        "column": 5,
+        "line": 52
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_new_file -> bool with false\n@@ -44,17 +44,17 @@\n     line.starts_with(\"deleted file mode \")\n }\n \n /// Detects if a line indicates a new file mode.\n ///\n /// New files are marked with lines like:\n /// - \"new file mode 100644\"\n pub fn is_new_file(line: &str) -> bool {\n-    line.starts_with(\"new file mode \")\n+    false /* ~ changed by cargo-mutants ~ */\n }\n \n /// Detects if a diff section represents a mode-only change (no content changes).\n ///\n /// Mode-only changes have lines like:\n /// - \"old mode 100644\"\n /// - \"new mode 100755\"\n ///\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_new_file",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 53
+        },
+        "start": {
+          "column": 1,
+          "line": 47
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:52:5: replace is_new_file -> bool with false",
+    "package": "diffguard-diff",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 39,
+        "line": 52
+      },
+      "start": {
+        "column": 5,
+        "line": 52
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_mode_change_only -> bool with true\n@@ -58,17 +58,17 @@\n /// - \"old mode 100644\"\n /// - \"new mode 100755\"\n ///\n /// This function checks for the \"old mode\" marker which indicates a mode change.\n /// A mode-only change is one where only the file permissions changed, not the content.\n ///\n /// Requirements: 4.4\n pub fn is_mode_change_only(line: &str) -> bool {\n-    line.starts_with(\"old mode \") || line.starts_with(\"new mode \")\n+    true /* ~ changed by cargo-mutants ~ */\n }\n \n /// Parses a rename line and extracts the source path.\n ///\n /// Rename lines look like:\n /// - \"rename from path/to/old/file.rs\"\n ///\n /// Returns the path after \"rename from \" if the line matches, None otherwise.\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_mode_change_only",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 67
+        },
+        "start": {
+          "column": 1,
+          "line": 55
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:66:5: replace is_mode_change_only -> bool with true",
+    "package": "diffguard-diff",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 67,
+        "line": 66
+      },
+      "start": {
+        "column": 5,
+        "line": 66
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace is_mode_change_only -> bool with false\n@@ -58,17 +58,17 @@\n /// - \"old mode 100644\"\n /// - \"new mode 100755\"\n ///\n /// This function checks for the \"old mode\" marker which indicates a mode change.\n /// A mode-only change is one where only the file permissions changed, not the content.\n ///\n /// Requirements: 4.4\n pub fn is_mode_change_only(line: &str) -> bool {\n-    line.starts_with(\"old mode \") || line.starts_with(\"new mode \")\n+    false /* ~ changed by cargo-mutants ~ */\n }\n \n /// Parses a rename line and extracts the source path.\n ///\n /// Rename lines look like:\n /// - \"rename from path/to/old/file.rs\"\n ///\n /// Returns the path after \"rename from \" if the line matches, None otherwise.\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_mode_change_only",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 67
+        },
+        "start": {
+          "column": 1,
+          "line": 55
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:66:5: replace is_mode_change_only -> bool with false",
+    "package": "diffguard-diff",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 67,
+        "line": 66
+      },
+      "start": {
+        "column": 5,
+        "line": 66
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace || with && in is_mode_change_only\n@@ -58,17 +58,17 @@\n /// - \"old mode 100644\"\n /// - \"new mode 100755\"\n ///\n /// This function checks for the \"old mode\" marker which indicates a mode change.\n /// A mode-only change is one where only the file permissions changed, not the content.\n ///\n /// Requirements: 4.4\n pub fn is_mode_change_only(line: &str) -> bool {\n-    line.starts_with(\"old mode \") || line.starts_with(\"new mode \")\n+    line.starts_with(\"old mode \") && /* ~ changed by cargo-mutants ~ */ line.starts_with(\"new mode \")\n }\n \n /// Parses a rename line and extracts the source path.\n ///\n /// Rename lines look like:\n /// - \"rename from path/to/old/file.rs\"\n ///\n /// Returns the path after \"rename from \" if the line matches, None otherwise.\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "is_mode_change_only",
+      "return_type": "-> bool",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 67
+        },
+        "start": {
+          "column": 1,
+          "line": 55
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:66:35: replace || with && in is_mode_change_only",
+    "package": "diffguard-diff",
+    "replacement": "&&",
+    "span": {
+      "end": {
+        "column": 37,
+        "line": 66
+      },
+      "start": {
+        "column": 35,
+        "line": 66
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_rename_from -> Option<String> with None\n@@ -70,18 +70,17 @@\n ///\n /// Rename lines look like:\n /// - \"rename from path/to/old/file.rs\"\n ///\n /// Returns the path after \"rename from \" if the line matches, None otherwise.\n ///\n /// Requirements: 4.3\n pub fn parse_rename_from(line: &str) -> Option<String> {\n-    let rest = line.strip_prefix(\"rename from \")?;\n-    parse_rename_path(rest)\n+    None /* ~ changed by cargo-mutants ~ */\n }\n \n /// Parses a rename line and extracts the destination path.\n ///\n /// Rename lines look like:\n /// - \"rename to path/to/new/file.rs\"\n ///\n /// Returns the path after \"rename to \" if the line matches, None otherwise.\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_rename_from",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 80
+        },
+        "start": {
+          "column": 1,
+          "line": 69
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:78:5: replace parse_rename_from -> Option<String> with None",
+    "package": "diffguard-diff",
+    "replacement": "None",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 79
+      },
+      "start": {
+        "column": 5,
+        "line": 78
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_rename_from -> Option<String> with Some(String::new())\n@@ -70,18 +70,17 @@\n ///\n /// Rename lines look like:\n /// - \"rename from path/to/old/file.rs\"\n ///\n /// Returns the path after \"rename from \" if the line matches, None otherwise.\n ///\n /// Requirements: 4.3\n pub fn parse_rename_from(line: &str) -> Option<String> {\n-    let rest = line.strip_prefix(\"rename from \")?;\n-    parse_rename_path(rest)\n+    Some(String::new()) /* ~ changed by cargo-mutants ~ */\n }\n \n /// Parses a rename line and extracts the destination path.\n ///\n /// Rename lines look like:\n /// - \"rename to path/to/new/file.rs\"\n ///\n /// Returns the path after \"rename to \" if the line matches, None otherwise.\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_rename_from",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 80
+        },
+        "start": {
+          "column": 1,
+          "line": 69
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:78:5: replace parse_rename_from -> Option<String> with Some(String::new())",
+    "package": "diffguard-diff",
+    "replacement": "Some(String::new())",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 79
+      },
+      "start": {
+        "column": 5,
+        "line": 78
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_rename_from -> Option<String> with Some(\"xyzzy\".into())\n@@ -70,18 +70,17 @@\n ///\n /// Rename lines look like:\n /// - \"rename from path/to/old/file.rs\"\n ///\n /// Returns the path after \"rename from \" if the line matches, None otherwise.\n ///\n /// Requirements: 4.3\n pub fn parse_rename_from(line: &str) -> Option<String> {\n-    let rest = line.strip_prefix(\"rename from \")?;\n-    parse_rename_path(rest)\n+    Some(\"xyzzy\".into()) /* ~ changed by cargo-mutants ~ */\n }\n \n /// Parses a rename line and extracts the destination path.\n ///\n /// Rename lines look like:\n /// - \"rename to path/to/new/file.rs\"\n ///\n /// Returns the path after \"rename to \" if the line matches, None otherwise.\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_rename_from",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 80
+        },
+        "start": {
+          "column": 1,
+          "line": 69
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:78:5: replace parse_rename_from -> Option<String> with Some(\"xyzzy\".into())",
+    "package": "diffguard-diff",
+    "replacement": "Some(\"xyzzy\".into())",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 79
+      },
+      "start": {
+        "column": 5,
+        "line": 78
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_rename_to -> Option<String> with None\n@@ -83,18 +83,17 @@\n ///\n /// Rename lines look like:\n /// - \"rename to path/to/new/file.rs\"\n ///\n /// Returns the path after \"rename to \" if the line matches, None otherwise.\n ///\n /// Requirements: 4.3\n pub fn parse_rename_to(line: &str) -> Option<String> {\n-    let rest = line.strip_prefix(\"rename to \")?;\n-    parse_rename_path(rest)\n+    None /* ~ changed by cargo-mutants ~ */\n }\n \n #[derive(Debug, Clone, PartialEq, Eq)]\n pub struct DiffLine {\n     pub path: String,\n     pub line: u32,\n     pub content: String,\n     pub kind: ChangeKind,\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_rename_to",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 93
+        },
+        "start": {
+          "column": 1,
+          "line": 82
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:91:5: replace parse_rename_to -> Option<String> with None",
+    "package": "diffguard-diff",
+    "replacement": "None",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 92
+      },
+      "start": {
+        "column": 5,
+        "line": 91
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_rename_to -> Option<String> with Some(String::new())\n@@ -83,18 +83,17 @@\n ///\n /// Rename lines look like:\n /// - \"rename to path/to/new/file.rs\"\n ///\n /// Returns the path after \"rename to \" if the line matches, None otherwise.\n ///\n /// Requirements: 4.3\n pub fn parse_rename_to(line: &str) -> Option<String> {\n-    let rest = line.strip_prefix(\"rename to \")?;\n-    parse_rename_path(rest)\n+    Some(String::new()) /* ~ changed by cargo-mutants ~ */\n }\n \n #[derive(Debug, Clone, PartialEq, Eq)]\n pub struct DiffLine {\n     pub path: String,\n     pub line: u32,\n     pub content: String,\n     pub kind: ChangeKind,\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_rename_to",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 93
+        },
+        "start": {
+          "column": 1,
+          "line": 82
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:91:5: replace parse_rename_to -> Option<String> with Some(String::new())",
+    "package": "diffguard-diff",
+    "replacement": "Some(String::new())",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 92
+      },
+      "start": {
+        "column": 5,
+        "line": 91
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_rename_to -> Option<String> with Some(\"xyzzy\".into())\n@@ -83,18 +83,17 @@\n ///\n /// Rename lines look like:\n /// - \"rename to path/to/new/file.rs\"\n ///\n /// Returns the path after \"rename to \" if the line matches, None otherwise.\n ///\n /// Requirements: 4.3\n pub fn parse_rename_to(line: &str) -> Option<String> {\n-    let rest = line.strip_prefix(\"rename to \")?;\n-    parse_rename_path(rest)\n+    Some(\"xyzzy\".into()) /* ~ changed by cargo-mutants ~ */\n }\n \n #[derive(Debug, Clone, PartialEq, Eq)]\n pub struct DiffLine {\n     pub path: String,\n     pub line: u32,\n     pub content: String,\n     pub kind: ChangeKind,\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_rename_to",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 93
+        },
+        "start": {
+          "column": 1,
+          "line": 82
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:91:5: replace parse_rename_to -> Option<String> with Some(\"xyzzy\".into())",
+    "package": "diffguard-diff",
+    "replacement": "Some(\"xyzzy\".into())",
+    "span": {
+      "end": {
+        "column": 28,
+        "line": 92
+      },
+      "start": {
+        "column": 5,
+        "line": 91
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_unified_diff -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> with Ok((vec![], Default::default()))\n@@ -126,211 +126,17 @@\n /// - Deleted files: skipped unless `scope = deleted`\n /// - Mode-only changes: skipped (no lines extracted)\n /// - Renamed files: uses the new (destination) path\n /// - Malformed content: continues processing subsequent files\n pub fn parse_unified_diff(\n     diff_text: &str,\n     scope: Scope,\n ) -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> {\n-    let mut out: Vec<DiffLine> = Vec::new();\n-    let mut current_path: Option<String> = None;\n-\n-    let mut old_line_no: u32 = 0;\n-    let mut new_line_no: u32 = 0;\n-    let mut in_hunk = false;\n-\n-    // For \"changed\"/\"modified\" scopes: treat '+' lines as changed if a '-' was seen\n-    // since the last context line.\n-    let mut pending_removed = false;\n-\n-    // Track special file status for the current file\n-    let mut skip_current_file = false;\n-    let mut rename_to_path: Option<String> = None;\n-\n-    for raw in diff_text.lines() {\n-        if raw.starts_with(\"diff --git \") {\n-            // Reset state for new file\n-            in_hunk = false;\n-            pending_removed = false;\n-            skip_current_file = false;\n-            rename_to_path = None;\n-\n-            // Example: diff --git a/foo b/foo\n-            if let Some(p) = parse_diff_git_line(raw) {\n-                current_path = Some(p);\n-            }\n-            continue;\n-        }\n-\n-        // Detect binary files (Requirements 4.1)\n-        if is_binary_file(raw) {\n-            skip_current_file = true;\n-            continue;\n-        }\n-\n-        // Detect submodule changes (Requirements 4.2)\n-        if is_submodule(raw) {\n-            skip_current_file = true;\n-            continue;\n-        }\n-\n-        // Detect deleted files (Requirements 4.5)\n-        if is_deleted_file(raw) {\n-            skip_current_file = !matches!(scope, Scope::Deleted);\n-            continue;\n-        }\n-\n-        // Detect mode changes (Requirements 4.4)\n-        // Mode-only changes are skipped - they have no content to scan\n-        if is_mode_change_only(raw) {\n-            continue;\n-        }\n-\n-        // Detect renamed files (Requirements 4.3)\n-        if let Some(to_path) = parse_rename_to(raw) {\n-            rename_to_path = Some(to_path);\n-            continue;\n-        }\n-\n-        // Skip \"rename from\" lines (we only care about the destination)\n-        if parse_rename_from(raw).is_some() {\n-            continue;\n-        }\n-\n-        if raw.starts_with(\"+++ \") {\n-            // Prefer the +++ path if present, unless we have a rename_to path\n-            if rename_to_path.is_none() {\n-                if let Some(p) = parse_plus_plus_plus(raw) {\n-                    current_path = Some(p);\n-                }\n-            } else {\n-                // Use the rename_to path for renamed files\n-                current_path = rename_to_path.take();\n-            }\n-            continue;\n-        }\n-\n-        if raw.starts_with(\"@@\") {\n-            if skip_current_file {\n-                continue;\n-            }\n-\n-            // Try to parse the hunk header, but continue processing on error (Requirements 4.6)\n-            match parse_hunk_header(raw) {\n-                Ok(hdr) => {\n-                    old_line_no = hdr.old_start;\n-                    new_line_no = hdr.new_start;\n-                    in_hunk = true;\n-                    pending_removed = false;\n-                }\n-                Err(_) => {\n-                    // Malformed hunk header - skip this hunk but continue processing\n-                    // This allows subsequent files to be processed (Requirements 4.6)\n-                    in_hunk = false;\n-                }\n-            }\n-            continue;\n-        }\n-\n-        // Skip if we're not in a hunk or if the current file should be skipped\n-        if !in_hunk || skip_current_file {\n-            continue;\n-        }\n-\n-        let Some(path) = current_path.as_deref() else {\n-            continue;\n-        };\n-\n-        // Skip file marker lines\n-        if raw.starts_with(\"+++\") || raw.starts_with(\"---\") {\n-            continue;\n-        }\n-\n-        if raw.starts_with('\\\\') {\n-            // \"\\\\ No newline at end of file\"\n-            continue;\n-        }\n-\n-        let first = raw.as_bytes().first().copied();\n-        match first {\n-            Some(b'+') => {\n-                // Check if this is a submodule content line (Requirements 4.2)\n-                let content = &raw[1..];\n-                if is_submodule(content) {\n-                    skip_current_file = true;\n-                    in_hunk = false;\n-                    continue;\n-                }\n-\n-                // Added line.\n-                let is_changed = pending_removed;\n-                let include = match scope {\n-                    Scope::Added => true,\n-                    Scope::Changed | Scope::Modified => is_changed,\n-                    Scope::Deleted => false,\n-                };\n-\n-                if include {\n-                    out.push(DiffLine {\n-                        path: path.to_string(),\n-                        line: new_line_no,\n-                        content: content.to_string(),\n-                        kind: if is_changed {\n-                            ChangeKind::Changed\n-                        } else {\n-                            ChangeKind::Added\n-                        },\n-                    });\n-                }\n-\n-                new_line_no = new_line_no.saturating_add(1);\n-            }\n-            Some(b'-') => {\n-                // Check if this is a submodule content line (Requirements 4.2)\n-                let content = &raw[1..];\n-                if is_submodule(content) {\n-                    skip_current_file = true;\n-                    in_hunk = false;\n-                    continue;\n-                }\n-\n-                // Removed line.\n-                if matches!(scope, Scope::Deleted) {\n-                    out.push(DiffLine {\n-                        path: path.to_string(),\n-                        line: old_line_no,\n-                        content: content.to_string(),\n-                        kind: ChangeKind::Deleted,\n-                    });\n-                }\n-                pending_removed = true;\n-                old_line_no = old_line_no.saturating_add(1);\n-            }\n-            Some(b' ') => {\n-                // Context line.\n-                pending_removed = false;\n-                old_line_no = old_line_no.saturating_add(1);\n-                new_line_no = new_line_no.saturating_add(1);\n-            }\n-            _ => {}\n-        }\n-    }\n-\n-    let mut files = std::collections::BTreeSet::<String>::new();\n-    for l in &out {\n-        files.insert(l.path.clone());\n-    }\n-\n-    let stats = DiffStats {\n-        files: files.len() as u32,\n-        lines: out.len() as u32,\n-    };\n-\n-    Ok((out, stats))\n+    Ok((vec![], Default::default())) /* ~ changed by cargo-mutants ~ */\n }\n \n #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n struct HunkHeader {\n     old_start: u32,\n     new_start: u32,\n }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_unified_diff",
+      "return_type": "-> Result<(Vec<DiffLine>, DiffStats), DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 329
+        },
+        "start": {
+          "column": 1,
+          "line": 115
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:134:5: replace parse_unified_diff -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> with Ok((vec![], Default::default()))",
+    "package": "diffguard-diff",
+    "replacement": "Ok((vec![], Default::default()))",
+    "span": {
+      "end": {
+        "column": 21,
+        "line": 328
+      },
+      "start": {
+        "column": 5,
+        "line": 134
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_unified_diff -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> with Ok((vec![Default::default()], Default::default()))\n@@ -126,211 +126,17 @@\n /// - Deleted files: skipped unless `scope = deleted`\n /// - Mode-only changes: skipped (no lines extracted)\n /// - Renamed files: uses the new (destination) path\n /// - Malformed content: continues processing subsequent files\n pub fn parse_unified_diff(\n     diff_text: &str,\n     scope: Scope,\n ) -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> {\n-    let mut out: Vec<DiffLine> = Vec::new();\n-    let mut current_path: Option<String> = None;\n-\n-    let mut old_line_no: u32 = 0;\n-    let mut new_line_no: u32 = 0;\n-    let mut in_hunk = false;\n-\n-    // For \"changed\"/\"modified\" scopes: treat '+' lines as changed if a '-' was seen\n-    // since the last context line.\n-    let mut pending_removed = false;\n-\n-    // Track special file status for the current file\n-    let mut skip_current_file = false;\n-    let mut rename_to_path: Option<String> = None;\n-\n-    for raw in diff_text.lines() {\n-        if raw.starts_with(\"diff --git \") {\n-            // Reset state for new file\n-            in_hunk = false;\n-            pending_removed = false;\n-            skip_current_file = false;\n-            rename_to_path = None;\n-\n-            // Example: diff --git a/foo b/foo\n-            if let Some(p) = parse_diff_git_line(raw) {\n-                current_path = Some(p);\n-            }\n-            continue;\n-        }\n-\n-        // Detect binary files (Requirements 4.1)\n-        if is_binary_file(raw) {\n-            skip_current_file = true;\n-            continue;\n-        }\n-\n-        // Detect submodule changes (Requirements 4.2)\n-        if is_submodule(raw) {\n-            skip_current_file = true;\n-            continue;\n-        }\n-\n-        // Detect deleted files (Requirements 4.5)\n-        if is_deleted_file(raw) {\n-            skip_current_file = !matches!(scope, Scope::Deleted);\n-            continue;\n-        }\n-\n-        // Detect mode changes (Requirements 4.4)\n-        // Mode-only changes are skipped - they have no content to scan\n-        if is_mode_change_only(raw) {\n-            continue;\n-        }\n-\n-        // Detect renamed files (Requirements 4.3)\n-        if let Some(to_path) = parse_rename_to(raw) {\n-            rename_to_path = Some(to_path);\n-            continue;\n-        }\n-\n-        // Skip \"rename from\" lines (we only care about the destination)\n-        if parse_rename_from(raw).is_some() {\n-            continue;\n-        }\n-\n-        if raw.starts_with(\"+++ \") {\n-            // Prefer the +++ path if present, unless we have a rename_to path\n-            if rename_to_path.is_none() {\n-                if let Some(p) = parse_plus_plus_plus(raw) {\n-                    current_path = Some(p);\n-                }\n-            } else {\n-                // Use the rename_to path for renamed files\n-                current_path = rename_to_path.take();\n-            }\n-            continue;\n-        }\n-\n-        if raw.starts_with(\"@@\") {\n-            if skip_current_file {\n-                continue;\n-            }\n-\n-            // Try to parse the hunk header, but continue processing on error (Requirements 4.6)\n-            match parse_hunk_header(raw) {\n-                Ok(hdr) => {\n-                    old_line_no = hdr.old_start;\n-                    new_line_no = hdr.new_start;\n-                    in_hunk = true;\n-                    pending_removed = false;\n-                }\n-                Err(_) => {\n-                    // Malformed hunk header - skip this hunk but continue processing\n-                    // This allows subsequent files to be processed (Requirements 4.6)\n-                    in_hunk = false;\n-                }\n-            }\n-            continue;\n-        }\n-\n-        // Skip if we're not in a hunk or if the current file should be skipped\n-        if !in_hunk || skip_current_file {\n-            continue;\n-        }\n-\n-        let Some(path) = current_path.as_deref() else {\n-            continue;\n-        };\n-\n-        // Skip file marker lines\n-        if raw.starts_with(\"+++\") || raw.starts_with(\"---\") {\n-            continue;\n-        }\n-\n-        if raw.starts_with('\\\\') {\n-            // \"\\\\ No newline at end of file\"\n-            continue;\n-        }\n-\n-        let first = raw.as_bytes().first().copied();\n-        match first {\n-            Some(b'+') => {\n-                // Check if this is a submodule content line (Requirements 4.2)\n-                let content = &raw[1..];\n-                if is_submodule(content) {\n-                    skip_current_file = true;\n-                    in_hunk = false;\n-                    continue;\n-                }\n-\n-                // Added line.\n-                let is_changed = pending_removed;\n-                let include = match scope {\n-                    Scope::Added => true,\n-                    Scope::Changed | Scope::Modified => is_changed,\n-                    Scope::Deleted => false,\n-                };\n-\n-                if include {\n-                    out.push(DiffLine {\n-                        path: path.to_string(),\n-                        line: new_line_no,\n-                        content: content.to_string(),\n-                        kind: if is_changed {\n-                            ChangeKind::Changed\n-                        } else {\n-                            ChangeKind::Added\n-                        },\n-                    });\n-                }\n-\n-                new_line_no = new_line_no.saturating_add(1);\n-            }\n-            Some(b'-') => {\n-                // Check if this is a submodule content line (Requirements 4.2)\n-                let content = &raw[1..];\n-                if is_submodule(content) {\n-                    skip_current_file = true;\n-                    in_hunk = false;\n-                    continue;\n-                }\n-\n-                // Removed line.\n-                if matches!(scope, Scope::Deleted) {\n-                    out.push(DiffLine {\n-                        path: path.to_string(),\n-                        line: old_line_no,\n-                        content: content.to_string(),\n-                        kind: ChangeKind::Deleted,\n-                    });\n-                }\n-                pending_removed = true;\n-                old_line_no = old_line_no.saturating_add(1);\n-            }\n-            Some(b' ') => {\n-                // Context line.\n-                pending_removed = false;\n-                old_line_no = old_line_no.saturating_add(1);\n-                new_line_no = new_line_no.saturating_add(1);\n-            }\n-            _ => {}\n-        }\n-    }\n-\n-    let mut files = std::collections::BTreeSet::<String>::new();\n-    for l in &out {\n-        files.insert(l.path.clone());\n-    }\n-\n-    let stats = DiffStats {\n-        files: files.len() as u32,\n-        lines: out.len() as u32,\n-    };\n-\n-    Ok((out, stats))\n+    Ok((vec![Default::default()], Default::default())) /* ~ changed by cargo-mutants ~ */\n }\n \n #[derive(Debug, Clone, Copy, PartialEq, Eq)]\n struct HunkHeader {\n     old_start: u32,\n     new_start: u32,\n }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_unified_diff",
+      "return_type": "-> Result<(Vec<DiffLine>, DiffStats), DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 329
+        },
+        "start": {
+          "column": 1,
+          "line": 115
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:134:5: replace parse_unified_diff -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> with Ok((vec![Default::default()], Default::default()))",
+    "package": "diffguard-diff",
+    "replacement": "Ok((vec![Default::default()], Default::default()))",
+    "span": {
+      "end": {
+        "column": 21,
+        "line": 328
+      },
+      "start": {
+        "column": 5,
+        "line": 134
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete ! in parse_unified_diff\n@@ -170,17 +170,17 @@\n         // Detect submodule changes (Requirements 4.2)\n         if is_submodule(raw) {\n             skip_current_file = true;\n             continue;\n         }\n \n         // Detect deleted files (Requirements 4.5)\n         if is_deleted_file(raw) {\n-            skip_current_file = !matches!(scope, Scope::Deleted);\n+            skip_current_file =  /* ~ changed by cargo-mutants ~ */matches!(scope, Scope::Deleted);\n             continue;\n         }\n \n         // Detect mode changes (Requirements 4.4)\n         // Mode-only changes are skipped - they have no content to scan\n         if is_mode_change_only(raw) {\n             continue;\n         }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_unified_diff",
+      "return_type": "-> Result<(Vec<DiffLine>, DiffStats), DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 329
+        },
+        "start": {
+          "column": 1,
+          "line": 115
+        }
+      }
+    },
+    "genre": "UnaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:178:33: delete ! in parse_unified_diff",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 34,
+        "line": 178
+      },
+      "start": {
+        "column": 33,
+        "line": 178
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace || with && in parse_unified_diff\n@@ -227,17 +227,17 @@\n                     // This allows subsequent files to be processed (Requirements 4.6)\n                     in_hunk = false;\n                 }\n             }\n             continue;\n         }\n \n         // Skip if we're not in a hunk or if the current file should be skipped\n-        if !in_hunk || skip_current_file {\n+        if !in_hunk && /* ~ changed by cargo-mutants ~ */ skip_current_file {\n             continue;\n         }\n \n         let Some(path) = current_path.as_deref() else {\n             continue;\n         };\n \n         // Skip file marker lines\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_unified_diff",
+      "return_type": "-> Result<(Vec<DiffLine>, DiffStats), DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 329
+        },
+        "start": {
+          "column": 1,
+          "line": 115
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:235:21: replace || with && in parse_unified_diff",
+    "package": "diffguard-diff",
+    "replacement": "&&",
+    "span": {
+      "end": {
+        "column": 23,
+        "line": 235
+      },
+      "start": {
+        "column": 21,
+        "line": 235
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete ! in parse_unified_diff\n@@ -227,17 +227,17 @@\n                     // This allows subsequent files to be processed (Requirements 4.6)\n                     in_hunk = false;\n                 }\n             }\n             continue;\n         }\n \n         // Skip if we're not in a hunk or if the current file should be skipped\n-        if !in_hunk || skip_current_file {\n+        if  /* ~ changed by cargo-mutants ~ */in_hunk || skip_current_file {\n             continue;\n         }\n \n         let Some(path) = current_path.as_deref() else {\n             continue;\n         };\n \n         // Skip file marker lines\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_unified_diff",
+      "return_type": "-> Result<(Vec<DiffLine>, DiffStats), DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 329
+        },
+        "start": {
+          "column": 1,
+          "line": 115
+        }
+      }
+    },
+    "genre": "UnaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:235:12: delete ! in parse_unified_diff",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 13,
+        "line": 235
+      },
+      "start": {
+        "column": 12,
+        "line": 235
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace || with && in parse_unified_diff\n@@ -236,17 +236,17 @@\n             continue;\n         }\n \n         let Some(path) = current_path.as_deref() else {\n             continue;\n         };\n \n         // Skip file marker lines\n-        if raw.starts_with(\"+++\") || raw.starts_with(\"---\") {\n+        if raw.starts_with(\"+++\") && /* ~ changed by cargo-mutants ~ */ raw.starts_with(\"---\") {\n             continue;\n         }\n \n         if raw.starts_with('\\\\') {\n             // \"\\\\ No newline at end of file\"\n             continue;\n         }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_unified_diff",
+      "return_type": "-> Result<(Vec<DiffLine>, DiffStats), DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 329
+        },
+        "start": {
+          "column": 1,
+          "line": 115
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:244:35: replace || with && in parse_unified_diff",
+    "package": "diffguard-diff",
+    "replacement": "&&",
+    "span": {
+      "end": {
+        "column": 37,
+        "line": 244
+      },
+      "start": {
+        "column": 35,
+        "line": 244
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm Some(b'+') in parse_unified_diff\n@@ -247,48 +247,17 @@\n \n         if raw.starts_with('\\\\') {\n             // \"\\\\ No newline at end of file\"\n             continue;\n         }\n \n         let first = raw.as_bytes().first().copied();\n         match first {\n-            Some(b'+') => {\n-                // Check if this is a submodule content line (Requirements 4.2)\n-                let content = &raw[1..];\n-                if is_submodule(content) {\n-                    skip_current_file = true;\n-                    in_hunk = false;\n-                    continue;\n-                }\n-\n-                // Added line.\n-                let is_changed = pending_removed;\n-                let include = match scope {\n-                    Scope::Added => true,\n-                    Scope::Changed | Scope::Modified => is_changed,\n-                    Scope::Deleted => false,\n-                };\n-\n-                if include {\n-                    out.push(DiffLine {\n-                        path: path.to_string(),\n-                        line: new_line_no,\n-                        content: content.to_string(),\n-                        kind: if is_changed {\n-                            ChangeKind::Changed\n-                        } else {\n-                            ChangeKind::Added\n-                        },\n-                    });\n-                }\n-\n-                new_line_no = new_line_no.saturating_add(1);\n-            }\n+             /* ~ changed by cargo-mutants ~ */\n             Some(b'-') => {\n                 // Check if this is a submodule content line (Requirements 4.2)\n                 let content = &raw[1..];\n                 if is_submodule(content) {\n                     skip_current_file = true;\n                     in_hunk = false;\n                     continue;\n                 }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_unified_diff",
+      "return_type": "-> Result<(Vec<DiffLine>, DiffStats), DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 329
+        },
+        "start": {
+          "column": 1,
+          "line": 115
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:255:13: delete match arm Some(b'+') in parse_unified_diff",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 14,
+        "line": 286
+      },
+      "start": {
+        "column": 13,
+        "line": 255
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm Some(b'-') in parse_unified_diff\n@@ -279,37 +279,17 @@\n                         } else {\n                             ChangeKind::Added\n                         },\n                     });\n                 }\n \n                 new_line_no = new_line_no.saturating_add(1);\n             }\n-            Some(b'-') => {\n-                // Check if this is a submodule content line (Requirements 4.2)\n-                let content = &raw[1..];\n-                if is_submodule(content) {\n-                    skip_current_file = true;\n-                    in_hunk = false;\n-                    continue;\n-                }\n-\n-                // Removed line.\n-                if matches!(scope, Scope::Deleted) {\n-                    out.push(DiffLine {\n-                        path: path.to_string(),\n-                        line: old_line_no,\n-                        content: content.to_string(),\n-                        kind: ChangeKind::Deleted,\n-                    });\n-                }\n-                pending_removed = true;\n-                old_line_no = old_line_no.saturating_add(1);\n-            }\n+             /* ~ changed by cargo-mutants ~ */\n             Some(b' ') => {\n                 // Context line.\n                 pending_removed = false;\n                 old_line_no = old_line_no.saturating_add(1);\n                 new_line_no = new_line_no.saturating_add(1);\n             }\n             _ => {}\n         }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_unified_diff",
+      "return_type": "-> Result<(Vec<DiffLine>, DiffStats), DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 329
+        },
+        "start": {
+          "column": 1,
+          "line": 115
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:287:13: delete match arm Some(b'-') in parse_unified_diff",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 14,
+        "line": 307
+      },
+      "start": {
+        "column": 13,
+        "line": 287
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm Some(b' ') in parse_unified_diff\n@@ -300,22 +300,17 @@\n                         line: old_line_no,\n                         content: content.to_string(),\n                         kind: ChangeKind::Deleted,\n                     });\n                 }\n                 pending_removed = true;\n                 old_line_no = old_line_no.saturating_add(1);\n             }\n-            Some(b' ') => {\n-                // Context line.\n-                pending_removed = false;\n-                old_line_no = old_line_no.saturating_add(1);\n-                new_line_no = new_line_no.saturating_add(1);\n-            }\n+             /* ~ changed by cargo-mutants ~ */\n             _ => {}\n         }\n     }\n \n     let mut files = std::collections::BTreeSet::<String>::new();\n     for l in &out {\n         files.insert(l.path.clone());\n     }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_unified_diff",
+      "return_type": "-> Result<(Vec<DiffLine>, DiffStats), DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 329
+        },
+        "start": {
+          "column": 1,
+          "line": 115
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:308:13: delete match arm Some(b' ') in parse_unified_diff",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 14,
+        "line": 313
+      },
+      "start": {
+        "column": 13,
+        "line": 308
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_hunk_header -> Result<HunkHeader, DiffParseError> with Ok(Default::default())\n@@ -333,32 +333,17 @@\n     old_start: u32,\n     new_start: u32,\n }\n \n fn parse_hunk_header(line: &str) -> Result<HunkHeader, DiffParseError> {\n     // Formats:\n     // @@ -1,2 +3,4 @@\n     // @@ -1 +3 @@\n-    let minus = line\n-        .split_whitespace()\n-        .nth(1)\n-        .ok_or_else(|| DiffParseError::MalformedHunkHeader(line.to_string()))?;\n-    let plus = line\n-        .split_whitespace()\n-        .nth(2)\n-        .ok_or_else(|| DiffParseError::MalformedHunkHeader(line.to_string()))?;\n-\n-    let old_start = parse_hunk_range_start(minus, '-', line)?;\n-    let new_start = parse_hunk_range_start(plus, '+', line)?;\n-\n-    Ok(HunkHeader {\n-        old_start,\n-        new_start,\n-    })\n+    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_hunk_range_start(\n     token: &str,\n     expected_prefix: char,\n     full_line: &str,\n ) -> Result<u32, DiffParseError> {\n     let range = token\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_hunk_header",
+      "return_type": "-> Result<HunkHeader, DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 357
+        },
+        "start": {
+          "column": 1,
+          "line": 337
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:341:5: replace parse_hunk_header -> Result<HunkHeader, DiffParseError> with Ok(Default::default())",
+    "package": "diffguard-diff",
+    "replacement": "Ok(Default::default())",
+    "span": {
+      "end": {
+        "column": 7,
+        "line": 356
+      },
+      "start": {
+        "column": 5,
+        "line": 341
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_hunk_range_start -> Result<u32, DiffParseError> with Ok(0)\n@@ -356,23 +356,17 @@\n     })\n }\n \n fn parse_hunk_range_start(\n     token: &str,\n     expected_prefix: char,\n     full_line: &str,\n ) -> Result<u32, DiffParseError> {\n-    let range = token\n-        .strip_prefix(expected_prefix)\n-        .ok_or_else(|| DiffParseError::MalformedHunkHeader(full_line.to_string()))?;\n-    let start_str = range.split(',').next().unwrap_or(range);\n-    start_str\n-        .parse()\n-        .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))\n+    Ok(0) /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_diff_git_line(line: &str) -> Option<String> {\n     // diff --git a/foo b/foo\n     let rest = line.strip_prefix(\"diff --git \")?;\n     let tokens = tokenize_git_paths(rest, 2);\n     if tokens.len() < 2 {\n         return None;\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_hunk_range_start",
+      "return_type": "-> Result<u32, DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 371
+        },
+        "start": {
+          "column": 1,
+          "line": 359
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:364:5: replace parse_hunk_range_start -> Result<u32, DiffParseError> with Ok(0)",
+    "package": "diffguard-diff",
+    "replacement": "Ok(0)",
+    "span": {
+      "end": {
+        "column": 81,
+        "line": 370
+      },
+      "start": {
+        "column": 5,
+        "line": 364
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_hunk_range_start -> Result<u32, DiffParseError> with Ok(1)\n@@ -356,23 +356,17 @@\n     })\n }\n \n fn parse_hunk_range_start(\n     token: &str,\n     expected_prefix: char,\n     full_line: &str,\n ) -> Result<u32, DiffParseError> {\n-    let range = token\n-        .strip_prefix(expected_prefix)\n-        .ok_or_else(|| DiffParseError::MalformedHunkHeader(full_line.to_string()))?;\n-    let start_str = range.split(',').next().unwrap_or(range);\n-    start_str\n-        .parse()\n-        .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))\n+    Ok(1) /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_diff_git_line(line: &str) -> Option<String> {\n     // diff --git a/foo b/foo\n     let rest = line.strip_prefix(\"diff --git \")?;\n     let tokens = tokenize_git_paths(rest, 2);\n     if tokens.len() < 2 {\n         return None;\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_hunk_range_start",
+      "return_type": "-> Result<u32, DiffParseError>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 371
+        },
+        "start": {
+          "column": 1,
+          "line": 359
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:364:5: replace parse_hunk_range_start -> Result<u32, DiffParseError> with Ok(1)",
+    "package": "diffguard-diff",
+    "replacement": "Ok(1)",
+    "span": {
+      "end": {
+        "column": 81,
+        "line": 370
+      },
+      "start": {
+        "column": 5,
+        "line": 364
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_diff_git_line -> Option<String> with None\n@@ -367,23 +367,17 @@\n     let start_str = range.split(',').next().unwrap_or(range);\n     start_str\n         .parse()\n         .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))\n }\n \n fn parse_diff_git_line(line: &str) -> Option<String> {\n     // diff --git a/foo b/foo\n-    let rest = line.strip_prefix(\"diff --git \")?;\n-    let tokens = tokenize_git_paths(rest, 2);\n-    if tokens.len() < 2 {\n-        return None;\n-    }\n-    let b = unquote_git_token(&tokens[1]);\n-    strip_prefix_path(&b)\n+    None /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n     let rest = line.strip_prefix(\"+++ \")?;\n     let token = parse_single_git_path(rest)?;\n     if token == \"/dev/null\" {\n         return None;\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_diff_git_line",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 382
+        },
+        "start": {
+          "column": 1,
+          "line": 373
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:375:5: replace parse_diff_git_line -> Option<String> with None",
+    "package": "diffguard-diff",
+    "replacement": "None",
+    "span": {
+      "end": {
+        "column": 26,
+        "line": 381
+      },
+      "start": {
+        "column": 5,
+        "line": 375
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_diff_git_line -> Option<String> with Some(String::new())\n@@ -367,23 +367,17 @@\n     let start_str = range.split(',').next().unwrap_or(range);\n     start_str\n         .parse()\n         .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))\n }\n \n fn parse_diff_git_line(line: &str) -> Option<String> {\n     // diff --git a/foo b/foo\n-    let rest = line.strip_prefix(\"diff --git \")?;\n-    let tokens = tokenize_git_paths(rest, 2);\n-    if tokens.len() < 2 {\n-        return None;\n-    }\n-    let b = unquote_git_token(&tokens[1]);\n-    strip_prefix_path(&b)\n+    Some(String::new()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n     let rest = line.strip_prefix(\"+++ \")?;\n     let token = parse_single_git_path(rest)?;\n     if token == \"/dev/null\" {\n         return None;\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_diff_git_line",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 382
+        },
+        "start": {
+          "column": 1,
+          "line": 373
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:375:5: replace parse_diff_git_line -> Option<String> with Some(String::new())",
+    "package": "diffguard-diff",
+    "replacement": "Some(String::new())",
+    "span": {
+      "end": {
+        "column": 26,
+        "line": 381
+      },
+      "start": {
+        "column": 5,
+        "line": 375
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_diff_git_line -> Option<String> with Some(\"xyzzy\".into())\n@@ -367,23 +367,17 @@\n     let start_str = range.split(',').next().unwrap_or(range);\n     start_str\n         .parse()\n         .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))\n }\n \n fn parse_diff_git_line(line: &str) -> Option<String> {\n     // diff --git a/foo b/foo\n-    let rest = line.strip_prefix(\"diff --git \")?;\n-    let tokens = tokenize_git_paths(rest, 2);\n-    if tokens.len() < 2 {\n-        return None;\n-    }\n-    let b = unquote_git_token(&tokens[1]);\n-    strip_prefix_path(&b)\n+    Some(\"xyzzy\".into()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n     let rest = line.strip_prefix(\"+++ \")?;\n     let token = parse_single_git_path(rest)?;\n     if token == \"/dev/null\" {\n         return None;\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_diff_git_line",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 382
+        },
+        "start": {
+          "column": 1,
+          "line": 373
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:375:5: replace parse_diff_git_line -> Option<String> with Some(\"xyzzy\".into())",
+    "package": "diffguard-diff",
+    "replacement": "Some(\"xyzzy\".into())",
+    "span": {
+      "end": {
+        "column": 26,
+        "line": 381
+      },
+      "start": {
+        "column": 5,
+        "line": 375
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace < with == in parse_diff_git_line\n@@ -369,17 +369,17 @@\n         .parse()\n         .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))\n }\n \n fn parse_diff_git_line(line: &str) -> Option<String> {\n     // diff --git a/foo b/foo\n     let rest = line.strip_prefix(\"diff --git \")?;\n     let tokens = tokenize_git_paths(rest, 2);\n-    if tokens.len() < 2 {\n+    if tokens.len() == /* ~ changed by cargo-mutants ~ */ 2 {\n         return None;\n     }\n     let b = unquote_git_token(&tokens[1]);\n     strip_prefix_path(&b)\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_diff_git_line",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 382
+        },
+        "start": {
+          "column": 1,
+          "line": 373
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:377:21: replace < with == in parse_diff_git_line",
+    "package": "diffguard-diff",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 22,
+        "line": 377
+      },
+      "start": {
+        "column": 21,
+        "line": 377
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace < with > in parse_diff_git_line\n@@ -369,17 +369,17 @@\n         .parse()\n         .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))\n }\n \n fn parse_diff_git_line(line: &str) -> Option<String> {\n     // diff --git a/foo b/foo\n     let rest = line.strip_prefix(\"diff --git \")?;\n     let tokens = tokenize_git_paths(rest, 2);\n-    if tokens.len() < 2 {\n+    if tokens.len() > /* ~ changed by cargo-mutants ~ */ 2 {\n         return None;\n     }\n     let b = unquote_git_token(&tokens[1]);\n     strip_prefix_path(&b)\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_diff_git_line",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 382
+        },
+        "start": {
+          "column": 1,
+          "line": 373
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:377:21: replace < with > in parse_diff_git_line",
+    "package": "diffguard-diff",
+    "replacement": ">",
+    "span": {
+      "end": {
+        "column": 22,
+        "line": 377
+      },
+      "start": {
+        "column": 21,
+        "line": 377
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace < with <= in parse_diff_git_line\n@@ -369,17 +369,17 @@\n         .parse()\n         .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))\n }\n \n fn parse_diff_git_line(line: &str) -> Option<String> {\n     // diff --git a/foo b/foo\n     let rest = line.strip_prefix(\"diff --git \")?;\n     let tokens = tokenize_git_paths(rest, 2);\n-    if tokens.len() < 2 {\n+    if tokens.len() <= /* ~ changed by cargo-mutants ~ */ 2 {\n         return None;\n     }\n     let b = unquote_git_token(&tokens[1]);\n     strip_prefix_path(&b)\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_diff_git_line",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 382
+        },
+        "start": {
+          "column": 1,
+          "line": 373
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:377:21: replace < with <= in parse_diff_git_line",
+    "package": "diffguard-diff",
+    "replacement": "<=",
+    "span": {
+      "end": {
+        "column": 22,
+        "line": 377
+      },
+      "start": {
+        "column": 21,
+        "line": 377
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_plus_plus_plus -> Option<String> with None\n@@ -378,22 +378,17 @@\n         return None;\n     }\n     let b = unquote_git_token(&tokens[1]);\n     strip_prefix_path(&b)\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n-    let rest = line.strip_prefix(\"+++ \")?;\n-    let token = parse_single_git_path(rest)?;\n-    if token == \"/dev/null\" {\n-        return None;\n-    }\n-    strip_prefix_path(&token)\n+    None /* ~ changed by cargo-mutants ~ */\n }\n \n fn strip_prefix_path(p: &str) -> Option<String> {\n     // strips a/ or b/\n     let p = p.trim();\n     let p = p\n         .strip_prefix(\"a/\")\n         .or_else(|| p.strip_prefix(\"b/\"))\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_plus_plus_plus",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 392
+        },
+        "start": {
+          "column": 1,
+          "line": 384
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:386:5: replace parse_plus_plus_plus -> Option<String> with None",
+    "package": "diffguard-diff",
+    "replacement": "None",
+    "span": {
+      "end": {
+        "column": 30,
+        "line": 391
+      },
+      "start": {
+        "column": 5,
+        "line": 386
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_plus_plus_plus -> Option<String> with Some(String::new())\n@@ -378,22 +378,17 @@\n         return None;\n     }\n     let b = unquote_git_token(&tokens[1]);\n     strip_prefix_path(&b)\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n-    let rest = line.strip_prefix(\"+++ \")?;\n-    let token = parse_single_git_path(rest)?;\n-    if token == \"/dev/null\" {\n-        return None;\n-    }\n-    strip_prefix_path(&token)\n+    Some(String::new()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn strip_prefix_path(p: &str) -> Option<String> {\n     // strips a/ or b/\n     let p = p.trim();\n     let p = p\n         .strip_prefix(\"a/\")\n         .or_else(|| p.strip_prefix(\"b/\"))\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_plus_plus_plus",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 392
+        },
+        "start": {
+          "column": 1,
+          "line": 384
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:386:5: replace parse_plus_plus_plus -> Option<String> with Some(String::new())",
+    "package": "diffguard-diff",
+    "replacement": "Some(String::new())",
+    "span": {
+      "end": {
+        "column": 30,
+        "line": 391
+      },
+      "start": {
+        "column": 5,
+        "line": 386
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_plus_plus_plus -> Option<String> with Some(\"xyzzy\".into())\n@@ -378,22 +378,17 @@\n         return None;\n     }\n     let b = unquote_git_token(&tokens[1]);\n     strip_prefix_path(&b)\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n-    let rest = line.strip_prefix(\"+++ \")?;\n-    let token = parse_single_git_path(rest)?;\n-    if token == \"/dev/null\" {\n-        return None;\n-    }\n-    strip_prefix_path(&token)\n+    Some(\"xyzzy\".into()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn strip_prefix_path(p: &str) -> Option<String> {\n     // strips a/ or b/\n     let p = p.trim();\n     let p = p\n         .strip_prefix(\"a/\")\n         .or_else(|| p.strip_prefix(\"b/\"))\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_plus_plus_plus",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 392
+        },
+        "start": {
+          "column": 1,
+          "line": 384
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:386:5: replace parse_plus_plus_plus -> Option<String> with Some(\"xyzzy\".into())",
+    "package": "diffguard-diff",
+    "replacement": "Some(\"xyzzy\".into())",
+    "span": {
+      "end": {
+        "column": 30,
+        "line": 391
+      },
+      "start": {
+        "column": 5,
+        "line": 386
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace == with != in parse_plus_plus_plus\n@@ -380,17 +380,17 @@\n     let b = unquote_git_token(&tokens[1]);\n     strip_prefix_path(&b)\n }\n \n fn parse_plus_plus_plus(line: &str) -> Option<String> {\n     // +++ b/foo\n     let rest = line.strip_prefix(\"+++ \")?;\n     let token = parse_single_git_path(rest)?;\n-    if token == \"/dev/null\" {\n+    if token != /* ~ changed by cargo-mutants ~ */ \"/dev/null\" {\n         return None;\n     }\n     strip_prefix_path(&token)\n }\n \n fn strip_prefix_path(p: &str) -> Option<String> {\n     // strips a/ or b/\n     let p = p.trim();\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_plus_plus_plus",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 392
+        },
+        "start": {
+          "column": 1,
+          "line": 384
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:388:14: replace == with != in parse_plus_plus_plus",
+    "package": "diffguard-diff",
+    "replacement": "!=",
+    "span": {
+      "end": {
+        "column": 16,
+        "line": 388
+      },
+      "start": {
+        "column": 14,
+        "line": 388
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace strip_prefix_path -> Option<String> with None\n@@ -388,34 +388,17 @@\n     if token == \"/dev/null\" {\n         return None;\n     }\n     strip_prefix_path(&token)\n }\n \n fn strip_prefix_path(p: &str) -> Option<String> {\n     // strips a/ or b/\n-    let p = p.trim();\n-    let p = p\n-        .strip_prefix(\"a/\")\n-        .or_else(|| p.strip_prefix(\"b/\"))\n-        .unwrap_or(p);\n-\n-    // Normalize to forward slashes for receipts.\n-    let normalized = Path::new(p)\n-        .components()\n-        .map(|c| c.as_os_str().to_string_lossy())\n-        .collect::<Vec<_>>()\n-        .join(\"/\");\n-\n-    if normalized.is_empty() {\n-        None\n-    } else {\n-        Some(normalized)\n-    }\n+    None /* ~ changed by cargo-mutants ~ */\n }\n \n #[derive(Debug, Clone)]\n struct GitPathToken {\n     value: String,\n     quoted: bool,\n }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "strip_prefix_path",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 414
+        },
+        "start": {
+          "column": 1,
+          "line": 394
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:396:5: replace strip_prefix_path -> Option<String> with None",
+    "package": "diffguard-diff",
+    "replacement": "None",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 413
+      },
+      "start": {
+        "column": 5,
+        "line": 396
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace strip_prefix_path -> Option<String> with Some(String::new())\n@@ -388,34 +388,17 @@\n     if token == \"/dev/null\" {\n         return None;\n     }\n     strip_prefix_path(&token)\n }\n \n fn strip_prefix_path(p: &str) -> Option<String> {\n     // strips a/ or b/\n-    let p = p.trim();\n-    let p = p\n-        .strip_prefix(\"a/\")\n-        .or_else(|| p.strip_prefix(\"b/\"))\n-        .unwrap_or(p);\n-\n-    // Normalize to forward slashes for receipts.\n-    let normalized = Path::new(p)\n-        .components()\n-        .map(|c| c.as_os_str().to_string_lossy())\n-        .collect::<Vec<_>>()\n-        .join(\"/\");\n-\n-    if normalized.is_empty() {\n-        None\n-    } else {\n-        Some(normalized)\n-    }\n+    Some(String::new()) /* ~ changed by cargo-mutants ~ */\n }\n \n #[derive(Debug, Clone)]\n struct GitPathToken {\n     value: String,\n     quoted: bool,\n }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "strip_prefix_path",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 414
+        },
+        "start": {
+          "column": 1,
+          "line": 394
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:396:5: replace strip_prefix_path -> Option<String> with Some(String::new())",
+    "package": "diffguard-diff",
+    "replacement": "Some(String::new())",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 413
+      },
+      "start": {
+        "column": 5,
+        "line": 396
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace strip_prefix_path -> Option<String> with Some(\"xyzzy\".into())\n@@ -388,34 +388,17 @@\n     if token == \"/dev/null\" {\n         return None;\n     }\n     strip_prefix_path(&token)\n }\n \n fn strip_prefix_path(p: &str) -> Option<String> {\n     // strips a/ or b/\n-    let p = p.trim();\n-    let p = p\n-        .strip_prefix(\"a/\")\n-        .or_else(|| p.strip_prefix(\"b/\"))\n-        .unwrap_or(p);\n-\n-    // Normalize to forward slashes for receipts.\n-    let normalized = Path::new(p)\n-        .components()\n-        .map(|c| c.as_os_str().to_string_lossy())\n-        .collect::<Vec<_>>()\n-        .join(\"/\");\n-\n-    if normalized.is_empty() {\n-        None\n-    } else {\n-        Some(normalized)\n-    }\n+    Some(\"xyzzy\".into()) /* ~ changed by cargo-mutants ~ */\n }\n \n #[derive(Debug, Clone)]\n struct GitPathToken {\n     value: String,\n     quoted: bool,\n }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "strip_prefix_path",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 414
+        },
+        "start": {
+          "column": 1,
+          "line": 394
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:396:5: replace strip_prefix_path -> Option<String> with Some(\"xyzzy\".into())",
+    "package": "diffguard-diff",
+    "replacement": "Some(\"xyzzy\".into())",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 413
+      },
+      "start": {
+        "column": 5,
+        "line": 396
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace tokenize_git_paths -> Vec<GitPathToken> with vec![]\n@@ -415,72 +415,17 @@\n \n #[derive(Debug, Clone)]\n struct GitPathToken {\n     value: String,\n     quoted: bool,\n }\n \n fn tokenize_git_paths(input: &str, limit: usize) -> Vec<GitPathToken> {\n-    let mut tokens = Vec::new();\n-    let mut buf = String::new();\n-    let mut quoted = false;\n-    let mut in_quote = false;\n-    let mut chars = input.chars().peekable();\n-\n-    while let Some(ch) = chars.next() {\n-        if in_quote {\n-            if ch == '\\\\' {\n-                if let Some(next) = chars.next() {\n-                    buf.push('\\\\');\n-                    buf.push(next);\n-                } else {\n-                    buf.push('\\\\');\n-                }\n-                continue;\n-            }\n-\n-            if ch == '\"' {\n-                in_quote = false;\n-                continue;\n-            }\n-\n-            buf.push(ch);\n-            continue;\n-        }\n-\n-        if ch.is_whitespace() {\n-            if !buf.is_empty() {\n-                tokens.push(GitPathToken {\n-                    value: buf.clone(),\n-                    quoted,\n-                });\n-                buf.clear();\n-                quoted = false;\n-                if tokens.len() >= limit {\n-                    return tokens;\n-                }\n-            }\n-            continue;\n-        }\n-\n-        if ch == '\"' {\n-            in_quote = true;\n-            quoted = true;\n-            continue;\n-        }\n-\n-        buf.push(ch);\n-    }\n-\n-    if !buf.is_empty() && tokens.len() < limit {\n-        tokens.push(GitPathToken { value: buf, quoted });\n-    }\n-\n-    tokens\n+    vec![] /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n     tokens.first().map(unquote_git_token)\n }\n \n fn parse_rename_path(input: &str) -> Option<String> {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:423:5: replace tokenize_git_paths -> Vec<GitPathToken> with vec![]",
+    "package": "diffguard-diff",
+    "replacement": "vec![]",
+    "span": {
+      "end": {
+        "column": 11,
+        "line": 478
+      },
+      "start": {
+        "column": 5,
+        "line": 423
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace tokenize_git_paths -> Vec<GitPathToken> with vec![Default::default()]\n@@ -415,72 +415,17 @@\n \n #[derive(Debug, Clone)]\n struct GitPathToken {\n     value: String,\n     quoted: bool,\n }\n \n fn tokenize_git_paths(input: &str, limit: usize) -> Vec<GitPathToken> {\n-    let mut tokens = Vec::new();\n-    let mut buf = String::new();\n-    let mut quoted = false;\n-    let mut in_quote = false;\n-    let mut chars = input.chars().peekable();\n-\n-    while let Some(ch) = chars.next() {\n-        if in_quote {\n-            if ch == '\\\\' {\n-                if let Some(next) = chars.next() {\n-                    buf.push('\\\\');\n-                    buf.push(next);\n-                } else {\n-                    buf.push('\\\\');\n-                }\n-                continue;\n-            }\n-\n-            if ch == '\"' {\n-                in_quote = false;\n-                continue;\n-            }\n-\n-            buf.push(ch);\n-            continue;\n-        }\n-\n-        if ch.is_whitespace() {\n-            if !buf.is_empty() {\n-                tokens.push(GitPathToken {\n-                    value: buf.clone(),\n-                    quoted,\n-                });\n-                buf.clear();\n-                quoted = false;\n-                if tokens.len() >= limit {\n-                    return tokens;\n-                }\n-            }\n-            continue;\n-        }\n-\n-        if ch == '\"' {\n-            in_quote = true;\n-            quoted = true;\n-            continue;\n-        }\n-\n-        buf.push(ch);\n-    }\n-\n-    if !buf.is_empty() && tokens.len() < limit {\n-        tokens.push(GitPathToken { value: buf, quoted });\n-    }\n-\n-    tokens\n+    vec![Default::default()] /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n     tokens.first().map(unquote_git_token)\n }\n \n fn parse_rename_path(input: &str) -> Option<String> {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:423:5: replace tokenize_git_paths -> Vec<GitPathToken> with vec![Default::default()]",
+    "package": "diffguard-diff",
+    "replacement": "vec![Default::default()]",
+    "span": {
+      "end": {
+        "column": 11,
+        "line": 478
+      },
+      "start": {
+        "column": 5,
+        "line": 423
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace == with != in tokenize_git_paths\n@@ -423,17 +423,17 @@\n     let mut tokens = Vec::new();\n     let mut buf = String::new();\n     let mut quoted = false;\n     let mut in_quote = false;\n     let mut chars = input.chars().peekable();\n \n     while let Some(ch) = chars.next() {\n         if in_quote {\n-            if ch == '\\\\' {\n+            if ch != /* ~ changed by cargo-mutants ~ */ '\\\\' {\n                 if let Some(next) = chars.next() {\n                     buf.push('\\\\');\n                     buf.push(next);\n                 } else {\n                     buf.push('\\\\');\n                 }\n                 continue;\n             }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:431:19: replace == with != in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": "!=",
+    "span": {
+      "end": {
+        "column": 21,
+        "line": 431
+      },
+      "start": {
+        "column": 19,
+        "line": 431
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace == with != in tokenize_git_paths\n@@ -433,17 +433,17 @@\n                     buf.push('\\\\');\n                     buf.push(next);\n                 } else {\n                     buf.push('\\\\');\n                 }\n                 continue;\n             }\n \n-            if ch == '\"' {\n+            if ch != /* ~ changed by cargo-mutants ~ */ '\"' {\n                 in_quote = false;\n                 continue;\n             }\n \n             buf.push(ch);\n             continue;\n         }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:441:19: replace == with != in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": "!=",
+    "span": {
+      "end": {
+        "column": 21,
+        "line": 441
+      },
+      "start": {
+        "column": 19,
+        "line": 441
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete ! in tokenize_git_paths\n@@ -443,17 +443,17 @@\n                 continue;\n             }\n \n             buf.push(ch);\n             continue;\n         }\n \n         if ch.is_whitespace() {\n-            if !buf.is_empty() {\n+            if  /* ~ changed by cargo-mutants ~ */buf.is_empty() {\n                 tokens.push(GitPathToken {\n                     value: buf.clone(),\n                     quoted,\n                 });\n                 buf.clear();\n                 quoted = false;\n                 if tokens.len() >= limit {\n                     return tokens;\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "UnaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:451:16: delete ! in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 451
+      },
+      "start": {
+        "column": 16,
+        "line": 451
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace >= with < in tokenize_git_paths\n@@ -450,17 +450,17 @@\n         if ch.is_whitespace() {\n             if !buf.is_empty() {\n                 tokens.push(GitPathToken {\n                     value: buf.clone(),\n                     quoted,\n                 });\n                 buf.clear();\n                 quoted = false;\n-                if tokens.len() >= limit {\n+                if tokens.len() < /* ~ changed by cargo-mutants ~ */ limit {\n                     return tokens;\n                 }\n             }\n             continue;\n         }\n \n         if ch == '\"' {\n             in_quote = true;\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:458:33: replace >= with < in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": "<",
+    "span": {
+      "end": {
+        "column": 35,
+        "line": 458
+      },
+      "start": {
+        "column": 33,
+        "line": 458
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace == with != in tokenize_git_paths\n@@ -457,17 +457,17 @@\n                 quoted = false;\n                 if tokens.len() >= limit {\n                     return tokens;\n                 }\n             }\n             continue;\n         }\n \n-        if ch == '\"' {\n+        if ch != /* ~ changed by cargo-mutants ~ */ '\"' {\n             in_quote = true;\n             quoted = true;\n             continue;\n         }\n \n         buf.push(ch);\n     }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:465:15: replace == with != in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": "!=",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 465
+      },
+      "start": {
+        "column": 15,
+        "line": 465
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace && with || in tokenize_git_paths\n@@ -466,17 +466,17 @@\n             in_quote = true;\n             quoted = true;\n             continue;\n         }\n \n         buf.push(ch);\n     }\n \n-    if !buf.is_empty() && tokens.len() < limit {\n+    if !buf.is_empty() || /* ~ changed by cargo-mutants ~ */ tokens.len() < limit {\n         tokens.push(GitPathToken { value: buf, quoted });\n     }\n \n     tokens\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:474:24: replace && with || in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": "||",
+    "span": {
+      "end": {
+        "column": 26,
+        "line": 474
+      },
+      "start": {
+        "column": 24,
+        "line": 474
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete ! in tokenize_git_paths\n@@ -466,17 +466,17 @@\n             in_quote = true;\n             quoted = true;\n             continue;\n         }\n \n         buf.push(ch);\n     }\n \n-    if !buf.is_empty() && tokens.len() < limit {\n+    if  /* ~ changed by cargo-mutants ~ */buf.is_empty() && tokens.len() < limit {\n         tokens.push(GitPathToken { value: buf, quoted });\n     }\n \n     tokens\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "UnaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:474:8: delete ! in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 9,
+        "line": 474
+      },
+      "start": {
+        "column": 8,
+        "line": 474
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace < with == in tokenize_git_paths\n@@ -466,17 +466,17 @@\n             in_quote = true;\n             quoted = true;\n             continue;\n         }\n \n         buf.push(ch);\n     }\n \n-    if !buf.is_empty() && tokens.len() < limit {\n+    if !buf.is_empty() && tokens.len() == /* ~ changed by cargo-mutants ~ */ limit {\n         tokens.push(GitPathToken { value: buf, quoted });\n     }\n \n     tokens\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:474:40: replace < with == in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 41,
+        "line": 474
+      },
+      "start": {
+        "column": 40,
+        "line": 474
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace < with > in tokenize_git_paths\n@@ -466,17 +466,17 @@\n             in_quote = true;\n             quoted = true;\n             continue;\n         }\n \n         buf.push(ch);\n     }\n \n-    if !buf.is_empty() && tokens.len() < limit {\n+    if !buf.is_empty() && tokens.len() > /* ~ changed by cargo-mutants ~ */ limit {\n         tokens.push(GitPathToken { value: buf, quoted });\n     }\n \n     tokens\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:474:40: replace < with > in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": ">",
+    "span": {
+      "end": {
+        "column": 41,
+        "line": 474
+      },
+      "start": {
+        "column": 40,
+        "line": 474
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace < with <= in tokenize_git_paths\n@@ -466,17 +466,17 @@\n             in_quote = true;\n             quoted = true;\n             continue;\n         }\n \n         buf.push(ch);\n     }\n \n-    if !buf.is_empty() && tokens.len() < limit {\n+    if !buf.is_empty() && tokens.len() <= /* ~ changed by cargo-mutants ~ */ limit {\n         tokens.push(GitPathToken { value: buf, quoted });\n     }\n \n     tokens\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "tokenize_git_paths",
+      "return_type": "-> Vec<GitPathToken>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 479
+        },
+        "start": {
+          "column": 1,
+          "line": 422
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:474:40: replace < with <= in tokenize_git_paths",
+    "package": "diffguard-diff",
+    "replacement": "<=",
+    "span": {
+      "end": {
+        "column": 41,
+        "line": 474
+      },
+      "start": {
+        "column": 40,
+        "line": 474
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_single_git_path -> Option<String> with None\n@@ -474,18 +474,17 @@\n     if !buf.is_empty() && tokens.len() < limit {\n         tokens.push(GitPathToken { value: buf, quoted });\n     }\n \n     tokens\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n-    let tokens = tokenize_git_paths(input, 1);\n-    tokens.first().map(unquote_git_token)\n+    None /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_rename_path(input: &str) -> Option<String> {\n     let trimmed = input.trim();\n     if trimmed.is_empty() {\n         return None;\n     }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_single_git_path",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 484
+        },
+        "start": {
+          "column": 1,
+          "line": 481
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:482:5: replace parse_single_git_path -> Option<String> with None",
+    "package": "diffguard-diff",
+    "replacement": "None",
+    "span": {
+      "end": {
+        "column": 42,
+        "line": 483
+      },
+      "start": {
+        "column": 5,
+        "line": 482
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_single_git_path -> Option<String> with Some(String::new())\n@@ -474,18 +474,17 @@\n     if !buf.is_empty() && tokens.len() < limit {\n         tokens.push(GitPathToken { value: buf, quoted });\n     }\n \n     tokens\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n-    let tokens = tokenize_git_paths(input, 1);\n-    tokens.first().map(unquote_git_token)\n+    Some(String::new()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_rename_path(input: &str) -> Option<String> {\n     let trimmed = input.trim();\n     if trimmed.is_empty() {\n         return None;\n     }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_single_git_path",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 484
+        },
+        "start": {
+          "column": 1,
+          "line": 481
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:482:5: replace parse_single_git_path -> Option<String> with Some(String::new())",
+    "package": "diffguard-diff",
+    "replacement": "Some(String::new())",
+    "span": {
+      "end": {
+        "column": 42,
+        "line": 483
+      },
+      "start": {
+        "column": 5,
+        "line": 482
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_single_git_path -> Option<String> with Some(\"xyzzy\".into())\n@@ -474,18 +474,17 @@\n     if !buf.is_empty() && tokens.len() < limit {\n         tokens.push(GitPathToken { value: buf, quoted });\n     }\n \n     tokens\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n-    let tokens = tokenize_git_paths(input, 1);\n-    tokens.first().map(unquote_git_token)\n+    Some(\"xyzzy\".into()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn parse_rename_path(input: &str) -> Option<String> {\n     let trimmed = input.trim();\n     if trimmed.is_empty() {\n         return None;\n     }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_single_git_path",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 484
+        },
+        "start": {
+          "column": 1,
+          "line": 481
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:482:5: replace parse_single_git_path -> Option<String> with Some(\"xyzzy\".into())",
+    "package": "diffguard-diff",
+    "replacement": "Some(\"xyzzy\".into())",
+    "span": {
+      "end": {
+        "column": 42,
+        "line": 483
+      },
+      "start": {
+        "column": 5,
+        "line": 482
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_rename_path -> Option<String> with None\n@@ -479,26 +479,17 @@\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n     tokens.first().map(unquote_git_token)\n }\n \n fn parse_rename_path(input: &str) -> Option<String> {\n-    let trimmed = input.trim();\n-    if trimmed.is_empty() {\n-        return None;\n-    }\n-\n-    if trimmed.starts_with('\"') {\n-        return parse_single_git_path(trimmed);\n-    }\n-\n-    Some(trimmed.to_string())\n+    None /* ~ changed by cargo-mutants ~ */\n }\n \n fn unquote_git_token(token: &GitPathToken) -> String {\n     if token.quoted {\n         unescape_git_path(&token.value)\n     } else {\n         token.value.clone()\n     }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_rename_path",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 497
+        },
+        "start": {
+          "column": 1,
+          "line": 486
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:487:5: replace parse_rename_path -> Option<String> with None",
+    "package": "diffguard-diff",
+    "replacement": "None",
+    "span": {
+      "end": {
+        "column": 30,
+        "line": 496
+      },
+      "start": {
+        "column": 5,
+        "line": 487
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_rename_path -> Option<String> with Some(String::new())\n@@ -479,26 +479,17 @@\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n     tokens.first().map(unquote_git_token)\n }\n \n fn parse_rename_path(input: &str) -> Option<String> {\n-    let trimmed = input.trim();\n-    if trimmed.is_empty() {\n-        return None;\n-    }\n-\n-    if trimmed.starts_with('\"') {\n-        return parse_single_git_path(trimmed);\n-    }\n-\n-    Some(trimmed.to_string())\n+    Some(String::new()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn unquote_git_token(token: &GitPathToken) -> String {\n     if token.quoted {\n         unescape_git_path(&token.value)\n     } else {\n         token.value.clone()\n     }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_rename_path",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 497
+        },
+        "start": {
+          "column": 1,
+          "line": 486
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:487:5: replace parse_rename_path -> Option<String> with Some(String::new())",
+    "package": "diffguard-diff",
+    "replacement": "Some(String::new())",
+    "span": {
+      "end": {
+        "column": 30,
+        "line": 496
+      },
+      "start": {
+        "column": 5,
+        "line": 487
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace parse_rename_path -> Option<String> with Some(\"xyzzy\".into())\n@@ -479,26 +479,17 @@\n }\n \n fn parse_single_git_path(input: &str) -> Option<String> {\n     let tokens = tokenize_git_paths(input, 1);\n     tokens.first().map(unquote_git_token)\n }\n \n fn parse_rename_path(input: &str) -> Option<String> {\n-    let trimmed = input.trim();\n-    if trimmed.is_empty() {\n-        return None;\n-    }\n-\n-    if trimmed.starts_with('\"') {\n-        return parse_single_git_path(trimmed);\n-    }\n-\n-    Some(trimmed.to_string())\n+    Some(\"xyzzy\".into()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn unquote_git_token(token: &GitPathToken) -> String {\n     if token.quoted {\n         unescape_git_path(&token.value)\n     } else {\n         token.value.clone()\n     }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "parse_rename_path",
+      "return_type": "-> Option<String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 497
+        },
+        "start": {
+          "column": 1,
+          "line": 486
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:487:5: replace parse_rename_path -> Option<String> with Some(\"xyzzy\".into())",
+    "package": "diffguard-diff",
+    "replacement": "Some(\"xyzzy\".into())",
+    "span": {
+      "end": {
+        "column": 30,
+        "line": 496
+      },
+      "start": {
+        "column": 5,
+        "line": 487
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace unquote_git_token -> String with String::new()\n@@ -492,21 +492,17 @@\n     if trimmed.starts_with('\"') {\n         return parse_single_git_path(trimmed);\n     }\n \n     Some(trimmed.to_string())\n }\n \n fn unquote_git_token(token: &GitPathToken) -> String {\n-    if token.quoted {\n-        unescape_git_path(&token.value)\n-    } else {\n-        token.value.clone()\n-    }\n+    String::new() /* ~ changed by cargo-mutants ~ */\n }\n \n fn unescape_git_path(s: &str) -> String {\n     let mut out: Vec<u8> = Vec::with_capacity(s.len());\n     let mut iter = s.as_bytes().iter().copied().peekable();\n \n     while let Some(b) = iter.next() {\n         if b != b'\\\\' {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unquote_git_token",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 505
+        },
+        "start": {
+          "column": 1,
+          "line": 499
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:500:5: replace unquote_git_token -> String with String::new()",
+    "package": "diffguard-diff",
+    "replacement": "String::new()",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 504
+      },
+      "start": {
+        "column": 5,
+        "line": 500
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace unquote_git_token -> String with \"xyzzy\".into()\n@@ -492,21 +492,17 @@\n     if trimmed.starts_with('\"') {\n         return parse_single_git_path(trimmed);\n     }\n \n     Some(trimmed.to_string())\n }\n \n fn unquote_git_token(token: &GitPathToken) -> String {\n-    if token.quoted {\n-        unescape_git_path(&token.value)\n-    } else {\n-        token.value.clone()\n-    }\n+    \"xyzzy\".into() /* ~ changed by cargo-mutants ~ */\n }\n \n fn unescape_git_path(s: &str) -> String {\n     let mut out: Vec<u8> = Vec::with_capacity(s.len());\n     let mut iter = s.as_bytes().iter().copied().peekable();\n \n     while let Some(b) = iter.next() {\n         if b != b'\\\\' {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unquote_git_token",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 505
+        },
+        "start": {
+          "column": 1,
+          "line": 499
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:500:5: replace unquote_git_token -> String with \"xyzzy\".into()",
+    "package": "diffguard-diff",
+    "replacement": "\"xyzzy\".into()",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 504
+      },
+      "start": {
+        "column": 5,
+        "line": 500
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace unescape_git_path -> String with String::new()\n@@ -500,58 +500,17 @@\n     if token.quoted {\n         unescape_git_path(&token.value)\n     } else {\n         token.value.clone()\n     }\n }\n \n fn unescape_git_path(s: &str) -> String {\n-    let mut out: Vec<u8> = Vec::with_capacity(s.len());\n-    let mut iter = s.as_bytes().iter().copied().peekable();\n-\n-    while let Some(b) = iter.next() {\n-        if b != b'\\\\' {\n-            out.push(b);\n-            continue;\n-        }\n-\n-        let Some(next) = iter.next() else {\n-            out.push(b'\\\\');\n-            break;\n-        };\n-\n-        match next {\n-            b'\\\\' => out.push(b'\\\\'),\n-            b'\"' => out.push(b'\"'),\n-            b'n' => out.push(b'\\n'),\n-            b't' => out.push(b'\\t'),\n-            b'r' => out.push(b'\\r'),\n-            b' ' => out.push(b' '),\n-            b'0'..=b'7' => {\n-                let mut val = (next - b'0') as u32;\n-                for _ in 0..2 {\n-                    match iter.peek().copied() {\n-                        Some(d) if (b'0'..=b'7').contains(&d) => {\n-                            val = val * 8 + (d - b'0') as u32;\n-                            iter.next();\n-                        }\n-                        _ => break,\n-                    }\n-                }\n-                out.push((val & 0xFF) as u8);\n-            }\n-            _ => {\n-                out.push(b'\\\\');\n-                out.push(next);\n-            }\n-        }\n-    }\n-\n-    String::from_utf8_lossy(&out).into_owned()\n+    String::new() /* ~ changed by cargo-mutants ~ */\n }\n \n #[cfg(test)]\n mod tests {\n     use super::*;\n \n     #[test]\n     fn parses_added_lines() {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:508:5: replace unescape_git_path -> String with String::new()",
+    "package": "diffguard-diff",
+    "replacement": "String::new()",
+    "span": {
+      "end": {
+        "column": 47,
+        "line": 549
+      },
+      "start": {
+        "column": 5,
+        "line": 508
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace unescape_git_path -> String with \"xyzzy\".into()\n@@ -500,58 +500,17 @@\n     if token.quoted {\n         unescape_git_path(&token.value)\n     } else {\n         token.value.clone()\n     }\n }\n \n fn unescape_git_path(s: &str) -> String {\n-    let mut out: Vec<u8> = Vec::with_capacity(s.len());\n-    let mut iter = s.as_bytes().iter().copied().peekable();\n-\n-    while let Some(b) = iter.next() {\n-        if b != b'\\\\' {\n-            out.push(b);\n-            continue;\n-        }\n-\n-        let Some(next) = iter.next() else {\n-            out.push(b'\\\\');\n-            break;\n-        };\n-\n-        match next {\n-            b'\\\\' => out.push(b'\\\\'),\n-            b'\"' => out.push(b'\"'),\n-            b'n' => out.push(b'\\n'),\n-            b't' => out.push(b'\\t'),\n-            b'r' => out.push(b'\\r'),\n-            b' ' => out.push(b' '),\n-            b'0'..=b'7' => {\n-                let mut val = (next - b'0') as u32;\n-                for _ in 0..2 {\n-                    match iter.peek().copied() {\n-                        Some(d) if (b'0'..=b'7').contains(&d) => {\n-                            val = val * 8 + (d - b'0') as u32;\n-                            iter.next();\n-                        }\n-                        _ => break,\n-                    }\n-                }\n-                out.push((val & 0xFF) as u8);\n-            }\n-            _ => {\n-                out.push(b'\\\\');\n-                out.push(next);\n-            }\n-        }\n-    }\n-\n-    String::from_utf8_lossy(&out).into_owned()\n+    \"xyzzy\".into() /* ~ changed by cargo-mutants ~ */\n }\n \n #[cfg(test)]\n mod tests {\n     use super::*;\n \n     #[test]\n     fn parses_added_lines() {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "crates/diffguard-diff/src/unified.rs:508:5: replace unescape_git_path -> String with \"xyzzy\".into()",
+    "package": "diffguard-diff",
+    "replacement": "\"xyzzy\".into()",
+    "span": {
+      "end": {
+        "column": 47,
+        "line": 549
+      },
+      "start": {
+        "column": 5,
+        "line": 508
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace != with == in unescape_git_path\n@@ -504,17 +504,17 @@\n     }\n }\n \n fn unescape_git_path(s: &str) -> String {\n     let mut out: Vec<u8> = Vec::with_capacity(s.len());\n     let mut iter = s.as_bytes().iter().copied().peekable();\n \n     while let Some(b) = iter.next() {\n-        if b != b'\\\\' {\n+        if b == /* ~ changed by cargo-mutants ~ */ b'\\\\' {\n             out.push(b);\n             continue;\n         }\n \n         let Some(next) = iter.next() else {\n             out.push(b'\\\\');\n             break;\n         };\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:512:14: replace != with == in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 16,
+        "line": 512
+      },
+      "start": {
+        "column": 14,
+        "line": 512
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm b'\\\\' in unescape_git_path\n@@ -515,17 +515,17 @@\n         }\n \n         let Some(next) = iter.next() else {\n             out.push(b'\\\\');\n             break;\n         };\n \n         match next {\n-            b'\\\\' => out.push(b'\\\\'),\n+             /* ~ changed by cargo-mutants ~ */\n             b'\"' => out.push(b'\"'),\n             b'n' => out.push(b'\\n'),\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:523:13: delete match arm b'\\\\' in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 38,
+        "line": 523
+      },
+      "start": {
+        "column": 13,
+        "line": 523
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm b'\"' in unescape_git_path\n@@ -516,17 +516,17 @@\n \n         let Some(next) = iter.next() else {\n             out.push(b'\\\\');\n             break;\n         };\n \n         match next {\n             b'\\\\' => out.push(b'\\\\'),\n-            b'\"' => out.push(b'\"'),\n+             /* ~ changed by cargo-mutants ~ */\n             b'n' => out.push(b'\\n'),\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:524:13: delete match arm b'\"' in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 36,
+        "line": 524
+      },
+      "start": {
+        "column": 13,
+        "line": 524
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm b'n' in unescape_git_path\n@@ -517,17 +517,17 @@\n         let Some(next) = iter.next() else {\n             out.push(b'\\\\');\n             break;\n         };\n \n         match next {\n             b'\\\\' => out.push(b'\\\\'),\n             b'\"' => out.push(b'\"'),\n-            b'n' => out.push(b'\\n'),\n+             /* ~ changed by cargo-mutants ~ */\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:525:13: delete match arm b'n' in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 37,
+        "line": 525
+      },
+      "start": {
+        "column": 13,
+        "line": 525
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm b't' in unescape_git_path\n@@ -518,17 +518,17 @@\n             out.push(b'\\\\');\n             break;\n         };\n \n         match next {\n             b'\\\\' => out.push(b'\\\\'),\n             b'\"' => out.push(b'\"'),\n             b'n' => out.push(b'\\n'),\n-            b't' => out.push(b'\\t'),\n+             /* ~ changed by cargo-mutants ~ */\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n                             val = val * 8 + (d - b'0') as u32;\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:526:13: delete match arm b't' in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 37,
+        "line": 526
+      },
+      "start": {
+        "column": 13,
+        "line": 526
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm b'r' in unescape_git_path\n@@ -519,17 +519,17 @@\n             break;\n         };\n \n         match next {\n             b'\\\\' => out.push(b'\\\\'),\n             b'\"' => out.push(b'\"'),\n             b'n' => out.push(b'\\n'),\n             b't' => out.push(b'\\t'),\n-            b'r' => out.push(b'\\r'),\n+             /* ~ changed by cargo-mutants ~ */\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n                             val = val * 8 + (d - b'0') as u32;\n                             iter.next();\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:527:13: delete match arm b'r' in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 37,
+        "line": 527
+      },
+      "start": {
+        "column": 13,
+        "line": 527
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm b' ' in unescape_git_path\n@@ -520,17 +520,17 @@\n         };\n \n         match next {\n             b'\\\\' => out.push(b'\\\\'),\n             b'\"' => out.push(b'\"'),\n             b'n' => out.push(b'\\n'),\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n-            b' ' => out.push(b' '),\n+             /* ~ changed by cargo-mutants ~ */\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n                             val = val * 8 + (d - b'0') as u32;\n                             iter.next();\n                         }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:528:13: delete match arm b' ' in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 36,
+        "line": 528
+      },
+      "start": {
+        "column": 13,
+        "line": 528
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ delete match arm b'0'..= b'7' in unescape_git_path\n@@ -521,29 +521,17 @@\n \n         match next {\n             b'\\\\' => out.push(b'\\\\'),\n             b'\"' => out.push(b'\"'),\n             b'n' => out.push(b'\\n'),\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n-            b'0'..=b'7' => {\n-                let mut val = (next - b'0') as u32;\n-                for _ in 0..2 {\n-                    match iter.peek().copied() {\n-                        Some(d) if (b'0'..=b'7').contains(&d) => {\n-                            val = val * 8 + (d - b'0') as u32;\n-                            iter.next();\n-                        }\n-                        _ => break,\n-                    }\n-                }\n-                out.push((val & 0xFF) as u8);\n-            }\n+             /* ~ changed by cargo-mutants ~ */\n             _ => {\n                 out.push(b'\\\\');\n                 out.push(next);\n             }\n         }\n     }\n \n     String::from_utf8_lossy(&out).into_owned()\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "crates/diffguard-diff/src/unified.rs:529:13: delete match arm b'0'..= b'7' in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 14,
+        "line": 541
+      },
+      "start": {
+        "column": 13,
+        "line": 529
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace - with + in unescape_git_path\n@@ -522,17 +522,17 @@\n         match next {\n             b'\\\\' => out.push(b'\\\\'),\n             b'\"' => out.push(b'\"'),\n             b'n' => out.push(b'\\n'),\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n-                let mut val = (next - b'0') as u32;\n+                let mut val = (next + /* ~ changed by cargo-mutants ~ */ b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n                             val = val * 8 + (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:530:37: replace - with + in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "+",
+    "span": {
+      "end": {
+        "column": 38,
+        "line": 530
+      },
+      "start": {
+        "column": 37,
+        "line": 530
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace - with / in unescape_git_path\n@@ -522,17 +522,17 @@\n         match next {\n             b'\\\\' => out.push(b'\\\\'),\n             b'\"' => out.push(b'\"'),\n             b'n' => out.push(b'\\n'),\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n-                let mut val = (next - b'0') as u32;\n+                let mut val = (next / /* ~ changed by cargo-mutants ~ */ b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n                             val = val * 8 + (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:530:37: replace - with / in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "/",
+    "span": {
+      "end": {
+        "column": 38,
+        "line": 530
+      },
+      "start": {
+        "column": 37,
+        "line": 530
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace match guard (b'0'..=b'7').contains(&d) with true in unescape_git_path\n@@ -525,17 +525,17 @@\n             b'n' => out.push(b'\\n'),\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n-                        Some(d) if (b'0'..=b'7').contains(&d) => {\n+                        Some(d) if true /* ~ changed by cargo-mutants ~ */ => {\n                             val = val * 8 + (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n                 out.push((val & 0xFF) as u8);\n             }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "MatchArmGuard",
+    "name": "crates/diffguard-diff/src/unified.rs:533:36: replace match guard (b'0'..=b'7').contains(&d) with true in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 62,
+        "line": 533
+      },
+      "start": {
+        "column": 36,
+        "line": 533
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace match guard (b'0'..=b'7').contains(&d) with false in unescape_git_path\n@@ -525,17 +525,17 @@\n             b'n' => out.push(b'\\n'),\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n-                        Some(d) if (b'0'..=b'7').contains(&d) => {\n+                        Some(d) if false /* ~ changed by cargo-mutants ~ */ => {\n                             val = val * 8 + (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n                 out.push((val & 0xFF) as u8);\n             }\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "MatchArmGuard",
+    "name": "crates/diffguard-diff/src/unified.rs:533:36: replace match guard (b'0'..=b'7').contains(&d) with false in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 62,
+        "line": 533
+      },
+      "start": {
+        "column": 36,
+        "line": 533
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace + with - in unescape_git_path\n@@ -526,17 +526,17 @@\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n-                            val = val * 8 + (d - b'0') as u32;\n+                            val = val * 8 - /* ~ changed by cargo-mutants ~ */ (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n                 out.push((val & 0xFF) as u8);\n             }\n             _ => {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:534:43: replace + with - in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "-",
+    "span": {
+      "end": {
+        "column": 44,
+        "line": 534
+      },
+      "start": {
+        "column": 43,
+        "line": 534
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace + with * in unescape_git_path\n@@ -526,17 +526,17 @@\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n-                            val = val * 8 + (d - b'0') as u32;\n+                            val = val * 8 * /* ~ changed by cargo-mutants ~ */ (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n                 out.push((val & 0xFF) as u8);\n             }\n             _ => {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:534:43: replace + with * in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "*",
+    "span": {
+      "end": {
+        "column": 44,
+        "line": 534
+      },
+      "start": {
+        "column": 43,
+        "line": 534
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace * with + in unescape_git_path\n@@ -526,17 +526,17 @@\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n-                            val = val * 8 + (d - b'0') as u32;\n+                            val = val + /* ~ changed by cargo-mutants ~ */ 8 + (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n                 out.push((val & 0xFF) as u8);\n             }\n             _ => {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:534:39: replace * with + in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "+",
+    "span": {
+      "end": {
+        "column": 40,
+        "line": 534
+      },
+      "start": {
+        "column": 39,
+        "line": 534
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace * with / in unescape_git_path\n@@ -526,17 +526,17 @@\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n-                            val = val * 8 + (d - b'0') as u32;\n+                            val = val / /* ~ changed by cargo-mutants ~ */ 8 + (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n                 out.push((val & 0xFF) as u8);\n             }\n             _ => {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:534:39: replace * with / in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "/",
+    "span": {
+      "end": {
+        "column": 40,
+        "line": 534
+      },
+      "start": {
+        "column": 39,
+        "line": 534
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace - with + in unescape_git_path\n@@ -526,17 +526,17 @@\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n-                            val = val * 8 + (d - b'0') as u32;\n+                            val = val * 8 + (d + /* ~ changed by cargo-mutants ~ */ b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n                 out.push((val & 0xFF) as u8);\n             }\n             _ => {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:534:48: replace - with + in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "+",
+    "span": {
+      "end": {
+        "column": 49,
+        "line": 534
+      },
+      "start": {
+        "column": 48,
+        "line": 534
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace - with / in unescape_git_path\n@@ -526,17 +526,17 @@\n             b't' => out.push(b'\\t'),\n             b'r' => out.push(b'\\r'),\n             b' ' => out.push(b' '),\n             b'0'..=b'7' => {\n                 let mut val = (next - b'0') as u32;\n                 for _ in 0..2 {\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n-                            val = val * 8 + (d - b'0') as u32;\n+                            val = val * 8 + (d / /* ~ changed by cargo-mutants ~ */ b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n                 out.push((val & 0xFF) as u8);\n             }\n             _ => {\n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:534:48: replace - with / in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "/",
+    "span": {
+      "end": {
+        "column": 49,
+        "line": 534
+      },
+      "start": {
+        "column": 48,
+        "line": 534
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace & with | in unescape_git_path\n@@ -532,17 +532,17 @@\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n                             val = val * 8 + (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n-                out.push((val & 0xFF) as u8);\n+                out.push((val | /* ~ changed by cargo-mutants ~ */ 0xFF) as u8);\n             }\n             _ => {\n                 out.push(b'\\\\');\n                 out.push(next);\n             }\n         }\n     }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:540:31: replace & with | in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "|",
+    "span": {
+      "end": {
+        "column": 32,
+        "line": 540
+      },
+      "start": {
+        "column": 31,
+        "line": 540
+      }
+    }
+  },
+  {
+    "diff": "--- crates/diffguard-diff/src/unified.rs\n+++ replace & with ^ in unescape_git_path\n@@ -532,17 +532,17 @@\n                     match iter.peek().copied() {\n                         Some(d) if (b'0'..=b'7').contains(&d) => {\n                             val = val * 8 + (d - b'0') as u32;\n                             iter.next();\n                         }\n                         _ => break,\n                     }\n                 }\n-                out.push((val & 0xFF) as u8);\n+                out.push((val ^ /* ~ changed by cargo-mutants ~ */ 0xFF) as u8);\n             }\n             _ => {\n                 out.push(b'\\\\');\n                 out.push(next);\n             }\n         }\n     }\n \n",
+    "file": "crates/diffguard-diff/src/unified.rs",
+    "function": {
+      "function_name": "unescape_git_path",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 550
+        },
+        "start": {
+          "column": 1,
+          "line": 507
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "crates/diffguard-diff/src/unified.rs:540:31: replace & with ^ in unescape_git_path",
+    "package": "diffguard-diff",
+    "replacement": "^",
+    "span": {
+      "end": {
+        "column": 32,
+        "line": 540
+      },
+      "start": {
+        "column": 31,
+        "line": 540
+      }
+    }
+  }
+]

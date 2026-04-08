@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/sensor.rs
++++ replace normalize_path -> String with "xyzzy".into()
+@@ -136,17 +136,17 @@
+     ctx: &SensorReportContext,
+ ) -> Result<String, serde_json::Error> {
+     let report = render_sensor_report(receipt, ctx);
+     serde_json::to_string_pretty(&report)
+ }
+ 
+ /// Normalizes a path to use forward slashes (for cross-platform consistency).
+ fn normalize_path(path: &str) -> String {
+-    path.replace('\\', "/")
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use diffguard_types::{
+         CAP_GIT, CAP_STATUS_UNAVAILABLE, DiffMeta, Finding, REASON_GIT_UNAVAILABLE, Scope,
+         Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,

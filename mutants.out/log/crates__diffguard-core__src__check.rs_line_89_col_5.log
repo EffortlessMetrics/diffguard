@@ -1,0 +1,333 @@
+
+*** crates/diffguard-core/src/check.rs:89:5: replace run_check -> Result<CheckRun, anyhow::Error> with Ok(Default::default())
+
+*** mutation diff:
+--- crates/diffguard-core/src/check.rs
++++ replace run_check -> Result<CheckRun, anyhow::Error> with Ok(Default::default())
+@@ -81,175 +81,17 @@
+     },
+ }
+ 
+ pub fn run_check(
+     plan: &CheckPlan,
+     config: &diffguard_types::ConfigFile,
+     diff_text: &str,
+ ) -> Result<CheckRun, anyhow::Error> {
+-    let (mut diff_lines, _stats) = parse_unified_diff(diff_text, plan.scope)?;
+-
+-    if !plan.path_filters.is_empty() {
+-        let filters = compile_filter_globs(&plan.path_filters)?;
+-        diff_lines.retain(|l| filters.is_match(Path::new(&l.path)));
+-    }
+-
+-    if let Some(allowed_lines) = &plan.allowed_lines {
+-        diff_lines.retain(|l| allowed_lines.contains(&(l.path.clone(), l.line)));
+-    }
+-
+-    // Multiple diff sources (or unusual diffs) can contain duplicates for the same
+-    // path/line/content tuple. Keep first occurrence to preserve deterministic ordering.
+-    let mut seen = BTreeSet::<(String, u32, String)>::new();
+-    diff_lines.retain(|l| seen.insert((l.path.clone(), l.line, l.content.clone())));
+-
+-    // Filter rules by tags
+-    let filtered_rules: Vec<_> = config
+-        .rule
+-        .iter()
+-        .filter(|r| filter_rule_by_tags(r, plan))
+-        .cloned()
+-        .collect();
+-
+-    let rules = compile_rules(&filtered_rules)?;
+-    let rules_evaluated = filtered_rules.len();
+-    let override_matcher = RuleOverrideMatcher::compile(&plan.directory_overrides)?;
+-
+-    let lines = diff_lines.into_iter().map(|l| InputLine {
+-        path: l.path,
+-        line: l.line,
+-        content: l.content,
+-    });
+-
+-    let evaluation = evaluate_lines_with_overrides_and_language(
+-        lines,
+-        &rules,
+-        plan.max_findings,
+-        {
+-            if plan.directory_overrides.is_empty() {
+-                None
+-            } else {
+-                Some(&override_matcher)
+-            }
+-        },
+-        plan.force_language.as_deref(),
+-    );
+-
+-    let mut filtered_findings = Vec::with_capacity(evaluation.findings.len());
+-    let mut adjusted_counts = evaluation.counts.clone();
+-    let mut false_positive_findings = 0u32;
+-    let mut per_rule_false_positive = BTreeMap::<String, (u32, u32, u32, u32)>::new();
+-
+-    for finding in evaluation.findings {
+-        let fingerprint = compute_fingerprint(&finding);
+-        if plan.false_positive_fingerprints.contains(&fingerprint) {
+-            false_positive_findings = false_positive_findings.saturating_add(1);
+-            let entry = per_rule_false_positive
+-                .entry(finding.rule_id.clone())
+-                .or_insert((0, 0, 0, 0));
+-            entry.0 = entry.0.saturating_add(1);
+-            match finding.severity {
+-                diffguard_types::Severity::Info => {
+-                    adjusted_counts.info = adjusted_counts.info.saturating_sub(1);
+-                    entry.1 = entry.1.saturating_add(1);
+-                }
+-                diffguard_types::Severity::Warn => {
+-                    adjusted_counts.warn = adjusted_counts.warn.saturating_sub(1);
+-                    entry.2 = entry.2.saturating_add(1);
+-                }
+-                diffguard_types::Severity::Error => {
+-                    adjusted_counts.error = adjusted_counts.error.saturating_sub(1);
+-                    entry.3 = entry.3.saturating_add(1);
+-                }
+-            }
+-            continue;
+-        }
+-        filtered_findings.push(finding);
+-    }
+-
+-    let verdict_status = if adjusted_counts.error > 0 {
+-        VerdictStatus::Fail
+-    } else if adjusted_counts.warn > 0 {
+-        VerdictStatus::Warn
+-    } else {
+-        VerdictStatus::Pass
+-    };
+-
+-    let mut reasons: Vec<String> = Vec::new();
+-    if evaluation.truncated_findings > 0 {
+-        reasons.push(REASON_TRUNCATED.to_string());
+-    }
+-
+-    let receipt = CheckReceipt {
+-        schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
+-        tool: ToolMeta {
+-            name: "diffguard".to_string(),
+-            version: env!("CARGO_PKG_VERSION").to_string(),
+-        },
+-        diff: DiffMeta {
+-            base: plan.base.clone(),
+-            head: plan.head.clone(),
+-            context_lines: plan.diff_context,
+-            scope: plan.scope,
+-            files_scanned: evaluation.files_scanned,
+-            lines_scanned: evaluation.lines_scanned,
+-        },
+-        findings: filtered_findings,
+-        verdict: Verdict {
+-            status: verdict_status,
+-            counts: adjusted_counts,
+-            reasons,
+-        },
+-        timing: None,
+-    };
+-
+-    let markdown = crate::render::render_markdown_for_receipt(&receipt);
+-    let annotations = render_annotations(&receipt.findings);
+-
+-    let exit_code = compute_exit_code(plan.fail_on, &receipt.verdict.counts);
+-
+-    let mut rule_hits: Vec<RuleHitStat> = evaluation
+-        .rule_hits
+-        .into_iter()
+-        .map(|s| RuleHitStat {
+-            rule_id: s.rule_id,
+-            total: s.total,
+-            emitted: s.emitted,
+-            suppressed: s.suppressed,
+-            info: s.info,
+-            warn: s.warn,
+-            error: s.error,
+-            false_positive: 0,
+-        })
+-        .collect();
+-
+-    if !per_rule_false_positive.is_empty() {
+-        for stat in &mut rule_hits {
+-            if let Some((filtered, info, warn, error)) = per_rule_false_positive.get(&stat.rule_id)
+-            {
+-                stat.emitted = stat.emitted.saturating_sub(*filtered);
+-                stat.info = stat.info.saturating_sub(*info);
+-                stat.warn = stat.warn.saturating_sub(*warn);
+-                stat.error = stat.error.saturating_sub(*error);
+-                stat.false_positive = stat.false_positive.saturating_add(*filtered);
+-            }
+-        }
+-    }
+-
+-    Ok(CheckRun {
+-        receipt,
+-        markdown,
+-        annotations,
+-        exit_code,
+-        truncated_findings: evaluation.truncated_findings,
+-        rules_evaluated,
+-        rule_hits,
+-        false_positive_findings,
+-    })
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn compile_filter_globs(globs: &[String]) -> Result<GlobSet, PathFilterError> {
+     let mut b = GlobSetBuilder::new();
+     for g in globs {
+         let glob = Glob::new(g).map_err(|e| PathFilterError::InvalidGlob {
+             glob: g.clone(),
+             source: e,
+
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=diffguard-core@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh cfg-if v1.0.4
+       Fresh memchr v2.8.0
+       Fresh version_check v0.9.5
+       Fresh regex-syntax v0.8.10
+       Fresh itoa v1.0.18
+       Fresh quote v1.0.45
+       Fresh aho-corasick v1.1.4
+       Fresh bitflags v2.11.0
+       Fresh linux-raw-sys v0.12.1
+       Fresh syn v2.0.117
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh zmij v1.0.21
+       Fresh typenum v1.19.0
+       Fresh dyn-clone v1.0.20
+       Fresh rustix v1.1.4
+       Fresh regex-automata v0.4.14
+       Fresh fastrand v2.3.0
+       Fresh autocfg v1.5.0
+       Fresh once_cell v1.21.4
+       Fresh bstr v1.12.1
+       Fresh log v0.4.29
+       Fresh serde_derive v1.0.228
+       Fresh ref-cast-impl v1.0.25
+       Fresh serde_derive_internals v0.29.1
+       Fresh getrandom v0.3.4
+       Fresh generic-array v0.14.7
+       Fresh serde_json v1.0.149
+       Fresh getrandom v0.4.2
+       Fresh thiserror-impl v2.0.18
+       Fresh anyhow v1.0.102
+       Fresh winnow v1.0.1
+       Fresh serde_spanned v1.1.1
+       Fresh regex v1.12.3
+       Fresh toml_datetime v0.7.5+spec-1.1.0
+       Fresh wait-timeout v0.2.1
+       Fresh globset v0.4.18
+       Fresh serde v1.0.228
+       Fresh ref-cast v1.0.25
+       Fresh schemars_derive v1.2.1
+       Fresh rand_core v0.9.5
+       Fresh thiserror v2.0.18
+       Fresh block-buffer v0.10.4
+       Fresh tempfile v3.27.0
+       Fresh crypto-common v0.1.7
+       Fresh zerocopy v0.8.48
+       Fresh toml_parser v1.1.2+spec-1.1.0
+       Fresh quick-error v1.2.3
+       Fresh toml_writer v1.1.1+spec-1.1.0
+       Fresh fnv v1.0.7
+       Fresh cpufeatures v0.2.17
+       Fresh bit-vec v0.8.0
+       Fresh winnow v0.7.15
+       Fresh schemars v1.2.1
+       Fresh ppv-lite86 v0.2.21
+       Fresh digest v0.10.7
+       Fresh rand_xorshift v0.4.0
+       Fresh bit-set v0.8.0
+       Fresh rand v0.9.2
+       Fresh rusty-fork v0.3.1
+       Fresh toml v0.9.12+spec-1.1.0
+       Fresh num-traits v0.2.19
+       Fresh console v0.16.3
+       Fresh similar v2.7.0
+       Fresh hex v0.4.3
+       Fresh unarray v0.1.4
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-types)
+       Fresh rand_chacha v0.9.0
+       Fresh sha2 v0.10.9
+       Fresh insta v1.47.2
+       Fresh diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-diff)
+       Fresh diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-domain)
+       Fresh proptest v1.11.0
+       Dirty diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-core): the file `crates/diffguard-core/src/check.rs` has changed (1775668461.773314976s, 7s after last build at 1775668454.402040272s)
+   Compiling diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-zpeclc.tmp/crates/diffguard-core)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0ea501e1fb5d6a5b -C extra-filename=-eb54202daf525fcb --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2f10298022ccb1a6 -C extra-filename=-e53d6514fc2b0b9b --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rmeta --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rmeta --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rmeta --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rmeta --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rmeta --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rmeta`
+warning: unused import: `BTreeMap`
+ --> crates/diffguard-core/src/check.rs:1:24
+  |
+1 | use std::collections::{BTreeMap, BTreeSet};
+  |                        ^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::path::Path`
+ --> crates/diffguard-core/src/check.rs:2:5
+  |
+2 | use std::path::Path;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `diffguard_diff::parse_unified_diff`
+ --> crates/diffguard-core/src/check.rs:6:5
+  |
+6 | use diffguard_diff::parse_unified_diff;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `InputLine`, `RuleOverrideMatcher`, `compile_rules`, and `evaluate_lines_with_overrides_and_language`
+ --> crates/diffguard-core/src/check.rs:8:28
+  |
+8 |     DirectoryRuleOverride, InputLine, RuleOverrideMatcher, compile_rules,
+  |                            ^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+9 |     evaluate_lines_with_overrides_and_language,
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `DiffMeta`, `REASON_TRUNCATED`, `ToolMeta`, `VerdictStatus`, and `Verdict`
+  --> crates/diffguard-core/src/check.rs:12:19
+   |
+12 |     CheckReceipt, DiffMeta, FailOn, Finding, REASON_TRUNCATED, ToolMeta, Verdict, VerdictCounts,
+   |                   ^^^^^^^^                   ^^^^^^^^^^^^^^^^  ^^^^^^^^  ^^^^^^^
+13 |     VerdictStatus,
+   |     ^^^^^^^^^^^^^
+
+warning: unused import: `crate::fingerprint::compute_fingerprint`
+  --> crates/diffguard-core/src/check.rs:16:5
+   |
+16 | use crate::fingerprint::compute_fingerprint;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `CheckRun: Default` is not satisfied
+  --> crates/diffguard-core/src/check.rs:89:8
+   |
+89 |     Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+   |        ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Default` is not implemented for `CheckRun`
+  --> crates/diffguard-core/src/check.rs:48:1
+   |
+48 | pub struct CheckRun {
+   | ^^^^^^^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0277`.
+warning: `diffguard-core` (lib) generated 6 warnings
+error: could not compile `diffguard-core` (lib) due to 1 previous error; 6 warnings emitted
+
+Caused by:
+  process didn't exit successfully: `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2f10298022ccb1a6 -C extra-filename=-e53d6514fc2b0b9b --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rmeta --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rmeta --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rmeta --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rmeta --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rmeta --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rmeta` (exit status: 1)
+warning: build failed, waiting for other jobs to finish...
+warning: `diffguard-core` (lib test) generated 5 warnings (5 duplicates)
+error: could not compile `diffguard-core` (lib test) due to 1 previous error; 5 warnings emitted
+
+Caused by:
+  process didn't exit successfully: `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0ea501e1fb5d6a5b -C extra-filename=-eb54202daf525fcb --out-dir /tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-zpeclc.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib` (exit status: 1)
+
+*** result: Failure(101)

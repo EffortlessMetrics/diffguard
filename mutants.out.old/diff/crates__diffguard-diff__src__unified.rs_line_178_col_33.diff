@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ delete ! in parse_unified_diff
+@@ -170,17 +170,17 @@
+         // Detect submodule changes (Requirements 4.2)
+         if is_submodule(raw) {
+             skip_current_file = true;
+             continue;
+         }
+ 
+         // Detect deleted files (Requirements 4.5)
+         if is_deleted_file(raw) {
+-            skip_current_file = !matches!(scope, Scope::Deleted);
++            skip_current_file =  /* ~ changed by cargo-mutants ~ */matches!(scope, Scope::Deleted);
+             continue;
+         }
+ 
+         // Detect mode changes (Requirements 4.4)
+         // Mode-only changes are skipped - they have no content to scan
+         if is_mode_change_only(raw) {
+             continue;
+         }

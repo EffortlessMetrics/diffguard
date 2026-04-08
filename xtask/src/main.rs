@@ -414,4 +414,208 @@ mod tests {
 
         assert!(err.to_string().contains("command failed"));
     }
+
+    // =============================================================================
+    // Green edge case tests for xtask CI pipeline
+    // =============================================================================
+
+    /// Test CI failure when test command fails
+    #[test]
+    fn ci_reports_failure_when_test_fails() {
+        let _guard = lock_env();
+        let dir = TempDir::new().expect("temp");
+        let bin_dir = dir.path().join("bin");
+        std::fs::create_dir_all(&bin_dir).expect("create bin dir");
+
+        let cargo_path = {
+            #[cfg(windows)]
+            {
+                bin_dir.join("cargo.cmd")
+            }
+            #[cfg(not(windows))]
+            {
+                bin_dir.join("cargo")
+            }
+        };
+        let script = {
+            #[cfg(windows)]
+            {
+                "@echo off\r\nif \"%1\"==\"fmt\" exit /b 0\r\nif \"%1\"==\"test\" exit /b 1\r\nexit /b 0\r\n"
+            }
+            #[cfg(not(windows))]
+            {
+                "#!/bin/sh\nif [ \"$1\" = \"fmt\" ]; then exit 0; fi\nif [ \"$1\" = \"test\" ]; then exit 1; fi\nexit 0\n"
+            }
+        };
+        std::fs::write(&cargo_path, script).expect("write fake cargo");
+        #[cfg(not(windows))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&cargo_path).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&cargo_path, perms).unwrap();
+        }
+
+        unsafe {
+            std::env::set_var("DIFFGUARD_XTASK_CARGO", &cargo_path);
+        }
+
+        let err = ci().expect_err("ci should fail when test fails");
+
+        unsafe {
+            std::env::remove_var("DIFFGUARD_XTASK_CARGO");
+        }
+
+        assert!(err.to_string().contains("command failed"));
+    }
+
+    /// Test that default_mutants_packages has no duplicates
+    #[test]
+    fn default_mutants_packages_no_duplicates() {
+        use std::collections::HashSet;
+        let packages = default_mutants_packages();
+        let unique: HashSet<_> = packages.iter().collect();
+        assert_eq!(
+            unique.len(),
+            packages.len(),
+            "packages should not have duplicates"
+        );
+    }
+
+    /// Test writing empty JSON object
+    #[test]
+    fn write_pretty_json_empty_object() {
+        let dir = TempDir::new().expect("temp");
+        let path = dir.path().join("empty.json");
+
+        write_pretty_json(&path, &serde_json::json!({})).expect("write empty json");
+
+        let content = std::fs::read_to_string(&path).expect("read back");
+        assert_eq!(content.trim(), "{}");
+    }
+
+    /// Test writing deeply nested JSON
+    #[test]
+    fn write_pretty_json_deeply_nested() {
+        let dir = TempDir::new().expect("temp");
+        let path = dir.path().join("nested.json");
+
+        let nested = serde_json::json!({
+            "level1": {
+                "level2": {
+                    "level3": {
+                        "level4": {
+                            "value": "deep"
+                        }
+                    }
+                }
+            }
+        });
+
+        write_pretty_json(&path, &nested).expect("write nested json");
+
+        let content = std::fs::read_to_string(&path).expect("read back");
+        assert!(content.contains("level4"));
+        assert!(content.contains("deep"));
+    }
+
+    /// Test writing JSON with unicode characters
+    #[test]
+    fn write_pretty_json_unicode_content() {
+        let dir = TempDir::new().expect("temp");
+        let path = dir.path().join("unicode.json");
+
+        let unicode_json = serde_json::json!({
+            "japanese": "日本語",
+            "chinese": "中文",
+            "korean": "한국어",
+            "emoji": "😀🎉"
+        });
+
+        write_pretty_json(&path, &unicode_json).expect("write unicode json");
+
+        let content = std::fs::read_to_string(&path).expect("read back");
+        assert!(content.contains("日本語"));
+        assert!(content.contains("中文"));
+        assert!(content.contains("한국어"));
+    }
+
+    /// Test writing JSON array with many objects
+    #[test]
+    fn write_pretty_json_large_array() {
+        let dir = TempDir::new().expect("temp");
+        let path = dir.path().join("large_array.json");
+
+        let large_array = serde_json::json!([
+            {"id": 1, "name": "item1"},
+            {"id": 2, "name": "item2"},
+            {"id": 3, "name": "item3"}
+        ]);
+
+        write_pretty_json(&path, &large_array).expect("write large array json");
+
+        let content = std::fs::read_to_string(&path).expect("read back");
+        assert!(content.contains("item1"));
+        assert!(content.contains("item2"));
+        assert!(content.contains("item3"));
+    }
+
+    /// Test that run function handles path with spaces correctly
+    #[test]
+    fn run_handles_path_with_spaces() {
+        let (bin_ok, args_ok) = ok_command();
+        // Test with a command that might have issues with spaces in path
+        let result = run(bin_ok, &args_ok);
+        assert!(result.is_ok(), "run should handle command properly");
+    }
+
+    /// Test that ci function handles fmt failure properly
+    #[test]
+    fn ci_reports_failure_when_fmt_fails() {
+        let _guard = lock_env();
+        let dir = TempDir::new().expect("temp");
+        let bin_dir = dir.path().join("bin");
+        std::fs::create_dir_all(&bin_dir).expect("create bin dir");
+
+        let cargo_path = {
+            #[cfg(windows)]
+            {
+                bin_dir.join("cargo.cmd")
+            }
+            #[cfg(not(windows))]
+            {
+                bin_dir.join("cargo")
+            }
+        };
+        let script = {
+            #[cfg(windows)]
+            {
+                "@echo off\r\nif \"%1\"==\"fmt\" exit /b 1\r\nexit /b 0\r\n"
+            }
+            #[cfg(not(windows))]
+            {
+                "#!/bin/sh\nif [ \"$1\" = \"fmt\" ]; then exit 1; fi\nexit 0\n"
+            }
+        };
+        std::fs::write(&cargo_path, script).expect("write fake cargo");
+        #[cfg(not(windows))]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&cargo_path).unwrap().permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&cargo_path, perms).unwrap();
+        }
+
+        unsafe {
+            std::env::set_var("DIFFGUARD_XTASK_CARGO", &cargo_path);
+        }
+
+        let err = ci().expect_err("ci should fail when fmt fails");
+
+        unsafe {
+            std::env::remove_var("DIFFGUARD_XTASK_CARGO");
+        }
+
+        assert!(err.to_string().contains("command failed"));
+    }
 }

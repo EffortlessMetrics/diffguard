@@ -1,0 +1,22 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace parse_rename_from -> Option<String> with Some(String::new())
+@@ -70,18 +70,17 @@
+ ///
+ /// Rename lines look like:
+ /// - "rename from path/to/old/file.rs"
+ ///
+ /// Returns the path after "rename from " if the line matches, None otherwise.
+ ///
+ /// Requirements: 4.3
+ pub fn parse_rename_from(line: &str) -> Option<String> {
+-    let rest = line.strip_prefix("rename from ")?;
+-    parse_rename_path(rest)
++    Some(String::new()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Parses a rename line and extracts the destination path.
+ ///
+ /// Rename lines look like:
+ /// - "rename to path/to/new/file.rs"
+ ///
+ /// Returns the path after "rename to " if the line matches, None otherwise.

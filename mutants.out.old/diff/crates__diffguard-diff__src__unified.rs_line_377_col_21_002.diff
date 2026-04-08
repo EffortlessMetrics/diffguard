@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace < with <= in parse_diff_git_line
+@@ -369,17 +369,17 @@
+         .parse()
+         .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))
+ }
+ 
+ fn parse_diff_git_line(line: &str) -> Option<String> {
+     // diff --git a/foo b/foo
+     let rest = line.strip_prefix("diff --git ")?;
+     let tokens = tokenize_git_paths(rest, 2);
+-    if tokens.len() < 2 {
++    if tokens.len() <= /* ~ changed by cargo-mutants ~ */ 2 {
+         return None;
+     }
+     let b = unquote_git_token(&tokens[1]);
+     strip_prefix_path(&b)
+ }
+ 
+ fn parse_plus_plus_plus(line: &str) -> Option<String> {
+     // +++ b/foo

@@ -1,0 +1,21 @@
+PR Maintainer Vision Agent - Signoff Document
+=============================================
+Work ID: work-48dac268
+Agent: pr-maintainer-vision-agent
+Status: CANNOT_PROCEED
+
+Reasoning:
+The gates system returned an error indicating that agent 'pr-maintainer-vision-agent' 
+is not registered in gate HARDENED. Available agents are: security-review-agent, 
+cleanup-agent, code-quality-agent, dependency-audit-agent, refactor-agent, 
+deep-review-agent, maintainer-vision-agent-2.
+
+Since this specific agent is not available in the HARDENED gate, this task cannot 
+proceed. The prompt file contained only the error message from the gates system.
+
+Confidence: LOW - This is a gate configuration issue, not a code review task.
+Approved: NO
+
+Next Steps:
+- Use 'maintainer-vision-agent-2' instead if a maintainer vision review is needed
+- Verify gate configuration if pr-maintainer-vision-agent should be available

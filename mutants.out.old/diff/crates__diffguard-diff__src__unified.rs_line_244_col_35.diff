@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace || with && in parse_unified_diff
+@@ -236,17 +236,17 @@
+             continue;
+         }
+ 
+         let Some(path) = current_path.as_deref() else {
+             continue;
+         };
+ 
+         // Skip file marker lines
+-        if raw.starts_with("+++") || raw.starts_with("---") {
++        if raw.starts_with("+++") && /* ~ changed by cargo-mutants ~ */ raw.starts_with("---") {
+             continue;
+         }
+ 
+         if raw.starts_with('\\') {
+             // "\\ No newline at end of file"
+             continue;
+         }
+ 

@@ -1,0 +1,42 @@
+--- crates/diffguard-core/src/gitlab_quality.rs
++++ replace finding_to_gitlab -> GitLabFinding with Default::default()
+@@ -85,38 +85,17 @@
+ /// Renders a GitLab Code Quality report as a JSON string.
+ pub fn render_gitlab_quality_json(receipt: &CheckReceipt) -> Result<String, serde_json::Error> {
+     let report = render_gitlab_quality_for_receipt(receipt);
+     serde_json::to_string_pretty(&report)
+ }
+ 
+ /// Converts a Finding to a GitLab finding.
+ fn finding_to_gitlab(finding: &Finding) -> GitLabFinding {
+-    let fingerprint = compute_fingerprint(finding);
+-    let content = if finding.snippet.is_empty() {
+-        None
+-    } else {
+-        Some(GitLabContent {
+-            body: finding.snippet.clone(),
+-        })
+-    };
+-
+-    GitLabFinding {
+-        description: finding.message.clone(),
+-        fingerprint,
+-        severity: finding.severity.into(),
+-        location: GitLabLocation {
+-            path: finding.path.clone(),
+-            lines: Some(GitLabLines {
+-                begin: finding.line,
+-            }),
+-        },
+-        check_name: finding.rule_id.clone(),
+-        content,
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Computes a deterministic fingerprint for a finding.
+ fn compute_fingerprint(finding: &Finding) -> String {
+     let mut hasher = Sha256::new();
+     hasher.update(finding.rule_id.as_bytes());
+     hasher.update(finding.path.as_bytes());
+     hasher.update(finding.line.to_string().as_bytes());

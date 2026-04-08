@@ -1,0 +1,447 @@
+
+*** crates/diffguard-diff/src/unified.rs:44:5: replace is_deleted_file -> bool with true
+
+*** mutation diff:
+--- crates/diffguard-diff/src/unified.rs
++++ replace is_deleted_file -> bool with true
+@@ -36,17 +36,17 @@
+ 
+ /// Detects if a line indicates a deleted file mode.
+ ///
+ /// Deleted files are marked with lines like:
+ /// - "deleted file mode 100644"
+ ///
+ /// Requirements: 4.5
+ pub fn is_deleted_file(line: &str) -> bool {
+-    line.starts_with("deleted file mode ")
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Detects if a line indicates a new file mode.
+ ///
+ /// New files are marked with lines like:
+ /// - "new file mode 100644"
+ pub fn is_new_file(line: &str) -> bool {
+     line.starts_with("new file mode ")
+
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=diffguard-diff@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh cfg-if v1.0.4
+       Fresh proc-macro2 v1.0.106
+       Fresh bitflags v2.11.0
+       Fresh linux-raw-sys v0.12.1
+       Fresh memchr v2.8.0
+       Fresh once_cell v1.21.4
+       Fresh autocfg v1.5.0
+       Fresh quote v1.0.45
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh itoa v1.0.18
+       Fresh fastrand v2.3.0
+       Fresh dyn-clone v1.0.20
+       Fresh syn v2.0.117
+       Fresh getrandom v0.3.4
+       Fresh rustix v1.1.4
+       Fresh getrandom v0.4.2
+       Fresh zmij v1.0.21
+       Fresh zerocopy v0.8.48
+       Fresh wait-timeout v0.2.1
+       Fresh fnv v1.0.7
+       Fresh quick-error v1.2.3
+       Fresh bit-vec v0.8.0
+       Fresh console v0.16.3
+       Fresh unarray v0.1.4
+       Fresh similar v2.7.0
+       Fresh regex-syntax v0.8.10
+       Fresh serde_derive v1.0.228
+       Fresh rand_core v0.9.5
+       Fresh serde_derive_internals v0.29.1
+       Fresh ref-cast-impl v1.0.25
+       Fresh serde_json v1.0.149
+       Fresh tempfile v3.27.0
+       Fresh ppv-lite86 v0.2.21
+       Fresh thiserror-impl v2.0.18
+       Fresh anyhow v1.0.102
+       Fresh num-traits v0.2.19
+       Fresh bit-set v0.8.0
+       Fresh serde v1.0.228
+       Fresh ref-cast v1.0.25
+       Fresh schemars_derive v1.2.1
+       Fresh rand v0.9.2
+       Fresh rand_xorshift v0.4.0
+       Fresh thiserror v2.0.18
+       Fresh rand_chacha v0.9.0
+       Fresh rusty-fork v0.3.1
+       Fresh schemars v1.2.1
+       Fresh proptest v1.11.0
+       Fresh insta v1.47.2
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-types)
+       Dirty diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-diff): the file `crates/diffguard-diff/src/unified.rs` has changed (1775668243.819172016s, 1s after last build at 1775668242.130108720s)
+   Compiling diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-diff)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_diff --edition=2024 crates/diffguard-diff/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=52f023dbcd3d5200 -C extra-filename=-b586ecc3194d33f5 --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern insta=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_diff --edition=2024 crates/diffguard-diff/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=817c377025fcbe9e -C extra-filename=-c73328382a27267f --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta`
+warning: unused variable: `line`
+  --> crates/diffguard-diff/src/unified.rs:43:24
+   |
+43 | pub fn is_deleted_file(line: &str) -> bool {
+   |                        ^^^^ help: if this is intentional, prefix it with an underscore: `_line`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `diffguard-diff` (lib) generated 1 warning (run `cargo fix --lib -p diffguard-diff` to apply 1 suggestion)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name properties --edition=2024 crates/diffguard-diff/tests/properties.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=40ee59f879c2de01 -C extra-filename=-f41f878e46fa993d --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern insta=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib`
+warning: `diffguard-diff` (lib test) generated 1 warning (1 duplicate)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.71s
+  Executable `/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/diffguard_diff-b586ecc3194d33f5`
+  Executable `/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/properties-f41f878e46fa993d`
+
+*** result: Success
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --verbose --package=diffguard-diff@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh cfg-if v1.0.4
+       Fresh linux-raw-sys v0.12.1
+       Fresh bitflags v2.11.0
+       Fresh fastrand v2.3.0
+       Fresh autocfg v1.5.0
+       Fresh itoa v1.0.18
+       Fresh once_cell v1.21.4
+       Fresh memchr v2.8.0
+       Fresh quote v1.0.45
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh rustix v1.1.4
+       Fresh zmij v1.0.21
+       Fresh zerocopy v0.8.48
+       Fresh dyn-clone v1.0.20
+       Fresh quick-error v1.2.3
+       Fresh fnv v1.0.7
+       Fresh bit-vec v0.8.0
+       Fresh unarray v0.1.4
+       Fresh similar v2.7.0
+       Fresh regex-syntax v0.8.10
+       Fresh syn v2.0.117
+       Fresh getrandom v0.3.4
+       Fresh getrandom v0.4.2
+       Fresh serde_json v1.0.149
+       Fresh wait-timeout v0.2.1
+       Fresh ppv-lite86 v0.2.21
+       Fresh anyhow v1.0.102
+       Fresh console v0.16.3
+       Fresh num-traits v0.2.19
+       Fresh bit-set v0.8.0
+       Fresh serde_derive v1.0.228
+       Fresh rand_core v0.9.5
+       Fresh ref-cast-impl v1.0.25
+       Fresh serde_derive_internals v0.29.1
+       Fresh tempfile v3.27.0
+       Fresh thiserror-impl v2.0.18
+       Fresh serde v1.0.228
+       Fresh schemars_derive v1.2.1
+       Fresh ref-cast v1.0.25
+       Fresh rusty-fork v0.3.1
+       Fresh rand_xorshift v0.4.0
+       Fresh thiserror v2.0.18
+       Fresh rand v0.9.2
+       Fresh rand_chacha v0.9.0
+       Fresh schemars v1.2.1
+       Fresh proptest v1.11.0
+       Fresh insta v1.47.2
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-types)
+warning: unused variable: `line`
+  --> crates/diffguard-diff/src/unified.rs:43:24
+   |
+43 | pub fn is_deleted_file(line: &str) -> bool {
+   |                        ^^^^ help: if this is intentional, prefix it with an underscore: `_line`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `diffguard-diff` (lib) generated 1 warning (run `cargo fix --lib -p diffguard-diff` to apply 1 suggestion)
+warning: `diffguard-diff` (lib test) generated 1 warning (1 duplicate)
+       Fresh diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-diff)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.23s
+     Running `/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/diffguard_diff-b586ecc3194d33f5`
+
+running 62 tests
+test unified::tests::binary_file_added_from_dev_null ... FAILED
+test unified::tests::continues_after_malformed_hunk_header ... FAILED
+test unified::tests::handles_empty_hunk_zero_lines ... ok
+test unified::tests::does_not_treat_pure_additions_as_changed ... ok
+test unified::tests::handles_mixed_unicode_and_ascii ... FAILED
+test unified::tests::deleted_scope_includes_deleted_files ... FAILED
+test unified::tests::handles_empty_hunk_context_only ... ok
+test unified::tests::handles_multiple_empty_hunks ... ok
+test unified::tests::handles_unicode_emojis_in_diff ... FAILED
+test unified::tests::handles_multiple_special_cases_in_one_diff ... FAILED
+test unified::tests::handles_unicode_in_added_lines ... FAILED
+test unified::tests::handles_unicode_in_file_paths ... FAILED
+test unified::tests::handles_unicode_in_changed_lines ... FAILED
+test unified::tests::handles_unicode_special_characters ... FAILED
+test unified::tests::ignores_lines_outside_hunks ... FAILED
+test unified::tests::is_binary_file_detects_binary_markers ... ok
+test unified::tests::is_deleted_file_detects_deleted_mode ... ok
+test unified::tests::is_deleted_file_rejects_non_deleted_lines ... FAILED
+test unified::tests::is_mode_change_only_detects_mode_changes ... ok
+test unified::tests::is_mode_change_only_rejects_non_mode_lines ... ok
+test unified::tests::is_binary_file_rejects_non_binary_lines ... ok
+test unified::tests::is_new_file_detects_new_mode ... ok
+test unified::tests::is_new_file_rejects_non_new_lines ... ok
+test unified::tests::is_submodule_detects_submodule_commits ... ok
+test unified::tests::modified_scope_behaves_like_changed_scope ... ok
+test unified::tests::parse_diff_git_line_parses_paths ... ok
+test unified::tests::parse_diff_git_line_rejects_missing_prefix ... ok
+test unified::tests::parse_hunk_header_rejects_non_numeric_start ... ok
+test unified::tests::is_submodule_rejects_non_submodule_lines ... ok
+test unified::tests::parse_plus_plus_plus_rejects_invalid_lines ... ok
+test unified::tests::parse_hunk_header_rejects_missing_plus_section ... ok
+test unified::tests::parse_plus_plus_plus_parses_paths ... ok
+test unified::tests::parse_rename_from_returns_none_for_non_rename_lines ... ok
+test unified::tests::parse_rename_path_empty_returns_none ... ok
+test unified::tests::parse_rename_from_extracts_source_path ... ok
+test unified::tests::parse_rename_to_extracts_destination_path ... ok
+test unified::tests::parse_rename_to_returns_none_for_non_rename_lines ... ok
+test unified::tests::parse_unified_diff_skips_malformed_diff_git_line ... ok
+test unified::tests::parse_single_git_path_empty_returns_none ... ok
+test unified::tests::parses_changed_lines_only_when_requested ... FAILED
+test unified::tests::parses_deleted_lines_when_requested ... FAILED
+test unified::tests::parses_multiple_files_in_single_diff ... FAILED
+test unified::tests::parses_multiple_files_preserves_order ... FAILED
+test unified::tests::parses_added_lines ... FAILED
+test unified::tests::skips_submodule_marker_lines ... ok
+test unified::tests::strip_prefix_path_empty_returns_none ... ok
+test unified::tests::renamed_file_with_no_content_changes ... ok
+test unified::tests::skips_binary_files ... FAILED
+test unified::tests::parses_multiple_files_with_multiple_hunks_each ... FAILED
+test unified::tests::parses_quoted_paths_in_headers ... FAILED
+test unified::tests::skips_deleted_files_for_added_scope ... FAILED
+test unified::tests::skips_file_markers_inside_hunks ... FAILED
+test unified::tests::skips_mode_only_changes ... FAILED
+test unified::tests::skips_no_newline_marker ... FAILED
+test unified::tests::skips_submodule_line_inside_hunk ... ok
+test unified::tests::tokenize_git_paths_trailing_escape_in_quote ... ok
+test unified::tests::skips_hunks_without_current_path ... ok
+test unified::tests::unescape_git_path_handles_octal_limits_and_control_chars ... ok
+test unified::tests::unescape_git_path_handles_common_escapes ... ok
+test unified::tests::tokenize_git_paths_respects_quotes_and_limits ... ok
+test unified::tests::uses_new_path_for_renamed_files ... FAILED
+test unified::tests::skips_submodule_changes ... FAILED
+
+failures:
+
+---- unified::tests::binary_file_added_from_dev_null stdout ----
+
+thread 'unified::tests::binary_file_added_from_dev_null' (776683) panicked at crates/diffguard-diff/src/unified.rs:1303:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- unified::tests::continues_after_malformed_hunk_header stdout ----
+
+thread 'unified::tests::continues_after_malformed_hunk_header' (776684) panicked at crates/diffguard-diff/src/unified.rs:1229:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::handles_mixed_unicode_and_ascii stdout ----
+
+thread 'unified::tests::handles_mixed_unicode_and_ascii' (776689) panicked at crates/diffguard-diff/src/unified.rs:1619:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::deleted_scope_includes_deleted_files stdout ----
+
+thread 'unified::tests::deleted_scope_includes_deleted_files' (776685) panicked at crates/diffguard-diff/src/unified.rs:1102:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::handles_unicode_emojis_in_diff stdout ----
+
+thread 'unified::tests::handles_unicode_emojis_in_diff' (776692) panicked at crates/diffguard-diff/src/unified.rs:1556:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::handles_multiple_special_cases_in_one_diff stdout ----
+
+thread 'unified::tests::handles_multiple_special_cases_in_one_diff' (776691) panicked at crates/diffguard-diff/src/unified.rs:1273:9:
+assertion `left == right` failed
+  left: 0
+ right: 2
+
+---- unified::tests::handles_unicode_in_added_lines stdout ----
+
+thread 'unified::tests::handles_unicode_in_added_lines' (776693) panicked at crates/diffguard-diff/src/unified.rs:1535:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::handles_unicode_in_file_paths stdout ----
+
+thread 'unified::tests::handles_unicode_in_file_paths' (776695) panicked at crates/diffguard-diff/src/unified.rs:1575:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::handles_unicode_in_changed_lines stdout ----
+
+thread 'unified::tests::handles_unicode_in_changed_lines' (776694) panicked at crates/diffguard-diff/src/unified.rs:1641:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::handles_unicode_special_characters stdout ----
+
+thread 'unified::tests::handles_unicode_special_characters' (776696) panicked at crates/diffguard-diff/src/unified.rs:1598:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::ignores_lines_outside_hunks stdout ----
+
+thread 'unified::tests::ignores_lines_outside_hunks' (776697) panicked at crates/diffguard-diff/src/unified.rs:1188:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::is_deleted_file_rejects_non_deleted_lines stdout ----
+
+thread 'unified::tests::is_deleted_file_rejects_non_deleted_lines' (776701) panicked at crates/diffguard-diff/src/unified.rs:786:9:
+assertion failed: !is_deleted_file("new file mode 100644")
+
+---- unified::tests::parses_changed_lines_only_when_requested stdout ----
+
+thread 'unified::tests::parses_changed_lines_only_when_requested' (776723) panicked at crates/diffguard-diff/src/unified.rs:590:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::parses_deleted_lines_when_requested stdout ----
+
+thread 'unified::tests::parses_deleted_lines_when_requested' (776724) panicked at crates/diffguard-diff/src/unified.rs:646:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::parses_multiple_files_in_single_diff stdout ----
+
+thread 'unified::tests::parses_multiple_files_in_single_diff' (776725) panicked at crates/diffguard-diff/src/unified.rs:1411:9:
+assertion `left == right` failed
+  left: 0
+ right: 3
+
+---- unified::tests::parses_multiple_files_preserves_order stdout ----
+
+thread 'unified::tests::parses_multiple_files_preserves_order' (776726) panicked at crates/diffguard-diff/src/unified.rs:1511:9:
+assertion `left == right` failed
+  left: 0
+ right: 3
+
+---- unified::tests::parses_added_lines stdout ----
+
+thread 'unified::tests::parses_added_lines' (776722) panicked at crates/diffguard-diff/src/unified.rs:570:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::skips_binary_files stdout ----
+
+thread 'unified::tests::skips_binary_files' (776730) panicked at crates/diffguard-diff/src/unified.rs:1027:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::parses_multiple_files_with_multiple_hunks_each stdout ----
+
+thread 'unified::tests::parses_multiple_files_with_multiple_hunks_each' (776727) panicked at crates/diffguard-diff/src/unified.rs:1455:9:
+assertion `left == right` failed
+  left: 0
+ right: 2
+
+---- unified::tests::parses_quoted_paths_in_headers stdout ----
+
+thread 'unified::tests::parses_quoted_paths_in_headers' (776728) panicked at crates/diffguard-diff/src/unified.rs:1169:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::skips_deleted_files_for_added_scope stdout ----
+
+thread 'unified::tests::skips_deleted_files_for_added_scope' (776731) panicked at crates/diffguard-diff/src/unified.rs:1081:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::skips_file_markers_inside_hunks stdout ----
+
+thread 'unified::tests::skips_file_markers_inside_hunks' (776732) panicked at crates/diffguard-diff/src/unified.rs:1206:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::skips_mode_only_changes stdout ----
+
+thread 'unified::tests::skips_mode_only_changes' (776734) panicked at crates/diffguard-diff/src/unified.rs:1129:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::skips_no_newline_marker stdout ----
+
+thread 'unified::tests::skips_no_newline_marker' (776735) panicked at crates/diffguard-diff/src/unified.rs:696:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::uses_new_path_for_renamed_files stdout ----
+
+thread 'unified::tests::uses_new_path_for_renamed_files' (776744) panicked at crates/diffguard-diff/src/unified.rs:1151:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+---- unified::tests::skips_submodule_changes stdout ----
+
+thread 'unified::tests::skips_submodule_changes' (776736) panicked at crates/diffguard-diff/src/unified.rs:1053:9:
+assertion `left == right` failed
+  left: 0
+ right: 1
+
+
+failures:
+    unified::tests::binary_file_added_from_dev_null
+    unified::tests::continues_after_malformed_hunk_header
+    unified::tests::deleted_scope_includes_deleted_files
+    unified::tests::handles_mixed_unicode_and_ascii
+    unified::tests::handles_multiple_special_cases_in_one_diff
+    unified::tests::handles_unicode_emojis_in_diff
+    unified::tests::handles_unicode_in_added_lines
+    unified::tests::handles_unicode_in_changed_lines
+    unified::tests::handles_unicode_in_file_paths
+    unified::tests::handles_unicode_special_characters
+    unified::tests::ignores_lines_outside_hunks
+    unified::tests::is_deleted_file_rejects_non_deleted_lines
+    unified::tests::parses_added_lines
+    unified::tests::parses_changed_lines_only_when_requested
+    unified::tests::parses_deleted_lines_when_requested
+    unified::tests::parses_multiple_files_in_single_diff
+    unified::tests::parses_multiple_files_preserves_order
+    unified::tests::parses_multiple_files_with_multiple_hunks_each
+    unified::tests::parses_quoted_paths_in_headers
+    unified::tests::skips_binary_files
+    unified::tests::skips_deleted_files_for_added_scope
+    unified::tests::skips_file_markers_inside_hunks
+    unified::tests::skips_mode_only_changes
+    unified::tests::skips_no_newline_marker
+    unified::tests::skips_submodule_changes
+    unified::tests::uses_new_path_for_renamed_files
+
+test result: FAILED. 36 passed; 26 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p diffguard-diff --lib`
+
+*** result: Failure(101)

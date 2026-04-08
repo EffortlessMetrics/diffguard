@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/render.rs
++++ delete ! in render_markdown_for_receipt
+@@ -34,17 +34,17 @@
+     ));
+ 
+     let meta_reasons: Vec<&String> = receipt
+         .verdict
+         .reasons
+         .iter()
+         .filter(|r| RENDERABLE_META_REASONS.contains(&r.as_str()))
+         .collect();
+-    if !meta_reasons.is_empty() {
++    if  /* ~ changed by cargo-mutants ~ */meta_reasons.is_empty() {
+         out.push_str("**Verdict reasons:**\n");
+         for r in &meta_reasons {
+             out.push_str(&format!("- {r}\n"));
+         }
+         out.push('\n');
+     }
+ 
+     if receipt.verdict.counts.suppressed > 0 {

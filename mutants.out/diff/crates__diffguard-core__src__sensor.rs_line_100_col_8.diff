@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/sensor.rs
++++ delete ! in render_sensor_report
+@@ -92,17 +92,17 @@
+ 
+     let mut diffguard_data = serde_json::json!({
+         "suppressed_count": receipt.verdict.counts.suppressed,
+         "truncated_count": ctx.truncated_count,
+         "rules_matched": rules_matched,
+         "rules_total": ctx.rules_total,
+     });
+ 
+-    if !tags_matched.is_empty() {
++    if  /* ~ changed by cargo-mutants ~ */tags_matched.is_empty() {
+         diffguard_data["tags_matched"] =
+             serde_json::to_value(&tags_matched).expect("serialize tags_matched");
+     }
+ 
+     let data = serde_json::json!({
+         "diff": {
+             "base": receipt.diff.base,
+             "head": receipt.diff.head,

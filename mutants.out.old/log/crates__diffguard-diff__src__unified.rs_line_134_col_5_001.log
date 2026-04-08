@@ -1,0 +1,301 @@
+
+*** crates/diffguard-diff/src/unified.rs:134:5: replace parse_unified_diff -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> with Ok((vec![Default::default()], Default::default()))
+
+*** mutation diff:
+--- crates/diffguard-diff/src/unified.rs
++++ replace parse_unified_diff -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> with Ok((vec![Default::default()], Default::default()))
+@@ -126,211 +126,17 @@
+ /// - Deleted files: skipped unless `scope = deleted`
+ /// - Mode-only changes: skipped (no lines extracted)
+ /// - Renamed files: uses the new (destination) path
+ /// - Malformed content: continues processing subsequent files
+ pub fn parse_unified_diff(
+     diff_text: &str,
+     scope: Scope,
+ ) -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> {
+-    let mut out: Vec<DiffLine> = Vec::new();
+-    let mut current_path: Option<String> = None;
+-
+-    let mut old_line_no: u32 = 0;
+-    let mut new_line_no: u32 = 0;
+-    let mut in_hunk = false;
+-
+-    // For "changed"/"modified" scopes: treat '+' lines as changed if a '-' was seen
+-    // since the last context line.
+-    let mut pending_removed = false;
+-
+-    // Track special file status for the current file
+-    let mut skip_current_file = false;
+-    let mut rename_to_path: Option<String> = None;
+-
+-    for raw in diff_text.lines() {
+-        if raw.starts_with("diff --git ") {
+-            // Reset state for new file
+-            in_hunk = false;
+-            pending_removed = false;
+-            skip_current_file = false;
+-            rename_to_path = None;
+-
+-            // Example: diff --git a/foo b/foo
+-            if let Some(p) = parse_diff_git_line(raw) {
+-                current_path = Some(p);
+-            }
+-            continue;
+-        }
+-
+-        // Detect binary files (Requirements 4.1)
+-        if is_binary_file(raw) {
+-            skip_current_file = true;
+-            continue;
+-        }
+-
+-        // Detect submodule changes (Requirements 4.2)
+-        if is_submodule(raw) {
+-            skip_current_file = true;
+-            continue;
+-        }
+-
+-        // Detect deleted files (Requirements 4.5)
+-        if is_deleted_file(raw) {
+-            skip_current_file = !matches!(scope, Scope::Deleted);
+-            continue;
+-        }
+-
+-        // Detect mode changes (Requirements 4.4)
+-        // Mode-only changes are skipped - they have no content to scan
+-        if is_mode_change_only(raw) {
+-            continue;
+-        }
+-
+-        // Detect renamed files (Requirements 4.3)
+-        if let Some(to_path) = parse_rename_to(raw) {
+-            rename_to_path = Some(to_path);
+-            continue;
+-        }
+-
+-        // Skip "rename from" lines (we only care about the destination)
+-        if parse_rename_from(raw).is_some() {
+-            continue;
+-        }
+-
+-        if raw.starts_with("+++ ") {
+-            // Prefer the +++ path if present, unless we have a rename_to path
+-            if rename_to_path.is_none() {
+-                if let Some(p) = parse_plus_plus_plus(raw) {
+-                    current_path = Some(p);
+-                }
+-            } else {
+-                // Use the rename_to path for renamed files
+-                current_path = rename_to_path.take();
+-            }
+-            continue;
+-        }
+-
+-        if raw.starts_with("@@") {
+-            if skip_current_file {
+-                continue;
+-            }
+-
+-            // Try to parse the hunk header, but continue processing on error (Requirements 4.6)
+-            match parse_hunk_header(raw) {
+-                Ok(hdr) => {
+-                    old_line_no = hdr.old_start;
+-                    new_line_no = hdr.new_start;
+-                    in_hunk = true;
+-                    pending_removed = false;
+-                }
+-                Err(_) => {
+-                    // Malformed hunk header - skip this hunk but continue processing
+-                    // This allows subsequent files to be processed (Requirements 4.6)
+-                    in_hunk = false;
+-                }
+-            }
+-            continue;
+-        }
+-
+-        // Skip if we're not in a hunk or if the current file should be skipped
+-        if !in_hunk || skip_current_file {
+-            continue;
+-        }
+-
+-        let Some(path) = current_path.as_deref() else {
+-            continue;
+-        };
+-
+-        // Skip file marker lines
+-        if raw.starts_with("+++") || raw.starts_with("---") {
+-            continue;
+-        }
+-
+-        if raw.starts_with('\\') {
+-            // "\\ No newline at end of file"
+-            continue;
+-        }
+-
+-        let first = raw.as_bytes().first().copied();
+-        match first {
+-            Some(b'+') => {
+-                // Check if this is a submodule content line (Requirements 4.2)
+-                let content = &raw[1..];
+-                if is_submodule(content) {
+-                    skip_current_file = true;
+-                    in_hunk = false;
+-                    continue;
+-                }
+-
+-                // Added line.
+-                let is_changed = pending_removed;
+-                let include = match scope {
+-                    Scope::Added => true,
+-                    Scope::Changed | Scope::Modified => is_changed,
+-                    Scope::Deleted => false,
+-                };
+-
+-                if include {
+-                    out.push(DiffLine {
+-                        path: path.to_string(),
+-                        line: new_line_no,
+-                        content: content.to_string(),
+-                        kind: if is_changed {
+-                            ChangeKind::Changed
+-                        } else {
+-                            ChangeKind::Added
+-                        },
+-                    });
+-                }
+-
+-                new_line_no = new_line_no.saturating_add(1);
+-            }
+-            Some(b'-') => {
+-                // Check if this is a submodule content line (Requirements 4.2)
+-                let content = &raw[1..];
+-                if is_submodule(content) {
+-                    skip_current_file = true;
+-                    in_hunk = false;
+-                    continue;
+-                }
+-
+-                // Removed line.
+-                if matches!(scope, Scope::Deleted) {
+-                    out.push(DiffLine {
+-                        path: path.to_string(),
+-                        line: old_line_no,
+-                        content: content.to_string(),
+-                        kind: ChangeKind::Deleted,
+-                    });
+-                }
+-                pending_removed = true;
+-                old_line_no = old_line_no.saturating_add(1);
+-            }
+-            Some(b' ') => {
+-                // Context line.
+-                pending_removed = false;
+-                old_line_no = old_line_no.saturating_add(1);
+-                new_line_no = new_line_no.saturating_add(1);
+-            }
+-            _ => {}
+-        }
+-    }
+-
+-    let mut files = std::collections::BTreeSet::<String>::new();
+-    for l in &out {
+-        files.insert(l.path.clone());
+-    }
+-
+-    let stats = DiffStats {
+-        files: files.len() as u32,
+-        lines: out.len() as u32,
+-    };
+-
+-    Ok((out, stats))
++    Ok((vec![Default::default()], Default::default())) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+ struct HunkHeader {
+     old_start: u32,
+     new_start: u32,
+ }
+ 
+
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=diffguard-diff@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh cfg-if v1.0.4
+       Fresh linux-raw-sys v0.12.1
+       Fresh bitflags v2.11.0
+       Fresh once_cell v1.21.4
+       Fresh autocfg v1.5.0
+       Fresh itoa v1.0.18
+       Fresh fastrand v2.3.0
+       Fresh memchr v2.8.0
+       Fresh dyn-clone v1.0.20
+       Fresh quote v1.0.45
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh rustix v1.1.4
+       Fresh zmij v1.0.21
+       Fresh zerocopy v0.8.48
+       Fresh quick-error v1.2.3
+       Fresh bit-vec v0.8.0
+       Fresh fnv v1.0.7
+       Fresh regex-syntax v0.8.10
+       Fresh similar v2.7.0
+       Fresh unarray v0.1.4
+       Fresh syn v2.0.117
+       Fresh getrandom v0.3.4
+       Fresh getrandom v0.4.2
+       Fresh serde_json v1.0.149
+       Fresh wait-timeout v0.2.1
+       Fresh ppv-lite86 v0.2.21
+       Fresh num-traits v0.2.19
+       Fresh console v0.16.3
+       Fresh bit-set v0.8.0
+       Fresh serde_derive v1.0.228
+       Fresh ref-cast-impl v1.0.25
+       Fresh serde_derive_internals v0.29.1
+       Fresh rand_core v0.9.5
+       Fresh tempfile v3.27.0
+       Fresh thiserror-impl v2.0.18
+       Fresh anyhow v1.0.102
+       Fresh serde v1.0.228
+       Fresh ref-cast v1.0.25
+       Fresh schemars_derive v1.2.1
+       Fresh rusty-fork v0.3.1
+       Fresh rand_chacha v0.9.0
+       Fresh rand_xorshift v0.4.0
+       Fresh thiserror v2.0.18
+       Fresh rand v0.9.2
+       Fresh schemars v1.2.1
+       Fresh insta v1.47.2
+       Fresh proptest v1.11.0
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-types)
+       Dirty diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-diff): the file `crates/diffguard-diff/src/unified.rs` has changed (1775668274.938337577s, 5s after last build at 1775668269.478133145s)
+   Compiling diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-diff)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_diff --edition=2024 crates/diffguard-diff/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=52f023dbcd3d5200 -C extra-filename=-b586ecc3194d33f5 --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern insta=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_diff --edition=2024 crates/diffguard-diff/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=817c377025fcbe9e -C extra-filename=-c73328382a27267f --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta`
+error[E0277]: the trait bound `DiffLine: Default` is not satisfied
+   --> crates/diffguard-diff/src/unified.rs:134:14
+    |
+134 |     Ok((vec![Default::default()], Default::default())) /* ~ changed by cargo-mutants ~ */
+    |              ^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+help: the trait `Default` is not implemented for `DiffLine`
+   --> crates/diffguard-diff/src/unified.rs:96:1
+    |
+ 96 | pub struct DiffLine {
+    | ^^^^^^^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `diffguard-diff` (lib) due to 1 previous error
+
+Caused by:
+  process didn't exit successfully: `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_diff --edition=2024 crates/diffguard-diff/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=817c377025fcbe9e -C extra-filename=-c73328382a27267f --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta` (exit status: 1)
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `diffguard-diff` (lib test) due to 1 previous error
+
+Caused by:
+  process didn't exit successfully: `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_diff --edition=2024 crates/diffguard-diff/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=52f023dbcd3d5200 -C extra-filename=-b586ecc3194d33f5 --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern insta=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib` (exit status: 1)
+
+*** result: Failure(101)

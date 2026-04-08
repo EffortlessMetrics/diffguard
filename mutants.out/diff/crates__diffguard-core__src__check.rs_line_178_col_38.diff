@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/check.rs
++++ replace > with == in run_check
+@@ -170,17 +170,17 @@
+         VerdictStatus::Fail
+     } else if adjusted_counts.warn > 0 {
+         VerdictStatus::Warn
+     } else {
+         VerdictStatus::Pass
+     };
+ 
+     let mut reasons: Vec<String> = Vec::new();
+-    if evaluation.truncated_findings > 0 {
++    if evaluation.truncated_findings == /* ~ changed by cargo-mutants ~ */ 0 {
+         reasons.push(REASON_TRUNCATED.to_string());
+     }
+ 
+     let receipt = CheckReceipt {
+         schema: diffguard_types::CHECK_SCHEMA_V1.to_string(),
+         tool: ToolMeta {
+             name: "diffguard".to_string(),
+             version: env!("CARGO_PKG_VERSION").to_string(),

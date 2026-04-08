@@ -1,0 +1,9 @@
+
+running 4 tests
+test test_ci_yml_has_both_test_and_xtask_jobs ... ok
+test test_ci_yml_test_job_no_exclude_xtask ... ok
+test test_ci_yml_xtask_job_enabled ... ok
+test test_ci_yml_xtask_job_runs_ci_command ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

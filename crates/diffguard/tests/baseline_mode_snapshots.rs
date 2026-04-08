@@ -29,7 +29,6 @@ fn normalize_git_hashes(markdown: &str) -> String {
 }
 
 /// 4. Markdown with --report-mode=new-only (hides baseline findings)
-
 use assert_cmd::Command;
 use assert_cmd::cargo;
 use serde_json::json;
@@ -87,6 +86,7 @@ fn init_repo_with_added_violation() -> (TempDir, String, String) {
 }
 
 /// Creates a baseline receipt from the first run's findings.
+#[allow(dead_code)]
 fn create_baseline_from_first_run(dir: &std::path::Path) -> String {
     // First, run diffguard to get actual findings
     let mut cmd = Command::new(cargo::cargo_bin!("diffguard"));
@@ -192,7 +192,11 @@ fn baseline_mode_empty_baseline_all_new() {
 
     insta::assert_snapshot!(
         "baseline_mode_empty_baseline_all_new",
-        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
+        format!(
+            "exit_code={:?}\n\n{}",
+            exit_code,
+            normalize_git_hashes(&markdown)
+        )
     );
 }
 
@@ -205,8 +209,7 @@ fn baseline_mode_only_baseline_findings() {
 
     // First run diffguard to get actual findings
     let mut cmd = Command::new(cargo::cargo_bin!("diffguard"));
-    let output = cmd
-        .current_dir(dir)
+    cmd.current_dir(dir)
         .arg("check")
         .arg("--base")
         .arg("HEAD~1")
@@ -247,7 +250,11 @@ fn baseline_mode_only_baseline_findings() {
     // Note: The exit code may not be 0 due to known bug - we snapshot the current behavior
     insta::assert_snapshot!(
         "baseline_mode_only_baseline_findings",
-        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
+        format!(
+            "exit_code={:?}\n\n{}",
+            exit_code,
+            normalize_git_hashes(&markdown)
+        )
     );
 }
 
@@ -319,7 +326,11 @@ fn baseline_mode_mixed_findings() {
 
     insta::assert_snapshot!(
         "baseline_mode_mixed_findings",
-        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
+        format!(
+            "exit_code={:?}\n\n{}",
+            exit_code,
+            normalize_git_hashes(&markdown)
+        )
     );
 }
 
@@ -391,7 +402,11 @@ fn baseline_mode_report_mode_new_only() {
 
     insta::assert_snapshot!(
         "baseline_mode_report_mode_new_only",
-        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
+        format!(
+            "exit_code={:?}\n\n{}",
+            exit_code,
+            normalize_git_hashes(&markdown)
+        )
     );
 }
 
@@ -462,7 +477,11 @@ fn baseline_mode_finding_row_baseline_annotation() {
 
     insta::assert_snapshot!(
         "baseline_mode_finding_row_baseline",
-        format!("exit_code={:?}\n\n{}", exit_code, normalize_git_hashes(&markdown))
+        format!(
+            "exit_code={:?}\n\n{}",
+            exit_code,
+            normalize_git_hashes(&markdown)
+        )
     );
 }
 
@@ -502,8 +521,7 @@ fn baseline_mode_finding_row_new_annotation() {
 
     // Run diffguard with the empty baseline
     let mut cmd = Command::new(cargo::cargo_bin!("diffguard"));
-    let output = cmd
-        .current_dir(dir)
+    cmd.current_dir(dir)
         .arg("check")
         .arg("--base")
         .arg("HEAD~1")
@@ -520,5 +538,8 @@ fn baseline_mode_finding_row_new_annotation() {
     let markdown = std::fs::read_to_string(dir.join("artifacts/diffguard/comment.md"))
         .expect("should be able to read markdown output");
 
-    insta::assert_snapshot!("baseline_mode_finding_row_new_annotation", normalize_git_hashes(&markdown));
+    insta::assert_snapshot!(
+        "baseline_mode_finding_row_new_annotation",
+        normalize_git_hashes(&markdown)
+    );
 }

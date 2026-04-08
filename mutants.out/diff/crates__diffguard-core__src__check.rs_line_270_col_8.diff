@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/check.rs
++++ delete ! in filter_rule_by_tags
+@@ -262,17 +262,17 @@
+ /// Filter a rule based on tag criteria in the plan.
+ ///
+ /// - If `only_tags` is non-empty, the rule must have at least one matching tag.
+ /// - `enable_tags` is additive to `only_tags` (a rule matching either set is included).
+ /// - If `disable_tags` is non-empty and the rule has any matching tag, it's excluded.
+ fn filter_rule_by_tags(rule: &diffguard_types::RuleConfig, plan: &CheckPlan) -> bool {
+     // If only_tags is specified, allow rules matching only_tags OR enable_tags.
+     // This keeps enable_tags additive rather than restrictive on its own.
+-    if !plan.only_tags.is_empty() {
++    if  /* ~ changed by cargo-mutants ~ */plan.only_tags.is_empty() {
+         let has_only_tag = rule
+             .tags
+             .iter()
+             .any(|t| plan.only_tags.iter().any(|ot| ot.eq_ignore_ascii_case(t)));
+         let has_enabled_tag = !plan.enable_tags.is_empty()
+             && rule
+                 .tags
+                 .iter()
