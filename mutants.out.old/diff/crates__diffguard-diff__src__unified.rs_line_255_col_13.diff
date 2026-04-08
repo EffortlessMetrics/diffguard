@@ -1,0 +1,52 @@
+--- crates/diffguard-diff/src/unified.rs
++++ delete match arm Some(b'+') in parse_unified_diff
+@@ -247,48 +247,17 @@
+ 
+         if raw.starts_with('\\') {
+             // "\\ No newline at end of file"
+             continue;
+         }
+ 
+         let first = raw.as_bytes().first().copied();
+         match first {
+-            Some(b'+') => {
+-                // Check if this is a submodule content line (Requirements 4.2)
+-                let content = &raw[1..];
+-                if is_submodule(content) {
+-                    skip_current_file = true;
+-                    in_hunk = false;
+-                    continue;
+-                }
+-
+-                // Added line.
+-                let is_changed = pending_removed;
+-                let include = match scope {
+-                    Scope::Added => true,
+-                    Scope::Changed | Scope::Modified => is_changed,
+-                    Scope::Deleted => false,
+-                };
+-
+-                if include {
+-                    out.push(DiffLine {
+-                        path: path.to_string(),
+-                        line: new_line_no,
+-                        content: content.to_string(),
+-                        kind: if is_changed {
+-                            ChangeKind::Changed
+-                        } else {
+-                            ChangeKind::Added
+-                        },
+-                    });
+-                }
+-
+-                new_line_no = new_line_no.saturating_add(1);
+-            }
++             /* ~ changed by cargo-mutants ~ */
+             Some(b'-') => {
+                 // Check if this is a submodule content line (Requirements 4.2)
+                 let content = &raw[1..];
+                 if is_submodule(content) {
+                     skip_current_file = true;
+                     in_hunk = false;
+                     continue;
+                 }

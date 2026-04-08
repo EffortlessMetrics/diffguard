@@ -36,3 +36,6 @@ diffguard-diff = { version = "0.2", path = "../diffguard-diff" }
 assert_cmd.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
+proptest.workspace = true
+insta.workspace = true
+regex.workspace = true

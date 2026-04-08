@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/check.rs
++++ replace > with >= in run_check
+@@ -161,17 +161,17 @@
+                     entry.3 = entry.3.saturating_add(1);
+                 }
+             }
+             continue;
+         }
+         filtered_findings.push(finding);
+     }
+ 
+-    let verdict_status = if adjusted_counts.error > 0 {
++    let verdict_status = if adjusted_counts.error >= /* ~ changed by cargo-mutants ~ */ 0 {
+         VerdictStatus::Fail
+     } else if adjusted_counts.warn > 0 {
+         VerdictStatus::Warn
+     } else {
+         VerdictStatus::Pass
+     };
+ 
+     let mut reasons: Vec<String> = Vec::new();

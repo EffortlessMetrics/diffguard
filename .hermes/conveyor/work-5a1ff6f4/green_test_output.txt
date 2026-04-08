@@ -1,0 +1,119 @@
+
+running 6 tests
+test new_violations_cause_exit_2 ... ok
+test new_violations_show_new_annotation ... ok
+test report_mode_new_only_hides_baseline_findings_proper ... ok
+test baseline_annotations_appear_in_markdown ... ok
+test mixed_findings_show_both_annotations ... ok
+test baseline_from_actual_findings_matches_on_repeat ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.06s
+
+
+running 16 tests
+test baseline_receipt_invalid_json_exits_code_1 ... ok
+test baseline_mode_marks_baseline_findings_in_output ... FAILED
+test findings_matching_baseline_are_classified_as_baseline ... FAILED
+test baseline_mode_with_only_baseline_findings_exits_0 ... FAILED
+test empty_baseline_all_findings_are_new ... ok
+test baseline_mode_marks_new_findings_in_output ... ok
+test baseline_flag_missing_file_exits_with_code_1 ... ok
+test baseline_receipt_wrong_schema_version_exits_code_1 ... ok
+test mixed_baseline_and_new_findings ... FAILED
+test without_baseline_flag_behavior_unchanged ... ok
+test baseline_flag_is_accepted ... ok
+test new_findings_not_in_baseline_are_classified_as_new ... ok
+test baseline_mode_with_no_findings_at_all_exits_0 ... ok
+test baseline_mode_with_new_errors_exits_2 ... ok
+test report_mode_new_only_hides_baseline_findings ... FAILED
+test baseline_flag_does_not_affect_non_baseline_runs ... FAILED
+
+failures:
+
+---- baseline_mode_marks_baseline_findings_in_output stdout ----
+
+thread 'baseline_mode_marks_baseline_findings_in_output' (921504) panicked at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:250:5:
+Unexpected return code, failed var == 0
+└── var: 2
+
+command=`cd "/tmp/.tmpLATWlJ" && "/home/hermes/repos/diffguard/target/debug/diffguard" "check" "--base" "ff01cef3a07159fb0d51999a23669c9227e9a8ab" "--head" "d287f00f64697c0cde0c1aa736272776e41b931e" "--baseline=/tmp/.tmpLATWlJ/baseline.json" "--out" "artifacts/diffguard/report.json" "--md" "artifacts/diffguard/comment.md"`
+code=2
+stdout=""
+stderr=""
+
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- findings_matching_baseline_are_classified_as_baseline stdout ----
+
+thread 'findings_matching_baseline_are_classified_as_baseline' (921519) panicked at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:250:5:
+Unexpected return code, failed var == 0
+└── var: 2
+
+command=`cd "/tmp/.tmprUDCRA" && "/home/hermes/repos/diffguard/target/debug/diffguard" "check" "--base" "ff01cef3a07159fb0d51999a23669c9227e9a8ab" "--head" "d287f00f64697c0cde0c1aa736272776e41b931e" "--baseline=/tmp/.tmprUDCRA/baseline.json" "--out" "artifacts/diffguard/report.json" "--md" "artifacts/diffguard/comment.md"`
+code=2
+stdout=""
+stderr=""
+
+
+---- baseline_mode_with_only_baseline_findings_exits_0 stdout ----
+
+thread 'baseline_mode_with_only_baseline_findings_exits_0' (921514) panicked at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:250:5:
+Unexpected return code, failed var == 0
+└── var: 2
+
+command=`cd "/tmp/.tmpVCjKQb" && "/home/hermes/repos/diffguard/target/debug/diffguard" "check" "--base" "ff01cef3a07159fb0d51999a23669c9227e9a8ab" "--head" "d287f00f64697c0cde0c1aa736272776e41b931e" "--baseline=/tmp/.tmpVCjKQb/baseline.json" "--out" "artifacts/diffguard/report.json"`
+code=2
+stdout=""
+stderr=""
+
+
+---- mixed_baseline_and_new_findings stdout ----
+
+thread 'mixed_baseline_and_new_findings' (921522) panicked at crates/diffguard/tests/baseline_mode.rs:976:5:
+Should have baseline findings marked.
+Got:
+## diffguard — FAIL
+
+Scanned **1** file(s), **1** line(s) (scope: `added`, base: `ff01cef3a07159fb0d51999a23669c9227e9a8ab`, head: `d287f00f64697c0cde0c1aa736272776e41b931e`)
+
+| Severity | Classification | Rule | Location | Message | Snippet |
+|---|---|---|---|---|---|
+| error | [NEW] `rust.no_unwrap` | `src/lib.rs:1` | Avoid unwrap/expect in production code. | `pub fn f() -> u32 { Some(2).unwrap() }` |
+
+
+
+---- report_mode_new_only_hides_baseline_findings stdout ----
+
+thread 'report_mode_new_only_hides_baseline_findings' (921524) panicked at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:250:5:
+Unexpected return code, failed var == 0
+└── var: 2
+
+command=`cd "/tmp/.tmpjcumOc" && "/home/hermes/repos/diffguard/target/debug/diffguard" "check" "--base" "ff01cef3a07159fb0d51999a23669c9227e9a8ab" "--head" "d287f00f64697c0cde0c1aa736272776e41b931e" "--baseline=/tmp/.tmpjcumOc/baseline.json" "--report-mode=new-only" "--out" "artifacts/diffguard/report.json" "--md" "artifacts/diffguard/comment.md"`
+code=2
+stdout=""
+stderr=""
+
+
+---- baseline_flag_does_not_affect_non_baseline_runs stdout ----
+
+thread 'baseline_flag_does_not_affect_non_baseline_runs' (921501) panicked at /rustc/ded5c06cf21d2b93bffd5d884aa6e96934ee4234/library/core/src/ops/function.rs:250:5:
+Unexpected return code, failed var == 0
+└── var: 2
+
+command=`cd "/tmp/.tmpZ1ueiN" && "/home/hermes/repos/diffguard/target/debug/diffguard" "check" "--base" "ff01cef3a07159fb0d51999a23669c9227e9a8ab" "--head" "d287f00f64697c0cde0c1aa736272776e41b931e" "--baseline=/tmp/.tmpZ1ueiN/baseline.json" "--out" "artifacts/diffguard/report2.json"`
+code=2
+stdout=""
+stderr=""
+
+
+
+failures:
+    baseline_flag_does_not_affect_non_baseline_runs
+    baseline_mode_marks_baseline_findings_in_output
+    baseline_mode_with_only_baseline_findings_exits_0
+    findings_matching_baseline_are_classified_as_baseline
+    mixed_baseline_and_new_findings
+    report_mode_new_only_hides_baseline_findings
+
+test result: FAILED. 10 passed; 6 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.99s
+

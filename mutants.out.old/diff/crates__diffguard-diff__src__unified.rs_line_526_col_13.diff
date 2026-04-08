@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ delete match arm b't' in unescape_git_path
+@@ -518,17 +518,17 @@
+             out.push(b'\\');
+             break;
+         };
+ 
+         match next {
+             b'\\' => out.push(b'\\'),
+             b'"' => out.push(b'"'),
+             b'n' => out.push(b'\n'),
+-            b't' => out.push(b'\t'),
++             /* ~ changed by cargo-mutants ~ */
+             b'r' => out.push(b'\r'),
+             b' ' => out.push(b' '),
+             b'0'..=b'7' => {
+                 let mut val = (next - b'0') as u32;
+                 for _ in 0..2 {
+                     match iter.peek().copied() {
+                         Some(d) if (b'0'..=b'7').contains(&d) => {
+                             val = val * 8 + (d - b'0') as u32;

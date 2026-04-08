@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/sensor_api.rs
++++ replace Substrate::changed_files -> Option<&[String]> with Some(Vec::leak(Vec::new()))
+@@ -26,17 +26,17 @@
+ 
+ /// Optional shared substrate from the Cockpit runtime.
+ ///
+ /// Provides pre-computed inventory to avoid redundant scans.
+ /// No sensor may *require* a `Substrate` to function.
+ pub trait Substrate {
+     /// Pre-computed list of changed file paths (forward-slash normalized).
+     fn changed_files(&self) -> Option<&[String]> {
+-        None
++        Some(Vec::leak(Vec::new())) /* ~ changed by cargo-mutants ~ */
+     }
+     /// Repository root path.
+     fn repo_root(&self) -> Option<&std::path::Path> {
+         None
+     }
+     /// Arbitrary metadata from the substrate provider.
+     fn metadata(&self) -> Option<&serde_json::Value> {
+         None

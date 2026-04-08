@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/sensor.rs
++++ replace += with *= in render_sensor_report
+@@ -78,17 +78,17 @@
+     };
+ 
+     // Count findings per matched rule tag (BTreeMap for deterministic key ordering)
+     let tags_matched: BTreeMap<String, u32> = {
+         let mut counts = BTreeMap::new();
+         for f in &receipt.findings {
+             if let Some(meta) = ctx.rule_metadata.get(&f.rule_id) {
+                 for tag in &meta.tags {
+-                    *counts.entry(tag.clone()).or_insert(0) += 1;
++                    *counts.entry(tag.clone()).or_insert(0) *= /* ~ changed by cargo-mutants ~ */ 1;
+                 }
+             }
+         }
+         counts
+     };
+ 
+     let mut diffguard_data = serde_json::json!({
+         "suppressed_count": receipt.verdict.counts.suppressed,

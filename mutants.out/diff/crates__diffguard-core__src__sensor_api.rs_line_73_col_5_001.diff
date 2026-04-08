@@ -1,0 +1,34 @@
+--- crates/diffguard-core/src/sensor_api.rs
++++ replace extract_rule_metadata -> HashMap<String, RuleMetadata> with HashMap::from_iter([(String::new(), Default::default())])
+@@ -65,30 +65,17 @@
+     };
+ 
+     // 3. Convert to sensor report
+     Ok(render_sensor_report(&check_run.receipt, &ctx))
+ }
+ 
+ /// Extracts rule metadata (help text, URL, and tags) from a config file.
+ fn extract_rule_metadata(config: &ConfigFile) -> HashMap<String, RuleMetadata> {
+-    config
+-        .rule
+-        .iter()
+-        .map(|r| {
+-            (
+-                r.id.clone(),
+-                RuleMetadata {
+-                    help: r.help.clone(),
+-                    url: r.url.clone(),
+-                    tags: r.tags.clone(),
+-                },
+-            )
+-        })
+-        .collect()
++    HashMap::from_iter([(String::new(), Default::default())]) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use diffguard_types::{
+         CAP_GIT, CAP_STATUS_AVAILABLE, CapabilityStatus, FailOn, RuleConfig,
+         SENSOR_REPORT_SCHEMA_V1, Scope, Severity,

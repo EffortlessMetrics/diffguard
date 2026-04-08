@@ -1,0 +1,233 @@
+
+*** crates/diffguard-diff/src/unified.rs:377:21: replace < with > in parse_diff_git_line
+
+*** mutation diff:
+--- crates/diffguard-diff/src/unified.rs
++++ replace < with > in parse_diff_git_line
+@@ -369,17 +369,17 @@
+         .parse()
+         .map_err(|_| DiffParseError::MalformedHunkHeader(full_line.to_string()))
+ }
+ 
+ fn parse_diff_git_line(line: &str) -> Option<String> {
+     // diff --git a/foo b/foo
+     let rest = line.strip_prefix("diff --git ")?;
+     let tokens = tokenize_git_paths(rest, 2);
+-    if tokens.len() < 2 {
++    if tokens.len() > /* ~ changed by cargo-mutants ~ */ 2 {
+         return None;
+     }
+     let b = unquote_git_token(&tokens[1]);
+     strip_prefix_path(&b)
+ }
+ 
+ fn parse_plus_plus_plus(line: &str) -> Option<String> {
+     // +++ b/foo
+
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=diffguard-diff@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh cfg-if v1.0.4
+       Fresh bitflags v2.11.0
+       Fresh linux-raw-sys v0.12.1
+       Fresh fastrand v2.3.0
+       Fresh once_cell v1.21.4
+       Fresh proc-macro2 v1.0.106
+       Fresh autocfg v1.5.0
+       Fresh memchr v2.8.0
+       Fresh itoa v1.0.18
+       Fresh dyn-clone v1.0.20
+       Fresh quote v1.0.45
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh rustix v1.1.4
+       Fresh zmij v1.0.21
+       Fresh zerocopy v0.8.48
+       Fresh fnv v1.0.7
+       Fresh quick-error v1.2.3
+       Fresh bit-vec v0.8.0
+       Fresh similar v2.7.0
+       Fresh unarray v0.1.4
+       Fresh regex-syntax v0.8.10
+       Fresh syn v2.0.117
+       Fresh getrandom v0.3.4
+       Fresh getrandom v0.4.2
+       Fresh serde_json v1.0.149
+       Fresh ppv-lite86 v0.2.21
+       Fresh wait-timeout v0.2.1
+       Fresh console v0.16.3
+       Fresh bit-set v0.8.0
+       Fresh anyhow v1.0.102
+       Fresh serde_derive v1.0.228
+       Fresh ref-cast-impl v1.0.25
+       Fresh serde_derive_internals v0.29.1
+       Fresh rand_core v0.9.5
+       Fresh tempfile v3.27.0
+       Fresh thiserror-impl v2.0.18
+       Fresh num-traits v0.2.19
+       Fresh serde v1.0.228
+       Fresh schemars_derive v1.2.1
+       Fresh ref-cast v1.0.25
+       Fresh rand_xorshift v0.4.0
+       Fresh rusty-fork v0.3.1
+       Fresh thiserror v2.0.18
+       Fresh rand_chacha v0.9.0
+       Fresh rand v0.9.2
+       Fresh schemars v1.2.1
+       Fresh insta v1.47.2
+       Fresh proptest v1.11.0
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-types)
+       Dirty diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-diff): the file `crates/diffguard-diff/src/unified.rs` has changed (1775668312.345737244s, 2s after last build at 1775668310.116653880s)
+   Compiling diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-diff)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_diff --edition=2024 crates/diffguard-diff/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=52f023dbcd3d5200 -C extra-filename=-b586ecc3194d33f5 --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern insta=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_diff --edition=2024 crates/diffguard-diff/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=817c377025fcbe9e -C extra-filename=-c73328382a27267f --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name properties --edition=2024 crates/diffguard-diff/tests/properties.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=40ee59f879c2de01 -C extra-filename=-f41f878e46fa993d --out-dir /tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern insta=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib`
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.54s
+  Executable `/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/diffguard_diff-b586ecc3194d33f5`
+  Executable `/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/properties-f41f878e46fa993d`
+
+*** result: Success
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --verbose --package=diffguard-diff@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh cfg-if v1.0.4
+       Fresh bitflags v2.11.0
+       Fresh linux-raw-sys v0.12.1
+       Fresh itoa v1.0.18
+       Fresh fastrand v2.3.0
+       Fresh proc-macro2 v1.0.106
+       Fresh once_cell v1.21.4
+       Fresh autocfg v1.5.0
+       Fresh memchr v2.8.0
+       Fresh dyn-clone v1.0.20
+       Fresh quote v1.0.45
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh rustix v1.1.4
+       Fresh zmij v1.0.21
+       Fresh zerocopy v0.8.48
+       Fresh quick-error v1.2.3
+       Fresh bit-vec v0.8.0
+       Fresh fnv v1.0.7
+       Fresh similar v2.7.0
+       Fresh unarray v0.1.4
+       Fresh regex-syntax v0.8.10
+       Fresh syn v2.0.117
+       Fresh getrandom v0.3.4
+       Fresh getrandom v0.4.2
+       Fresh serde_json v1.0.149
+       Fresh ppv-lite86 v0.2.21
+       Fresh wait-timeout v0.2.1
+       Fresh bit-set v0.8.0
+       Fresh console v0.16.3
+       Fresh anyhow v1.0.102
+       Fresh serde_derive v1.0.228
+       Fresh ref-cast-impl v1.0.25
+       Fresh rand_core v0.9.5
+       Fresh serde_derive_internals v0.29.1
+       Fresh tempfile v3.27.0
+       Fresh thiserror-impl v2.0.18
+       Fresh num-traits v0.2.19
+       Fresh serde v1.0.228
+       Fresh schemars_derive v1.2.1
+       Fresh ref-cast v1.0.25
+       Fresh rand_chacha v0.9.0
+       Fresh thiserror v2.0.18
+       Fresh rand v0.9.2
+       Fresh rand_xorshift v0.4.0
+       Fresh rusty-fork v0.3.1
+       Fresh schemars v1.2.1
+       Fresh insta v1.47.2
+       Fresh proptest v1.11.0
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-types)
+       Fresh diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-GBqBRA.tmp/crates/diffguard-diff)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.21s
+     Running `/tmp/cargo-mutants-diffguard-GBqBRA.tmp/target/debug/deps/diffguard_diff-b586ecc3194d33f5`
+
+running 62 tests
+test unified::tests::continues_after_malformed_hunk_header ... ok
+test unified::tests::binary_file_added_from_dev_null ... ok
+test unified::tests::handles_empty_hunk_context_only ... ok
+test unified::tests::deleted_scope_includes_deleted_files ... ok
+test unified::tests::does_not_treat_pure_additions_as_changed ... ok
+test unified::tests::handles_mixed_unicode_and_ascii ... ok
+test unified::tests::handles_multiple_empty_hunks ... ok
+test unified::tests::handles_empty_hunk_zero_lines ... ok
+test unified::tests::handles_multiple_special_cases_in_one_diff ... ok
+test unified::tests::handles_unicode_emojis_in_diff ... ok
+test unified::tests::handles_unicode_in_file_paths ... ok
+test unified::tests::ignores_lines_outside_hunks ... ok
+test unified::tests::is_binary_file_detects_binary_markers ... ok
+test unified::tests::is_deleted_file_detects_deleted_mode ... ok
+test unified::tests::is_mode_change_only_detects_mode_changes ... ok
+test unified::tests::is_mode_change_only_rejects_non_mode_lines ... ok
+test unified::tests::is_submodule_detects_submodule_commits ... ok
+test unified::tests::is_new_file_detects_new_mode ... ok
+test unified::tests::is_submodule_rejects_non_submodule_lines ... ok
+test unified::tests::is_new_file_rejects_non_new_lines ... ok
+test unified::tests::handles_unicode_in_added_lines ... ok
+test unified::tests::modified_scope_behaves_like_changed_scope ... ok
+test unified::tests::handles_unicode_special_characters ... ok
+test unified::tests::parse_diff_git_line_parses_paths ... FAILED
+test unified::tests::parse_diff_git_line_rejects_missing_prefix ... ok
+test unified::tests::parse_rename_from_extracts_source_path ... ok
+test unified::tests::parse_rename_from_returns_none_for_non_rename_lines ... ok
+test unified::tests::is_binary_file_rejects_non_binary_lines ... ok
+test unified::tests::is_deleted_file_rejects_non_deleted_lines ... ok
+test unified::tests::parse_hunk_header_rejects_missing_plus_section ... ok
+test unified::tests::parse_hunk_header_rejects_non_numeric_start ... ok
+test unified::tests::parse_plus_plus_plus_parses_paths ... ok
+test unified::tests::parses_added_lines ... ok
+test unified::tests::parses_changed_lines_only_when_requested ... ok
+test unified::tests::handles_unicode_in_changed_lines ... ok
+test unified::tests::parse_rename_path_empty_returns_none ... ok
+test unified::tests::parse_rename_to_extracts_destination_path ... ok
+test unified::tests::parse_rename_to_returns_none_for_non_rename_lines ... ok
+test unified::tests::parse_unified_diff_skips_malformed_diff_git_line ... FAILED
+test unified::tests::parses_deleted_lines_when_requested ... ok
+test unified::tests::renamed_file_with_no_content_changes ... ok
+test unified::tests::parse_plus_plus_plus_rejects_invalid_lines ... ok
+test unified::tests::skips_binary_files ... ok
+test unified::tests::parse_single_git_path_empty_returns_none ... ok
+test unified::tests::skips_deleted_files_for_added_scope ... ok
+test unified::tests::skips_hunks_without_current_path ... ok
+test unified::tests::skips_file_markers_inside_hunks ... ok
+test unified::tests::parses_multiple_files_in_single_diff ... ok
+test unified::tests::skips_mode_only_changes ... ok
+test unified::tests::parses_multiple_files_preserves_order ... ok
+test unified::tests::skips_no_newline_marker ... ok
+test unified::tests::skips_submodule_line_inside_hunk ... ok
+test unified::tests::parses_multiple_files_with_multiple_hunks_each ... ok
+test unified::tests::skips_submodule_changes ... ok
+test unified::tests::skips_submodule_marker_lines ... ok
+test unified::tests::parses_quoted_paths_in_headers ... ok
+test unified::tests::tokenize_git_paths_respects_quotes_and_limits ... ok
+test unified::tests::strip_prefix_path_empty_returns_none ... ok
+test unified::tests::tokenize_git_paths_trailing_escape_in_quote ... ok
+test unified::tests::unescape_git_path_handles_octal_limits_and_control_chars ... ok
+test unified::tests::uses_new_path_for_renamed_files ... ok
+test unified::tests::unescape_git_path_handles_common_escapes ... ok
+
+failures:
+
+---- unified::tests::parse_diff_git_line_parses_paths stdout ----
+
+thread 'unified::tests::parse_diff_git_line_parses_paths' (786781) panicked at crates/diffguard-diff/src/unified.rs:380:38:
+index out of bounds: the len is 1 but the index is 1
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- unified::tests::parse_unified_diff_skips_malformed_diff_git_line stdout ----
+
+thread 'unified::tests::parse_unified_diff_skips_malformed_diff_git_line' (786793) panicked at crates/diffguard-diff/src/unified.rs:380:38:
+index out of bounds: the len is 1 but the index is 1
+
+
+failures:
+    unified::tests::parse_diff_git_line_parses_paths
+    unified::tests::parse_unified_diff_skips_malformed_diff_git_line
+
+test result: FAILED. 60 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+error: test failed, to rerun pass `-p diffguard-diff --lib`
+
+*** result: Failure(101)

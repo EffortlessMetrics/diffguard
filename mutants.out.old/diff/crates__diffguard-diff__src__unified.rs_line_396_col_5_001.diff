@@ -1,0 +1,38 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace strip_prefix_path -> Option<String> with Some(String::new())
+@@ -388,34 +388,17 @@
+     if token == "/dev/null" {
+         return None;
+     }
+     strip_prefix_path(&token)
+ }
+ 
+ fn strip_prefix_path(p: &str) -> Option<String> {
+     // strips a/ or b/
+-    let p = p.trim();
+-    let p = p
+-        .strip_prefix("a/")
+-        .or_else(|| p.strip_prefix("b/"))
+-        .unwrap_or(p);
+-
+-    // Normalize to forward slashes for receipts.
+-    let normalized = Path::new(p)
+-        .components()
+-        .map(|c| c.as_os_str().to_string_lossy())
+-        .collect::<Vec<_>>()
+-        .join("/");
+-
+-    if normalized.is_empty() {
+-        None
+-    } else {
+-        Some(normalized)
+-    }
++    Some(String::new()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[derive(Debug, Clone)]
+ struct GitPathToken {
+     value: String,
+     quoted: bool,
+ }
+ 

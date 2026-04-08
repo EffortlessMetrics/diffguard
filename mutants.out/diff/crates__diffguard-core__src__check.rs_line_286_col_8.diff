@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/check.rs
++++ delete ! in filter_rule_by_tags
+@@ -278,17 +278,17 @@
+                 .iter()
+                 .any(|t| plan.enable_tags.iter().any(|et| et.eq_ignore_ascii_case(t)));
+         if !has_only_tag && !has_enabled_tag {
+             return false;
+         }
+     }
+ 
+     // If disable_tags is specified, exclude rules that have any matching tag
+-    if !plan.disable_tags.is_empty() {
++    if  /* ~ changed by cargo-mutants ~ */plan.disable_tags.is_empty() {
+         let has_disabled_tag = rule.tags.iter().any(|t| {
+             plan.disable_tags
+                 .iter()
+                 .any(|dt| dt.eq_ignore_ascii_case(t))
+         });
+         if has_disabled_tag {
+             return false;
+         }

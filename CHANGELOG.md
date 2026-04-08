@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **GitHub Actions hardening** for production-ready workflows:
+  - SHA pinning for third-party Actions (`actions/github-script@v7`, `github/codeql-action/upload-sarif@v3`) to prevent supply chain attacks
+  - Explicit `permissions` block with least-privilege scopes (`contents: read`, `pull-requests: write`, `security-events: write`)
+  - Windows target triple detection for MSYS/MINGW environments
+  - Concurrency control on SARIF upload to prevent race conditions across workflow runs
+  - Improved error handling with user-visible warning messages for fallback installation paths
+
+### Changed
+
+- **Full workspace tests in CI** — `cargo test --workspace` now runs all tests including xtask tests in the CI test job (previously excluded with `--exclude xtask`)
+- **xtask CI job enabled** — The `xtask ci` job (which runs fmt + clippy + test + conform) now executes in CI on pull requests and pushes to main (was previously disabled via `if: false`)
+
 ### Added
 
 - **`bench` crate for performance benchmarking** — Criterion-based benchmark infrastructure:

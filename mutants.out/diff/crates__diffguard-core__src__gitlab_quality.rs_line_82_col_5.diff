@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/gitlab_quality.rs
++++ replace render_gitlab_quality_for_receipt -> GitLabQualityReport with Default::default()
+@@ -74,17 +74,17 @@
+             Severity::Warn => GitLabSeverity::Minor,
+             Severity::Error => GitLabSeverity::Major,
+         }
+     }
+ }
+ 
+ /// Renders a CheckReceipt as a GitLab Code Quality report.
+ pub fn render_gitlab_quality_for_receipt(receipt: &CheckReceipt) -> GitLabQualityReport {
+-    receipt.findings.iter().map(finding_to_gitlab).collect()
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Renders a GitLab Code Quality report as a JSON string.
+ pub fn render_gitlab_quality_json(receipt: &CheckReceipt) -> Result<String, serde_json::Error> {
+     let report = render_gitlab_quality_for_receipt(receipt);
+     serde_json::to_string_pretty(&report)
+ }
+ 

@@ -1,0 +1,49 @@
+--- crates/diffguard-core/src/sarif.rs
++++ replace finding_to_sarif_result -> SarifResult with Default::default()
+@@ -217,45 +217,17 @@
+     }
+ 
+     seen.into_values().collect()
+ }
+ 
+ /// Converts a diffguard Finding to a SARIF Result.
+ fn finding_to_sarif_result(f: &Finding) -> SarifResult {
+     // Create a fingerprint based on rule, path, line
+-    let mut fingerprints = BTreeMap::new();
+-    fingerprints.insert(
+-        "primaryLocationLineHash".to_string(),
+-        format!("{}:{}:{}", f.rule_id, f.path, f.line),
+-    );
+-
+-    SarifResult {
+-        rule_id: f.rule_id.clone(),
+-        level: f.severity.into(),
+-        message: SarifMessage {
+-            text: f.message.clone(),
+-        },
+-        locations: vec![SarifLocation {
+-            physical_location: SarifPhysicalLocation {
+-                artifact_location: SarifArtifactLocation {
+-                    uri: f.path.clone(),
+-                    uri_base_id: Some("%SRCROOT%".to_string()),
+-                },
+-                region: Some(SarifRegion {
+-                    start_line: f.line,
+-                    start_column: f.column,
+-                    snippet: Some(SarifSnippet {
+-                        text: f.snippet.clone(),
+-                    }),
+-                }),
+-            },
+-        }],
+-        partial_fingerprints: Some(fingerprints),
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use diffguard_types::{
+         CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, ToolMeta, Verdict, VerdictCounts,
+         VerdictStatus,

@@ -1,0 +1,93 @@
+crates/diffguard-core/src/check.rs:91:8: delete ! in run_check
+crates/diffguard-core/src/check.rs:169:51: replace > with == in run_check
+crates/diffguard-core/src/check.rs:169:51: replace > with < in run_check
+crates/diffguard-core/src/check.rs:169:51: replace > with >= in run_check
+crates/diffguard-core/src/check.rs:171:36: replace > with == in run_check
+crates/diffguard-core/src/check.rs:171:36: replace > with < in run_check
+crates/diffguard-core/src/check.rs:171:36: replace > with >= in run_check
+crates/diffguard-core/src/check.rs:178:38: replace > with == in run_check
+crates/diffguard-core/src/check.rs:178:38: replace > with < in run_check
+crates/diffguard-core/src/check.rs:178:38: replace > with >= in run_check
+crates/diffguard-core/src/check.rs:225:8: delete ! in run_check
+crates/diffguard-core/src/check.rs:251:5: replace compile_filter_globs -> Result<GlobSet, PathFilterError> with Ok(Default::default())
+crates/diffguard-core/src/check.rs:270:5: replace filter_rule_by_tags -> bool with true
+crates/diffguard-core/src/check.rs:270:5: replace filter_rule_by_tags -> bool with false
+crates/diffguard-core/src/check.rs:270:8: delete ! in filter_rule_by_tags
+crates/diffguard-core/src/check.rs:275:31: delete ! in filter_rule_by_tags
+crates/diffguard-core/src/check.rs:280:26: replace && with || in filter_rule_by_tags
+crates/diffguard-core/src/check.rs:280:12: delete ! in filter_rule_by_tags
+crates/diffguard-core/src/check.rs:280:29: delete ! in filter_rule_by_tags
+crates/diffguard-core/src/check.rs:286:8: delete ! in filter_rule_by_tags
+crates/diffguard-core/src/check.rs:301:5: replace compute_exit_code -> i32 with 0
+crates/diffguard-core/src/check.rs:301:5: replace compute_exit_code -> i32 with 1
+crates/diffguard-core/src/check.rs:301:5: replace compute_exit_code -> i32 with -1
+crates/diffguard-core/src/check.rs:305:21: replace > with == in compute_exit_code
+crates/diffguard-core/src/check.rs:305:21: replace > with < in compute_exit_code
+crates/diffguard-core/src/check.rs:305:21: replace > with >= in compute_exit_code
+crates/diffguard-core/src/check.rs:309:40: replace && with || in compute_exit_code
+crates/diffguard-core/src/check.rs:309:55: replace > with == in compute_exit_code
+crates/diffguard-core/src/check.rs:309:55: replace > with < in compute_exit_code
+crates/diffguard-core/src/check.rs:309:55: replace > with >= in compute_exit_code
+crates/diffguard-core/src/check.rs:317:5: replace render_annotations -> Vec<String> with vec![]
+crates/diffguard-core/src/check.rs:317:5: replace render_annotations -> Vec<String> with vec![String::new()]
+crates/diffguard-core/src/check.rs:317:5: replace render_annotations -> Vec<String> with vec!["xyzzy".into()]
+crates/diffguard-core/src/csv.rs:15:5: replace render_csv_for_receipt -> String with String::new()
+crates/diffguard-core/src/csv.rs:15:5: replace render_csv_for_receipt -> String with "xyzzy".into()
+crates/diffguard-core/src/csv.rs:33:5: replace render_tsv_for_receipt -> String with String::new()
+crates/diffguard-core/src/csv.rs:33:5: replace render_tsv_for_receipt -> String with "xyzzy".into()
+crates/diffguard-core/src/csv.rs:49:5: replace render_csv_row -> String with String::new()
+crates/diffguard-core/src/csv.rs:49:5: replace render_csv_row -> String with "xyzzy".into()
+crates/diffguard-core/src/csv.rs:62:5: replace render_tsv_row -> String with String::new()
+crates/diffguard-core/src/csv.rs:62:5: replace render_tsv_row -> String with "xyzzy".into()
+crates/diffguard-core/src/csv.rs:78:5: replace escape_csv_field -> String with String::new()
+crates/diffguard-core/src/csv.rs:78:5: replace escape_csv_field -> String with "xyzzy".into()
+crates/diffguard-core/src/csv.rs:78:80: replace || with && in escape_csv_field
+crates/diffguard-core/src/csv.rs:78:60: replace || with && in escape_csv_field
+crates/diffguard-core/src/csv.rs:78:41: replace || with && in escape_csv_field
+crates/diffguard-core/src/csv.rs:92:5: replace escape_tsv_field -> String with String::new()
+crates/diffguard-core/src/csv.rs:92:5: replace escape_tsv_field -> String with "xyzzy".into()
+crates/diffguard-core/src/fingerprint.rs:14:5: replace compute_fingerprint -> String with String::new()
+crates/diffguard-core/src/fingerprint.rs:14:5: replace compute_fingerprint -> String with "xyzzy".into()
+crates/diffguard-core/src/fingerprint.rs:22:5: replace compute_fingerprint_raw -> String with String::new()
+crates/diffguard-core/src/fingerprint.rs:22:5: replace compute_fingerprint_raw -> String with "xyzzy".into()
+crates/diffguard-core/src/gitlab_quality.rs:82:5: replace render_gitlab_quality_for_receipt -> GitLabQualityReport with Default::default()
+crates/diffguard-core/src/gitlab_quality.rs:87:5: replace render_gitlab_quality_json -> Result<String, serde_json::Error> with Ok(String::new())
+crates/diffguard-core/src/gitlab_quality.rs:87:5: replace render_gitlab_quality_json -> Result<String, serde_json::Error> with Ok("xyzzy".into())
+crates/diffguard-core/src/gitlab_quality.rs:119:5: replace compute_fingerprint -> String with String::new()
+crates/diffguard-core/src/gitlab_quality.rs:119:5: replace compute_fingerprint -> String with "xyzzy".into()
+crates/diffguard-core/src/junit.rs:18:5: replace render_junit_for_receipt -> String with String::new()
+crates/diffguard-core/src/junit.rs:18:5: replace render_junit_for_receipt -> String with "xyzzy".into()
+crates/diffguard-core/src/junit.rs:108:5: replace escape_xml -> String with String::new()
+crates/diffguard-core/src/junit.rs:108:5: replace escape_xml -> String with "xyzzy".into()
+crates/diffguard-core/src/junit.rs:111:13: delete match arm '&' in escape_xml
+crates/diffguard-core/src/junit.rs:112:13: delete match arm '<' in escape_xml
+crates/diffguard-core/src/junit.rs:113:13: delete match arm '>' in escape_xml
+crates/diffguard-core/src/junit.rs:114:13: delete match arm '"' in escape_xml
+crates/diffguard-core/src/junit.rs:115:13: delete match arm '\'' in escape_xml
+crates/diffguard-core/src/render.rs:17:5: replace render_markdown_for_receipt -> String with String::new()
+crates/diffguard-core/src/render.rs:17:5: replace render_markdown_for_receipt -> String with "xyzzy".into()
+crates/diffguard-core/src/render.rs:42:8: delete ! in render_markdown_for_receipt
+crates/diffguard-core/src/render.rs:50:42: replace > with == in render_markdown_for_receipt
+crates/diffguard-core/src/render.rs:50:42: replace > with < in render_markdown_for_receipt
+crates/diffguard-core/src/render.rs:50:42: replace > with >= in render_markdown_for_receipt
+crates/diffguard-core/src/render.rs:74:5: replace render_finding_row -> String with String::new()
+crates/diffguard-core/src/render.rs:74:5: replace render_finding_row -> String with "xyzzy".into()
+crates/diffguard-core/src/render.rs:90:5: replace escape_md -> String with String::new()
+crates/diffguard-core/src/render.rs:90:5: replace escape_md -> String with "xyzzy".into()
+crates/diffguard-core/src/sarif.rs:194:5: replace render_sarif_json -> Result<String, serde_json::Error> with Ok(String::new())
+crates/diffguard-core/src/sarif.rs:194:5: replace render_sarif_json -> Result<String, serde_json::Error> with Ok("xyzzy".into())
+crates/diffguard-core/src/sarif.rs:200:5: replace collect_rules_from_findings -> Vec<SarifRule> with vec![]
+crates/diffguard-core/src/sarif.rs:203:12: delete ! in collect_rules_from_findings
+crates/diffguard-core/src/sensor.rs:86:61: replace += with -= in render_sensor_report
+crates/diffguard-core/src/sensor.rs:86:61: replace += with *= in render_sensor_report
+crates/diffguard-core/src/sensor.rs:100:8: delete ! in render_sensor_report
+crates/diffguard-core/src/sensor.rs:138:5: replace render_sensor_json -> Result<String, serde_json::Error> with Ok(String::new())
+crates/diffguard-core/src/sensor.rs:138:5: replace render_sensor_json -> Result<String, serde_json::Error> with Ok("xyzzy".into())
+crates/diffguard-core/src/sensor.rs:144:5: replace normalize_path -> String with String::new()
+crates/diffguard-core/src/sensor.rs:144:5: replace normalize_path -> String with "xyzzy".into()
+crates/diffguard-core/src/sensor_api.rs:34:9: replace Substrate::changed_files -> Option<&[String]> with Some(Vec::leak(Vec::new()))
+crates/diffguard-core/src/sensor_api.rs:34:9: replace Substrate::changed_files -> Option<&[String]> with Some(Vec::leak(vec![String::new()]))
+crates/diffguard-core/src/sensor_api.rs:34:9: replace Substrate::changed_files -> Option<&[String]> with Some(Vec::leak(vec!["xyzzy".into()]))
+crates/diffguard-core/src/sensor_api.rs:42:9: replace Substrate::metadata -> Option<&serde_json::Value> with Some(Box::leak(Box::new(Default::default())))
+crates/diffguard-core/src/sensor_api.rs:61:9: delete field rule_metadata from struct SensorReportContext expression in run_sensor
+crates/diffguard-core/src/sensor_api.rs:73:5: replace extract_rule_metadata -> HashMap<String, RuleMetadata> with HashMap::new()

@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace == with != in tokenize_git_paths
+@@ -457,17 +457,17 @@
+                 quoted = false;
+                 if tokens.len() >= limit {
+                     return tokens;
+                 }
+             }
+             continue;
+         }
+ 
+-        if ch == '"' {
++        if ch != /* ~ changed by cargo-mutants ~ */ '"' {
+             in_quote = true;
+             quoted = true;
+             continue;
+         }
+ 
+         buf.push(ch);
+     }
+ 

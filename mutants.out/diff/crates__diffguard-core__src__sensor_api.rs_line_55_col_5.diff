@@ -1,0 +1,34 @@
+--- crates/diffguard-core/src/sensor_api.rs
++++ replace run_sensor -> Result<SensorReport, anyhow::Error> with Ok(Default::default())
+@@ -47,30 +47,17 @@
+ ///
+ /// This is the entry point for BusyBox/integrated cockpit usage.
+ /// For standalone CLI usage, use `run_check()` directly.
+ pub fn run_sensor(
+     settings: &Settings,
+     substrate: Option<&dyn Substrate>,
+ ) -> Result<SensorReport, anyhow::Error> {
+     // 1. Run the check (substrate currently unused; reserved for future optimization)
+-    let _ = substrate;
+-    let check_run = run_check(&settings.plan, &settings.config, &settings.diff_text)?;
+-
+-    // 2. Build rule metadata from config and merge check stats into context
+-    let rule_metadata = extract_rule_metadata(&settings.config);
+-    let ctx = SensorReportContext {
+-        rule_metadata,
+-        truncated_count: check_run.truncated_findings,
+-        rules_total: check_run.rules_evaluated,
+-        ..settings.context.clone()
+-    };
+-
+-    // 3. Convert to sensor report
+-    Ok(render_sensor_report(&check_run.receipt, &ctx))
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Extracts rule metadata (help text, URL, and tags) from a config file.
+ fn extract_rule_metadata(config: &ConfigFile) -> HashMap<String, RuleMetadata> {
+     config
+         .rule
+         .iter()
+         .map(|r| {

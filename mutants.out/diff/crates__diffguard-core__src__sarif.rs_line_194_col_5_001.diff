@@ -1,0 +1,22 @@
+--- crates/diffguard-core/src/sarif.rs
++++ replace render_sarif_json -> Result<String, serde_json::Error> with Ok("xyzzy".into())
+@@ -186,18 +186,17 @@
+             results,
+             invocations: None,
+         }],
+     }
+ }
+ 
+ /// Renders a SARIF report as a JSON string.
+ pub fn render_sarif_json(receipt: &CheckReceipt) -> Result<String, serde_json::Error> {
+-    let report = render_sarif_for_receipt(receipt);
+-    serde_json::to_string_pretty(&report)
++    Ok("xyzzy".into()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Collects unique rule definitions from findings.
+ fn collect_rules_from_findings(findings: &[Finding]) -> Vec<SarifRule> {
+     let mut seen = BTreeMap::new();
+ 
+     for f in findings {
+         if !seen.contains_key(&f.rule_id) {

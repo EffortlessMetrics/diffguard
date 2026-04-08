@@ -1,0 +1,48 @@
+--- crates/diffguard-core/src/check.rs
++++ replace filter_rule_by_tags -> bool with true
+@@ -262,44 +262,17 @@
+ /// Filter a rule based on tag criteria in the plan.
+ ///
+ /// - If `only_tags` is non-empty, the rule must have at least one matching tag.
+ /// - `enable_tags` is additive to `only_tags` (a rule matching either set is included).
+ /// - If `disable_tags` is non-empty and the rule has any matching tag, it's excluded.
+ fn filter_rule_by_tags(rule: &diffguard_types::RuleConfig, plan: &CheckPlan) -> bool {
+     // If only_tags is specified, allow rules matching only_tags OR enable_tags.
+     // This keeps enable_tags additive rather than restrictive on its own.
+-    if !plan.only_tags.is_empty() {
+-        let has_only_tag = rule
+-            .tags
+-            .iter()
+-            .any(|t| plan.only_tags.iter().any(|ot| ot.eq_ignore_ascii_case(t)));
+-        let has_enabled_tag = !plan.enable_tags.is_empty()
+-            && rule
+-                .tags
+-                .iter()
+-                .any(|t| plan.enable_tags.iter().any(|et| et.eq_ignore_ascii_case(t)));
+-        if !has_only_tag && !has_enabled_tag {
+-            return false;
+-        }
+-    }
+-
+-    // If disable_tags is specified, exclude rules that have any matching tag
+-    if !plan.disable_tags.is_empty() {
+-        let has_disabled_tag = rule.tags.iter().any(|t| {
+-            plan.disable_tags
+-                .iter()
+-                .any(|dt| dt.eq_ignore_ascii_case(t))
+-        });
+-        if has_disabled_tag {
+-            return false;
+-        }
+-    }
+-
+-    true
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> i32 {
+     if matches!(fail_on, FailOn::Never) {
+         return 0;
+     }
+ 
+     if counts.error > 0 {

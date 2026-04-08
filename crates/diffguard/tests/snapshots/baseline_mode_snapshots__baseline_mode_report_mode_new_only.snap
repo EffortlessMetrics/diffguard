@@ -1,0 +1,11 @@
+---
+source: crates/diffguard/tests/baseline_mode_snapshots.rs
+expression: "format!(\"exit_code={:?}\\n\\n{}\", exit_code, markdown)"
+---
+exit_code=Some(0)
+
+## diffguard — FAIL
+
+Scanned **1** file(s), **1** line(s) (scope: `added`, base: `GIT_HASH_PLACEHOLDER`, head: `GIT_HASH_PLACEHOLDER`)
+
+No findings.

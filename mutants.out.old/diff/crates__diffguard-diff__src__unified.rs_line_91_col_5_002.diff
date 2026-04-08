@@ -1,0 +1,22 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace parse_rename_to -> Option<String> with Some("xyzzy".into())
+@@ -83,18 +83,17 @@
+ ///
+ /// Rename lines look like:
+ /// - "rename to path/to/new/file.rs"
+ ///
+ /// Returns the path after "rename to " if the line matches, None otherwise.
+ ///
+ /// Requirements: 4.3
+ pub fn parse_rename_to(line: &str) -> Option<String> {
+-    let rest = line.strip_prefix("rename to ")?;
+-    parse_rename_path(rest)
++    Some("xyzzy".into()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[derive(Debug, Clone, PartialEq, Eq)]
+ pub struct DiffLine {
+     pub path: String,
+     pub line: u32,
+     pub content: String,
+     pub kind: ChangeKind,

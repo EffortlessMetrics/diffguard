@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/junit.rs
++++ delete match arm '&' in escape_xml
+@@ -103,17 +103,17 @@
+     out
+ }
+ 
+ /// Escapes special XML characters in a string.
+ fn escape_xml(s: &str) -> String {
+     let mut out = String::with_capacity(s.len());
+     for c in s.chars() {
+         match c {
+-            '&' => out.push_str("&amp;"),
++             /* ~ changed by cargo-mutants ~ */
+             '<' => out.push_str("&lt;"),
+             '>' => out.push_str("&gt;"),
+             '"' => out.push_str("&quot;"),
+             '\'' => out.push_str("&apos;"),
+             _ => out.push(c),
+         }
+     }
+     out

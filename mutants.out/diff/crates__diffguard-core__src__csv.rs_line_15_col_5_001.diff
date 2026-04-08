@@ -1,0 +1,32 @@
+--- crates/diffguard-core/src/csv.rs
++++ replace render_csv_for_receipt -> String with "xyzzy".into()
+@@ -7,28 +7,17 @@
+ 
+ /// CSV header row.
+ const CSV_HEADER: &str = "file,line,rule_id,severity,message,snippet";
+ 
+ /// Renders a CheckReceipt as a CSV report (RFC 4180 compliant).
+ ///
+ /// Columns: file, line, rule_id, severity, message, snippet
+ pub fn render_csv_for_receipt(receipt: &CheckReceipt) -> String {
+-    let mut out = String::new();
+-
+-    // Header row
+-    out.push_str(CSV_HEADER);
+-    out.push('\n');
+-
+-    // Data rows
+-    for f in &receipt.findings {
+-        out.push_str(&render_csv_row(f));
+-    }
+-
+-    out
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Renders a CheckReceipt as a TSV report.
+ ///
+ /// Columns: file, line, rule_id, severity, message, snippet
+ pub fn render_tsv_for_receipt(receipt: &CheckReceipt) -> String {
+     let mut out = String::new();
+ 

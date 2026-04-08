@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/csv.rs
++++ replace || with && in escape_csv_field
+@@ -70,17 +70,17 @@
+     )
+ }
+ 
+ /// Escapes a field for CSV according to RFC 4180.
+ ///
+ /// Fields containing commas, double quotes, or newlines are quoted.
+ /// Double quotes within the field are escaped by doubling them.
+ fn escape_csv_field(s: &str) -> String {
+-    let needs_quoting = s.contains(',') || s.contains('"') || s.contains('\n') || s.contains('\r');
++    let needs_quoting = s.contains(',') || s.contains('"') || s.contains('\n') && /* ~ changed by cargo-mutants ~ */ s.contains('\r');
+ 
+     if needs_quoting {
+         let escaped = s.replace('"', "\"\"");
+         format!("\"{}\"", escaped)
+     } else {
+         s.to_string()
+     }
+ }

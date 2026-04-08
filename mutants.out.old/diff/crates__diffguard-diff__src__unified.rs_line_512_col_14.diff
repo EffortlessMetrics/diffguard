@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace != with == in unescape_git_path
+@@ -504,17 +504,17 @@
+     }
+ }
+ 
+ fn unescape_git_path(s: &str) -> String {
+     let mut out: Vec<u8> = Vec::with_capacity(s.len());
+     let mut iter = s.as_bytes().iter().copied().peekable();
+ 
+     while let Some(b) = iter.next() {
+-        if b != b'\\' {
++        if b == /* ~ changed by cargo-mutants ~ */ b'\\' {
+             out.push(b);
+             continue;
+         }
+ 
+         let Some(next) = iter.next() else {
+             out.push(b'\\');
+             break;
+         };

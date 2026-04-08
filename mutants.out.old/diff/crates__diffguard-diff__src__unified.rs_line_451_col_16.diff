@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ delete ! in tokenize_git_paths
+@@ -443,17 +443,17 @@
+                 continue;
+             }
+ 
+             buf.push(ch);
+             continue;
+         }
+ 
+         if ch.is_whitespace() {
+-            if !buf.is_empty() {
++            if  /* ~ changed by cargo-mutants ~ */buf.is_empty() {
+                 tokens.push(GitPathToken {
+                     value: buf.clone(),
+                     quoted,
+                 });
+                 buf.clear();
+                 quoted = false;
+                 if tokens.len() >= limit {
+                     return tokens;

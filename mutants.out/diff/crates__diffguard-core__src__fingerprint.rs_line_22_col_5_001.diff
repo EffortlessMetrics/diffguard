@@ -1,0 +1,22 @@
+--- crates/diffguard-core/src/fingerprint.rs
++++ replace compute_fingerprint_raw -> String with "xyzzy".into()
+@@ -14,18 +14,17 @@
+     let input = format!("{}:{}:{}:{}", f.rule_id, f.path, f.line, f.match_text);
+     compute_fingerprint_raw(&input)
+ }
+ 
+ /// Computes a full SHA-256 fingerprint from an arbitrary input string.
+ ///
+ /// Returns 64 hex characters (32 bytes).
+ pub fn compute_fingerprint_raw(input: &str) -> String {
+-    let hash = Sha256::digest(input.as_bytes());
+-    hex::encode(hash)
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use diffguard_types::Severity;
+ 
+     fn test_finding() -> Finding {

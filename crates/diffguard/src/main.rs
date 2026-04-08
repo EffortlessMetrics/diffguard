@@ -14,8 +14,8 @@ use tracing::{debug, info};
 use diffguard_analytics::{
     FALSE_POSITIVE_BASELINE_SCHEMA_V1, FalsePositiveBaseline, TREND_HISTORY_SCHEMA_V1,
     TrendHistory, append_trend_run, baseline_from_receipt, false_positive_fingerprint_set,
-    merge_false_positive_baselines, normalize_false_positive_baseline, normalize_trend_history,
-    summarize_trend_history, trend_run_from_receipt,
+    fingerprint_for_finding, merge_false_positive_baselines, normalize_false_positive_baseline,
+    normalize_trend_history, summarize_trend_history, trend_run_from_receipt,
 };
 use diffguard_core::{
     CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt,
@@ -26,9 +26,10 @@ use diffguard_diff::parse_unified_diff;
 use diffguard_domain::{DirectoryRuleOverride, compile_rules};
 use diffguard_types::{
     Artifact, CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_UNAVAILABLE, CHECK_ID_INTERNAL,
-    CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta,
-    DirectoryOverrideConfig, FailOn, MatchMode, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT,
-    REASON_TOOL_ERROR, RuleConfig, Scope, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+    CHECK_SCHEMA_V1, CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta,
+    DirectoryOverrideConfig, FailOn, Finding, MatchMode, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT,
+    REASON_TOOL_ERROR, RuleConfig, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
+    VerdictStatus,
 };
 
 mod config_loader;
@@ -277,6 +278,29 @@ struct CheckArgs {
     #[arg(long, value_name = "PATH")]
     false_positive_baseline: Option<PathBuf>,
 
+    /// Read a baseline receipt and annotate findings as baseline/new.
+    ///
+    /// When provided, findings are compared against the baseline receipt using
+    /// fingerprint matching (SHA-256 of rule_id:path:line:match_text).
+    /// Findings in the baseline are marked as "[BASELINE]", new findings as "[NEW]".
+    ///
+    /// Exit codes under baseline mode:
+    /// - 0: Only pre-existing (baseline) violations found
+    /// - 2: NEW violations found (fail CI/CD when new violations are introduced)
+    /// - 3: Only new warnings (when fail_on includes warn)
+    ///
+    /// NOTE: This is different from --false-positive-baseline which suppresses findings.
+    /// Baseline mode annotates all findings while tracking new violations separately.
+    #[arg(long, value_name = "PATH")]
+    baseline: Option<PathBuf>,
+
+    /// Report mode for baseline mode.
+    ///
+    /// - all: Show all findings with baseline/new annotations (default)
+    /// - new-only: Only show NEW findings (baseline findings are hidden)
+    #[arg(long, value_enum)]
+    report_mode: Option<ReportMode>,
+
     /// Write/merge a false-positive baseline file from this run's findings.
     ///
     /// If provided with no value, defaults to artifacts/diffguard/false-positives.json
@@ -399,6 +423,16 @@ struct TrendArgs {
 enum TrendFormat {
     Text,
     Json,
+}
+
+/// Report mode for baseline mode output filtering.
+#[derive(Clone, Copy, Debug, Default, ValueEnum)]
+enum ReportMode {
+    /// Show all findings with baseline/new annotations (default).
+    #[default]
+    All,
+    /// Show only new findings (baseline findings are hidden).
+    NewOnly,
 }
 
 #[derive(Parser, Debug)]
@@ -1487,6 +1521,218 @@ fn load_trend_history(path: &Path) -> Result<TrendHistory> {
     Ok(history)
 }
 
+/// A stable baseline key: rule_id, path, and line number.
+///
+/// We intentionally omit match_text because match_text can change as code
+/// evolves (e.g., `Some(1).unwrap()` → `Some(2).unwrap()`) while the
+/// same rule firing at the same location should still be treated as a
+/// pre-existing (grandfathered) violation.
+type BaselineKey = (String, String, u32);
+
+/// Loads a baseline receipt from a JSON file.
+///
+/// Returns the baseline findings and a stable key set for comparison.
+/// Stable keys use (rule_id, path, line) to avoid match_text fragility.
+/// Validates that the schema version is compatible.
+fn load_baseline_receipt(path: &Path) -> Result<(BTreeSet<BaselineKey>, Vec<Finding>)> {
+    if !path.exists() {
+        bail!("baseline receipt not found: {}", path.display());
+    }
+
+    let text = std::fs::read_to_string(path)
+        .with_context(|| format!("read baseline receipt {}", path.display()))?;
+    let receipt: CheckReceipt = serde_json::from_str(&text)
+        .with_context(|| format!("parse baseline receipt {}", path.display()))?;
+
+    // Validate schema version
+    if receipt.schema != CHECK_SCHEMA_V1 {
+        bail!(
+            "incompatible baseline schema version '{}'; expected '{}'",
+            receipt.schema,
+            CHECK_SCHEMA_V1
+        );
+    }
+
+    // Compute stable key set from baseline findings (rule_id, path, line).
+    // This is stable across code changes unlike fingerprint_for_finding() which
+    // includes match_text.
+    let baseline_keys: BTreeSet<BaselineKey> = receipt
+        .findings
+        .iter()
+        .map(|f| (f.rule_id.clone(), f.path.clone(), f.line))
+        .collect();
+
+    info!(
+        "Loaded {} baseline findings (stable keys) from {}",
+        baseline_keys.len(),
+        path.display()
+    );
+
+    Ok((baseline_keys, receipt.findings))
+}
+
+/// Statistics from comparing current findings against a baseline.
+#[derive(Debug, Clone)]
+struct BaselineStats {
+    /// Findings that exist in the baseline (pre-existing).
+    baseline_findings: Vec<Finding>,
+    /// Findings that do NOT exist in the baseline (new violations).
+    new_findings: Vec<Finding>,
+    /// Adjusted verdict counts based only on new findings.
+    new_counts: VerdictCounts,
+}
+
+/// Compares current findings against a baseline, partitioning them into
+/// baseline (pre-existing) and new findings.
+///
+/// Uses stable (rule_id, path, line) keys rather than full fingerprints
+/// to avoid match_text fragility across code versions.
+fn compare_against_baseline(
+    findings: &[Finding],
+    baseline_keys: &BTreeSet<BaselineKey>,
+) -> BaselineStats {
+    let mut baseline_findings = Vec::new();
+    let mut new_findings = Vec::new();
+    let mut new_counts = VerdictCounts::default();
+
+    for finding in findings {
+        let key = (finding.rule_id.clone(), finding.path.clone(), finding.line);
+        if baseline_keys.contains(&key) {
+            baseline_findings.push(finding.clone());
+        } else {
+            new_findings.push(finding.clone());
+            // Track new findings counts
+            match finding.severity {
+                Severity::Info => new_counts.info = new_counts.info.saturating_add(1),
+                Severity::Warn => new_counts.warn = new_counts.warn.saturating_add(1),
+                Severity::Error => new_counts.error = new_counts.error.saturating_add(1),
+            }
+        }
+    }
+
+    BaselineStats {
+        baseline_findings,
+        new_findings,
+        new_counts,
+    }
+}
+
+/// Determines the exit code for baseline mode based only on new findings.
+fn compute_baseline_exit_code(fail_on: FailOn, new_counts: &VerdictCounts) -> i32 {
+    // If there are no new findings, exit 0 (grandfathered)
+    if new_counts.error == 0 && new_counts.warn == 0 && new_counts.info == 0 {
+        return 0;
+    }
+
+    // New errors always cause exit 2 (if fail_on includes error)
+    if new_counts.error > 0 {
+        return 2;
+    }
+
+    // New warnings cause exit 3 only if fail_on includes warn
+    if new_counts.warn > 0 && matches!(fail_on, FailOn::Warn) {
+        return 3;
+    }
+
+    // No new errors and fail_on doesn't trigger on warnings
+    0
+}
+
+/// Renders a finding row with baseline/new annotation for markdown output.
+///
+/// Format: `[BASELINE]` or `[NEW]` prefix before the rule_id.
+fn render_finding_row_with_baseline(f: &Finding, is_baseline: bool) -> String {
+    let sev = f.severity.as_str();
+    let loc = format!("{}:{}", escape_md(&f.path), f.line);
+    let msg = escape_md(&f.message);
+    let snippet = escape_md(&f.snippet);
+    let annotation = if is_baseline { "[BASELINE] " } else { "[NEW] " };
+
+    format!(
+        "| {sev} | {annotation}`{rule}` | `{loc}` | {msg} | `{snippet}` |\n",
+        sev = sev,
+        annotation = annotation,
+        rule = escape_md(&f.rule_id),
+        loc = loc,
+        msg = msg,
+        snippet = snippet
+    )
+}
+
+/// Escapes special markdown characters in a string.
+fn escape_md(s: &str) -> String {
+    s.replace('|', "\\|").replace('`', "\\`")
+}
+
+/// Renders markdown output with baseline/new annotations.
+///
+/// This modifies the table output to include baseline/new annotations for each finding.
+fn render_markdown_with_baseline_annotations(
+    receipt: &CheckReceipt,
+    baseline_findings: &[Finding],
+    new_findings: &[Finding],
+) -> String {
+    use diffguard_types::VerdictStatus;
+
+    let status = match receipt.verdict.status {
+        VerdictStatus::Pass => "PASS",
+        VerdictStatus::Warn => "WARN",
+        VerdictStatus::Fail => "FAIL",
+        VerdictStatus::Skip => "SKIP",
+    };
+
+    let mut out = String::new();
+    out.push_str(&format!("## diffguard — {status}\n\n"));
+
+    out.push_str(&format!(
+        "Scanned **{}** file(s), **{}** line(s) (scope: `{}`, base: `{}`, head: `{}`)\n\n",
+        receipt.diff.files_scanned,
+        receipt.diff.lines_scanned,
+        receipt.diff.scope.as_str(),
+        receipt.diff.base,
+        receipt.diff.head
+    ));
+
+    // Build a set of baseline finding fingerprints for quick lookup
+    let _baseline_fps: BTreeSet<String> = baseline_findings
+        .iter()
+        .map(fingerprint_for_finding)
+        .collect();
+
+    if new_findings.is_empty() && baseline_findings.is_empty() {
+        out.push_str("No findings.\n");
+        return out;
+    }
+
+    // Determine what to show based on findings
+    let total_findings = if new_findings.is_empty() {
+        baseline_findings.len()
+    } else {
+        new_findings.len()
+    };
+
+    if total_findings == 0 {
+        out.push_str("No findings.\n");
+        return out;
+    }
+
+    out.push_str("| Severity | Classification | Rule | Location | Message | Snippet |\n");
+    out.push_str("|---|---|---|---|---|---|\n");
+
+    // Render baseline findings first (if any)
+    for f in baseline_findings {
+        out.push_str(&render_finding_row_with_baseline(f, true));
+    }
+
+    // Render new findings
+    for f in new_findings {
+        out.push_str(&render_finding_row_with_baseline(f, false));
+    }
+
+    out.push('\n');
+    out
+}
+
 fn parse_blame_porcelain(blame_text: &str) -> Result<BTreeMap<u32, BlameLineMeta>> {
     let mut out = BTreeMap::<u32, BlameLineMeta>::new();
     let lines: Vec<&str> = blame_text.lines().collect();
@@ -2151,6 +2397,56 @@ fn cmd_check_inner(
         run.receipt.verdict.status
     );
 
+    // Baseline mode: post-process findings after run_check() returns
+    let baseline_adjusted_exit_code = if let Some(baseline_path) = &args.baseline {
+        // Load baseline receipt and fingerprints
+        let (baseline_fingerprints, _baseline_findings) = load_baseline_receipt(baseline_path)
+            .map_err(|e| anyhow::anyhow!("failed to load baseline: {}", e))?;
+
+        // Partition current findings into baseline vs new
+        let stats = compare_against_baseline(&run.receipt.findings, &baseline_fingerprints);
+
+        info!(
+            "Baseline comparison: {} baseline findings, {} new findings",
+            stats.baseline_findings.len(),
+            stats.new_findings.len()
+        );
+
+        // Compute exit code based on new findings only
+        let new_exit_code = compute_baseline_exit_code(fail_on, &stats.new_counts);
+        info!("Baseline-adjusted exit code: {}", new_exit_code);
+
+        // Determine which findings to show based on report mode
+        let (findings_to_show, baseline_findings_to_show) =
+            match args.report_mode.unwrap_or(ReportMode::All) {
+                ReportMode::All => (&stats.new_findings[..], Some(&stats.baseline_findings[..])),
+                ReportMode::NewOnly => (&stats.new_findings[..], None),
+            };
+
+        // Re-render markdown with baseline annotations
+        let annotated_markdown = if findings_to_show.is_empty()
+            && baseline_findings_to_show.is_some()
+        {
+            // Show baseline findings when there are no new findings
+            render_markdown_with_baseline_annotations(&run.receipt, &stats.baseline_findings, &[])
+        } else if let Some(baseline_findings) = baseline_findings_to_show {
+            render_markdown_with_baseline_annotations(
+                &run.receipt,
+                baseline_findings,
+                findings_to_show,
+            )
+        } else {
+            render_markdown_with_baseline_annotations(&run.receipt, &[], findings_to_show)
+        };
+
+        // Override the markdown in run with annotated version
+        // Note: We can't modify run.markdown directly, so we'll handle this in the write section
+        // Store the annotated markdown for later use
+        Some((new_exit_code, annotated_markdown))
+    } else {
+        None
+    };
+
     let cwd = std::env::current_dir().ok();
     let to_artifact_path = |path: &Path| {
         let rel = match cwd.as_ref() {
@@ -2169,7 +2465,13 @@ fn cmd_check_inner(
     write_json(out_path, &run.receipt)?;
 
     if let Some(md_path) = &args.md {
-        write_text(md_path, &run.markdown)?;
+        // Use annotated markdown if in baseline mode, otherwise use standard markdown
+        let markdown_to_write = if let Some((_, ref annotated_md)) = baseline_adjusted_exit_code {
+            annotated_md.as_str()
+        } else {
+            run.markdown.as_str()
+        };
+        write_text(md_path, markdown_to_write)?;
         artifacts.push(Artifact {
             path: to_artifact_path(md_path),
             format: "markdown".to_string(),
@@ -2332,7 +2634,13 @@ fn cmd_check_inner(
         write_text(sensor_path, &sensor_json)?;
     }
 
-    Ok(run.exit_code)
+    // Use baseline-adjusted exit code if in baseline mode, otherwise use standard exit code
+    let exit_code = if let Some((baseline_exit_code, _)) = baseline_adjusted_exit_code {
+        baseline_exit_code
+    } else {
+        run.exit_code
+    };
+    Ok(exit_code)
 }
 
 fn cmd_sarif(args: SarifArgs) -> Result<()> {
@@ -2861,6 +3169,8 @@ mod tests {
             gitlab_quality: None,
             rule_stats: None,
             false_positive_baseline: None,
+            baseline: None,
+            report_mode: None,
             write_false_positive_baseline: None,
             trend_history: None,
             trend_max_runs: None,

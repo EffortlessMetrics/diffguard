@@ -1,0 +1,26 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace parse_plus_plus_plus -> Option<String> with None
+@@ -378,22 +378,17 @@
+         return None;
+     }
+     let b = unquote_git_token(&tokens[1]);
+     strip_prefix_path(&b)
+ }
+ 
+ fn parse_plus_plus_plus(line: &str) -> Option<String> {
+     // +++ b/foo
+-    let rest = line.strip_prefix("+++ ")?;
+-    let token = parse_single_git_path(rest)?;
+-    if token == "/dev/null" {
+-        return None;
+-    }
+-    strip_prefix_path(&token)
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn strip_prefix_path(p: &str) -> Option<String> {
+     // strips a/ or b/
+     let p = p.trim();
+     let p = p
+         .strip_prefix("a/")
+         .or_else(|| p.strip_prefix("b/"))

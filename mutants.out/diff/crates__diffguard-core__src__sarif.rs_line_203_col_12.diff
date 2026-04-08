@@ -1,0 +1,21 @@
+--- crates/diffguard-core/src/sarif.rs
++++ delete ! in collect_rules_from_findings
+@@ -195,17 +195,17 @@
+     serde_json::to_string_pretty(&report)
+ }
+ 
+ /// Collects unique rule definitions from findings.
+ fn collect_rules_from_findings(findings: &[Finding]) -> Vec<SarifRule> {
+     let mut seen = BTreeMap::new();
+ 
+     for f in findings {
+-        if !seen.contains_key(&f.rule_id) {
++        if  /* ~ changed by cargo-mutants ~ */seen.contains_key(&f.rule_id) {
+             seen.insert(
+                 f.rule_id.clone(),
+                 SarifRule {
+                     id: f.rule_id.clone(),
+                     short_description: Some(SarifMessage {
+                         text: f.message.clone(),
+                     }),
+                     default_configuration: Some(SarifRuleConfiguration {

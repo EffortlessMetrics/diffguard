@@ -1,0 +1,45 @@
+--- crates/diffguard-core/src/sarif.rs
++++ replace render_sarif_for_receipt -> SarifReport with Default::default()
+@@ -157,41 +157,17 @@
+     pub execution_successful: bool,
+     #[serde(skip_serializing_if = "Option::is_none")]
+     pub command_line: Option<String>,
+ }
+ 
+ /// Renders a CheckReceipt as a SARIF 2.1.0 report.
+ pub fn render_sarif_for_receipt(receipt: &CheckReceipt) -> SarifReport {
+     // Collect unique rules from findings
+-    let rules = collect_rules_from_findings(&receipt.findings);
+-
+-    // Convert findings to SARIF results
+-    let results: Vec<SarifResult> = receipt
+-        .findings
+-        .iter()
+-        .map(finding_to_sarif_result)
+-        .collect();
+-
+-    SarifReport {
+-        schema: SARIF_SCHEMA.to_string(),
+-        version: SARIF_VERSION.to_string(),
+-        runs: vec![SarifRun {
+-            tool: SarifTool {
+-                driver: SarifDriver {
+-                    name: receipt.tool.name.clone(),
+-                    version: receipt.tool.version.clone(),
+-                    information_uri: DIFFGUARD_INFO_URI.to_string(),
+-                    rules,
+-                },
+-            },
+-            results,
+-            invocations: None,
+-        }],
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Renders a SARIF report as a JSON string.
+ pub fn render_sarif_json(receipt: &CheckReceipt) -> Result<String, serde_json::Error> {
+     let report = render_sarif_for_receipt(receipt);
+     serde_json::to_string_pretty(&report)
+ }
+ 

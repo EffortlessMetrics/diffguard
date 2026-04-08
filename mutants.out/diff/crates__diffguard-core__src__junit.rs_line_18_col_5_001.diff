@@ -1,0 +1,106 @@
+--- crates/diffguard-core/src/junit.rs
++++ replace render_junit_for_receipt -> String with "xyzzy".into()
+@@ -10,102 +10,17 @@
+ /// Renders a CheckReceipt as a JUnit XML report.
+ ///
+ /// The structure is:
+ /// - `<testsuites>` - root element, one per receipt
+ /// - `<testsuite>` - one per unique rule_id
+ /// - `<testcase>` - one per finding
+ /// - `<failure>` - present for error/warn severity findings
+ pub fn render_junit_for_receipt(receipt: &CheckReceipt) -> String {
+-    let mut out = String::new();
+-
+-    // XML declaration
+-    out.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+-
+-    // Group findings by rule_id using BTreeMap for deterministic ordering
+-    let mut suites: BTreeMap<String, Vec<&Finding>> = BTreeMap::new();
+-    for f in &receipt.findings {
+-        suites.entry(f.rule_id.clone()).or_default().push(f);
+-    }
+-
+-    // Calculate totals
+-    let total_tests = receipt.findings.len();
+-    let total_failures = receipt
+-        .findings
+-        .iter()
+-        .filter(|f| matches!(f.severity, Severity::Error | Severity::Warn))
+-        .count();
+-
+-    // Root element
+-    out.push_str(&format!(
+-        "<testsuites name=\"diffguard\" tests=\"{}\" failures=\"{}\" errors=\"0\">\n",
+-        total_tests, total_failures
+-    ));
+-
+-    // Emit a testsuite per rule_id
+-    for (rule_id, findings) in &suites {
+-        let suite_failures = findings
+-            .iter()
+-            .filter(|f| matches!(f.severity, Severity::Error | Severity::Warn))
+-            .count();
+-
+-        out.push_str(&format!(
+-            "  <testsuite name=\"{}\" tests=\"{}\" failures=\"{}\" errors=\"0\">\n",
+-            escape_xml(rule_id),
+-            findings.len(),
+-            suite_failures
+-        ));
+-
+-        // Emit a testcase per finding
+-        for f in findings {
+-            let classname = escape_xml(&f.path);
+-            let name = format!("{}:{}", f.path, f.line);
+-
+-            out.push_str(&format!(
+-                "    <testcase classname=\"{}\" name=\"{}\">\n",
+-                classname,
+-                escape_xml(&name)
+-            ));
+-
+-            // Add failure element for non-info severity
+-            if matches!(f.severity, Severity::Error | Severity::Warn) {
+-                let failure_type = if matches!(f.severity, Severity::Error) {
+-                    "error"
+-                } else {
+-                    "warning"
+-                };
+-
+-                out.push_str(&format!(
+-                    "      <failure type=\"{}\" message=\"{}\">\n",
+-                    failure_type,
+-                    escape_xml(&f.message)
+-                ));
+-                out.push_str(&format!(
+-                    "Rule: {}\nFile: {}\nLine: {}\nSnippet: {}\n",
+-                    f.rule_id, f.path, f.line, f.snippet
+-                ));
+-                out.push_str("      </failure>\n");
+-            }
+-
+-            out.push_str("    </testcase>\n");
+-        }
+-
+-        out.push_str("  </testsuite>\n");
+-    }
+-
+-    // If no findings, emit an empty pass testsuite
+-    if receipt.findings.is_empty() {
+-        out.push_str("  <testsuite name=\"diffguard\" tests=\"1\" failures=\"0\" errors=\"0\">\n");
+-        out.push_str("    <testcase classname=\"diffguard\" name=\"no_findings\">\n");
+-        out.push_str("    </testcase>\n");
+-        out.push_str("  </testsuite>\n");
+-    }
+-
+-    out.push_str("</testsuites>\n");
+-    out
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Escapes special XML characters in a string.
+ fn escape_xml(s: &str) -> String {
+     let mut out = String::with_capacity(s.len());
+     for c in s.chars() {
+         match c {
+             '&' => out.push_str("&amp;"),

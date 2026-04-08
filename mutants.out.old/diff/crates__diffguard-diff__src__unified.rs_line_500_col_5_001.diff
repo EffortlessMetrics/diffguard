@@ -1,0 +1,25 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace unquote_git_token -> String with "xyzzy".into()
+@@ -492,21 +492,17 @@
+     if trimmed.starts_with('"') {
+         return parse_single_git_path(trimmed);
+     }
+ 
+     Some(trimmed.to_string())
+ }
+ 
+ fn unquote_git_token(token: &GitPathToken) -> String {
+-    if token.quoted {
+-        unescape_git_path(&token.value)
+-    } else {
+-        token.value.clone()
+-    }
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn unescape_git_path(s: &str) -> String {
+     let mut out: Vec<u8> = Vec::with_capacity(s.len());
+     let mut iter = s.as_bytes().iter().copied().peekable();
+ 
+     while let Some(b) = iter.next() {
+         if b != b'\\' {

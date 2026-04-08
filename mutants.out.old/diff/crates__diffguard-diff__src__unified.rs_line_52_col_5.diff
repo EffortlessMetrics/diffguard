@@ -1,0 +1,21 @@
+--- crates/diffguard-diff/src/unified.rs
++++ replace is_new_file -> bool with true
+@@ -44,17 +44,17 @@
+     line.starts_with("deleted file mode ")
+ }
+ 
+ /// Detects if a line indicates a new file mode.
+ ///
+ /// New files are marked with lines like:
+ /// - "new file mode 100644"
+ pub fn is_new_file(line: &str) -> bool {
+-    line.starts_with("new file mode ")
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Detects if a diff section represents a mode-only change (no content changes).
+ ///
+ /// Mode-only changes have lines like:
+ /// - "old mode 100644"
+ /// - "new mode 100755"
+ ///
