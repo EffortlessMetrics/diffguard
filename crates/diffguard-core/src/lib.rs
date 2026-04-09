@@ -1,6 +1,7 @@
 //! Core engine: orchestrates diff parsing + rule evaluation + reporting.
 
 mod check;
+mod checkstyle;
 mod csv;
 mod fingerprint;
 mod gitlab_quality;
@@ -11,6 +12,7 @@ mod sensor;
 mod sensor_api;
 
 pub use check::{CheckPlan, CheckRun, PathFilterError, run_check};
+pub use checkstyle::render_checkstyle_for_receipt;
 pub use csv::{render_csv_for_receipt, render_tsv_for_receipt};
 pub use fingerprint::{compute_fingerprint, compute_fingerprint_raw};
 pub use gitlab_quality::render_gitlab_quality_json;

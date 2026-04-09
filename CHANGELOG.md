@@ -36,6 +36,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - SHA256 fingerprints for deduplication across runs
   - GitLab pipeline artifact integration
 
+- **`--checkstyle` output format** — Checkstyle XML for SonarQube, Jenkins, and other Checkstyle-compatible tools:
+  - Schema conforms to Checkstyle XML report format
+  - Severity mapping: Error→error, Warn→warning, Info→info
+  - File-level and line-level finding reporting
+
 - **`diffguard doctor` subcommand** — checks environment prerequisites:
   - Git availability and version
   - Current directory is inside a git work tree
