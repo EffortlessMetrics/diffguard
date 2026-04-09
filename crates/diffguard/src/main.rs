@@ -710,12 +710,14 @@ fn init_logging(verbose: bool, debug: bool, color: Option<&ColorChoice>) {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
 
     // Determine ANSI color setting from --color flag
+    // NO_COLOR env var (no-color.org) takes precedence in auto/default mode
     let use_ansi = match color {
         Some(ColorChoice::Never) => false,
         Some(ColorChoice::Always) => true,
         Some(ColorChoice::Auto) | None => {
-            // Default: auto-detect based on terminal
-            std::io::stderr().is_terminal()
+            // Respect NO_COLOR=1 env var (no-color.org standard) — any value disables colors
+            // Only use terminal detection if NO_COLOR is not set
+            std::env::var_os("NO_COLOR").is_none() && std::io::stderr().is_terminal()
         }
     };
 

@@ -34,7 +34,7 @@ Implement `--color <never|always|auto>` as a global CLI flag using clap 4.x's bu
 - `--color=always` → ANSI even when piped
 - `--color=auto` (default) → ANSI only when stderr is a terminal
 
-**Environment variable:** `NO_COLOR=1` (any value) is automatically handled by clap's `ColorChoice::Never` behavior when the user does not explicitly pass `--color`.
+**Environment variable:** The `NO_COLOR=1` environment variable (no-color.org standard) is respected by the implementation when `--color` is not explicitly passed or when `--color=auto` is set — any `NO_COLOR` value suppresses ANSI output regardless of terminal type. Explicit `--color=always` or `--color=never` flags override the `NO_COLOR` env var.
 
 ---
 
@@ -62,7 +62,7 @@ Detecting `TERM=dumb` or similar is less reliable than `is_terminal()` and doesn
 
 **Negative:**
 - Adds a new CLI flag to document
-- `is_terminal()` is MSRV 1.92 compatible (stable in std)
+- `is_terminal()` is MSRV 1.70 compatible (stable in std)
 
 **Neutral:**
 - The `ColorChoice` enum is handled entirely by clap — no custom parsing needed
@@ -74,6 +74,7 @@ Detecting `TERM=dumb` or similar is less reliable than `is_terminal()` and doesn
 - **CI compatibility (LOW):** `tracing_subscriber` + clap pattern is well-tested in CI environments
 - **Redirection handling (LOW):** `is_terminal()` correctly detects non-TTY output
 - **Clap stability (VERY LOW):** `ColorChoice` is stable API in clap 4.x
+- **`is_terminal()` MSRV:** `std::io::IsTerminal::is_terminal()` was stabilized in Rust 1.70
 
 ---
 

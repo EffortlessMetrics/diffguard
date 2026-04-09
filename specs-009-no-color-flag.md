@@ -10,7 +10,7 @@ Add a `--color <never|always|auto>` global flag to the diffguard CLI that contro
 
 When not specified, behavior defaults to `auto` (existing behavior unchanged).
 
-The `NO_COLOR=1` environment variable is automatically respected by clap's `ColorChoice` when `--color` is not explicitly passed.
+The `NO_COLOR=1` environment variable is respected by the implementation (not clap) when `--color` is not explicitly passed or when `--color=auto` is set — per the no-color.org standard.
 
 ## Acceptance Criteria
 
@@ -32,7 +32,7 @@ The `NO_COLOR=1` environment variable is automatically respected by clap's `Colo
 
 - `clap` 4.5.57+ (already in dependency tree, `ColorChoice` is built-in)
 - `tracing-subscriber` (already in dependency tree, `.with_ansi(bool)` is stable API)
-- `std::io::IsTerminal` (MSRV 1.92 — stable in std)
+- `std::io::IsTerminal` (MSRV 1.70 — stable in std)
 
 ## Test Plan
 
