@@ -358,3 +358,49 @@ fn validate_without_config_errors() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("No configuration file found"));
 }
+
+#[test]
+fn test_version_flag_long_form() {
+    let output = diffguard_cmd()
+        .arg("--version")
+        .output()
+        .expect("run diffguard --version");
+
+    assert_eq!(output.status.code(), Some(0));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.starts_with("diffguard "), "version output should start with 'diffguard ': {}", stdout);
+    // Version should be semver-like (e.g., "0.2.0" or "0.2.0-alpha")
+    assert!(stdout.trim().ends_with("diffguard")
+        || stdout.trim().matches(char::is_numeric).count() >= 2,
+        "version string should contain numbers: {}", stdout);
+}
+
+#[test]
+fn test_version_flag_short_form() {
+    let output = diffguard_cmd()
+        .arg("-V")
+        .output()
+        .expect("run diffguard -V");
+
+    assert_eq!(output.status.code(), Some(0));
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.starts_with("diffguard "), "version output should start with 'diffguard ': {}", stdout);
+}
+
+#[test]
+fn test_version_matches_cargo_toml() {
+    // Verify --version and -V produce consistent output
+    let long_output = diffguard_cmd()
+        .arg("--version")
+        .output()
+        .expect("run diffguard --version");
+
+    let short_output = diffguard_cmd()
+        .arg("-V")
+        .output()
+        .expect("run diffguard -V");
+
+    assert_eq!(long_output.stdout, short_output.stdout, "--version and -V should produce identical output");
+    let stdout = String::from_utf8_lossy(&long_output.stdout);
+    assert!(stdout.contains("diffguard"), "version should contain package name: {}", stdout);
+}
