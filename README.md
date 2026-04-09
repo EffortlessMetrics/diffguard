@@ -203,6 +203,7 @@ diffguard supports multiple output formats for different use cases:
 | Markdown | `--md` | PR comments, human-readable summaries |
 | SARIF | `--sarif` | GitHub Advanced Security, code scanning |
 | JUnit | `--junit` | CI/CD integration (Jenkins, GitLab CI) |
+| Checkstyle XML | `--checkstyle` | SonarQube, Jenkins, and other Checkstyle-compatible tools |
 | GitLab Code Quality | `--gitlab-quality` | GitLab MR code quality reports |
 | CSV/TSV | `--csv` / `--tsv` | Spreadsheet import, data analysis |
 | Sensor | `--sensor` | R2 Library Contract envelope (`sensor.report.v1`) |
