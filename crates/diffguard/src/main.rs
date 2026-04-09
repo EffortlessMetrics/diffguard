@@ -1,14 +1,14 @@
 #![allow(clippy::collapsible_if)]
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::io::{self, BufRead, Read, Write};
+use std::io::{self, BufRead, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
 use chrono::Utc;
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{ColorChoice, Parser, Subcommand, ValueEnum};
 use tracing::{debug, info};
 
 use diffguard_analytics::{
@@ -49,6 +49,10 @@ struct Cli {
     /// Enable debug-level logging to stderr.
     #[arg(long, global = true)]
     debug: bool,
+
+    /// Control colored output. never, always, auto.
+    #[arg(long, value_enum, global = true)]
+    color: Option<ColorChoice>,
 
     #[command(subcommand)]
     command: Commands,
@@ -653,7 +657,7 @@ where
     let cli = Cli::parse_from(args);
 
     // Initialize logging based on flags
-    init_logging(cli.verbose, cli.debug);
+    init_logging(cli.verbose, cli.debug, cli.color.as_ref());
 
     match cli.command {
         Commands::Check(args) => cmd_check(*args),
@@ -692,7 +696,7 @@ where
 }
 
 /// Initialize tracing/logging based on CLI flags.
-fn init_logging(verbose: bool, debug: bool) {
+fn init_logging(verbose: bool, debug: bool, color: Option<&ColorChoice>) {
     use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
     let level = if debug {
@@ -705,8 +709,22 @@ fn init_logging(verbose: bool, debug: bool) {
 
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
 
+    // Determine ANSI color setting from --color flag
+    let use_ansi = match color {
+        Some(ColorChoice::Never) => false,
+        Some(ColorChoice::Always) => true,
+        Some(ColorChoice::Auto) | None => {
+            // Default: auto-detect based on terminal
+            std::io::stderr().is_terminal()
+        }
+    };
+
     let _ = tracing_subscriber::registry()
-        .with(fmt::layer().with_writer(std::io::stderr))
+        .with(
+            fmt::layer()
+                .with_writer(std::io::stderr)
+                .with_ansi(use_ansi),
+        )
         .with(filter)
         .try_init();
 
