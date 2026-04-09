@@ -644,7 +644,7 @@ fn main() -> std::process::ExitCode {
     match run_with_args(std::env::args_os()) {
         Ok(code) => std::process::ExitCode::from(code as u8),
         Err(err) => {
-            eprintln!("{err:?}");
+            eprintln!("{err}");
             std::process::ExitCode::from(1)
         }
     }
