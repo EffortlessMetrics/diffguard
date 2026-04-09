@@ -358,3 +358,50 @@ fn validate_without_config_errors() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("No configuration file found"));
 }
+
+// Tests for --color flag
+
+#[test]
+fn test_color_never_flag_recognized() {
+    diffguard_cmd()
+        .arg("--color=never")
+        .arg("--help")
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_color_always_flag_recognized() {
+    diffguard_cmd()
+        .arg("--color=always")
+        .arg("--help")
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_color_auto_flag_recognized() {
+    diffguard_cmd()
+        .arg("--color=auto")
+        .arg("--help")
+        .assert()
+        .success();
+}
+
+#[test]
+fn test_color_invalid_value_rejected() {
+    let output = diffguard_cmd()
+        .arg("--color=invalid")
+        .arg("--help")
+        .output()
+        .expect("run color invalid");
+    assert!(
+        !output.status.success(),
+        "Should reject invalid color value"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("error: invalid value"),
+        "Should show invalid value error"
+    );
+}
