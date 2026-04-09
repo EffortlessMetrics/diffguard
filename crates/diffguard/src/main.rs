@@ -18,9 +18,9 @@ use diffguard_analytics::{
     normalize_trend_history, summarize_trend_history, trend_run_from_receipt,
 };
 use diffguard_core::{
-    CheckPlan, RuleMetadata, SensorReportContext, render_csv_for_receipt,
-    render_gitlab_quality_json, render_junit_for_receipt, render_sarif_json, render_sensor_json,
-    render_tsv_for_receipt, run_check,
+    CheckPlan, RuleMetadata, SensorReportContext, render_checkstyle_for_receipt,
+    render_csv_for_receipt, render_gitlab_quality_json, render_junit_for_receipt,
+    render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
 };
 use diffguard_diff::parse_unified_diff;
 use diffguard_domain::{DirectoryRuleOverride, compile_rules};
@@ -262,6 +262,17 @@ struct CheckArgs {
         default_missing_value = "artifacts/diffguard/report.gitlab-quality.json"
     )]
     gitlab_quality: Option<PathBuf>,
+
+    /// Write a Checkstyle XML report.
+    ///
+    /// If provided with no value, defaults to artifacts/diffguard/report.checkstyle.xml
+    #[arg(
+        long,
+        value_name = "PATH",
+        num_args = 0..=1,
+        default_missing_value = "artifacts/diffguard/report.checkstyle.xml"
+    )]
+    checkstyle: Option<PathBuf>,
 
     /// Write per-rule hit statistics as JSON.
     ///
@@ -2530,6 +2541,15 @@ fn cmd_check_inner(
         });
     }
 
+    if let Some(checkstyle_path) = &args.checkstyle {
+        let checkstyle = render_checkstyle_for_receipt(&run.receipt);
+        write_text(checkstyle_path, &checkstyle)?;
+        artifacts.push(Artifact {
+            path: to_artifact_path(checkstyle_path),
+            format: "checkstyle".to_string(),
+        });
+    }
+
     if let Some(rule_stats_path) = &args.rule_stats {
         let stats_rows: Vec<_> = run
             .rule_hits
@@ -3167,6 +3187,7 @@ mod tests {
             csv: None,
             tsv: None,
             gitlab_quality: None,
+            checkstyle: None,
             rule_stats: None,
             false_positive_baseline: None,
             baseline: None,
