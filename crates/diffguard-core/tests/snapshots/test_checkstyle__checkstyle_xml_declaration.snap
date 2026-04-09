@@ -1,0 +1,10 @@
+---
+source: crates/diffguard-core/tests/test_checkstyle.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="5.0">
+  <file name="test.rs">
+    <error line="1" severity="warning" message="Test" source="test-rule"/>
+  </file>
+</checkstyle>

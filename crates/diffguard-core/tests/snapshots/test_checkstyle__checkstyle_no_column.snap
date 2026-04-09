@@ -1,0 +1,10 @@
+---
+source: crates/diffguard-core/tests/test_checkstyle.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="5.0">
+  <file name="scripts/deploy.py">
+    <error line="12" severity="warning" message="Print statement found" source="no-print"/>
+  </file>
+</checkstyle>
