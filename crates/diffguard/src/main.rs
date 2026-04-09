@@ -41,6 +41,7 @@ use presets::Preset;
 #[derive(Parser)]
 #[command(name = "diffguard")]
 #[command(about = "Diff-scoped governance lint", long_about = None)]
+#[command(version)]
 struct Cli {
     /// Enable verbose (info-level) logging to stderr.
     #[arg(long, short = 'v', global = true)]
