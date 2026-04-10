@@ -1,0 +1,10 @@
+---
+source: crates/diffguard-core/tests/test_checkstyle.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="5.0">
+  <file name="src/index.js">
+    <error line="42" column="5" severity="warning" message="Use of console.log detected" source="no-console-log"/>
+  </file>
+</checkstyle>

@@ -1,0 +1,16 @@
+---
+source: crates/diffguard-core/tests/test_checkstyle.rs
+expression: xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="5.0">
+  <file name="scripts/deploy.py">
+    <error line="5" severity="warning" message="Print found" source="python.no_print"/>
+  </file>
+  <file name="src/index.js">
+    <error line="10" severity="warning" message="Console.log" source="js.no_console"/>
+  </file>
+  <file name="src/lib.rs">
+    <error line="15" severity="error" message="Avoid unwrap" source="rust.no_unwrap"/>
+  </file>
+</checkstyle>
