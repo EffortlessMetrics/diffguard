@@ -20,7 +20,10 @@ pub fn escape_xml(s: &str) -> String {
             '>' => out.push_str("&gt;"),
             '"' => out.push_str("&quot;"),
             '\'' => out.push_str("&apos;"),
-            // Illegal XML control characters (0x00-0x1F except tab/LF/CR)
+            // Illegal XML control characters (0x00-0x1F except tab/LF/CR).
+            // These are encoded as hex character references (&#xNN;) to comply with
+            // XML 1.0 specification which forbids most control characters.
+            // Tab (0x09), LF (0x0A), and CR (0x0D) are explicitly allowed.
             c if c <= '\u{001F}' && c != '\t' && c != '\n' && c != '\r' => {
                 out.push_str(&format!("&#x{:X};", c as u32));
             }
