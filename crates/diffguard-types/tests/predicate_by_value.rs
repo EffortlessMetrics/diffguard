@@ -14,7 +14,6 @@
 //   fn is_match_mode_any(mode: MatchMode) -> bool
 
 use diffguard_types::{MatchMode, RuleConfig, Severity, VerdictCounts};
-use serde_json;
 
 fn make_test_rule(match_mode: MatchMode, multiline: bool) -> RuleConfig {
     RuleConfig {
@@ -181,7 +180,7 @@ fn test_skip_serializing_if_round_trip() {
     let deserialized: RuleConfig = serde_json::from_str(&json).unwrap();
 
     assert_eq!(deserialized.match_mode, MatchMode::Absent);
-    assert_eq!(deserialized.multiline, true);
+    assert!(deserialized.multiline);
 }
 
 // ============================================================================
@@ -441,9 +440,9 @@ fn test_round_trip_with_edge_case_values() {
     let deserialized: RuleConfig = serde_json::from_str(&json).unwrap();
 
     assert_eq!(deserialized.match_mode, MatchMode::Absent);
-    assert_eq!(deserialized.multiline, true);
-    assert_eq!(deserialized.ignore_comments, true);
-    assert_eq!(deserialized.ignore_strings, true);
+    assert!(deserialized.multiline);
+    assert!(deserialized.ignore_comments);
+    assert!(deserialized.ignore_strings);
 }
 
 #[test]
