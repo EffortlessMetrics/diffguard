@@ -45,7 +45,7 @@
         },
         "files_scanned": {
           "type": "integer",
-          "format": "uint32",
+          "format": "uint64",
           "minimum": 0
         },
         "findings": {

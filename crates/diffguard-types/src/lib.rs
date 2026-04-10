@@ -118,7 +118,11 @@ pub struct DiffMeta {
     pub head: String,
     pub context_lines: u32,
     pub scope: Scope,
-    pub files_scanned: u32,
+    /// Number of distinct files that were scanned.
+    ///
+    /// Stored as `u64` to avoid silent truncation for very large repositories
+    /// (those with more than 2^32 - 1 unique files).
+    pub files_scanned: u64,
     pub lines_scanned: u32,
 }
 

@@ -19,7 +19,13 @@ pub struct Evaluation {
     pub findings: Vec<Finding>,
     pub counts: VerdictCounts,
     pub truncated_findings: u32,
-    pub files_scanned: u32,
+    /// Number of distinct files that were scanned.
+    ///
+    /// Changed from `u32` to `u64` to avoid silent truncation when scanning
+    /// repositories with more than 2^32 - 1 (≈4.3 billion) unique files.
+    /// The previous `u32` cast would silently truncate, producing incorrect
+    /// (often zero) counts for very large codebases.
+    pub files_scanned: u64,
     pub lines_scanned: u32,
     /// Aggregated per-rule hit counts (deterministically sorted by rule ID).
     pub rule_hits: Vec<RuleHitStat>,
@@ -309,7 +315,10 @@ pub fn evaluate_lines_with_overrides_and_language(
         findings,
         counts,
         truncated_findings,
-        files_scanned: files_seen.len() as u32,
+        // Use u64 to avoid overflow when scanning repos with >4B files.
+        // Prior to the u64 migration, `files_seen.len() as u32` would silently
+        // truncate for extremely large codebases, producing incorrect counts.
+        files_scanned: files_seen.len() as u64,
         lines_scanned,
         rule_hits: per_rule_hits.into_values().collect(),
     }

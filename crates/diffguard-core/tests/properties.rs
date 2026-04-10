@@ -133,7 +133,7 @@ fn arb_diff_meta() -> impl Strategy<Value = DiffMeta> {
         arb_identifier(), // head
         0u32..10,         // context_lines
         arb_scope(),      // scope
-        0u32..100,        // files_scanned
+        0u64..100,        // files_scanned
         0u32..1000,       // lines_scanned
     )
         .prop_map(
@@ -642,7 +642,7 @@ mod unit_tests {
                 head: "HEAD".to_string(),
                 context_lines: u32::MAX,
                 scope: Scope::Added,
-                files_scanned: u32::MAX,
+                files_scanned: u64::MAX,
                 lines_scanned: u32::MAX,
             },
             findings: vec![],
