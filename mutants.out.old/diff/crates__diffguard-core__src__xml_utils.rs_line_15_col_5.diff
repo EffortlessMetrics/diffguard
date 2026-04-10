@@ -1,0 +1,39 @@
+--- crates/diffguard-core/src/xml_utils.rs
++++ replace escape_xml -> String with String::new()
+@@ -7,35 +7,17 @@
+ ///
+ /// Handles:
+ /// - 5 named XML entities: `&`, `<`, `>`, `"`, `'`
+ /// - Illegal control characters (0x00-0x1F except tab/LF/CR) as `&#xNN;` entities
+ ///
+ /// Legal control characters (tab=0x09, LF=0x0A, CR=0x0D) are preserved as-is
+ /// since they are allowed in XML character content.
+ pub fn escape_xml(s: &str) -> String {
+-    let mut out = String::with_capacity(s.len());
+-    for c in s.chars() {
+-        match c {
+-            '&' => out.push_str("&amp;"),
+-            '<' => out.push_str("&lt;"),
+-            '>' => out.push_str("&gt;"),
+-            '"' => out.push_str("&quot;"),
+-            '\'' => out.push_str("&apos;"),
+-            // Illegal XML control characters (0x00-0x1F except tab/LF/CR).
+-            // These are encoded as hex character references (&#xNN;) to comply with
+-            // XML 1.0 specification which forbids most control characters.
+-            // Tab (0x09), LF (0x0A), and CR (0x0D) are explicitly allowed.
+-            c if c <= '\u{001F}' && c != '\t' && c != '\n' && c != '\r' => {
+-                out.push_str(&format!("&#x{:X};", c as u32));
+-            }
+-            _ => out.push(c),
+-        }
+-    }
+-    out
++    String::new() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+ 
+     #[test]
+     fn escape_xml_handles_all_special_chars() {

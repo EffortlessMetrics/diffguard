@@ -1,0 +1,2 @@
+crates/diffguard-core/src/sensor_api.rs:62:9: delete field truncated_count from struct SensorReportContext expression in run_sensor
+crates/diffguard-core/src/sensor_api.rs:63:9: delete field rules_total from struct SensorReportContext expression in run_sensor

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`escape_xml` control character handling** — XML output formats (JUnit, Checkstyle) now properly escape XML control characters (0x00–0x1F) as character references (e.g., `&#x0;`), except tab, LF, and CR which are allowed in XML content. This prevents malformed XML when findings contain control characters.
+
 ### Security
 
 - **GitHub Actions hardening** for production-ready workflows:

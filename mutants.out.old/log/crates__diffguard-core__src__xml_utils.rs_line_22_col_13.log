@@ -1,0 +1,367 @@
+
+*** crates/diffguard-core/src/xml_utils.rs:22:13: delete match arm '\'' in escape_xml
+
+*** mutation diff:
+--- crates/diffguard-core/src/xml_utils.rs
++++ delete match arm '\'' in escape_xml
+@@ -14,17 +14,17 @@
+ pub fn escape_xml(s: &str) -> String {
+     let mut out = String::with_capacity(s.len());
+     for c in s.chars() {
+         match c {
+             '&' => out.push_str("&amp;"),
+             '<' => out.push_str("&lt;"),
+             '>' => out.push_str("&gt;"),
+             '"' => out.push_str("&quot;"),
+-            '\'' => out.push_str("&apos;"),
++             /* ~ changed by cargo-mutants ~ */
+             // Illegal XML control characters (0x00-0x1F except tab/LF/CR).
+             // These are encoded as hex character references (&#xNN;) to comply with
+             // XML 1.0 specification which forbids most control characters.
+             // Tab (0x09), LF (0x0A), and CR (0x0D) are explicitly allowed.
+             c if c <= '\u{001F}' && c != '\t' && c != '\n' && c != '\r' => {
+                 out.push_str(&format!("&#x{:X};", c as u32));
+             }
+             _ => out.push(c),
+
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=diffguard-core@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh quote v1.0.45
+       Fresh cfg-if v1.0.4
+       Fresh memchr v2.8.0
+       Fresh version_check v0.9.5
+       Fresh syn v2.0.117
+       Fresh libc v0.2.184
+       Fresh regex-syntax v0.8.10
+       Fresh itoa v1.0.18
+       Fresh aho-corasick v1.1.4
+       Fresh bitflags v2.11.0
+       Fresh serde_core v1.0.228
+       Fresh serde_derive v1.0.228
+       Fresh zmij v1.0.21
+       Fresh typenum v1.19.0
+       Fresh ref-cast-impl v1.0.25
+       Fresh serde_derive_internals v0.29.1
+       Fresh getrandom v0.3.4
+       Fresh linux-raw-sys v0.12.1
+       Fresh dyn-clone v1.0.20
+       Fresh regex-automata v0.4.14
+       Fresh getrandom v0.4.2
+       Fresh thiserror-impl v2.0.18
+       Fresh autocfg v1.5.0
+       Fresh serde v1.0.228
+       Fresh generic-array v0.14.7
+       Fresh serde_json v1.0.149
+       Fresh ref-cast v1.0.25
+       Fresh schemars_derive v1.2.1
+       Fresh rustix v1.1.4
+       Fresh rand_core v0.9.5
+       Fresh fastrand v2.3.0
+       Fresh once_cell v1.21.4
+       Fresh thiserror v2.0.18
+       Fresh bstr v1.12.1
+       Fresh winnow v1.0.1
+       Fresh log v0.4.29
+       Fresh serde_spanned v1.1.1
+       Fresh schemars v1.2.1
+       Fresh tempfile v3.27.0
+       Fresh anyhow v1.0.102
+       Fresh block-buffer v0.10.4
+       Fresh zerocopy v0.8.48
+       Fresh crypto-common v0.1.7
+       Fresh toml_parser v1.1.2+spec-1.1.0
+       Fresh globset v0.4.18
+       Fresh toml_datetime v0.7.5+spec-1.1.0
+       Fresh regex v1.12.3
+       Fresh wait-timeout v0.2.1
+       Fresh toml_writer v1.1.1+spec-1.1.0
+       Fresh bit-vec v0.8.0
+       Fresh winnow v0.7.15
+       Fresh fnv v1.0.7
+       Fresh cpufeatures v0.2.17
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-RsbVSt.tmp/crates/diffguard-types)
+       Fresh ppv-lite86 v0.2.21
+       Fresh digest v0.10.7
+       Fresh quick-error v1.2.3
+       Fresh num-traits v0.2.19
+       Fresh toml v0.9.12+spec-1.1.0
+       Fresh bit-set v0.8.0
+       Fresh rand_xorshift v0.4.0
+       Fresh rand v0.9.2
+       Fresh console v0.16.3
+       Fresh hex v0.4.3
+       Fresh similar v2.7.0
+       Fresh unarray v0.1.4
+       Fresh diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-RsbVSt.tmp/crates/diffguard-domain)
+       Fresh rand_chacha v0.9.0
+       Fresh rusty-fork v0.3.1
+       Fresh diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-RsbVSt.tmp/crates/diffguard-diff)
+       Fresh sha2 v0.10.9
+       Fresh insta v1.47.2
+       Fresh proptest v1.11.0
+       Dirty diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-RsbVSt.tmp/crates/diffguard-core): the file `crates/diffguard-core/src/xml_utils.rs` has changed (1775851245.259626958s, 2s after last build at 1775851243.755571999s)
+   Compiling diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-RsbVSt.tmp/crates/diffguard-core)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0ea501e1fb5d6a5b -C extra-filename=-eb54202daf525fcb --out-dir /tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_core --edition=2024 crates/diffguard-core/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2f10298022ccb1a6 -C extra-filename=-e53d6514fc2b0b9b --out-dir /tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_diff=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rmeta --extern diffguard_domain=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern globset=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libglobset-2208176bf3575d31.rmeta --extern hex=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libhex-27716755798a4aa0.rmeta --extern serde=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rmeta --extern serde_json=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde_json-27df305756072d36.rmeta --extern sha2=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta --extern toml=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rmeta`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name test_gitlab_quality --edition=2024 crates/diffguard-core/tests/test_gitlab_quality.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=9b26c3c95e78bc30 -C extra-filename=-6a3f0d36436d66ee --out-dir /tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_core=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_core-e53d6514fc2b0b9b.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name snapshot_tests --edition=2024 crates/diffguard-core/tests/snapshot_tests.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=0cfd6104445ba124 -C extra-filename=-69921491f58785ae --out-dir /tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_core=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_core-e53d6514fc2b0b9b.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name escape_xml_control_chars --edition=2024 crates/diffguard-core/tests/escape_xml_control_chars.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=50d22f8a3fc50dbe -C extra-filename=-5242639618b332b3 --out-dir /tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_core=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_core-e53d6514fc2b0b9b.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name escape_xml_proptest --edition=2024 crates/diffguard-core/tests/escape_xml_proptest.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=2f03f7aae1c479a9 -C extra-filename=-57df2672f43a460d --out-dir /tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_core=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_core-e53d6514fc2b0b9b.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name properties --edition=2024 crates/diffguard-core/tests/properties.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=abaf2e3684954bdf -C extra-filename=-0043aa4d449e60f8 --out-dir /tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_core=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_core-e53d6514fc2b0b9b.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name test_checkstyle --edition=2024 crates/diffguard-core/tests/test_checkstyle.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=73495586b9bd4f90 -C extra-filename=-d70fd656d6f612db --out-dir /tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_core=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_core-e53d6514fc2b0b9b.rlib --extern diffguard_diff=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_diff-c73328382a27267f.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern hex=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libhex-27716755798a4aa0.rlib --extern insta=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern serde=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde-0deb6fe139bead6c.rlib --extern serde_json=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libserde_json-27df305756072d36.rlib --extern sha2=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libsha2-8203e7dcde6869e6.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib --extern toml=/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/libtoml-8692c1b7e10ab90f.rlib`
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.25s
+  Executable `/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/diffguard_core-eb54202daf525fcb`
+  Executable `/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/escape_xml_control_chars-5242639618b332b3`
+  Executable `/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/escape_xml_proptest-57df2672f43a460d`
+  Executable `/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/properties-0043aa4d449e60f8`
+  Executable `/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/snapshot_tests-69921491f58785ae`
+  Executable `/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/test_checkstyle-d70fd656d6f612db`
+  Executable `/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/test_gitlab_quality-6a3f0d36436d66ee`
+
+*** result: Success
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --verbose --package=diffguard-core@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh quote v1.0.45
+       Fresh syn v2.0.117
+       Fresh cfg-if v1.0.4
+       Fresh memchr v2.8.0
+       Fresh version_check v0.9.5
+       Fresh serde_derive v1.0.228
+       Fresh serde_derive_internals v0.29.1
+       Fresh ref-cast-impl v1.0.25
+       Fresh itoa v1.0.18
+       Fresh regex-syntax v0.8.10
+       Fresh aho-corasick v1.1.4
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh typenum v1.19.0
+       Fresh zmij v1.0.21
+       Fresh schemars_derive v1.2.1
+       Fresh linux-raw-sys v0.12.1
+       Fresh dyn-clone v1.0.20
+       Fresh bitflags v2.11.0
+       Fresh regex-automata v0.4.14
+       Fresh serde v1.0.228
+       Fresh serde_json v1.0.149
+       Fresh generic-array v0.14.7
+       Fresh ref-cast v1.0.25
+       Fresh getrandom v0.3.4
+       Fresh rustix v1.1.4
+       Fresh getrandom v0.4.2
+       Fresh thiserror-impl v2.0.18
+       Fresh autocfg v1.5.0
+       Fresh once_cell v1.21.4
+       Fresh fastrand v2.3.0
+       Fresh bstr v1.12.1
+       Fresh log v0.4.29
+       Fresh winnow v1.0.1
+       Fresh rand_core v0.9.5
+       Fresh schemars v1.2.1
+       Fresh crypto-common v0.1.7
+       Fresh thiserror v2.0.18
+       Fresh tempfile v3.27.0
+       Fresh zerocopy v0.8.48
+       Fresh anyhow v1.0.102
+       Fresh block-buffer v0.10.4
+       Fresh globset v0.4.18
+       Fresh toml_parser v1.1.2+spec-1.1.0
+       Fresh toml_datetime v0.7.5+spec-1.1.0
+       Fresh wait-timeout v0.2.1
+       Fresh serde_spanned v1.1.1
+       Fresh regex v1.12.3
+       Fresh bit-vec v0.8.0
+       Fresh winnow v0.7.15
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-RsbVSt.tmp/crates/diffguard-types)
+       Fresh ppv-lite86 v0.2.21
+       Fresh digest v0.10.7
+       Fresh quick-error v1.2.3
+       Fresh toml_writer v1.1.1+spec-1.1.0
+       Fresh fnv v1.0.7
+       Fresh cpufeatures v0.2.17
+       Fresh rand v0.9.2
+       Fresh bit-set v0.8.0
+       Fresh rand_xorshift v0.4.0
+       Fresh console v0.16.3
+       Fresh unarray v0.1.4
+       Fresh hex v0.4.3
+       Fresh similar v2.7.0
+       Fresh sha2 v0.10.9
+       Fresh rand_chacha v0.9.0
+       Fresh num-traits v0.2.19
+       Fresh rusty-fork v0.3.1
+       Fresh toml v0.9.12+spec-1.1.0
+       Fresh diffguard-diff v0.2.0 (/tmp/cargo-mutants-diffguard-RsbVSt.tmp/crates/diffguard-diff)
+       Fresh diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-RsbVSt.tmp/crates/diffguard-domain)
+       Fresh insta v1.47.2
+       Fresh proptest v1.11.0
+       Fresh diffguard-core v0.2.0 (/tmp/cargo-mutants-diffguard-RsbVSt.tmp/crates/diffguard-core)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.16s
+     Running `/tmp/cargo-mutants-diffguard-RsbVSt.tmp/target/debug/deps/diffguard_core-eb54202daf525fcb`
+
+running 136 tests
+test check::tests::exit_code_semantics ... ok
+test check::tests::compile_filter_globs_rejects_invalid ... ok
+test check::tests::filter_rule_by_tags_combined_filters ... ok
+test check::tests::filter_rule_by_tags_disable_tags_excludes ... ok
+test check::tests::filter_rule_by_tags_disable_tags_no_match ... ok
+test check::tests::filter_rule_by_tags_enable_tags_additive_with_only_tags ... ok
+test check::tests::filter_rule_by_tags_enable_tags_no_effect_without_only_tags ... ok
+test check::tests::filter_rule_by_tags_no_filters ... ok
+test check::tests::filter_rule_by_tags_only_tags_matches ... ok
+test check::tests::filter_rule_by_tags_only_tags_case_insensitive ... ok
+test check::tests::filter_rule_by_tags_only_tags_no_match ... ok
+test check::tests::filter_rule_by_tags_rule_without_tags ... ok
+test check::tests::run_check_filters_by_allowed_lines ... ok
+test check::tests::run_check_dedupes_duplicate_diff_lines ... ok
+test check::tests::run_check_passes_with_no_findings ... ok
+test check::tests::run_check_filters_acknowledged_false_positive_fingerprints ... ok
+test check::tests::run_check_includes_truncation_reason ... ok
+test checkstyle::tests::info_maps_to_warning ... ok
+test checkstyle::tests::column_omitted_when_none ... ok
+test checkstyle::tests::escapes_xml_special_characters ... FAILED
+test checkstyle::tests::column_included_when_present ... ok
+test checkstyle::tests::empty_receipt_renders_valid_xml ... ok
+test check::tests::run_check_sets_warn_verdict_and_reasons ... ok
+test check::tests::run_check_with_path_filters_filters_findings ... ok
+test csv::tests::csv_empty_receipt_has_header_only ... ok
+test csv::tests::csv_escapes_commas ... ok
+test csv::tests::csv_escapes_newlines ... ok
+test csv::tests::csv_escapes_quotes ... ok
+test checkstyle::tests::multiple_files_grouped_separately ... ok
+test csv::tests::csv_has_correct_row_count ... ok
+test check::tests::run_check_force_language_applies_rules_for_unknown_extensions ... ok
+test csv::tests::csv_has_header_row ... ok
+test checkstyle::tests::renders_checkstyle_xml_structure ... ok
+test check::tests::run_check_sets_error_verdict_and_reasons ... ok
+test csv::tests::escape_csv_field_with_comma ... ok
+test check::tests::run_check_without_path_filters_keeps_findings ... ok
+test csv::tests::escape_tsv_field_with_backslash ... ok
+test csv::tests::escape_csv_field_with_carriage_return ... ok
+test csv::tests::escape_csv_field_with_newline ... ok
+test csv::tests::escape_csv_field_with_quote ... ok
+test csv::tests::escape_tsv_field_with_carriage_return ... ok
+test csv::tests::escape_tsv_field_plain_text ... ok
+test csv::tests::escape_csv_field_plain_text ... ok
+test csv::tests::escape_tsv_field_with_tab ... ok
+test csv::tests::escape_tsv_field_with_newline ... ok
+test csv::tests::tsv_escapes_newlines ... ok
+test csv::tests::tsv_escapes_tabs ... ok
+test csv::tests::tsv_has_correct_row_count ... ok
+test csv::tests::tsv_has_header_row ... ok
+test fingerprint::tests::fingerprint_differs_for_different_line ... ok
+test fingerprint::tests::compute_fingerprint_raw_produces_64_hex ... ok
+test fingerprint::tests::fingerprint_differs_for_different_path ... ok
+test csv::tests::tsv_empty_receipt_has_header_only ... ok
+test fingerprint::tests::fingerprint_differs_for_different_match_text ... ok
+test check::tests::property_annotations_format_matches_expected ... ok
+test fingerprint::tests::fingerprint_differs_for_different_rule_id ... ok
+test fingerprint::tests::fingerprint_ignores_message ... ok
+test fingerprint::tests::fingerprint_is_64_hex_chars ... ok
+test fingerprint::tests::fingerprint_ignores_severity ... ok
+test fingerprint::tests::fingerprint_is_stable ... ok
+test gitlab_quality::tests::gitlab_quality_empty_receipt ... ok
+test gitlab_quality::tests::gitlab_quality_fingerprint_consistency ... ok
+test gitlab_quality::tests::gitlab_quality_json_serialization ... ok
+test gitlab_quality::tests::gitlab_quality_severity_mapping ... ok
+test junit::tests::junit_escapes_xml_special_chars ... ok
+test junit::tests::junit_groups_by_rule_id ... ok
+test junit::tests::junit_failure_includes_details ... ok
+test junit::tests::junit_empty_receipt_has_pass_testcase ... ok
+test junit::tests::junit_has_correct_failure_count ... ok
+test junit::tests::junit_has_correct_test_count ... ok
+test junit::tests::junit_info_severity_does_not_emit_failure ... ok
+test junit::tests::junit_xml_declaration ... ok
+test junit::tests::junit_has_testsuites_root ... ok
+test render::tests::markdown_filters_non_meta_reasons ... ok
+test render::tests::markdown_hides_suppressed_when_zero ... ok
+test render::tests::markdown_renders_all_meta_reasons ... ok
+test render::tests::markdown_shows_suppressed_count ... ok
+test render::tests::render_finding_row_escapes_pipes_and_backticks ... ok
+test render::tests::renders_markdown_table ... ok
+test check::tests::snapshot_json_receipt_pretty ... ok
+test check::tests::snapshot_annotations_with_multiple_severities ... ok
+test csv::tests::snapshot_csv_special_chars ... ok
+test csv::tests::snapshot_csv_with_findings ... ok
+test csv::tests::snapshot_tsv_no_findings ... ok
+test csv::tests::snapshot_csv_no_findings ... ok
+test fingerprint::tests::snapshot_fingerprint_value ... ok
+test sarif::tests::sarif_empty_receipt_has_no_results ... ok
+test sarif::tests::sarif_contains_all_findings ... ok
+test csv::tests::snapshot_tsv_special_chars ... ok
+test csv::tests::snapshot_tsv_with_findings ... ok
+test gitlab_quality::tests::snapshot_gitlab_quality_no_findings ... ok
+test junit::tests::snapshot_junit_no_findings ... ok
+test render::tests::snapshot_markdown_no_findings ... ok
+test render::tests::snapshot_verdict_rendering ... ok
+test gitlab_quality::tests::snapshot_gitlab_quality_with_findings ... ok
+test junit::tests::snapshot_junit_with_findings ... ok
+test render::tests::snapshot_markdown_with_findings ... ok
+test render::tests::snapshot_markdown_with_suppressions ... ok
+test sarif::tests::sarif_location_includes_line_and_column ... ok
+test sarif::tests::sarif_has_correct_schema_and_version ... ok
+test sarif::tests::sarif_location_without_column ... ok
+test sarif::tests::sarif_rules_are_deduplicated ... ok
+test sarif::tests::sarif_severity_mapping_error ... ok
+test sarif::tests::sarif_severity_mapping_note ... ok
+test sarif::tests::sarif_severity_mapping_warning ... ok
+test sarif::tests::sarif_tool_info_is_correct ... ok
+test sensor::tests::normalize_path_converts_backslashes ... ok
+test sarif::tests::snapshot_sarif_no_findings ... ok
+test sarif::tests::sarif_json_is_valid ... ok
+test sensor::tests::sensor_finding_includes_help_and_url ... ok
+test sensor::tests::sensor_finding_has_correct_check_id ... ok
+test sensor::tests::sensor_finding_has_fingerprint ... ok
+test sensor::tests::sensor_finding_includes_data ... ok
+test sensor::tests::sensor_finding_maps_rule_id_to_code ... ok
+test sarif::tests::snapshot_sarif_info_findings ... ok
+test sensor::tests::sensor_report_has_correct_schema ... ok
+test sensor::tests::sensor_report_includes_run_meta ... ok
+test sensor::tests::sensor_report_includes_diff_data ... ok
+test sensor::tests::sensor_report_preserves_tool_meta ... ok
+test sensor_api::tests::extract_rule_metadata_maps_config_rules ... ok
+test sensor::tests::snapshot_sensor_report_skip_status ... ok
+test sensor_api::tests::substrate_defaults_return_none ... ok
+test sensor_api::tests::run_sensor_propagates_check_error ... ok
+test sensor::tests::sensor_report_omits_tags_matched_when_metadata_missing ... ok
+test sensor_api::tests::run_sensor_populates_rule_metadata ... ok
+test sensor_api::tests::run_sensor_with_no_substrate ... ok
+test sensor::tests::snapshot_sensor_report_no_findings ... ok
+test sensor::tests::sensor_report_includes_tags_matched ... ok
+test sarif::tests::snapshot_sarif_with_findings ... ok
+test sensor::tests::snapshot_sensor_report_with_findings ... ok
+test xml_utils::tests::escape_xml_escapes_illegal_control_chars ... ok
+test xml_utils::tests::escape_xml_handles_all_special_chars ... FAILED
+test sensor_api::tests::run_sensor_preserves_timing_from_context ... ok
+test xml_utils::tests::escape_xml_empty_string ... ok
+test sensor_api::tests::run_sensor_returns_sensor_report ... ok
+test xml_utils::tests::escape_xml_preserves_legal_control_chars ... ok
+
+failures:
+
+---- checkstyle::tests::escapes_xml_special_characters stdout ----
+
+thread 'checkstyle::tests::escapes_xml_special_characters' (2174396) panicked at crates/diffguard-core/src/checkstyle.rs:172:9:
+assertion failed: xml.contains("&apos;")
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- xml_utils::tests::escape_xml_handles_all_special_chars stdout ----
+
+thread 'xml_utils::tests::escape_xml_handles_all_special_chars' (2174503) panicked at crates/diffguard-core/src/xml_utils.rs:46:9:
+assertion `left == right` failed
+  left: "'"
+ right: "&apos;"
+
+
+failures:
+    checkstyle::tests::escapes_xml_special_characters
+    xml_utils::tests::escape_xml_handles_all_special_chars
+
+test result: FAILED. 134 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+error: test failed, to rerun pass `-p diffguard-core --lib`
+
+*** result: Failure(101)
