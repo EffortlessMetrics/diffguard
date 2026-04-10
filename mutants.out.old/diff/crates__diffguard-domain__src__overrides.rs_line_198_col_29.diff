@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/overrides.rs
++++ replace || with && in scope_glob_to_directory
+@@ -190,17 +190,17 @@
+ 
+     Ok(Some(builder.build().expect("globset build should succeed")))
+ }
+ 
+ fn scope_glob_to_directory(directory: &str, glob: &str) -> String {
+     let replaced = glob.replace('\\', "/");
+     let without_dot = replaced.strip_prefix("./").unwrap_or(&replaced);
+ 
+-    if directory.is_empty() || without_dot.starts_with('/') {
++    if directory.is_empty() && /* ~ changed by cargo-mutants ~ */ without_dot.starts_with('/') {
+         without_dot.trim_start_matches('/').to_string()
+     } else {
+         format!("{}/{}", directory, without_dot.trim_start_matches('/'))
+     }
+ }
+ 
+ #[cfg(test)]
+ mod tests {

@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/overrides.rs
++++ replace == with != in path_in_directory
+@@ -159,17 +159,17 @@
+ 
+ fn path_in_directory(path: &str, directory: &str) -> bool {
+     if directory.is_empty() {
+         return true;
+     }
+     if path == directory {
+         return true;
+     }
+-    path.starts_with(directory) && path.as_bytes().get(directory.len()) == Some(&b'/')
++    path.starts_with(directory) && path.as_bytes().get(directory.len()) != /* ~ changed by cargo-mutants ~ */ Some(&b'/')
+ }
+ 
+ fn compile_exclude_globs(
+     directory: &str,
+     rule_id: &str,
+     globs: &[String],
+ ) -> Result<Option<GlobSet>, OverrideCompileError> {
+     if globs.is_empty() {

@@ -1,0 +1,575 @@
+
+*** crates/diffguard-domain/src/overrides.rs:153:5: replace directory_depth -> usize with 0
+
+*** mutation diff:
+--- crates/diffguard-domain/src/overrides.rs
++++ replace directory_depth -> usize with 0
+@@ -145,21 +145,17 @@
+     let normalized = normalize_path(directory);
+     if normalized.is_empty() || normalized == "." {
+         return String::new();
+     }
+     normalized.trim_end_matches('/').to_string()
+ }
+ 
+ fn directory_depth(directory: &str) -> usize {
+-    if directory.is_empty() {
+-        0
+-    } else {
+-        directory.split('/').filter(|s| !s.is_empty()).count()
+-    }
++    0 /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn path_in_directory(path: &str, directory: &str) -> bool {
+     if directory.is_empty() {
+         return true;
+     }
+     if path == directory {
+         return true;
+
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=diffguard-domain@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh cfg-if v1.0.4
+       Fresh memchr v2.8.0
+       Fresh regex-syntax v0.8.10
+       Fresh linux-raw-sys v0.12.1
+       Fresh bitflags v2.11.0
+       Fresh quote v1.0.45
+       Fresh aho-corasick v1.1.4
+       Fresh fastrand v2.3.0
+       Fresh once_cell v1.21.4
+       Fresh autocfg v1.5.0
+       Fresh itoa v1.0.18
+       Fresh libc v0.2.184
+       Fresh syn v2.0.117
+       Fresh serde_core v1.0.228
+       Fresh rustix v1.1.4
+       Fresh zmij v1.0.21
+       Fresh regex-automata v0.4.14
+       Fresh zerocopy v0.8.48
+       Fresh dyn-clone v1.0.20
+       Fresh bstr v1.12.1
+       Fresh bit-vec v0.8.0
+       Fresh fnv v1.0.7
+       Fresh quick-error v1.2.3
+       Fresh log v0.4.29
+       Fresh similar v2.7.0
+       Fresh serde_derive v1.0.228
+       Fresh getrandom v0.3.4
+       Fresh serde_derive_internals v0.29.1
+       Fresh ref-cast-impl v1.0.25
+       Fresh getrandom v0.4.2
+       Fresh serde_json v1.0.149
+       Fresh wait-timeout v0.2.1
+       Fresh thiserror-impl v2.0.18
+       Fresh ppv-lite86 v0.2.21
+       Fresh regex v1.12.3
+       Fresh globset v0.4.18
+       Fresh bit-set v0.8.0
+       Fresh console v0.16.3
+       Fresh unarray v0.1.4
+       Fresh rand_core v0.9.5
+       Fresh serde v1.0.228
+       Fresh schemars_derive v1.2.1
+       Fresh tempfile v3.27.0
+       Fresh ref-cast v1.0.25
+       Fresh thiserror v2.0.18
+       Fresh num-traits v0.2.19
+       Fresh anyhow v1.0.102
+       Fresh schemars v1.2.1
+       Fresh rand v0.9.2
+       Fresh rusty-fork v0.3.1
+       Fresh rand_chacha v0.9.0
+       Fresh rand_xorshift v0.4.0
+       Fresh insta v1.47.2
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/crates/diffguard-types)
+       Fresh proptest v1.11.0
+       Dirty diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/crates/diffguard-domain): the file `crates/diffguard-domain/src/overrides.rs` has changed (1775799007.535238611s, 2s after last build at 1775799005.989183330s)
+   Compiling diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/crates/diffguard-domain)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_domain --edition=2024 crates/diffguard-domain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --warn=unexpected_cfgs --check-cfg 'cfg(mutants)' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=553f7b8aec0ce39a -C extra-filename=-7218ae01c9018d1a --out-dir /tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern insta=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern regex=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libregex-ed6f97db13c32057.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_domain --edition=2024 crates/diffguard-domain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --warn=unexpected_cfgs --check-cfg 'cfg(mutants)' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=11ce01d92280721a -C extra-filename=-85b486e7ac77cf68 --out-dir /tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern globset=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libglobset-2208176bf3575d31.rmeta --extern regex=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libregex-ed6f97db13c32057.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta`
+warning: unused variable: `directory`
+   --> crates/diffguard-domain/src/overrides.rs:152:20
+    |
+152 | fn directory_depth(directory: &str) -> usize {
+    |                    ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_directory`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `diffguard-domain` (lib) generated 1 warning (run `cargo fix --lib -p diffguard-domain` to apply 1 suggestion)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name properties --edition=2024 crates/diffguard-domain/tests/properties.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --warn=unexpected_cfgs --check-cfg 'cfg(mutants)' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=481a6295b8853afe -C extra-filename=-a8d2a6b2ff215138 --out-dir /tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern insta=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern regex=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libregex-ed6f97db13c32057.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib`
+warning: duplicated attribute
+    --> crates/diffguard-domain/tests/properties.rs:2123:1
+     |
+2123 | #[test]
+     | ^^^^^^^
+     |
+     = note: `#[warn(duplicate_macro_attributes)]` on by default
+
+warning: `diffguard-domain` (lib test) generated 1 warning (1 duplicate)
+warning: `diffguard-domain` (test "properties") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 1.48s
+  Executable `/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/diffguard_domain-7218ae01c9018d1a`
+  Executable `/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/properties-a8d2a6b2ff215138`
+
+*** result: Success
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --verbose --package=diffguard-domain@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh proc-macro2 v1.0.106
+       Fresh cfg-if v1.0.4
+       Fresh memchr v2.8.0
+       Fresh quote v1.0.45
+       Fresh linux-raw-sys v0.12.1
+       Fresh bitflags v2.11.0
+       Fresh regex-syntax v0.8.10
+       Fresh aho-corasick v1.1.4
+       Fresh fastrand v2.3.0
+       Fresh itoa v1.0.18
+       Fresh syn v2.0.117
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh rustix v1.1.4
+       Fresh once_cell v1.21.4
+       Fresh autocfg v1.5.0
+       Fresh regex-automata v0.4.14
+       Fresh dyn-clone v1.0.20
+       Fresh bstr v1.12.1
+       Fresh getrandom v0.3.4
+       Fresh serde_derive v1.0.228
+       Fresh ref-cast-impl v1.0.25
+       Fresh getrandom v0.4.2
+       Fresh serde_derive_internals v0.29.1
+       Fresh zmij v1.0.21
+       Fresh zerocopy v0.8.48
+       Fresh wait-timeout v0.2.1
+       Fresh thiserror-impl v2.0.18
+       Fresh log v0.4.29
+       Fresh fnv v1.0.7
+       Fresh bit-vec v0.8.0
+       Fresh quick-error v1.2.3
+       Fresh regex v1.12.3
+       Fresh rand_core v0.9.5
+       Fresh serde v1.0.228
+       Fresh ref-cast v1.0.25
+       Fresh tempfile v3.27.0
+       Fresh schemars_derive v1.2.1
+       Fresh serde_json v1.0.149
+       Fresh ppv-lite86 v0.2.21
+       Fresh anyhow v1.0.102
+       Fresh thiserror v2.0.18
+       Fresh globset v0.4.18
+       Fresh bit-set v0.8.0
+       Fresh console v0.16.3
+       Fresh similar v2.7.0
+       Fresh unarray v0.1.4
+       Fresh schemars v1.2.1
+       Fresh rand_chacha v0.9.0
+       Fresh rand v0.9.2
+       Fresh rand_xorshift v0.4.0
+       Fresh rusty-fork v0.3.1
+       Fresh num-traits v0.2.19
+       Fresh insta v1.47.2
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/crates/diffguard-types)
+       Fresh proptest v1.11.0
+warning: unused variable: `directory`
+   --> crates/diffguard-domain/src/overrides.rs:152:20
+    |
+152 | fn directory_depth(directory: &str) -> usize {
+    |                    ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_directory`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `diffguard-domain` (lib) generated 1 warning (run `cargo fix --lib -p diffguard-domain` to apply 1 suggestion)
+warning: `diffguard-domain` (lib test) generated 1 warning (1 duplicate)
+warning: duplicated attribute
+    --> crates/diffguard-domain/tests/properties.rs:2123:1
+     |
+2123 | #[test]
+     | ^^^^^^^
+     |
+     = note: `#[warn(duplicate_macro_attributes)]` on by default
+
+       Fresh diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/crates/diffguard-domain)
+warning: `diffguard-domain` (test "properties") generated 1 warning
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running `/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/diffguard_domain-7218ae01c9018d1a`
+
+running 293 tests
+test evaluate::tests::bump_counts_increments_all_severities ... ok
+test evaluate::tests::byte_to_column_counts_chars ... ok
+test evaluate::tests::directory_overrides_can_change_severity_or_disable_rule ... ok
+test evaluate::tests::caps_findings_but_keeps_counts ... ok
+test evaluate::tests::first_match_returns_none_for_empty_patterns ... ok
+test evaluate::tests::absent_mode_emits_when_pattern_missing ... ok
+test evaluate::tests::finds_unwrap_in_added_line ... ok
+test evaluate::tests::does_not_match_in_comment_when_ignored ... ok
+test evaluate::tests::forced_language_override_applies_to_unknown_extension ... ok
+test evaluate::tests::safe_slice_clamps_and_slices ... ok
+test evaluate::tests::suppression_ignore_all_directive ... ok
+test evaluate::tests::rule_hits_track_emitted_and_suppressed ... ok
+test evaluate::tests::suppression_resets_on_file_change ... ok
+test evaluate::tests::suppression_wrong_rule_does_not_suppress ... ok
+test evaluate::tests::suppression_same_line_wildcard ... ok
+test evaluate::tests::language_changes_between_files ... ok
+test evaluate::tests::suppression_same_line_ignores_specific_rule ... ok
+test evaluate::tests::trim_snippet_truncates_and_appends_ellipsis ... ok
+test overrides::tests::error_implements_std_error_error_trait ... ok
+test evaluate::tests::skips_rules_that_do_not_apply_to_language ... ok
+test evaluate::tests::suppression_multiple_rules_on_same_line ... ok
+test overrides::tests::invalid_override_glob_returns_error ... ok
+test overrides::tests::error_is_send_and_sync ... ok
+test overrides::tests::source_chain_invalid_glob ... ok
+test overrides::tests::root_directory_override_applies_everywhere ... ok
+test overrides::tests::parent_and_child_overrides_merge_in_depth_order ... ok
+test overrides::tests::source_returns_correct_error_type ... ok
+test preprocess::tests::block_comment_mode_without_masking_handles_nested_and_close ... ok
+test preprocess::tests::comment_syntax_cstyle_nested_languages ... ok
+test preprocess::tests::cstyle_masks_double_quoted_strings ... ok
+test preprocess::tests::cstyle_masks_char_literals ... ok
+test evaluate::tests::suppression_next_line_ignores_rule ... ok
+test preprocess::tests::comment_syntax_hash_languages ... ok
+test preprocess::tests::comment_syntax_cstyle_languages ... ok
+test preprocess::tests::does_not_mask_line_comments_when_disabled ... ok
+test preprocess::tests::detect_raw_string_start_detects_rust_raw_strings ... ok
+test preprocess::tests::does_not_start_comment_inside_string ... ok
+test evaluate::tests::suppression_next_line_does_not_affect_third_line ... ok
+test preprocess::tests::detect_triple_quote_start_detects_quotes ... ok
+test preprocess::tests::go_masks_backtick_raw_strings ... ok
+test preprocess::tests::go_backtick_raw_string_multiline ... ok
+test preprocess::tests::go_masks_double_quoted_strings ... ok
+test preprocess::tests::go_masks_line_comments ... ok
+test preprocess::tests::go_masks_block_comments ... ok
+test preprocess::tests::javascript_masks_double_quoted_strings ... ok
+test preprocess::tests::javascript_masks_block_comments ... ok
+test overrides::tests::exclude_paths_are_scoped_to_override_directory ... ok
+test preprocess::tests::javascript_masks_single_quoted_strings ... ok
+test preprocess::tests::javascript_template_literal_multiline ... ok
+test preprocess::tests::jsonc_double_slash_comment_ignored ... ok
+test preprocess::tests::javascript_masks_template_literals ... ok
+test preprocess::tests::language_default_is_unknown ... ok
+test preprocess::tests::javascript_masks_line_comments ... ok
+test preprocess::tests::language_from_str_unknown ... ok
+test preprocess::tests::line_comment_mode_branch_executes ... ok
+test preprocess::tests::language_from_str_case_insensitive ... ok
+test preprocess::tests::language_from_str_known_languages ... ok
+test evaluate::tests::python_print_detected_outside_comment ... ok
+test preprocess::tests::masks_line_comments_when_enabled ... ok
+test preprocess::tests::masks_strings_when_enabled ... ok
+test preprocess::tests::mode_debug_formats_variants ... ok
+test preprocess::tests::multiline_block_comment_cstyle ... ok
+test preprocess::tests::masks_raw_string ... ok
+test preprocess::tests::line_comment_resets_mode ... ok
+test preprocess::tests::multiline_block_comment_java ... ok
+test preprocess::tests::mode_debug_format_includes_variant ... ok
+test preprocess::tests::multiline_block_comment_preserves_line_length ... ok
+test preprocess::tests::multiline_block_comment_rust_nested ... ok
+test preprocess::tests::multiline_javascript_template_literal_with_expressions ... ok
+test preprocess::tests::multiline_block_comment_go ... ok
+test preprocess::tests::multiline_python_triple_quoted_with_embedded_quotes ... ok
+test preprocess::tests::multiline_rust_raw_string ... ok
+test preprocess::tests::multiline_rust_raw_string_with_hashes ... ok
+test preprocess::tests::multiline_string_with_escaped_newline ... ok
+test preprocess::tests::nested_block_comment_masks_nested ... ok
+test preprocess::tests::nested_rust_block_comment_state_tracking ... ok
+test preprocess::tests::php_block_comment_masks_opening ... ok
+test preprocess::tests::php_block_comments_masked ... ok
+test preprocess::tests::php_comment_syntax ... ok
+test preprocess::tests::php_hash_not_comment_in_string ... ok
+test evaluate::tests::python_hash_comment_ignored_with_language_aware_preprocessing ... ok
+test preprocess::tests::php_language_from_str ... ok
+test preprocess::tests::php_masks_double_quoted_strings ... ok
+test preprocess::tests::php_masks_block_comments ... ok
+test preprocess::tests::php_masks_double_slash_comments ... ok
+test preprocess::tests::php_masks_hash_comments ... ok
+test preprocess::tests::php_masks_single_quoted_strings ... ok
+test preprocess::tests::php_mixed_comments_and_strings ... ok
+test evaluate::tests::javascript_template_literal_ignored_with_language_aware_preprocessing ... ok
+test preprocess::tests::php_multiline_block_comment ... ok
+test preprocess::tests::php_slash_not_comment_in_mask_comments_mode ... ok
+test evaluate::tests::escalation_patterns_raise_effective_severity ... ok
+test preprocess::tests::php_preserves_line_length ... ok
+test preprocess::tests::php_string_syntax ... ok
+test evaluate::tests::go_backtick_raw_string_ignored_with_language_aware_preprocessing ... ok
+test preprocess::tests::php_string_with_escapes ... ok
+test preprocess::tests::preprocessor_with_language ... ok
+test preprocess::tests::preserves_line_length_go_raw_string ... ok
+test preprocess::tests::php_slash_not_comment_in_string ... ok
+test preprocess::tests::preprocess_options_track_strings_reflects_masks ... ok
+test preprocess::tests::preserves_line_length_python_hash_comment ... ok
+test preprocess::tests::preprocessor_set_language ... ok
+test evaluate::tests::context_patterns_require_nearby_match ... ok
+test preprocess::tests::preserves_line_length_python_triple_quoted ... ok
+test preprocess::tests::preserves_line_length_javascript_template_literal ... ok
+test preprocess::tests::python_masks_double_quoted_strings ... ok
+test preprocess::tests::python_does_not_mask_hash_in_string ... ok
+test preprocess::tests::python_masks_single_quoted_strings ... ok
+test preprocess::tests::python_masks_hash_comments ... ok
+test preprocess::tests::python_masks_triple_double_quoted_strings ... ok
+test preprocess::tests::python_masks_triple_single_quoted_strings ... ok
+test preprocess::tests::python_triple_quoted_string_handles_escapes ... ok
+test preprocess::tests::python_triple_quoted_string_preserved_when_strings_not_masked ... ok
+test preprocess::tests::python_triple_quoted_string_multiline ... ok
+test preprocess::tests::reset_clears_block_comment_state ... ok
+test preprocess::tests::reset_clears_string_state ... ok
+test preprocess::tests::reset_clears_template_literal_state ... ok
+test preprocess::tests::ruby_masks_hash_comments ... ok
+test preprocess::tests::ruby_does_not_mask_hash_in_string ... ok
+test preprocess::tests::ruby_masks_single_quoted_strings ... ok
+test preprocess::tests::reset_clears_raw_string_state ... ok
+test preprocess::tests::rust_raw_and_byte_strings_masked ... ok
+test preprocess::tests::rust_masks_char_literals ... ok
+test preprocess::tests::rust_byte_string_masks_when_strings_only ... ok
+test preprocess::tests::rust_raw_and_byte_strings_preserved_when_strings_not_masked ... ok
+test preprocess::tests::rust_raw_string_masks_end_delimiter ... ok
+test preprocess::tests::scala_language_from_str ... ok
+test preprocess::tests::scala_masks_block_comments ... ok
+test preprocess::tests::scala_masks_line_comments ... ok
+test preprocess::tests::scala_masks_triple_quoted_strings ... ok
+test preprocess::tests::scala_masks_double_quoted_strings ... ok
+test preprocess::tests::ruby_masks_double_quoted_strings ... ok
+test preprocess::tests::scala_triple_single_quotes_do_not_start_triple_string ... ok
+test preprocess::tests::scala_triple_quoted_string_multiline ... ok
+test preprocess::tests::scala_comment_syntax ... ok
+test preprocess::tests::scala_nested_block_comments ... ok
+test preprocess::tests::set_language_changes_syntax_and_resets ... ok
+test preprocess::tests::shell_ansi_c_escaped_single_quote ... ok
+test preprocess::tests::set_language_resets_state ... ok
+test preprocess::tests::shell_ansi_c_quoting_with_escapes ... ok
+test preprocess::tests::shell_ansi_c_quoting ... ok
+test preprocess::tests::scala_preserves_line_length ... ok
+test evaluate::tests::multiline_rule_matches_across_consecutive_lines ... ok
+test preprocess::tests::shell_ansi_c_string_masks_prefix_and_body ... ok
+test preprocess::tests::shell_comment_syntax ... ok
+test preprocess::tests::scala_string_syntax ... ok
+test preprocess::tests::shell_does_not_mask_hash_in_string ... ok
+test preprocess::tests::shell_ansi_c_string_masks_and_escapes ... ok
+test preprocess::tests::shell_double_quoted_strings ... ok
+test preprocess::tests::shell_double_quoted_with_escapes ... ok
+test preprocess::tests::shell_complex_mixed_quotes ... ok
+test preprocess::tests::shell_language_from_str ... ok
+test preprocess::tests::shell_hash_not_comment_in_string ... ok
+test preprocess::tests::shell_literal_string_masks_body ... ok
+test preprocess::tests::shell_preserves_line_length ... ok
+test preprocess::tests::shell_single_quoted_cannot_contain_single_quote ... ok
+test preprocess::tests::shell_multiline_double_quoted_string ... ok
+test preprocess::tests::shell_single_quoted_string_no_escapes ... ok
+test preprocess::tests::shell_strings_preserved_when_strings_not_masked ... ok
+test preprocess::tests::sql_comment_syntax ... ok
+test preprocess::tests::shell_masks_hash_comments ... ok
+test preprocess::tests::sql_language_from_str ... ok
+test preprocess::tests::sql_masks_block_comments ... ok
+test preprocess::tests::sql_masks_double_dash_comments ... ok
+test preprocess::tests::sql_does_not_mask_double_quoted_as_string ... ok
+test preprocess::tests::shell_string_syntax ... ok
+test preprocess::tests::sql_preserves_line_length ... ok
+test preprocess::tests::sql_does_not_mask_hash_in_string ... ok
+test preprocess::tests::state_reset_between_files_simulation ... ok
+test preprocess::tests::string_syntax_cstyle_languages ... ok
+test preprocess::tests::sql_masks_single_quoted_strings ... ok
+test preprocess::tests::state_reset_between_files_with_language_change ... ok
+test preprocess::tests::sql_single_dash_not_comment ... ok
+test preprocess::tests::string_syntax_javascript ... ok
+test preprocess::tests::string_syntax_python ... ok
+test preprocess::tests::sql_string_syntax ... ok
+test preprocess::tests::string_syntax_ruby ... ok
+test evaluate::tests::dependency_gates_secondary_rule ... ok
+test preprocess::tests::string_syntax_go ... ok
+test preprocess::tests::string_syntax_rust ... ok
+test preprocess::tests::swift_comment_syntax ... ok
+test preprocess::tests::sql_multiline_block_comment ... ok
+test preprocess::tests::swift_double_quoted_masks_when_strings_only ... ok
+test preprocess::tests::swift_language_from_str ... ok
+test preprocess::tests::swift_masks_block_comments ... ok
+test preprocess::tests::swift_masks_double_quoted_strings ... ok
+test preprocess::tests::swift_masks_line_comments ... ok
+test preprocess::tests::swift_masks_triple_quoted_strings ... ok
+test preprocess::tests::swift_triple_quoted_string_multiline ... ok
+test preprocess::tests::template_literal_escape_branches_execute ... ok
+test preprocess::tests::toml_hash_comment_ignored ... ok
+test preprocess::tests::triple_quoted_string_masks_closing ... ok
+test preprocess::tests::swift_nested_block_comments ... ok
+test preprocess::tests::swift_preserves_line_length ... ok
+test preprocess::tests::typescript_masks_template_literals ... ok
+test preprocess::tests::unknown_language_uses_cstyle_block_comments ... ok
+test preprocess::tests::swift_string_syntax ... ok
+test preprocess::tests::xml_comment_masks_and_closes ... ok
+test preprocess::tests::unknown_language_does_not_mask_hash_as_comment ... ok
+test preprocess::tests::unknown_language_uses_cstyle_comments ... ok
+test preprocess::tests::xml_comment_mode_without_masking_handles_close ... ok
+test preprocess::tests::xml_comment_syntax ... ok
+test preprocess::tests::xml_masks_comments ... ok
+test preprocess::tests::xml_comment_delimiter_not_in_string ... ok
+test preprocess::tests::xml_language_from_str ... ok
+test preprocess::tests::xml_mixed_quotes ... ok
+test preprocess::tests::xml_masks_single_quoted_attributes ... ok
+test preprocess::tests::xml_string_syntax ... ok
+test preprocess::tests::yaml_hash_comment_ignored ... ok
+test preprocess::tests::xml_multiline_comment ... ok
+test rules::tests::detect_language_c ... ok
+test preprocess::tests::xml_masks_double_quoted_attributes ... ok
+test rules::tests::compile_rejects_invalid_multiline_window ... ok
+test rules::tests::detect_language_cpp ... ok
+test rules::tests::detect_language_csharp ... ok
+test rules::tests::compile_rejects_unknown_dependency ... ok
+test rules::tests::detect_language_go ... ok
+test rules::tests::detect_language_java ... ok
+test rules::tests::detect_language_case_insensitive ... ok
+test preprocess::tests::xml_preserves_line_length ... ok
+test rules::tests::detect_language_python ... ok
+test rules::tests::detect_language_javascript ... ok
+test rules::tests::detect_language_rust ... ok
+test rules::tests::detect_language_scala ... ok
+test rules::tests::detect_language_kotlin ... ok
+test rules::tests::detect_language_php ... ok
+test rules::tests::detect_language_ruby ... ok
+test rules::tests::detect_language_shell ... ok
+test rules::tests::detect_language_sql ... ok
+test rules::tests::detect_language_unknown ... ok
+test rules::tests::detect_language_xml ... ok
+test rules::tests::compile_and_match_basic_rule ... ok
+test rules::tests::detect_language_swift ... ok
+test rules::tests::detect_language_typescript ... ok
+test rules::tests::glob_pattern_no_include_matches_all ... ok
+test rules::tests::detect_language_yaml_toml_json ... ok
+test rules::tests::glob_pattern_multiple_extensions ... ok
+test rules::tests::glob_pattern_recursive_wildcard ... ok
+test rules::tests::language_filter_multiple_languages ... ok
+test rules::tests::language_filter_empty_matches_all ... ok
+test rules::tests::glob_pattern_specific_directory ... ok
+test rules::tests::language_filter_case_insensitive ... ok
+test rules::tests::language_filter_single_language ... ok
+test rules::tests::language_filter_unknown_language_in_config ... ok
+test rules::tests::language_filter_none_language_with_filter ... ok
+test rules::tests::overlapping_patterns_first_pattern_wins ... ok
+test rules::tests::source_chain_invalid_regex ... ok
+test rules::tests::source_returns_correct_error_type_for_invalid_glob ... ok
+test rules::tests::source_returns_correct_error_type_for_invalid_regex ... ok
+test rules::tests::source_chain_invalid_glob ... ok
+test rules::tests::source_returns_none_for_missing_patterns ... ok
+test rules::tests::source_returns_none_for_invalid_multiline_window ... ok
+test rules::tests::source_returns_none_for_unknown_dependency ... ok
+test suppression::tests::effective_suppressions_is_empty ... ok
+test suppression::tests::effective_suppressions_specific_rules ... ok
+test rules::tests::glob_pattern_exclude_specific_files ... ok
+test suppression::tests::effective_suppressions_wildcard ... ok
+test rules::tests::overlapping_rules_first_rule_wins ... ok
+test suppression::tests::parse_case_insensitive ... ok
+test suppression::tests::parse_directive_with_extra_whitespace ... ok
+test suppression::tests::parse_in_comment_is_detected ... ok
+test suppression::tests::parse_in_string_is_ignored_when_not_in_comment ... ok
+test suppression::tests::parse_in_python_hash_comment_is_detected ... ok
+test suppression::tests::parse_mixed_case ... ok
+test suppression::tests::parse_in_comments_length_mismatch_returns_none ... ok
+test suppression::tests::parse_in_hash_comment ... ok
+test suppression::tests::parse_multiple_rules_with_varying_whitespace ... ok
+test suppression::tests::parse_in_block_comment ... ok
+test suppression::tests::parse_next_line_ignore_single_rule ... ok
+test suppression::tests::parse_next_line_ignore_wildcard ... ok
+test suppression::tests::parse_partial_directive_returns_none ... ok
+test rules::tests::language_filter_with_path_filter_combined ... ok
+test suppression::tests::parse_rule_ids_empty_returns_none ... ok
+test suppression::tests::parse_next_line_ignore_empty_means_wildcard ... ok
+test suppression::tests::parse_same_line_ignore_empty_means_wildcard ... ok
+test suppression::tests::parse_no_directive_returns_none ... ok
+test suppression::tests::parse_same_line_ignore_multiple_rules ... ok
+test suppression::tests::parse_same_line_ignore_wildcard_star ... ok
+test suppression::tests::parse_same_line_ignore_all ... ok
+test suppression::tests::parse_unrelated_comment_returns_none ... ok
+test suppression::tests::parse_same_line_ignore_single_rule ... ok
+test suppression::tests::parse_wildcard_in_list_becomes_wildcard ... ok
+test suppression::tests::parse_string_then_comment_prefers_comment_directive ... ok
+test suppression::tests::tracker_both_same_and_next_line ... ok
+test suppression::tests::tracker_multiple_next_line_directives ... ok
+test suppression::tests::tracker_next_line_suppression ... ok
+test suppression::tests::tracker_same_line_suppression ... ok
+test suppression::tests::tracker_reset_clears_pending ... ok
+test suppression::tests::parse_suppression_in_comments_skips_invalid_directive ... ok
+test suppression::tests::tracker_wildcard_suppression ... ok
+test rules::tests::glob_pattern_exclude_test_directories ... ok
+test suppression::tests::parse_suppression_at_unknown_directive_returns_none ... ok
+test rules::tests::overlapping_patterns_specific_vs_general ... ok
+
+test result: ok. 293 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running `/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/properties-a8d2a6b2ff215138`
+
+running 61 tests
+test property_all_override_compile_errors_implement_error_trait ... ok
+test property_all_rule_compile_errors_implement_error_trait ... ok
+test property_all_rule_compile_errors_have_non_empty_display ... ok
+test property_error_chain_terminates_for_override_invalid_glob ... ok
+test property_error_chain_terminates_for_invalid_regex ... ok
+test property_error_chain_length_is_bounded ... ok
+test property_error_display_contains_rule_id ... ok
+test property_error_chain_terminates_for_invalid_glob ... ok
+test property_invalid_glob_display_contains_rule_id_and_glob ... ok
+test property_invalid_glob_source_downcasts_to_globset_error ... ok
+test property_invalid_multiline_window_always_has_no_source ... ok
+test property_invalid_regex_display_contains_rule_id_and_pattern ... ok
+test property_comment_masking_idempotent ... ok
+test property_invalid_regex_source_downcasts_to_regex_error ... ok
+test property_invalid_regex_source_downcasts_to_regex_error ... ok
+test property_cstyle_line_comment_masking_go ... ok
+test property_invalid_regex_error_contains_rule_id_and_pattern ... ok
+test property_hash_comment_masking_ruby ... ok
+test property_cstyle_line_comment_masking_typescript ... ok
+test property_language_detection_case_insensitive ... ok
+test property_missing_patterns_always_has_no_source ... ok
+test property_hash_comment_masking_python ... ok
+test property_language_detection_correctness ... ok
+test property_double_quoted_string_masking ... ok
+test property_cstyle_line_comment_masking_javascript ... ok
+test property_cstyle_block_comment_masking ... ok
+test property_missing_patterns_error_contains_rule_id ... ok
+test property_override_compile_error_is_send_and_sync ... ok
+test property_override_invalid_glob_source_downcasts_to_globset_error ... ok
+test property_no_extension_returns_none ... ok
+test property_backtick_raw_string_masking_go ... ok
+test property_line_length_always_preserved ... ok
+test property_rule_compile_error_is_send_and_sync ... ok
+test property_reset_produces_consistent_results ... ok
+test property_no_masking_preserves_line ... ok
+test property_preprocessing_preserves_length_all_languages ... ok
+test property_no_masking_returns_unchanged ... ok
+test property_single_quoted_string_masking_python ... ok
+test property_single_quoted_string_masking_javascript ... ok
+test property_unknown_dependency_always_has_no_source ... ok
+test property_triple_quoted_string_masking_python ... ok
+test property_builtin_rules_compile_successfully ... ok
+test property_template_literal_masking_typescript ... ok
+test test_invalid_glob_error_message_format ... ok
+test test_invalid_regex_error_message_format ... ok
+test test_missing_patterns_error_message_format ... ok
+test property_each_builtin_rule_compiles_individually ... ok
+test property_unknown_language_uses_cstyle_comments ... ok
+test property_unknown_extension_fallback ... ok
+test property_template_literal_masking_javascript ... ok
+test property_invalid_glob_in_exclude_paths_error_contains_rule_id_and_glob ... ok
+test property_invalid_glob_in_paths_error_contains_rule_id_and_glob ... ok
+test property_triple_single_quoted_string_masking_python ... ok
+test property_no_lines_no_findings ... ok
+test property_rule_applicability_filters ... ok
+test property_no_rules_no_findings ... ok
+test property_valid_configs_compile ... ok
+test property_evaluation_determinism ... ok
+test property_counts_match_findings ... ok
+test property_lines_scanned_equals_input ... ok
+test property_max_findings_respected ... ok
+
+test result: ok. 61 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.59s
+
+   Doc-tests diffguard_domain
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustdoc --edition=2024 --crate-type lib --color auto --crate-name diffguard_domain --test crates/diffguard-domain/src/lib.rs --test-run-directory /tmp/cargo-mutants-diffguard-g7Zx7z.tmp/crates/diffguard-domain -L dependency=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps -L dependency=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps --warn=unexpected_cfgs --check-cfg 'cfg(mutants)' --extern anyhow=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_domain=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_domain-85b486e7ac77cf68.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern insta=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern regex=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libregex-ed6f97db13c32057.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib -C embed-bitcode=no --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' --error-format human`
+
+running 1 test
+test crates/diffguard-domain/src/suppression.rs - suppression (line 17) ... ignored
+
+test result: ok. 0 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+all doctests ran in 0.31s; merged doctests compilation took 0.30s
+
+*** result: Success

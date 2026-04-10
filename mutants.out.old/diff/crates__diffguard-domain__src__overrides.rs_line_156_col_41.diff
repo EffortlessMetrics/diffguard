@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/overrides.rs
++++ delete ! in directory_depth
+@@ -148,17 +148,17 @@
+     }
+     normalized.trim_end_matches('/').to_string()
+ }
+ 
+ fn directory_depth(directory: &str) -> usize {
+     if directory.is_empty() {
+         0
+     } else {
+-        directory.split('/').filter(|s| !s.is_empty()).count()
++        directory.split('/').filter(|s|  /* ~ changed by cargo-mutants ~ */s.is_empty()).count()
+     }
+ }
+ 
+ fn path_in_directory(path: &str, directory: &str) -> bool {
+     if directory.is_empty() {
+         return true;
+     }
+     if path == directory {

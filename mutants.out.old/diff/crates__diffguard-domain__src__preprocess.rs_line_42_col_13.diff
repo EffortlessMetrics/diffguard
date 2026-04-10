@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/preprocess.rs
++++ delete match arm "rust" in <impl FromStr for Language>::from_str
+@@ -34,17 +34,17 @@
+ impl FromStr for Language {
+     type Err = std::convert::Infallible;
+ 
+     /// Parse a language identifier string into a Language enum.
+     ///
+     /// The matching is case-insensitive. Unknown languages return `Language::Unknown`.
+     fn from_str(s: &str) -> Result<Self, Self::Err> {
+         Ok(match s.to_ascii_lowercase().as_str() {
+-            "rust" => Language::Rust,
++             /* ~ changed by cargo-mutants ~ */
+             "python" => Language::Python,
+             "javascript" => Language::JavaScript,
+             "typescript" => Language::TypeScript,
+             "go" => Language::Go,
+             "ruby" => Language::Ruby,
+             "c" => Language::C,
+             "cpp" => Language::Cpp,
+             "csharp" => Language::CSharp,

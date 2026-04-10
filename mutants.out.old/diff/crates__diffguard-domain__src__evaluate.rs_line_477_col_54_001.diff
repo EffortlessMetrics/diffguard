@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace + with * in has_required_context
+@@ -469,17 +469,17 @@
+     anchor_file_pos: usize,
+     prepared_lines: &[PreparedLine],
+ ) -> bool {
+     if rule.context_patterns.is_empty() {
+         return true;
+     }
+ 
+     let start = anchor_file_pos.saturating_sub(rule.context_window);
+-    let end = (anchor_file_pos + rule.context_window + 1).min(file_indices.len());
++    let end = (anchor_file_pos + rule.context_window * /* ~ changed by cargo-mutants ~ */ 1).min(file_indices.len());
+     for idx in file_indices[start..end].iter().copied() {
+         let candidate = candidate_line_for_rule(rule, &prepared_lines[idx]);
+         if first_match(&rule.context_patterns, candidate).is_some() {
+             return true;
+         }
+     }
+ 
+     false

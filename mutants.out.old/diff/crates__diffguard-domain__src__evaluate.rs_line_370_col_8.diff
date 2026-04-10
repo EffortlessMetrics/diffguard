@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ delete ! in find_positive_matches_for_rule
+@@ -362,17 +362,17 @@
+     prepared_lines: &[PreparedLine],
+ ) -> Vec<RawMatchEvent> {
+     let mut events = if rule.multiline {
+         find_multiline_matches(rule, file_indices, prepared_lines)
+     } else {
+         find_single_line_matches(rule, file_indices, prepared_lines)
+     };
+ 
+-    if !rule.context_patterns.is_empty() {
++    if  /* ~ changed by cargo-mutants ~ */rule.context_patterns.is_empty() {
+         events.retain(|event| {
+             has_required_context(rule, file_indices, event.anchor_file_pos, prepared_lines)
+         });
+     }
+ 
+     events
+ }
+ 

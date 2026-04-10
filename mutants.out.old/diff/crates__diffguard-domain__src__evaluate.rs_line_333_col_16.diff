@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ delete ! in resolve_dependency_gated_rule_ids
+@@ -325,17 +325,17 @@
+         .filter(|(idx, _)| !per_rule_events[*idx].is_empty())
+         .map(|(_, rule)| rule.id.clone())
+         .collect::<BTreeSet<_>>();
+ 
+     loop {
+         let mut removed_any = false;
+         let mut removed_ids = Vec::new();
+         for rule in rules {
+-            if !active_rule_ids.contains(&rule.id) {
++            if  /* ~ changed by cargo-mutants ~ */active_rule_ids.contains(&rule.id) {
+                 continue;
+             }
+             if rule
+                 .depends_on
+                 .iter()
+                 .any(|dependency| !active_rule_ids.contains(dependency))
+             {
+                 removed_ids.push(rule.id.clone());

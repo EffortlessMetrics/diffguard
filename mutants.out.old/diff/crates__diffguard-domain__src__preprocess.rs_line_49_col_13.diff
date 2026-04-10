@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/preprocess.rs
++++ delete match arm "cpp" in <impl FromStr for Language>::from_str
+@@ -41,17 +41,17 @@
+         Ok(match s.to_ascii_lowercase().as_str() {
+             "rust" => Language::Rust,
+             "python" => Language::Python,
+             "javascript" => Language::JavaScript,
+             "typescript" => Language::TypeScript,
+             "go" => Language::Go,
+             "ruby" => Language::Ruby,
+             "c" => Language::C,
+-            "cpp" => Language::Cpp,
++             /* ~ changed by cargo-mutants ~ */
+             "csharp" => Language::CSharp,
+             "java" => Language::Java,
+             "kotlin" => Language::Kotlin,
+             "shell" | "bash" | "sh" | "zsh" | "ksh" | "fish" => Language::Shell,
+             "swift" => Language::Swift,
+             "scala" => Language::Scala,
+             "sql" => Language::Sql,
+             "xml" | "html" | "xhtml" | "svg" | "xsl" | "xslt" => Language::Xml,

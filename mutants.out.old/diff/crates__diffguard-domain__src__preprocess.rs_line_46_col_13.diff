@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/preprocess.rs
++++ delete match arm "go" in <impl FromStr for Language>::from_str
+@@ -38,17 +38,17 @@
+     ///
+     /// The matching is case-insensitive. Unknown languages return `Language::Unknown`.
+     fn from_str(s: &str) -> Result<Self, Self::Err> {
+         Ok(match s.to_ascii_lowercase().as_str() {
+             "rust" => Language::Rust,
+             "python" => Language::Python,
+             "javascript" => Language::JavaScript,
+             "typescript" => Language::TypeScript,
+-            "go" => Language::Go,
++             /* ~ changed by cargo-mutants ~ */
+             "ruby" => Language::Ruby,
+             "c" => Language::C,
+             "cpp" => Language::Cpp,
+             "csharp" => Language::CSharp,
+             "java" => Language::Java,
+             "kotlin" => Language::Kotlin,
+             "shell" | "bash" | "sh" | "zsh" | "ksh" | "fish" => Language::Shell,
+             "swift" => Language::Swift,
