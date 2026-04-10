@@ -1,0 +1,21 @@
+--- crates/diffguard-types/src/lib.rs
++++ replace is_match_mode_any -> bool with true
+@@ -1557,17 +1557,17 @@
+ 
+ /// Serde predicate: skips serializing a [`MatchMode`] field when it is [`MatchMode::Any`].
+ ///
+ /// Used with `#[serde(skip_serializing_if = "is_match_mode_any")]`.
+ /// Takes [`MatchMode`] by reference to avoid triggering
+ /// `clippy::trivially_copy_pass_by_ref` while remaining Clone-free.
+ #[allow(clippy::trivially_copy_pass_by_ref)]
+ fn is_match_mode_any(mode: &MatchMode) -> bool {
+-    matches!(mode, MatchMode::Any)
++    true /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ // ============================================================================
+ // Per-directory override types
+ // ============================================================================
+ 
+ /// Per-directory override configuration (.diffguard.toml).
+ ///

@@ -167,7 +167,7 @@ pub struct TrendRun {
     pub scope: Scope,
     pub status: VerdictStatus,
     pub counts: VerdictCounts,
-    pub files_scanned: u32,
+    pub files_scanned: u64,
     pub lines_scanned: u32,
     pub findings: u32,
 }

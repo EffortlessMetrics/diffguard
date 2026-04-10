@@ -19,7 +19,7 @@ pub struct Evaluation {
     pub findings: Vec<Finding>,
     pub counts: VerdictCounts,
     pub truncated_findings: u32,
-    pub files_scanned: u32,
+    pub files_scanned: u64,
     pub lines_scanned: u32,
     /// Aggregated per-rule hit counts (deterministically sorted by rule ID).
     pub rule_hits: Vec<RuleHitStat>,
@@ -309,7 +309,7 @@ pub fn evaluate_lines_with_overrides_and_language(
         findings,
         counts,
         truncated_findings,
-        files_scanned: files_seen.len() as u32,
+        files_scanned: files_seen.len() as u64,
         lines_scanned,
         rule_hits: per_rule_hits.into_values().collect(),
     }

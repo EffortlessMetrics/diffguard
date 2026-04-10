@@ -1,5 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "diffguard.check.v2",
   "title": "CheckReceipt",
   "type": "object",
   "properties": {
@@ -53,7 +54,7 @@
         },
         "files_scanned": {
           "type": "integer",
-          "format": "uint32",
+          "format": "uint64",
           "minimum": 0
         },
         "head": {

@@ -1,0 +1,1 @@
+{"pr_url": "https://github.com/EffortlessMetrics/diffguard/pull/135", "pr_number": 135, "status": "open", "checks_passing": true, "branch": "feat/work-e6ade558/xml-output-escape-xml-doesnt-handle-co", "title": "fix(xml): escape_xml control character handling (0x00-0x1F)"}

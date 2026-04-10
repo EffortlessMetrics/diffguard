@@ -118,7 +118,7 @@ pub struct DiffMeta {
     pub head: String,
     pub context_lines: u32,
     pub scope: Scope,
-    pub files_scanned: u32,
+    pub files_scanned: u64,
     pub lines_scanned: u32,
 }
 

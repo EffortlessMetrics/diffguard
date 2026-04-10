@@ -1,0 +1,1201 @@
+--- crates/diffguard-types/src/lib.rs
++++ replace ConfigFile::built_in -> Self with Default::default()
+@@ -204,1197 +204,17 @@
+     pub defaults: Defaults,
+ 
+     #[serde(default)]
+     pub rule: Vec<RuleConfig>,
+ }
+ 
+ impl ConfigFile {
+     pub fn built_in() -> Self {
+-        Self {
+-            includes: vec![],
+-            defaults: Defaults::default(),
+-            rule: vec![
+-                // ============================================================
+-                // Rust rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "rust.no_unwrap".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Avoid unwrap/expect in production code.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["rust".to_string()],
+-                    patterns: vec!["\\.unwrap\\(".to_string(), "\\.expect\\(".to_string()],
+-                    paths: vec!["**/*.rs".to_string()],
+-                    exclude_paths: vec![
+-                        "**/tests/**".to_string(),
+-                        "**/benches/**".to_string(),
+-                        "**/examples/**".to_string(),
+-                    ],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Use the ? operator to propagate errors, or use expect() with a \
+-                        meaningful message that explains the invariant. Consider using \
+-                        anyhow or thiserror for structured error handling."
+-                            .to_string(),
+-                    ),
+-                    url: Some(
+-                        "https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html"
+-                            .to_string(),
+-                    ),
+-                    tags: vec!["safety".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "rust.no_dbg".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Remove dbg!/println! before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["rust".to_string()],
+-                    patterns: vec![
+-                        "\\bdbg!\\(".to_string(),
+-                        "\\bprintln!\\(".to_string(),
+-                        "\\beprintln!\\(".to_string(),
+-                    ],
+-                    paths: vec!["**/*.rs".to_string()],
+-                    exclude_paths: vec![
+-                        "**/tests/**".to_string(),
+-                        "**/benches/**".to_string(),
+-                        "**/examples/**".to_string(),
+-                    ],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Remove debug output before merging. For logging, use the log or \
+-                        tracing crate instead. If you need to keep the output, consider \
+-                        using conditional compilation with #[cfg(debug_assertions)]."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://doc.rust-lang.org/std/macro.dbg.html".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "rust.no_todo".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Resolve TODO/FIXME comments before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["rust".to_string()],
+-                    patterns: vec![
+-                        r"\bTODO\b".to_string(),
+-                        r"\bFIXME\b".to_string(),
+-                        r"\btodo!\s*\(".to_string(),
+-                        r"\bunimplemented!\s*\(".to_string(),
+-                    ],
+-                    paths: vec!["**/*.rs".to_string()],
+-                    exclude_paths: vec![],
+-                    ignore_comments: false,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Address TODO/FIXME comments before merging, or create tracking \
+-                        issues for planned work. The todo! and unimplemented! macros will \
+-                        panic at runtime."
+-                            .to_string(),
+-                    ),
+-                    url: None,
+-                    tags: vec!["style".to_string()],
+-                    test_cases: vec![],
+-                },
+-                // ============================================================
+-                // Python rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "python.no_print".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Remove print() before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["python".to_string()],
+-                    patterns: vec![r"\bprint\s*\(".to_string()],
+-                    paths: vec!["**/*.py".to_string()],
+-                    exclude_paths: vec!["**/tests/**".to_string(), "**/test_*.py".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Use the logging module instead of print() for production code. \
+-                        Configure logging levels appropriately (DEBUG, INFO, WARNING, ERROR)."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://docs.python.org/3/library/logging.html".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "python.no_pdb".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Remove debugger statements before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["python".to_string()],
+-                    patterns: vec![
+-                        r"\bimport\s+pdb\b".to_string(),
+-                        r"\bpdb\.set_trace\s*\(".to_string(),
+-                    ],
+-                    paths: vec!["**/*.py".to_string()],
+-                    exclude_paths: vec![],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Remove pdb debugger statements before merging. These will cause \
+-                        the application to pause and wait for interactive input in production."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://docs.python.org/3/library/pdb.html".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "python.no_breakpoint".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Remove breakpoint() calls before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["python".to_string()],
+-                    patterns: vec![r"\bbreakpoint\s*\(".to_string()],
+-                    paths: vec!["**/*.py".to_string()],
+-                    exclude_paths: vec![],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Remove breakpoint() calls before merging. The breakpoint() function \
+-                        (Python 3.7+) invokes the debugger and will pause execution in production."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://docs.python.org/3/library/functions.html#breakpoint".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                // ============================================================
+-                // JavaScript/TypeScript rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "js.no_console".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Remove console.log before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["javascript".to_string(), "typescript".to_string()],
+-                    patterns: vec![r"\bconsole\.(log|debug|info)\s*\(".to_string()],
+-                    paths: vec![
+-                        "**/*.js".to_string(),
+-                        "**/*.ts".to_string(),
+-                        "**/*.jsx".to_string(),
+-                        "**/*.tsx".to_string(),
+-                    ],
+-                    exclude_paths: vec![
+-                        "**/tests/**".to_string(),
+-                        "**/*.test.*".to_string(),
+-                        "**/*.spec.*".to_string(),
+-                    ],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Use a proper logging library (e.g., winston, pino, bunyan) instead \
+-                        of console.log. For client-side code, consider using a logger that \
+-                        can be disabled in production builds."
+-                            .to_string(),
+-                    ),
+-                    url: Some(
+-                        "https://developer.mozilla.org/en-US/docs/Web/API/console".to_string(),
+-                    ),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "js.no_debugger".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Remove debugger statements before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["javascript".to_string(), "typescript".to_string()],
+-                    patterns: vec![r"\bdebugger\b".to_string()],
+-                    paths: vec![
+-                        "**/*.js".to_string(),
+-                        "**/*.ts".to_string(),
+-                        "**/*.jsx".to_string(),
+-                        "**/*.tsx".to_string(),
+-                    ],
+-                    exclude_paths: vec![],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Remove debugger statements before merging. These will pause \
+-                        execution in the browser's developer tools, which is not intended \
+-                        for production code."
+-                            .to_string(),
+-                    ),
+-                    url: Some(
+-                        "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger"
+-                            .to_string(),
+-                    ),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                // ============================================================
+-                // Ruby rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "ruby.no_binding_pry".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Remove binding.pry before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["ruby".to_string()],
+-                    patterns: vec![r"\bbinding\.pry\b".to_string()],
+-                    paths: vec!["**/*.rb".to_string(), "**/*.rake".to_string()],
+-                    exclude_paths: vec!["**/test/**".to_string(), "**/spec/**".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Remove binding.pry debugger statements before merging. These will \
+-                        pause execution and open an interactive REPL in production."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://github.com/pry/pry".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "ruby.no_byebug".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Remove byebug statements before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["ruby".to_string()],
+-                    patterns: vec![r"\bbyebug\b".to_string()],
+-                    paths: vec!["**/*.rb".to_string(), "**/*.rake".to_string()],
+-                    exclude_paths: vec!["**/test/**".to_string(), "**/spec/**".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Remove byebug debugger statements before merging. These will \
+-                        pause execution and open an interactive debugger in production."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://github.com/deivid-rodriguez/byebug".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                // ============================================================
+-                // Java rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "java.no_sout".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Remove System.out.println before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["java".to_string()],
+-                    patterns: vec![r"\bSystem\.out\.println\s*\(".to_string()],
+-                    paths: vec!["**/*.java".to_string()],
+-                    exclude_paths: vec!["**/test/**".to_string(), "**/tests/**".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Use a logging framework (e.g., SLF4J, Log4j, java.util.logging) instead \
+-                        of System.out.println for production code. Logging frameworks provide \
+-                        log levels, formatting, and configurable output destinations."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://www.slf4j.org/".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                // ============================================================
+-                // C# rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "csharp.no_console".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Remove Console.WriteLine before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["csharp".to_string()],
+-                    patterns: vec![r"\bConsole\.WriteLine\s*\(".to_string()],
+-                    paths: vec!["**/*.cs".to_string()],
+-                    exclude_paths: vec!["**/Tests/**".to_string(), "**/*.Tests/**".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Use a logging framework (e.g., Serilog, NLog, Microsoft.Extensions.Logging) \
+-                        instead of Console.WriteLine for production code. Logging frameworks provide \
+-                        structured logging, log levels, and configurable sinks."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://learn.microsoft.com/en-us/dotnet/core/extensions/logging".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                // ============================================================
+-                // Go rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "go.no_fmt_print".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Remove fmt.Print* before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["go".to_string()],
+-                    patterns: vec![r"\bfmt\.(Print|Println|Printf)\s*\(".to_string()],
+-                    paths: vec!["**/*.go".to_string()],
+-                    exclude_paths: vec!["**/*_test.go".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Use the log package or a structured logging library (e.g., zap, \
+-                        zerolog, logrus) instead of fmt.Print* for production code."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://pkg.go.dev/log".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "go.no_panic".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Avoid panic() in production code.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["go".to_string()],
+-                    patterns: vec![r"\bpanic\s*\(".to_string()],
+-                    paths: vec!["**/*.go".to_string()],
+-                    exclude_paths: vec!["**/*_test.go".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Return errors instead of panicking. Use panic only for truly \
+-                        unrecoverable situations. Consider using errors.New() or fmt.Errorf() \
+-                        to create descriptive error values that callers can handle gracefully."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://go.dev/doc/effective_go#errors".to_string()),
+-                    tags: vec!["safety".to_string()],
+-                    test_cases: vec![],
+-                },
+-                // ============================================================
+-                // Kotlin rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "kotlin.no_println".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Remove println() before merging.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["kotlin".to_string()],
+-                    patterns: vec![r"\bprintln\s*\(".to_string()],
+-                    paths: vec!["**/*.kt".to_string(), "**/*.kts".to_string()],
+-                    exclude_paths: vec!["**/test/**".to_string(), "**/tests/**".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Use a logging framework (e.g., SLF4J, Logback, kotlin-logging) instead \
+-                        of println() for production code. Logging frameworks provide log levels, \
+-                        structured output, and configurable destinations."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://www.slf4j.org/".to_string()),
+-                    tags: vec!["debug".to_string()],
+-                    test_cases: vec![],
+-                },
+-                // ============================================================
+-                // Secret/Credential detection rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "secrets.aws_access_key".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Potential AWS Access Key ID detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"AKIA[0-9A-Z]{16}".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "AWS Access Key IDs should never be committed to source control. \
+-                        Use environment variables, AWS IAM roles, or a secrets manager \
+-                        (e.g., AWS Secrets Manager, HashiCorp Vault) to manage credentials."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.github_token".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Potential GitHub token detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"(ghp_|gho_|ghu_|ghs_|ghr_)[a-zA-Z0-9]{36}".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "GitHub tokens should never be committed to source control. \
+-                        Use environment variables or GitHub Actions secrets to manage tokens. \
+-                        If a token was accidentally committed, revoke it immediately."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.generic_api_key".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Potential API key detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r#"(?i)(api[_-]?key|apikey)\s*[:=]\s*["'][^"']{16,}["']"#.to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                        "**/CHANGELOG*".to_string(),
+-                    ],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "API keys should not be hardcoded in source files. \
+-                        Use environment variables or a secrets manager to inject credentials \
+-                        at runtime. Consider using .env files (excluded from version control) \
+-                        for local development."
+-                            .to_string(),
+-                    ),
+-                    url: None,
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.private_key".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Private key detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                    ],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Private keys must never be committed to source control. \
+-                        Store private keys securely using a secrets manager, encrypted storage, \
+-                        or environment variables. If a private key was accidentally committed, \
+-                        consider it compromised and generate a new key pair."
+-                            .to_string(),
+-                    ),
+-                    url: None,
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.slack_token".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Potential Slack token detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"xox[baprs]-[0-9a-zA-Z]{10,}".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                    ],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Slack tokens should never be committed to source control. \
+-                        Use environment variables or a secrets manager. If a token was \
+-                        accidentally committed, revoke it in your Slack workspace settings."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://api.slack.com/authentication/token-types".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.stripe_key".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Potential Stripe API key detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"(sk|rk)_live_[0-9a-zA-Z]{24,}".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                    ],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Stripe live API keys should never be committed to source control. \
+-                        Use environment variables or a secrets manager. If a key was \
+-                        accidentally committed, rotate it immediately in your Stripe dashboard."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://stripe.com/docs/keys".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.google_api_key".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Potential Google API key detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"AIza[0-9A-Za-z\-_]{35}".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                    ],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Google API keys should not be committed to source control. \
+-                        Use environment variables or Google Cloud Secret Manager. \
+-                        Restrict the key's allowed APIs and referrers in the Google Cloud Console."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://cloud.google.com/docs/authentication/api-keys".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.twilio_key".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Potential Twilio API key detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"SK[0-9a-fA-F]{32}".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                    ],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Twilio API keys should not be committed to source control. \
+-                        Use environment variables or a secrets manager. If compromised, \
+-                        revoke the key in your Twilio console."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://www.twilio.com/docs/iam/api-keys".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.npm_token".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Potential npm token detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"npm_[0-9a-zA-Z]{36}".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                    ],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "npm tokens should not be committed to source control. \
+-                        Use environment variables or npm's built-in .npmrc configuration. \
+-                        If compromised, revoke the token on npmjs.com."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://docs.npmjs.com/about-access-tokens".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.pypi_token".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Potential PyPI token detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"pypi-[0-9a-zA-Z_-]{50,}".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                    ],
+-                    ignore_comments: false,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "PyPI tokens should not be committed to source control. \
+-                        Use environment variables or a secrets manager. \
+-                        If compromised, revoke the token on pypi.org."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://pypi.org/help/#apitoken".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.password_assignment".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Potential hardcoded password detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r#"(?i)(password|passwd|pwd)\s*[:=]\s*["'][^"']{8,}["']"#.to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                        "**/*.example*".to_string(),
+-                        "**/*test*".to_string(),
+-                    ],
+-                    ignore_comments: true,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Passwords should not be hardcoded in source files. \
+-                        Use environment variables, a secrets manager, or secure configuration \
+-                        files excluded from version control."
+-                            .to_string(),
+-                    ),
+-                    url: None,
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "secrets.jwt_token".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Potential JWT token detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"eyJ[a-zA-Z0-9_-]{10,}\.eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                        "**/*test*".to_string(),
+-                    ],
+-                    ignore_comments: true,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "JWT tokens should not be hardcoded in source files. \
+-                        They may contain sensitive claims or grant unauthorized access. \
+-                        Generate tokens dynamically at runtime."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://jwt.io/introduction".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                // ============================================================
+-                // Security-focused rules
+-                // ============================================================
+-                RuleConfig {
+-                    id: "security.hardcoded_ipv4".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Hardcoded IPv4 address detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r"\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b".to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                        "**/*test*".to_string(),
+-                        "**/Dockerfile*".to_string(),
+-                    ],
+-                    ignore_comments: true,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Hardcoded IP addresses make code inflexible and can expose internal \
+-                        network topology. Use configuration files, environment variables, \
+-                        or DNS names instead."
+-                            .to_string(),
+-                    ),
+-                    url: None,
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "security.http_url".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Non-HTTPS URL detected.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![r#"["']http://[^"']+["']"#.to_string()],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*.md".to_string(),
+-                        "**/README*".to_string(),
+-                        "**/*test*".to_string(),
+-                        "**/localhost*".to_string(),
+-                    ],
+-                    ignore_comments: true,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "Use HTTPS instead of HTTP for secure communication. \
+-                        HTTP transmits data in plaintext, making it vulnerable to \
+-                        man-in-the-middle attacks."
+-                            .to_string(),
+-                    ),
+-                    url: None,
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "js.no_eval".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Avoid eval() - potential code injection risk.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["javascript".to_string(), "typescript".to_string()],
+-                    patterns: vec![r"\beval\s*\(".to_string(), r"\bFunction\s*\(".to_string()],
+-                    paths: vec![
+-                        "**/*.js".to_string(),
+-                        "**/*.ts".to_string(),
+-                        "**/*.jsx".to_string(),
+-                        "**/*.tsx".to_string(),
+-                    ],
+-                    exclude_paths: vec!["**/*test*".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "eval() and the Function constructor execute arbitrary code, \
+-                        creating severe security risks. Use safer alternatives like \
+-                        JSON.parse() for data or template literals for strings."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#never_use_direct_eval!".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "python.no_eval".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Avoid eval()/exec() - potential code injection risk.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["python".to_string()],
+-                    patterns: vec![r"\beval\s*\(".to_string(), r"\bexec\s*\(".to_string()],
+-                    paths: vec!["**/*.py".to_string()],
+-                    exclude_paths: vec!["**/*test*".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "eval() and exec() execute arbitrary Python code, creating severe \
+-                        security risks. Use ast.literal_eval() for safe literal evaluation \
+-                        or find alternative approaches."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://docs.python.org/3/library/functions.html#eval".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "ruby.no_eval".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Avoid eval/instance_eval - potential code injection risk.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["ruby".to_string()],
+-                    patterns: vec![r"\beval\s*[\(\s]".to_string(), r"\binstance_eval\s*[\(\s{]".to_string()],
+-                    paths: vec!["**/*.rb".to_string(), "**/*.rake".to_string()],
+-                    exclude_paths: vec!["**/*test*".to_string(), "**/spec/**".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "eval and instance_eval execute arbitrary Ruby code, creating severe \
+-                        security risks. Use safer metaprogramming techniques like \
+-                        define_method or public_send."
+-                            .to_string(),
+-                    ),
+-                    url: None,
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "php.no_eval".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Avoid eval()/create_function() - potential code injection risk.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["php".to_string()],
+-                    patterns: vec![r"\beval\s*\(".to_string(), r"\bcreate_function\s*\(".to_string()],
+-                    paths: vec!["**/*.php".to_string()],
+-                    exclude_paths: vec!["**/*test*".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "eval() and create_function() execute arbitrary PHP code, creating \
+-                        severe security risks. Use anonymous functions or other safe alternatives."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://www.php.net/manual/en/function.eval.php".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "shell.no_eval".to_string(),
+-                    severity: Severity::Error,
+-                    message: "Avoid eval in shell scripts - potential code injection risk.".to_string(),
+-                    description: String::new(),
+-                    languages: vec!["shell".to_string()],
+-                    patterns: vec![r"\beval\s+".to_string()],
+-                    paths: vec![
+-                        "**/*.sh".to_string(),
+-                        "**/*.bash".to_string(),
+-                        "**/*.zsh".to_string(),
+-                    ],
+-                    exclude_paths: vec!["**/*test*".to_string()],
+-                    ignore_comments: true,
+-                    ignore_strings: true,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "eval in shell scripts executes arbitrary commands, creating \
+-                        severe security risks especially with user input. Use safer \
+-                        alternatives like arrays or direct command execution."
+-                            .to_string(),
+-                    ),
+-                    url: None,
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-                RuleConfig {
+-                    id: "security.sql_concat".to_string(),
+-                    severity: Severity::Warn,
+-                    message: "Potential SQL injection - avoid string concatenation in queries.".to_string(),
+-                    description: String::new(),
+-                    languages: vec![],
+-                    patterns: vec![
+-                        r#"(?i)(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*\+.*["']"#.to_string(),
+-                        r#"(?i)(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*["'].*\+"#.to_string(),
+-                    ],
+-                    paths: vec![],
+-                    exclude_paths: vec![
+-                        "**/*test*".to_string(),
+-                        "**/*.md".to_string(),
+-                    ],
+-                    ignore_comments: true,
+-                    ignore_strings: false,
+-                    match_mode: Default::default(),
+-                    multiline: false,
+-                    multiline_window: None,
+-                    context_patterns: vec![],
+-                    context_window: None,
+-                    escalate_patterns: vec![],
+-                    escalate_window: None,
+-                    escalate_to: None,
+-                    depends_on: vec![],
+-                    help: Some(
+-                        "String concatenation in SQL queries can lead to SQL injection attacks. \
+-                        Use parameterized queries or prepared statements instead."
+-                            .to_string(),
+-                    ),
+-                    url: Some("https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html".to_string()),
+-                    tags: vec!["security".to_string()],
+-                    test_cases: vec![],
+-                },
+-            ],
+-        }
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+ pub struct Defaults {
+     #[serde(default, skip_serializing_if = "Option::is_none")]
+     pub base: Option<String>,
+ 
