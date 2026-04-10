@@ -99,13 +99,9 @@ fn test_files_scanned_returns_correct_count_for_normal_inputs() {
 #[test]
 #[ignore = "requires creating >4B unique files - not practical for unit test"]
 fn test_files_scanned_returns_max_sentinel_on_overflow() {
-    let rule = compile_rules(&[make_test_rule()]).unwrap();
-
-    // To trigger overflow, we need more than u32::MAX unique file paths
-    // u32::MAX = 4,294,967,295
-    // Creating this many distinct strings is not practical for a unit test.
-    //
-    // However, if you could create them, the test would be:
+    // This test is marked #[ignore] because creating >4B unique file paths
+    // is not practical in a unit test. The test body below demonstrates
+    // what the test WOULD look like if resources were unlimited.
     //
     // let lines: Vec<InputLine> = (0..u64::MAX)
     //     .map(|i| InputLine {
@@ -117,14 +113,11 @@ fn test_files_scanned_returns_max_sentinel_on_overflow() {
     //
     // let eval = evaluate_lines(lines, &rule, usize::MAX);
     //
-    // With bug:   files_scanned would be (u64::MAX % u32::MAX) = 0
-    // After fix:  files_scanned should be u32::MAX
+    // With bug:   files_scanned wraps to 0 for repos >4B files
+    // After fix:  files_scanned = u64::MAX (u64 handles up to ~18 quintillion)
     //
-    // assert_eq!(eval.files_scanned, u32::MAX);
-
-    // Placeholder assertion - actual test requires impractical resources
-    // This line ensures the test compiles and documents intent
-    assert!(true, "See test documentation for overflow behavior");
+    // This test CANNOT be run in practice - it exists to document intent.
+    let _ = std::any::type_name::<()>();
 }
 
 /// Test demonstrating that the current implementation truncates rather than saturates
