@@ -172,6 +172,7 @@ mod tests {
         CHECK_SCHEMA_V1, Defaults, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
         VerdictCounts, VerdictStatus,
     };
+    use std::error::Error;
 
     #[test]
     fn validates_built_in_config() {
@@ -361,5 +362,22 @@ mod tests {
         let json = serde_json::json!({ "camelCase": 1, "snake_case": 2 });
         let err = verify_snake_case_fields(&json).expect_err("expected snake_case failure");
         assert!(err.iter().any(|name| name == "camelCase"));
+    }
+
+    // =============================================================================
+    // Error source() chain propagation tests (AC4)
+    // =============================================================================
+
+    #[test]
+    fn source_returns_none() {
+        // AC4: SchemaValidationError::source() should return None
+        // because validation errors are collected as Vec<String>, not chained
+        let error = SchemaValidationError {
+            errors: vec!["field 'id' is required".into()],
+        };
+        assert!(
+            error.source().is_none(),
+            "source() should return None for SchemaValidationError"
+        );
     }
 }
