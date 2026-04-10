@@ -155,6 +155,7 @@ pub struct VerdictCounts {
     pub suppressed: u32,
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_zero(n: &u32) -> bool {
     *n == 0
 }
@@ -1539,10 +1540,12 @@ pub struct RuleTestCase {
     pub description: Option<String>,
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_false(v: &bool) -> bool {
     !*v
 }
 
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_match_mode_any(mode: &MatchMode) -> bool {
     matches!(mode, MatchMode::Any)
 }
