@@ -1,0 +1,28 @@
+--- crates/diffguard-domain/src/overrides.rs
++++ replace scope_glob_to_directory -> String with "xyzzy".into()
+@@ -187,24 +187,17 @@
+         })?;
+         builder.add(parsed);
+     }
+ 
+     Ok(Some(builder.build().expect("globset build should succeed")))
+ }
+ 
+ fn scope_glob_to_directory(directory: &str, glob: &str) -> String {
+-    let replaced = glob.replace('\\', "/");
+-    let without_dot = replaced.strip_prefix("./").unwrap_or(&replaced);
+-
+-    if directory.is_empty() || without_dot.starts_with('/') {
+-        without_dot.trim_start_matches('/').to_string()
+-    } else {
+-        format!("{}/{}", directory, without_dot.trim_start_matches('/'))
+-    }
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use std::error::Error;
+ 
+     fn override_spec(

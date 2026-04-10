@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ delete ! in resolve_dependency_gated_rule_ids
+@@ -343,17 +343,17 @@
+         }
+ 
+         for id in removed_ids {
+             if active_rule_ids.remove(&id) {
+                 removed_any = true;
+             }
+         }
+ 
+-        if !removed_any {
++        if  /* ~ changed by cargo-mutants ~ */removed_any {
+             break;
+         }
+     }
+ 
+     active_rule_ids
+ }
+ 
+ fn find_positive_matches_for_rule(

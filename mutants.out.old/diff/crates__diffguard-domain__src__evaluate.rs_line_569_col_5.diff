@@ -1,0 +1,23 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace safe_slice -> String with String::new()
+@@ -561,19 +561,17 @@
+             break;
+         }
+         out.push(ch);
+     }
+     out
+ }
+ 
+ fn safe_slice(s: &str, start: usize, end: usize) -> String {
+-    let end = end.min(s.len());
+-    let start = start.min(end);
+-    s.get(start..end).unwrap_or("").to_string()
++    String::new() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
+     if byte_idx > s.len() {
+         return None;
+     }
+     Some(s[..byte_idx].chars().count() + 1)
+ }

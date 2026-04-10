@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ delete ! in maybe_escalate_severity
+@@ -498,17 +498,17 @@
+ 
+     let start = anchor_file_pos.saturating_sub(rule.escalate_window);
+     let end = (anchor_file_pos + rule.escalate_window + 1).min(file_indices.len());
+     let should_escalate = file_indices[start..end].iter().copied().any(|idx| {
+         let candidate = candidate_line_for_rule(rule, &prepared_lines[idx]);
+         first_match(&rule.escalate_patterns, candidate).is_some()
+     });
+ 
+-    if !should_escalate {
++    if  /* ~ changed by cargo-mutants ~ */should_escalate {
+         return base;
+     }
+ 
+     let target = rule.escalate_to.unwrap_or(Severity::Error);
+     max_severity(base, target)
+ }
+ 
+ fn candidate_line_for_rule<'a>(rule: &CompiledRule, line: &'a PreparedLine) -> &'a str {

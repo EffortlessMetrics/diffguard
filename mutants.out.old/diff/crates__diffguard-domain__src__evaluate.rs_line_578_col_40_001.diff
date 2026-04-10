@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace + with * in byte_to_column
+@@ -570,17 +570,17 @@
+     let start = start.min(end);
+     s.get(start..end).unwrap_or("").to_string()
+ }
+ 
+ fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
+     if byte_idx > s.len() {
+         return None;
+     }
+-    Some(s[..byte_idx].chars().count() + 1)
++    Some(s[..byte_idx].chars().count() * /* ~ changed by cargo-mutants ~ */ 1)
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;
+     use crate::rules::compile_rules;
+     use crate::{DirectoryRuleOverride, RuleOverrideMatcher};
+     use diffguard_types::{MatchMode, RuleConfig};

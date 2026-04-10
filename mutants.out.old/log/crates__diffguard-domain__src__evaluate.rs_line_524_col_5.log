@@ -1,0 +1,121 @@
+
+*** crates/diffguard-domain/src/evaluate.rs:524:5: replace max_severity -> Severity with Default::default()
+
+*** mutation diff:
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace max_severity -> Severity with Default::default()
+@@ -516,25 +516,17 @@
+         (true, true) => line.masked_both.as_str(),
+         (true, false) => line.masked_comments.as_str(),
+         (false, true) => line.masked_strings.as_str(),
+         (false, false) => line.line.content.as_str(),
+     }
+ }
+ 
+ fn max_severity(a: Severity, b: Severity) -> Severity {
+-    fn rank(s: Severity) -> u8 {
+-        match s {
+-            Severity::Info => 0,
+-            Severity::Warn => 1,
+-            Severity::Error => 2,
+-        }
+-    }
+-
+-    if rank(a) >= rank(b) { a } else { b }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn first_match(patterns: &[regex::Regex], s: &str) -> Option<(usize, usize)> {
+     for p in patterns {
+         if let Some(m) = p.find(s) {
+             return Some((m.start(), m.end()));
+         }
+     }
+
+
+*** /home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo test --no-run --verbose --package=diffguard-domain@0.2.0
+       Fresh unicode-ident v1.0.24
+       Fresh cfg-if v1.0.4
+       Fresh memchr v2.8.0
+       Fresh proc-macro2 v1.0.106
+       Fresh bitflags v2.11.0
+       Fresh linux-raw-sys v0.12.1
+       Fresh regex-syntax v0.8.10
+       Fresh aho-corasick v1.1.4
+       Fresh fastrand v2.3.0
+       Fresh itoa v1.0.18
+       Fresh quote v1.0.45
+       Fresh libc v0.2.184
+       Fresh serde_core v1.0.228
+       Fresh rustix v1.1.4
+       Fresh zmij v1.0.21
+       Fresh once_cell v1.21.4
+       Fresh autocfg v1.5.0
+       Fresh regex-automata v0.4.14
+       Fresh dyn-clone v1.0.20
+       Fresh bstr v1.12.1
+       Fresh fnv v1.0.7
+       Fresh quick-error v1.2.3
+       Fresh syn v2.0.117
+       Fresh getrandom v0.3.4
+       Fresh getrandom v0.4.2
+       Fresh zerocopy v0.8.48
+       Fresh serde_json v1.0.149
+       Fresh wait-timeout v0.2.1
+       Fresh bit-vec v0.8.0
+       Fresh log v0.4.29
+       Fresh console v0.16.3
+       Fresh regex v1.12.3
+       Fresh similar v2.7.0
+       Fresh unarray v0.1.4
+       Fresh serde_derive v1.0.228
+       Fresh serde_derive_internals v0.29.1
+       Fresh ref-cast-impl v1.0.25
+       Fresh rand_core v0.9.5
+       Fresh tempfile v3.27.0
+       Fresh thiserror-impl v2.0.18
+       Fresh ppv-lite86 v0.2.21
+       Fresh anyhow v1.0.102
+       Fresh bit-set v0.8.0
+       Fresh globset v0.4.18
+       Fresh serde v1.0.228
+       Fresh schemars_derive v1.2.1
+       Fresh ref-cast v1.0.25
+       Fresh rand_chacha v0.9.0
+       Fresh thiserror v2.0.18
+       Fresh rand_xorshift v0.4.0
+       Fresh rand v0.9.2
+       Fresh rusty-fork v0.3.1
+       Fresh num-traits v0.2.19
+       Fresh schemars v1.2.1
+       Fresh proptest v1.11.0
+       Fresh insta v1.47.2
+       Fresh diffguard-types v0.2.0 (/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/crates/diffguard-types)
+       Dirty diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/crates/diffguard-domain): the file `crates/diffguard-domain/src/evaluate.rs` has changed (1775798933.359586002s, 2s after last build at 1775798931.670525589s)
+   Compiling diffguard-domain v0.2.0 (/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/crates/diffguard-domain)
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_domain --edition=2024 crates/diffguard-domain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --warn=unexpected_cfgs --check-cfg 'cfg(mutants)' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=553f7b8aec0ce39a -C extra-filename=-7218ae01c9018d1a --out-dir /tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern insta=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern regex=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libregex-ed6f97db13c32057.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib`
+     Running `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_domain --edition=2024 crates/diffguard-domain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --warn=unexpected_cfgs --check-cfg 'cfg(mutants)' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=11ce01d92280721a -C extra-filename=-85b486e7ac77cf68 --out-dir /tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern globset=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libglobset-2208176bf3575d31.rmeta --extern regex=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libregex-ed6f97db13c32057.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta`
+error[E0277]: the trait bound `Severity: Default` is not satisfied
+   --> crates/diffguard-domain/src/evaluate.rs:524:5
+    |
+524 |     Default::default() /* ~ changed by cargo-mutants ~ */
+    |     ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `Severity`
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `diffguard-domain` (lib) due to 1 previous error
+
+Caused by:
+  process didn't exit successfully: `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_domain --edition=2024 crates/diffguard-domain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --crate-type lib --emit=dep-info,metadata,link -C embed-bitcode=no -C debuginfo=2 --warn=unexpected_cfgs --check-cfg 'cfg(mutants)' --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=11ce01d92280721a -C extra-filename=-85b486e7ac77cf68 --out-dir /tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rmeta --extern diffguard_types=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rmeta --extern globset=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libglobset-2208176bf3575d31.rmeta --extern regex=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libregex-ed6f97db13c32057.rmeta --extern thiserror=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rmeta` (exit status: 1)
+warning: build failed, waiting for other jobs to finish...
+error[E0277]: the trait bound `diffguard_types::Severity: Default` is not satisfied
+   --> crates/diffguard-domain/src/evaluate.rs:524:5
+    |
+524 |     Default::default() /* ~ changed by cargo-mutants ~ */
+    |     ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `diffguard_types::Severity`
+
+error: could not compile `diffguard-domain` (lib test) due to 1 previous error
+
+Caused by:
+  process didn't exit successfully: `/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/rustc --crate-name diffguard_domain --edition=2024 crates/diffguard-domain/src/lib.rs --error-format=json --json=diagnostic-rendered-ansi,artifacts,future-incompat --emit=dep-info,link -C embed-bitcode=no -C debuginfo=2 --warn=unexpected_cfgs --check-cfg 'cfg(mutants)' --test --check-cfg 'cfg(docsrs,test)' --check-cfg 'cfg(feature, values())' -C metadata=553f7b8aec0ce39a -C extra-filename=-7218ae01c9018d1a --out-dir /tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps -C incremental=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/incremental -L dependency=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps --extern anyhow=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libanyhow-dcc2beb2eec72907.rlib --extern diffguard_types=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libdiffguard_types-1b033e1bf3017415.rlib --extern globset=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libglobset-2208176bf3575d31.rlib --extern insta=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libinsta-b5319b7a6520a570.rlib --extern proptest=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libproptest-369c3590d9fa4491.rlib --extern regex=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libregex-ed6f97db13c32057.rlib --extern thiserror=/tmp/cargo-mutants-diffguard-g7Zx7z.tmp/target/debug/deps/libthiserror-15f09e27eff85921.rlib` (exit status: 1)
+
+*** result: Failure(101)

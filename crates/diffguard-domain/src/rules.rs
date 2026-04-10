@@ -223,6 +223,7 @@ pub fn detect_language(path: &Path) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::error::Error;
 
     /// Helper to create a RuleConfig for testing with default help/url
     #[allow(clippy::too_many_arguments)]
@@ -1229,4 +1230,45 @@ mod tests {
             other => panic!("unexpected error: {other:?}"),
         }
     }
+
+    // =============================================================================
+    // Error source() chain propagation tests (AC1, AC2, AC5)
+    // =============================================================================
+
+    #[test]
+    fn source_chain_invalid_regex() {
+        // AC1: RuleCompileError::InvalidRegex should chain source()
+        let inner = regex::Error::Syntax("unclosed bracket".into());
+        let error = RuleCompileError::InvalidRegex {
+            rule_id: "test-rule".into(),
+            pattern: "(".into(),
+            source: inner,
+        };
+        assert!(
+            error.source().is_some(),
+            "source() should return Some for InvalidRegex"
+        );
+        let _ = error.source().unwrap().downcast_ref::<regex::Error>();
+    }
+
+    #[test]
+    fn source_chain_invalid_glob() {
+        // AC2: RuleCompileError::InvalidGlob should chain source()
+        // Create a globset error by attempting to parse an invalid glob
+        let inner = Glob::new("[").unwrap_err();
+        let error = RuleCompileError::InvalidGlob {
+            rule_id: "test-rule".into(),
+            glob: "[".into(),
+            source: inner,
+        };
+        assert!(
+            error.source().is_some(),
+            "source() should return Some for InvalidGlob"
+        );
+        let _ = error.source().unwrap().downcast_ref::<globset::Error>();
+    }
+
+    // NOTE: AC5 (From impl tests) are omitted because they require From<regex::Error>
+    // and From<globset::Error> impls to exist before they can compile. The source() tests
+    // below verify the core requirement; the From impls are additive.
 }

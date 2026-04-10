@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace >= with < in trim_snippet
+@@ -551,17 +551,17 @@
+ 
+ fn trim_snippet(s: &str) -> String {
+     let trimmed = s.trim_end();
+     const MAX_CHARS: usize = 240;
+ 
+     // Avoid slicing by byte indices (which can panic on Unicode boundaries).
+     let mut out = String::new();
+     for (i, ch) in trimmed.chars().enumerate() {
+-        if i >= MAX_CHARS {
++        if i < /* ~ changed by cargo-mutants ~ */ MAX_CHARS {
+             out.push('…');
+             break;
+         }
+         out.push(ch);
+     }
+     out
+ }
+ 

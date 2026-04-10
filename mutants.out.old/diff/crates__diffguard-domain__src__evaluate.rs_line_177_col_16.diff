@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ delete ! in evaluate_lines_with_overrides_and_language
+@@ -169,17 +169,17 @@
+             continue;
+         }
+ 
+         let path_ref = std::path::Path::new(path);
+         let lang = prepared_lines[file_indices[0]].lang.as_deref();
+         let mut per_rule_events = vec![Vec::<MatchEvent>::new(); rules.len()];
+ 
+         for (rule_idx, rule) in rules.iter().enumerate() {
+-            if !rule.applies_to(path_ref, lang) {
++            if  /* ~ changed by cargo-mutants ~ */rule.applies_to(path_ref, lang) {
+                 continue;
+             }
+ 
+             let resolved_override = overrides.map(|m| m.resolve(path, &rule.id));
+             if resolved_override.is_some_and(|resolved| !resolved.enabled) {
+                 continue;
+             }
+ 

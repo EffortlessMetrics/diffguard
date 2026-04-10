@@ -1,0 +1,29 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace max_severity -> Severity with Default::default()
+@@ -516,25 +516,17 @@
+         (true, true) => line.masked_both.as_str(),
+         (true, false) => line.masked_comments.as_str(),
+         (false, true) => line.masked_strings.as_str(),
+         (false, false) => line.line.content.as_str(),
+     }
+ }
+ 
+ fn max_severity(a: Severity, b: Severity) -> Severity {
+-    fn rank(s: Severity) -> u8 {
+-        match s {
+-            Severity::Info => 0,
+-            Severity::Warn => 1,
+-            Severity::Error => 2,
+-        }
+-    }
+-
+-    if rank(a) >= rank(b) { a } else { b }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn first_match(patterns: &[regex::Regex], s: &str) -> Option<(usize, usize)> {
+     for p in patterns {
+         if let Some(m) = p.find(s) {
+             return Some((m.start(), m.end()));
+         }
+     }

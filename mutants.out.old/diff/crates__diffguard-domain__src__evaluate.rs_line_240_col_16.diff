@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ delete ! in evaluate_lines_with_overrides_and_language
+@@ -232,17 +232,17 @@
+             per_rule_events[rule_idx] = converted;
+         }
+ 
+         let active_rule_ids = resolve_dependency_gated_rule_ids(rules, &per_rule_events);
+         for (rule_idx, mut matched) in per_rule_events.into_iter().enumerate() {
+             if matched.is_empty() {
+                 continue;
+             }
+-            if !active_rule_ids.contains(&rules[rule_idx].id) {
++            if  /* ~ changed by cargo-mutants ~ */active_rule_ids.contains(&rules[rule_idx].id) {
+                 continue;
+             }
+             events.append(&mut matched);
+         }
+     }
+ 
+     events.sort_by(|a, b| {
+         a.anchor_idx

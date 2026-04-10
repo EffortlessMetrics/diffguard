@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace > with < in byte_to_column
+@@ -567,17 +567,17 @@
+ 
+ fn safe_slice(s: &str, start: usize, end: usize) -> String {
+     let end = end.min(s.len());
+     let start = start.min(end);
+     s.get(start..end).unwrap_or("").to_string()
+ }
+ 
+ fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
+-    if byte_idx > s.len() {
++    if byte_idx < /* ~ changed by cargo-mutants ~ */ s.len() {
+         return None;
+     }
+     Some(s[..byte_idx].chars().count() + 1)
+ }
+ 
+ #[cfg(test)]
+ mod tests {
+     use super::*;

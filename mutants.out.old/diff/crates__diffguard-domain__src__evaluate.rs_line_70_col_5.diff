@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace evaluate_lines -> Evaluation with Default::default()
+@@ -62,17 +62,17 @@
+     severity: Severity,
+ }
+ 
+ pub fn evaluate_lines(
+     lines: impl IntoIterator<Item = InputLine>,
+     rules: &[CompiledRule],
+     max_findings: usize,
+ ) -> Evaluation {
+-    evaluate_lines_with_overrides_and_language(lines, rules, max_findings, None, None)
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ pub fn evaluate_lines_with_overrides(
+     lines: impl IntoIterator<Item = InputLine>,
+     rules: &[CompiledRule],
+     max_findings: usize,
+     overrides: Option<&RuleOverrideMatcher>,
+ ) -> Evaluation {

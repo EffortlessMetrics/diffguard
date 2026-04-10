@@ -1,0 +1,21 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace < with > in find_multiline_matches
+@@ -429,17 +429,17 @@
+             offsets.push(cursor);
+             let line = &prepared_lines[idx];
+             let candidate = candidate_line_for_rule(rule, line);
+ 
+             joined_candidate.push_str(candidate);
+             joined_raw.push_str(&line.line.content);
+             cursor = cursor.saturating_add(candidate.len());
+ 
+-            if pos + 1 < end {
++            if pos + 1 > /* ~ changed by cargo-mutants ~ */ end {
+                 joined_candidate.push('\n');
+                 joined_raw.push('\n');
+                 cursor = cursor.saturating_add(1);
+             }
+         }
+ 
+         if let Some((m_start, m_end)) = first_match(&rule.patterns, &joined_candidate) {
+             let rel = offsets

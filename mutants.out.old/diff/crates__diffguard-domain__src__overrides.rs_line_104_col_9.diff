@@ -1,0 +1,51 @@
+--- crates/diffguard-domain/src/overrides.rs
++++ replace RuleOverrideMatcher::resolve -> ResolvedRuleOverride with Default::default()
+@@ -96,47 +96,17 @@
+             });
+         }
+ 
+         Ok(Self { by_rule })
+     }
+ 
+     /// Resolve the effective override for a specific path and rule id.
+     pub fn resolve(&self, path: &str, rule_id: &str) -> ResolvedRuleOverride {
+-        let Some(entries) = self.by_rule.get(rule_id) else {
+-            return ResolvedRuleOverride::default();
+-        };
+-
+-        let mut resolved = ResolvedRuleOverride::default();
+-        let normalized_path = normalize_path(path);
+-        let path_ref = Path::new(&normalized_path);
+-
+-        for entry in entries {
+-            if !path_in_directory(&normalized_path, &entry.directory) {
+-                continue;
+-            }
+-
+-            if let Some(enabled) = entry.enabled {
+-                resolved.enabled = enabled;
+-            }
+-
+-            if let Some(severity) = entry.severity {
+-                resolved.severity = Some(severity);
+-            }
+-
+-            if entry
+-                .exclude
+-                .as_ref()
+-                .is_some_and(|exclude| exclude.is_match(path_ref))
+-            {
+-                resolved.enabled = false;
+-            }
+-        }
+-
+-        resolved
++        Default::default() /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ fn normalize_path(path: &str) -> String {
+     let replaced = path.replace('\\', "/");
+     let without_dot = replaced.strip_prefix("./").unwrap_or(&replaced);
+     without_dot.trim_start_matches('/').to_string()
+ }

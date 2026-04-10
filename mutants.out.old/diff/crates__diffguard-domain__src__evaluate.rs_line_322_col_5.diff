@@ -1,0 +1,55 @@
+--- crates/diffguard-domain/src/evaluate.rs
++++ replace resolve_dependency_gated_rule_ids -> BTreeSet<String> with BTreeSet::new()
+@@ -314,51 +314,17 @@
+         rule_hits: per_rule_hits.into_values().collect(),
+     }
+ }
+ 
+ fn resolve_dependency_gated_rule_ids(
+     rules: &[CompiledRule],
+     per_rule_events: &[Vec<MatchEvent>],
+ ) -> BTreeSet<String> {
+-    let mut active_rule_ids = rules
+-        .iter()
+-        .enumerate()
+-        .filter(|(idx, _)| !per_rule_events[*idx].is_empty())
+-        .map(|(_, rule)| rule.id.clone())
+-        .collect::<BTreeSet<_>>();
+-
+-    loop {
+-        let mut removed_any = false;
+-        let mut removed_ids = Vec::new();
+-        for rule in rules {
+-            if !active_rule_ids.contains(&rule.id) {
+-                continue;
+-            }
+-            if rule
+-                .depends_on
+-                .iter()
+-                .any(|dependency| !active_rule_ids.contains(dependency))
+-            {
+-                removed_ids.push(rule.id.clone());
+-            }
+-        }
+-
+-        for id in removed_ids {
+-            if active_rule_ids.remove(&id) {
+-                removed_any = true;
+-            }
+-        }
+-
+-        if !removed_any {
+-            break;
+-        }
+-    }
+-
+-    active_rule_ids
++    BTreeSet::new() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn find_positive_matches_for_rule(
+     rule: &CompiledRule,
+     file_indices: &[usize],
+     prepared_lines: &[PreparedLine],
+ ) -> Vec<RawMatchEvent> {
+     let mut events = if rule.multiline {
