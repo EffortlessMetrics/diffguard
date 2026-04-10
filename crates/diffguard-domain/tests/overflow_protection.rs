@@ -3,7 +3,7 @@
 //! Bug: `files_seen.len() as u32` silently truncates to 0 for repos >4B files
 //! Fix: Use `try_into().unwrap_or(u32::MAX)` to return sentinel instead of 0
 
-use diffguard_domain::{compile_rules, evaluate_lines, InputLine};
+use diffguard_domain::{InputLine, compile_rules, evaluate_lines};
 use diffguard_types::{MatchMode, RuleConfig, Severity};
 
 fn make_test_rule() -> RuleConfig {
@@ -44,11 +44,31 @@ fn test_files_scanned_returns_correct_count_for_normal_inputs() {
 
     // Test with a small number of unique files
     let lines = vec![
-        InputLine { path: "src/lib.rs".to_string(), line: 1, content: "TODO: fix this".to_string() },
-        InputLine { path: "src/lib.rs".to_string(), line: 2, content: "TODO: fix that".to_string() },
-        InputLine { path: "src/main.rs".to_string(), line: 1, content: "TODO: implement".to_string() },
-        InputLine { path: "src/main.rs".to_string(), line: 2, content: "nothing here".to_string() },
-        InputLine { path: "src/main.rs".to_string(), line: 3, content: "TODO: refactor".to_string() },
+        InputLine {
+            path: "src/lib.rs".to_string(),
+            line: 1,
+            content: "TODO: fix this".to_string(),
+        },
+        InputLine {
+            path: "src/lib.rs".to_string(),
+            line: 2,
+            content: "TODO: fix that".to_string(),
+        },
+        InputLine {
+            path: "src/main.rs".to_string(),
+            line: 1,
+            content: "TODO: implement".to_string(),
+        },
+        InputLine {
+            path: "src/main.rs".to_string(),
+            line: 2,
+            content: "nothing here".to_string(),
+        },
+        InputLine {
+            path: "src/main.rs".to_string(),
+            line: 3,
+            content: "TODO: refactor".to_string(),
+        },
     ];
 
     let eval = evaluate_lines(lines, &rule, 1000);

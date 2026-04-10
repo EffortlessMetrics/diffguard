@@ -167,6 +167,10 @@ pub struct TrendRun {
     pub scope: Scope,
     pub status: VerdictStatus,
     pub counts: VerdictCounts,
+    /// Number of distinct files that were scanned.
+    ///
+    /// Stored as `u64` to avoid silent truncation for very large repositories
+    /// (those with more than 2^32 - 1 unique files).
     pub files_scanned: u64,
     pub lines_scanned: u32,
     pub findings: u32,
