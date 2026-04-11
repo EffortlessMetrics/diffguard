@@ -75,7 +75,7 @@ impl DiffBuilder {
     pub fn build(self) -> String {
         self.files
             .iter()
-            .map(|f| f.build())
+            .map(FileBuilder::build)
             .collect::<Vec<_>>()
             .join("\n")
     }

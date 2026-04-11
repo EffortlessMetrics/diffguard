@@ -211,7 +211,7 @@ fn arb_file_extension() -> impl Strategy<Value = String> {
         "rs", "py", "js", "ts", "jsx", "tsx", "go", "java", "kt", "rb", "c", "cpp", "h", "hpp",
         "cs", "txt", "md", "json", "yaml", "toml",
     ])
-    .prop_map(|s| s.to_string())
+    .prop_map(ToString::to_string)
 }
 
 /// Strategy for generating directory names.
@@ -220,7 +220,7 @@ fn arb_dir_name() -> impl Strategy<Value = String> {
         "src", "lib", "bin", "tests", "test", "examples", "benches", "docs", "scripts", "utils",
         "core", "api", "internal", "pkg", "cmd", "app",
     ])
-    .prop_map(|s| s.to_string())
+    .prop_map(ToString::to_string)
 }
 
 /// Strategy for generating non-empty strings suitable for IDs and messages.
@@ -250,7 +250,7 @@ pub fn arb_language() -> impl Strategy<Value = String> {
         "cpp",
         "csharp",
     ])
-    .prop_map(|s| s.to_string())
+    .prop_map(ToString::to_string)
 }
 
 // =============================================================================

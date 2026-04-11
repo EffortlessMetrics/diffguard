@@ -816,7 +816,7 @@ fn nth_string_arg(arguments: &[serde_json::Value], index: usize) -> Option<Strin
     arguments
         .get(index)
         .and_then(|value| value.as_str())
-        .map(|value| value.to_string())
+        .map(ToString::to_string)
 }
 
 fn send_ok_response(

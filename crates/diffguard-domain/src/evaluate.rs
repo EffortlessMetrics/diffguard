@@ -113,7 +113,7 @@ pub fn evaluate_lines_with_overrides_and_language(
     let mut p_both =
         Preprocessor::with_language(PreprocessOptions::comments_and_strings(), current_lang);
 
-    let forced_language_name = force_language.map(|lang| lang.to_ascii_lowercase());
+    let forced_language_name = force_language.map(str::to_ascii_lowercase);
     let forced_language_enum =
         forced_language_name
             .as_deref()
