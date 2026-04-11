@@ -178,6 +178,10 @@ pub struct VerdictCounts {
     pub suppressed: u32,
 }
 
+// WHY: Used as skip_serializing_if predicate — must take &T to match serde's Fn(&T) -> bool.
+// The lint is suppressed because these are private helpers, not public API, and the reference
+// is required for serde's callback interface.
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_zero(n: &u32) -> bool {
     *n == 0
 }
@@ -406,12 +410,14 @@ pub struct RuleTestCase {
 
 // WHY: Used as a skip_serializing_if predicate — avoids emitting `false` values
 // to keep output clean for default-flag fields.
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_false(v: &bool) -> bool {
     !*v
 }
 
 // WHY: MatchMode::Any is the default; we skip it in serialized output to keep
 // configs minimal — callers who need the default get it automatically.
+#[allow(clippy::trivially_copy_pass_by_ref)]
 fn is_match_mode_any(mode: &MatchMode) -> bool {
     matches!(mode, MatchMode::Any)
 }
