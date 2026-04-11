@@ -71,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+- **Added build artifacts to `.gitignore`** — `libpreprocess.rlib`, `test_source`, `mutants.out/`, and `mutants.out.old/` are now ignored to keep the repository clean
 
 ## [0.2.0] - 2026-04-06
 
