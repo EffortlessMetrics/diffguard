@@ -1,0 +1,1 @@
+CHANGELOG update not applicable. Mechanical clippy fix with no user-visible changes, no API changes, no behavior changes.
