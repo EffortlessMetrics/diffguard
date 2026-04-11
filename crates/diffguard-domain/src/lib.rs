@@ -16,7 +16,7 @@ pub use overrides::{
     DirectoryRuleOverride, OverrideCompileError, ResolvedRuleOverride, RuleOverrideMatcher,
 };
 pub use preprocess::{Language, PreprocessOptions, Preprocessor};
-pub use rules::{CompiledRule, RuleCompileError, compile_rules, detect_language};
+pub use rules::{RuleCompileError, compile_rules, detect_language};
 pub use suppression::{
     EffectiveSuppressions, Suppression, SuppressionKind, SuppressionTracker, parse_suppression,
 };

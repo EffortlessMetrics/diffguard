@@ -90,12 +90,10 @@ let rules: Vec<diffguard_domain::rules::CompiledRule> = vec![];
 
 ## Acceptance Criteria
 
-- `cargo check -p diffguard-domain` succeeds
-- `cargo check -p diffguard` succeeds
-- `cargo check -p bench` succeeds
-- `cargo test -p diffguard-domain` succeeds
-- No remaining references to `diffguard_domain::CompiledRule` (only `diffguard_domain::rules::CompiledRule`)
-- Architecture docs updated to clarify internal status
+1. `cargo check -p diffguard-domain` succeeds
+2. `cargo check -p diffguard` succeeds
+3. `cargo test -p diffguard-domain` succeeds
+4. No `diffguard_domain::CompiledRule` paths remain in consumer code
 
 ---
 

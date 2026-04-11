@@ -75,7 +75,10 @@ fn built_in_rules_have_valid_severity() {
     let cfg = ConfigFile::built_in();
     for rule in &cfg.rule {
         assert!(
-            matches!(rule.severity, Severity::Info | Severity::Warn | Severity::Error),
+            matches!(
+                rule.severity,
+                Severity::Info | Severity::Warn | Severity::Error
+            ),
             "rule '{}' has invalid severity: {:?}",
             rule.id,
             rule.severity
@@ -88,11 +91,7 @@ fn built_in_rules_have_non_empty_id() {
     // Every rule must have a non-empty ID
     let cfg = ConfigFile::built_in();
     for rule in &cfg.rule {
-        assert!(
-            !rule.id.is_empty(),
-            "found rule with empty id: {:?}",
-            rule
-        );
+        assert!(!rule.id.is_empty(), "found rule with empty id: {:?}", rule);
     }
 }
 
@@ -143,8 +142,8 @@ fn built_in_config_serializes_to_valid_json() {
         .expect("ConfigFile::built_in() should serialize to valid JSON");
 
     // Should be able to deserialize it back
-    let deserialized: ConfigFile = serde_json::from_str(&json)
-        .expect("ConfigFile JSON should be valid and deserializable");
+    let deserialized: ConfigFile =
+        serde_json::from_str(&json).expect("ConfigFile JSON should be valid and deserializable");
 
     assert_eq!(
         deserialized.rule.len(),
@@ -181,16 +180,25 @@ fn built_in_rules_have_valid_regex_patterns() {
     let cfg = ConfigFile::built_in();
     for rule in &cfg.rule {
         for pattern in &rule.patterns {
-            regex::Regex::new(pattern)
-                .unwrap_or_else(|e| panic!("rule '{}' has invalid regex '{}': {}", rule.id, pattern, e));
+            regex::Regex::new(pattern).unwrap_or_else(|e| {
+                panic!("rule '{}' has invalid regex '{}': {}", rule.id, pattern, e)
+            });
         }
         for pattern in &rule.context_patterns {
-            regex::Regex::new(pattern)
-                .unwrap_or_else(|e| panic!("rule '{}' has invalid context regex '{}': {}", rule.id, pattern, e));
+            regex::Regex::new(pattern).unwrap_or_else(|e| {
+                panic!(
+                    "rule '{}' has invalid context regex '{}': {}",
+                    rule.id, pattern, e
+                )
+            });
         }
         for pattern in &rule.escalate_patterns {
-            regex::Regex::new(pattern)
-                .unwrap_or_else(|e| panic!("rule '{}' has invalid escalate regex '{}': {}", rule.id, pattern, e));
+            regex::Regex::new(pattern).unwrap_or_else(|e| {
+                panic!(
+                    "rule '{}' has invalid escalate regex '{}': {}",
+                    rule.id, pattern, e
+                )
+            });
         }
     }
 }
