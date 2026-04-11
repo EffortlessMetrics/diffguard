@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - **GitHub Actions hardening** for production-ready workflows:
+
+### Refactored
+
+- **`diffguard-types`**: Refactored `ConfigFile::built_in()` from 533 lines of hardcoded Rust to a JSON data file. 36 built-in rules across 10 languages are now loaded at compile time via `include_str!` + `serde_json`, improving maintainability and respecting the crate's "no I/O" constraint.
+
+### Changed
   - SHA pinning for third-party Actions (`actions/github-script@v7`, `github/codeql-action/upload-sarif@v3`) to prevent supply chain attacks
   - Explicit `permissions` block with least-privilege scopes (`contents: read`, `pull-requests: write`, `security-events: write`)
   - Windows target triple detection for MSYS/MINGW environments
