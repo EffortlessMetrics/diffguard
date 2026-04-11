@@ -69,6 +69,11 @@ pub struct RuleOverrideMatcher {
 
 impl RuleOverrideMatcher {
     /// Compile raw directory overrides into a matcher.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`OverrideCompileError`] if any exclude glob is invalid.
+    /// See that type's documentation for all possible variants.
     pub fn compile(specs: &[DirectoryRuleOverride]) -> Result<Self, OverrideCompileError> {
         let mut by_rule: BTreeMap<String, Vec<CompiledDirectoryRuleOverride>> = BTreeMap::new();
 

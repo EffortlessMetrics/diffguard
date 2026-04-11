@@ -5,6 +5,7 @@
 
 use std::collections::BTreeMap;
 
+use super::xml_utils::escape_xml;
 use diffguard_types::{CheckReceipt, Finding, Severity};
 
 /// Renders a CheckReceipt as a JUnit XML report.
@@ -100,22 +101,6 @@ pub fn render_junit_for_receipt(receipt: &CheckReceipt) -> String {
     }
 
     out.push_str("</testsuites>\n");
-    out
-}
-
-/// Escapes special XML characters in a string.
-fn escape_xml(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&apos;"),
-            _ => out.push(c),
-        }
-    }
     out
 }
 
@@ -326,16 +311,5 @@ mod tests {
         let receipt = create_test_receipt_empty();
         let xml = render_junit_for_receipt(&receipt);
         insta::assert_snapshot!(xml);
-    }
-
-    #[test]
-    fn escape_xml_handles_all_special_chars() {
-        assert_eq!(escape_xml("&"), "&amp;");
-        assert_eq!(escape_xml("<"), "&lt;");
-        assert_eq!(escape_xml(">"), "&gt;");
-        assert_eq!(escape_xml("\""), "&quot;");
-        assert_eq!(escape_xml("'"), "&apos;");
-        assert_eq!(escape_xml("normal text"), "normal text");
-        assert_eq!(escape_xml("<a & b>"), "&lt;a &amp; b&gt;");
     }
 }

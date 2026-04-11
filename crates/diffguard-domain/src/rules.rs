@@ -85,6 +85,16 @@ impl CompiledRule {
     }
 }
 
+/// Compile rule configurations into compiled rules ready for evaluation.
+///
+/// # Errors
+///
+/// Returns [`RuleCompileError`] if any rule configuration is invalid.
+/// Variants include:
+/// - [`RuleCompileError::MissingPatterns`] — rule has no patterns defined
+/// - [`RuleCompileError::InvalidRegex`] — pattern is not a valid regex
+/// - [`RuleCompileError::InvalidGlob`] — path glob is malformed
+/// - [`RuleCompileError::InvalidMultilineWindow`] — `multiline_window` is less than 2
 pub fn compile_rules(configs: &[RuleConfig]) -> Result<Vec<CompiledRule>, RuleCompileError> {
     let mut out = Vec::with_capacity(configs.len());
     let known_rule_ids = configs
