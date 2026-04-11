@@ -1765,7 +1765,7 @@ fn render_markdown_with_baseline_annotations(
     out
 }
 
-fn parse_blame_porcelain(blame_text: &str) -> Result<BTreeMap<u32, BlameLineMeta>> {
+fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
     let mut out = BTreeMap::<u32, BlameLineMeta>::new();
     let lines: Vec<&str> = blame_text.lines().collect();
     let mut idx = 0usize;
@@ -1815,7 +1815,7 @@ fn parse_blame_porcelain(blame_text: &str) -> Result<BTreeMap<u32, BlameLineMeta
         }
     }
 
-    Ok(out)
+    out
 }
 
 fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
@@ -1858,8 +1858,7 @@ fn collect_blame_allowed_lines(
 
     for (path, lines) in lines_by_path {
         let blame_text = git_blame_porcelain(head_ref, &path)?;
-        let blame_map = parse_blame_porcelain(&blame_text)
-            .with_context(|| format!("parse git blame for {}", path))?;
+        let blame_map = parse_blame_porcelain(&blame_text);
         for line in lines {
             let Some(meta) = blame_map.get(&line) else {
                 continue;
@@ -4065,7 +4064,7 @@ author-time 1700500000\n\
 summary Commit\n\
 filename src/lib.rs\n\
 \tlet y = 2;\n";
-        let map = parse_blame_porcelain(porcelain).expect("parse");
+        let map = parse_blame_porcelain(porcelain);
         assert_eq!(map.get(&10).map(|m| m.author.as_str()), Some("Alice"));
         assert_eq!(
             map.get(&10).map(|m| m.author_mail.as_str()),
