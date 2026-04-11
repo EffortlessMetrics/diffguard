@@ -61,4 +61,37 @@ mod tests {
         assert_eq!(escape_xml(""), "");
         assert_eq!(escape_xml("hello world"), "hello world");
     }
+
+    #[test]
+    fn escape_xml_unicode_characters_unchanged() {
+        // Unicode characters should pass through unchanged
+        assert_eq!(escape_xml("日本語"), "日本語");
+        assert_eq!(escape_xml("🎉 emoji 🎊"), "🎉 emoji 🎊");
+        assert_eq!(escape_xml("Émoji accéntués"), "Émoji accéntués");
+        assert_eq!(escape_xml("中文"), "中文");
+        assert_eq!(escape_xml("münchen"), "münchen");
+    }
+
+    #[test]
+    fn escape_xml_does_not_double_escape() {
+        // Already-escaped content should not be double-escaped
+        assert_eq!(escape_xml("&amp;"), "&amp;amp;");
+        assert_eq!(escape_xml("&lt;script&gt;"), "&amp;lt;script&amp;gt;");
+        assert_eq!(
+            escape_xml("&quot;quoted&quot;"),
+            "&amp;quot;quoted&amp;quot;"
+        );
+    }
+
+    #[test]
+    fn escape_xml_long_string() {
+        // Very long strings should be handled correctly
+        let long_text = "a".repeat(10000);
+        assert_eq!(escape_xml(&long_text), long_text);
+        let mixed_long = "x&lt;&gt;y&quot;z&apos;w&amp;v".repeat(1000);
+        assert_eq!(
+            escape_xml(&mixed_long),
+            "x&amp;lt;&amp;gt;y&amp;quot;z&amp;apos;w&amp;amp;v".repeat(1000)
+        );
+    }
 }
