@@ -127,6 +127,11 @@ pub enum DiffParseError {
 /// - Mode-only changes: skipped (no lines extracted)
 /// - Renamed files: uses the new (destination) path
 /// - Malformed content: continues processing subsequent files
+///
+/// # Errors
+///
+/// Returns [`DiffParseError`] if the diff text contains a malformed hunk header.
+/// See that type's documentation for all possible variants.
 pub fn parse_unified_diff(
     diff_text: &str,
     scope: Scope,
