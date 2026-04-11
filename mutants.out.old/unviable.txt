@@ -1,3 +1,0 @@
-crates/diffguard-diff/src/unified.rs:134:5: replace parse_unified_diff -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> with Ok((vec![Default::default()], Default::default()))
-crates/diffguard-diff/src/unified.rs:341:5: replace parse_hunk_header -> Result<HunkHeader, DiffParseError> with Ok(Default::default())
-crates/diffguard-diff/src/unified.rs:423:5: replace tokenize_git_paths -> Vec<GitPathToken> with vec![Default::default()]

@@ -11,3 +11,7 @@ artifacts/
 *.pdb
 *.profraw
 .tmp_*
+libpreprocess.rlib
+test_source
+mutants.out/
+mutants.out.old/
