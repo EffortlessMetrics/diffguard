@@ -106,12 +106,19 @@ pub enum MatchMode {
     Absent,
 }
 
+/// Metadata describing the tool that produced a check receipt.
+///
+/// Includes the tool name and version for traceability in CI/CD pipelines.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct ToolMeta {
     pub name: String,
     pub version: String,
 }
 
+/// Metadata describing the git diff that was scanned.
+///
+/// Captures the base/head refs, context configuration, scope, and
+/// aggregate scan statistics for reproducibility and auditing.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct DiffMeta {
     pub base: String,
@@ -126,6 +133,10 @@ pub struct DiffMeta {
     pub lines_scanned: u32,
 }
 
+/// A single rule match within a scoped file.
+///
+/// Represents one finding with location, matched text, and an optional snippet
+/// for context. Multiple findings are aggregated into a `Verdict`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Finding {
     pub rule_id: String,
@@ -139,6 +150,10 @@ pub struct Finding {
     pub snippet: String,
 }
 
+/// The overall disposition of a check run.
+///
+/// `VerdictStatus` is the top-level pass/fail/skip result, while `counts`
+/// provides a breakdown by severity and `reasons` explains any non-pass outcomes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum VerdictStatus {
@@ -149,6 +164,10 @@ pub enum VerdictStatus {
     Skip,
 }
 
+/// Severity counts for a check run.
+///
+/// `suppressed` tracks matches disabled by inline directives and is omitted
+/// from serialized output when zero to keep receipts clean.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Default)]
 pub struct VerdictCounts {
     pub info: u32,
@@ -163,6 +182,11 @@ fn is_zero(n: &u32) -> bool {
     *n == 0
 }
 
+/// The overall result of a check run.
+///
+/// `status` is the top-level disposition, `counts` breaks down findings by
+/// severity, and `reasons` provides human-readable tokens explaining any
+/// non-pass outcome (e.g., `no_diff_input`, `truncated`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Verdict {
     pub status: VerdictStatus,
@@ -170,6 +194,10 @@ pub struct Verdict {
     pub reasons: Vec<String>,
 }
 
+/// The complete output of a single check run.
+///
+/// Encapsulates the tool identity, diff metadata, all findings, and the final
+/// verdict. This is the primary output artifact of the diffguard pipeline.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct CheckReceipt {
     pub schema: String,
@@ -216,6 +244,10 @@ impl ConfigFile {
     }
 }
 
+/// Default values applied to any rule field that is omitted in a config file.
+///
+/// Allows configs to be concise — only fields that differ from the safe default
+/// need to be specified explicitly.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct Defaults {
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -250,6 +282,10 @@ impl Default for Defaults {
     }
 }
 
+/// A single rule definition within a `ConfigFile`.
+///
+/// `RuleConfig` is the user-facing YAML/TOML schema for specifying custom rules.
+/// Each rule has one or more regex `patterns` and optional scope filters.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RuleConfig {
     pub id: String,
@@ -368,10 +404,14 @@ pub struct RuleTestCase {
     pub description: Option<String>,
 }
 
+// WHY: Used as a skip_serializing_if predicate — avoids emitting `false` values
+// to keep output clean for default-flag fields.
 fn is_false(v: &bool) -> bool {
     !*v
 }
 
+// WHY: MatchMode::Any is the default; we skip it in serialized output to keep
+// configs minimal — callers who need the default get it automatically.
 fn is_match_mode_any(mode: &MatchMode) -> bool {
     matches!(mode, MatchMode::Any)
 }
