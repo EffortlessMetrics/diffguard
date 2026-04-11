@@ -59,7 +59,7 @@ pub fn apply_incremental_change(
     change: &TextDocumentContentChangeEvent,
 ) -> Result<()> {
     let Some(range) = change.range else {
-        *text = change.text.clone();
+        text.clone_from(&change.text);
         return Ok(());
     };
 
