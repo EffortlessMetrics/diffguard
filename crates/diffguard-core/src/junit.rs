@@ -5,6 +5,7 @@
 
 use std::collections::BTreeMap;
 
+use crate::xml_utils::escape_xml;
 use diffguard_types::{CheckReceipt, Finding, Severity};
 
 /// Renders a CheckReceipt as a JUnit XML report.
@@ -100,22 +101,6 @@ pub fn render_junit_for_receipt(receipt: &CheckReceipt) -> String {
     }
 
     out.push_str("</testsuites>\n");
-    out
-}
-
-/// Escapes special XML characters in a string.
-fn escape_xml(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&apos;"),
-            _ => out.push(c),
-        }
-    }
     out
 }
 

@@ -10,6 +10,7 @@ mod render;
 mod sarif;
 mod sensor;
 mod sensor_api;
+mod xml_utils;
 
 pub use check::{CheckPlan, CheckRun, PathFilterError, run_check};
 pub use checkstyle::render_checkstyle_for_receipt;

@@ -7,6 +7,7 @@
 
 use std::collections::BTreeMap;
 
+use crate::xml_utils::escape_xml;
 use diffguard_types::{CheckReceipt, Finding, Severity};
 
 /// Renders a CheckReceipt as a Checkstyle XML report.
@@ -74,24 +75,6 @@ pub fn render_checkstyle_for_receipt(receipt: &CheckReceipt) -> String {
     }
 
     out.push_str("</checkstyle>\n");
-    out
-}
-
-/// Escape characters that have special meaning in XML.
-///
-/// Required for: description, message, path, rule_id, and any other text content.
-fn escape_xml(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '&' => out.push_str("&amp;"),
-            '<' => out.push_str("&lt;"),
-            '>' => out.push_str("&gt;"),
-            '"' => out.push_str("&quot;"),
-            '\'' => out.push_str("&apos;"),
-            _ => out.push(c),
-        }
-    }
     out
 }
 
