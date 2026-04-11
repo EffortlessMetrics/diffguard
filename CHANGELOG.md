@@ -56,6 +56,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Affects all output formats (markdown, SARIF, GitLab Quality JSON, JUnit, CSV)
   - Rationale: enterprises need to onboard existing codebases without flagging pre-existing issues
 
+### Internal
+
+- **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+
 ## [0.2.0] - 2026-04-06
 
 ### Added
