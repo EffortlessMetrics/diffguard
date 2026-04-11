@@ -440,11 +440,7 @@ fn simple_edit_distance(left: &str, right: &str) -> usize {
     for i in 1..=left_len {
         current[0] = i;
         for j in 1..=right_len {
-            let cost = if left_chars[i - 1] == right_chars[j - 1] {
-                0
-            } else {
-                1
-            };
+            let cost = usize::from(left_chars[i - 1] != right_chars[j - 1]);
             current[j] = (previous[j] + 1)
                 .min(current[j - 1] + 1)
                 .min(previous[j - 1] + cost);
