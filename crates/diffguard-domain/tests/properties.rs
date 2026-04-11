@@ -1970,7 +1970,7 @@ proptest! {
     fn property_no_rules_no_findings(
         lines in prop::collection::vec(input_line_strategy(), 1..20),
     ) {
-        let rules: Vec<diffguard_domain::CompiledRule> = vec![];
+        let rules: Vec<diffguard_domain::rules::CompiledRule> = vec![];
         let result = evaluate_lines(lines, &rules, 100);
 
         prop_assert!(

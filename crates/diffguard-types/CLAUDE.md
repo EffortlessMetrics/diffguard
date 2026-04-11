@@ -8,7 +8,7 @@ Pure data transfer objects (DTOs) with serialization support. This is the founda
 
 - **Intentionally "dumb"** - This crate contains only data structures with no logic
 - **No I/O** - Must not use `std::process`, `std::fs`, or `std::env`
-- **Flat structure** - All types live in `lib.rs`, no submodules
+- **Flat structure** - All types live in `lib.rs`, no submodules (except `rules/` for built-in JSON data)
 - **Stable API** - Types here form the public contract; changes affect all consumers
 
 ## Key Types
@@ -35,6 +35,8 @@ The `CHECK_SCHEMA_V1` constant provides schema versioning for receipts.
 ## Built-in Rules
 
 Built-in rules are provided via `ConfigFile::built_in()` for the CLI/app pipeline.
+Rules are loaded from `rules/built_in.json` at compile time via `include_str!`, so
+the JSON is embedded in the binary with no runtime I/O.
 CLI presets live in the `diffguard` crate (`diffguard init --preset ...`); there is
 no `presets` module in `diffguard-types`.
 

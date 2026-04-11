@@ -81,6 +81,15 @@ pub enum PathFilterError {
     },
 }
 
+/// Run a policy check over a unified diff text.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - The diff text cannot be parsed ([`diffguard_diff::DiffParseError`])
+/// - Path filter globs are invalid ([`PathFilterError`])
+/// - Rule compilation fails ([`diffguard_domain::RuleCompileError`])
+/// - Override compilation fails ([`diffguard_domain::OverrideCompileError`])
 pub fn run_check(
     plan: &CheckPlan,
     config: &diffguard_types::ConfigFile,

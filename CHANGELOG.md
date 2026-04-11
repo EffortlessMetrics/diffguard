@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - **GitHub Actions hardening** for production-ready workflows:
+
+### Refactored
+
+- **`diffguard-types`**: Refactored `ConfigFile::built_in()` from 533 lines of hardcoded Rust to a JSON data file. 36 built-in rules across 10 languages are now loaded at compile time via `include_str!` + `serde_json`, improving maintainability and respecting the crate's "no I/O" constraint.
+
+### Changed
   - SHA pinning for third-party Actions (`actions/github-script@v7`, `github/codeql-action/upload-sarif@v3`) to prevent supply chain attacks
   - Explicit `permissions` block with least-privilege scopes (`contents: read`, `pull-requests: write`, `security-events: write`)
   - Windows target triple detection for MSYS/MINGW environments
@@ -24,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`--color` flag for CI log output control** — Controls ANSI color output with `--color <never|always|auto>`. Use `--color=never` to suppress ANSI codes in CI logs (GitHub Actions, GitLab CI), `--color=always` to force colors in piped output, `--color=auto` (default) to auto-detect based on terminal. Respects `NO_COLOR=1` environment variable.
+
+- **`# Errors` sections for core public APIs** — Added `# Errors` sections to documentation for core public APIs per Rust API Guidelines C409:
+  - `parse_unified_diff`
+  - `compile_rules`
+  - `RuleOverrideMatcher::compile`
+  - `run_check`
 
 - **`bench` crate for performance benchmarking** — Criterion-based benchmark infrastructure:
   - Parsing benchmarks: measures `parse_unified_diff()` at 0, 100, 1K, 10K, 100K lines
@@ -55,6 +67,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Exit codes: 0 (clean vs baseline/grandfather), 1 (new findings detected), 2 (error)
   - Affects all output formats (markdown, SARIF, GitLab Quality JSON, JUnit, CSV)
   - Rationale: enterprises need to onboard existing codebases without flagging pre-existing issues
+
+### Internal
+
+- **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
 ## [0.2.0] - 2026-04-06
 

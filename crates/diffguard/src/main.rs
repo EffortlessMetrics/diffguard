@@ -753,7 +753,7 @@ fn cmd_rules(args: RulesArgs) -> Result<()> {
 
 fn compile_rules_checked(
     rules: &[diffguard_types::RuleConfig],
-) -> Result<Vec<diffguard_domain::CompiledRule>, diffguard_domain::RuleCompileError> {
+) -> Result<Vec<diffguard_domain::rules::CompiledRule>, diffguard_domain::RuleCompileError> {
     #[cfg(test)]
     {
         if std::env::var("DIFFGUARD_TEST_FORCE_COMPILE_ERROR").is_ok() {
