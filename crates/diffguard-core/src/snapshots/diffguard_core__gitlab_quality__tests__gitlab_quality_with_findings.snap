@@ -5,7 +5,7 @@ expression: json
 [
   {
     "description": "Avoid unwrap/expect in production code.",
-    "fingerprint": "62e2d69557c0f04afc9867bf4ed5d88dc230e747dd59d03c0cb497bb4af94879",
+    "fingerprint": "e55a93bc3889c835761d9620adf098e07759a24fed4ade227eafc053877004da",
     "severity": "major",
     "location": {
       "path": "src/main.rs",
@@ -17,7 +17,7 @@ expression: json
   },
   {
     "description": "Use of console.log detected.",
-    "fingerprint": "3d9ac9a3a07bffdfe0d5c8f0731ae10d03c7860beb9e2f6c98da4c382a54ba2d",
+    "fingerprint": "bdc0e0c24e99798d4bcaeb858a3e6c094f01a5d92e74d1720a870a453e655f95",
     "severity": "minor",
     "location": {
       "path": "src/index.js",

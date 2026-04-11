@@ -5,7 +5,7 @@ expression: json
 [
   {
     "description": "Info message",
-    "fingerprint": "a2419f4418f0f7cd82effa89916933df8c6672c522b8f01d18764d14fc6611fd",
+    "fingerprint": "f05a34a28ab4a6044a311bc61a7cebb8cb82a9f4dab77832cc95ae83be3bed72",
     "severity": "info",
     "location": {
       "path": "a.rs",
@@ -20,7 +20,7 @@ expression: json
   },
   {
     "description": "Warning message",
-    "fingerprint": "33fe0827323d33847a5d7309305850d7bae8311520e53e9b01c1660d1a6d3d39",
+    "fingerprint": "15afd9a18f807846c4c89d0ecc52a379816d15f3730637684868a5865deffa2a",
     "severity": "minor",
     "location": {
       "path": "b.rs",
@@ -35,7 +35,7 @@ expression: json
   },
   {
     "description": "Error message",
-    "fingerprint": "43762896ee3d741df0a4b0cba167055722078b087c703a8bfe0795d5b263b704",
+    "fingerprint": "622aad4b81d6b5838e33eba58aad3119ed4d66879fb29824282d741b801582ce",
     "severity": "major",
     "location": {
       "path": "c.rs",

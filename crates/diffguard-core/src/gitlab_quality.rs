@@ -123,7 +123,7 @@ fn compute_fingerprint(finding: &Finding) -> String {
     if let Some(col) = finding.column {
         hasher.update(col.to_string().as_bytes());
     }
-    hasher.update(finding.message.as_bytes());
+    hasher.update(finding.match_text.as_bytes());
     format!("{:x}", hasher.finalize())
 }
 
@@ -193,6 +193,26 @@ mod tests {
             line,
             column: None,
             match_text: "matched".to_string(),
+            snippet: String::new(),
+        }
+    }
+
+    fn make_finding_with_match_text(
+        rule_id: &str,
+        severity: Severity,
+        message: &str,
+        path: &str,
+        line: u32,
+        match_text: &str,
+    ) -> Finding {
+        Finding {
+            rule_id: rule_id.to_string(),
+            severity,
+            message: message.to_string(),
+            path: path.to_string(),
+            line,
+            column: None,
+            match_text: match_text.to_string(),
             snippet: String::new(),
         }
     }
@@ -299,5 +319,101 @@ mod tests {
         let receipt = make_test_receipt(vec![]);
         let json = render_gitlab_quality_json(&receipt).expect("should serialize");
         insta::assert_snapshot!("gitlab_quality_no_findings", json);
+    }
+
+    // ── Fingerprint bug-fix tests ─────────────────────────────────────────────
+    // Bug: compute_fingerprint used finding.message instead of finding.match_text.
+    // These tests will FAIL until the fix is applied (line 126: use match_text).
+
+    /// Two findings with the same rule_id, path, line, and message BUT different
+    /// match_text MUST have different fingerprints. Using message in the hash
+    /// causes these to collide (same fingerprint), which is wrong.
+    #[test]
+    fn fingerprint_uses_match_text_not_message() {
+        let finding_a = make_finding_with_match_text(
+            "rust.no_unwrap",
+            Severity::Error,
+            "Avoid unwrap/expect in production code.", // same message
+            "src/main.rs",
+            42,
+            ".unwrap()", // different match_text
+        );
+        let finding_b = make_finding_with_match_text(
+            "rust.no_unwrap",
+            Severity::Error,
+            "Avoid unwrap/expect in production code.", // same message
+            "src/main.rs",
+            42,
+            ".expect(\"something\")", // different match_text
+        );
+
+        let report_a = render_gitlab_quality_for_receipt(&make_test_receipt(vec![finding_a]));
+        let report_b = render_gitlab_quality_for_receipt(&make_test_receipt(vec![finding_b]));
+
+        // The fingerprints MUST differ because match_text differs
+        assert_ne!(
+            report_a[0].fingerprint, report_b[0].fingerprint,
+            "fingerprint must use match_text, not message; \
+             findings with different match_text values should have different fingerprints"
+        );
+    }
+
+    /// Verify that match_text alone drives fingerprint differentiation when all
+    /// other fields are identical. This isolates the fix to match_text hashing.
+    #[test]
+    fn fingerprint_changes_when_match_text_changes() {
+        let base = make_finding_with_match_text(
+            "js.no_console",
+            Severity::Warn,
+            "Remove console.log before merging.",
+            "src/index.js",
+            10,
+            "console.log",
+        );
+        let changed = make_finding_with_match_text(
+            "js.no_console",
+            Severity::Warn,
+            "Remove console.log before merging.",
+            "src/index.js",
+            10,
+            "console.warn",
+        );
+
+        let report_base = render_gitlab_quality_for_receipt(&make_test_receipt(vec![base]));
+        let report_changed = render_gitlab_quality_for_receipt(&make_test_receipt(vec![changed]));
+
+        assert_ne!(
+            report_base[0].fingerprint, report_changed[0].fingerprint,
+            "changing only match_text must change the fingerprint"
+        );
+    }
+
+    /// Sanity check: two completely identical findings must produce identical fingerprints.
+    #[test]
+    fn fingerprint_identical_for_identical_findings() {
+        let finding_a = make_finding_with_match_text(
+            "rust.no_unwrap",
+            Severity::Error,
+            "Avoid unwrap.",
+            "src/lib.rs",
+            99,
+            ".unwrap()",
+        );
+        let finding_b = make_finding_with_match_text(
+            "rust.no_unwrap",
+            Severity::Error,
+            "Avoid unwrap.",
+            "src/lib.rs",
+            99,
+            ".unwrap()",
+        );
+
+        let report_a = render_gitlab_quality_for_receipt(&make_test_receipt(vec![finding_a]));
+        let report_b = render_gitlab_quality_for_receipt(&make_test_receipt(vec![finding_b]));
+
+        assert_eq!(
+            report_a[0].fingerprint, report_b[0].fingerprint,
+            "identical findings must produce identical fingerprints"
+        );
     }
 }

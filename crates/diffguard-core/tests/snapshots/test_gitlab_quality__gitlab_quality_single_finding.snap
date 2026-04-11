@@ -5,7 +5,7 @@ expression: json
 [
   {
     "description": "Use of console.log detected",
-    "fingerprint": "2c2974db2047a8af23dd7f769b3c0ec3d5f882fbc4dcb6832eb19b805c95f971",
+    "fingerprint": "09de548a8c9ea34302a1eafe86158637e22065b15b08d2ac3c59fec40547afa6",
     "severity": "minor",
     "location": {
       "path": "src/index.js",
