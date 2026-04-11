@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`--color` flag for CI log output control** — Controls ANSI color output with `--color <never|always|auto>`. Use `--color=never` to suppress ANSI codes in CI logs (GitHub Actions, GitLab CI), `--color=always` to force colors in piped output, `--color=auto` (default) to auto-detect based on terminal. Respects `NO_COLOR=1` environment variable.
 
+- **`# Errors` sections for core public APIs** — Added `# Errors` sections to documentation for core public APIs per Rust API Guidelines C409:
+  - `parse_unified_diff`
+  - `compile_rules`
+  - `RuleOverrideMatcher::compile`
+  - `run_check`
+
 - **`bench` crate for performance benchmarking** — Criterion-based benchmark infrastructure:
   - Parsing benchmarks: measures `parse_unified_diff()` at 0, 100, 1K, 10K, 100K lines
   - Evaluation benchmarks: measures `evaluate_lines()` at 0, 1, 10, 100, 500 rules
