@@ -114,7 +114,7 @@ expression: json
                 "region": {
                   "startLine": 8,
                   "snippet": {
-                    "text": "print(\"Deploying...\")"
+                    "text": "print(&quot;Deploying...&quot;)"
                   }
                 }
               }
