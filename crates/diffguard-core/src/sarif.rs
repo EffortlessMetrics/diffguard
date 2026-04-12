@@ -593,7 +593,10 @@ mod tests {
         let json = render_sarif_json(&receipt).expect("should serialize");
 
         // Verify the special characters are HTML-escaped in the output
-        assert!(json.contains("&lt;special&gt;"), "message should have < escaped");
+        assert!(
+            json.contains("&lt;special&gt;"),
+            "message should have < escaped"
+        );
         assert!(json.contains("&amp;"), "message should have & escaped");
         assert!(json.contains("&quot;"), "message should have \" escaped");
 

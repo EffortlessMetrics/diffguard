@@ -14,9 +14,9 @@
 //!   `detect_language(path).map(...).unwrap_or(Language::Unknown)`
 //!   → uses `map_or` instead
 
-use std::path::Path;
-use diffguard_domain::rules::detect_language;
 use diffguard_domain::preprocess::Language;
+use diffguard_domain::rules::detect_language;
+use std::path::Path;
 
 /// Test that `detect_language` returns correct values for known file extensions.
 #[test]
@@ -38,7 +38,10 @@ fn test_detect_language_javascript() {
     assert_eq!(detect_language(Path::new("app.js")), Some("javascript"));
     assert_eq!(detect_language(Path::new("module.mjs")), Some("javascript"));
     assert_eq!(detect_language(Path::new("module.cjs")), Some("javascript"));
-    assert_eq!(detect_language(Path::new("component.jsx")), Some("javascript"));
+    assert_eq!(
+        detect_language(Path::new("component.jsx")),
+        Some("javascript")
+    );
 }
 
 #[test]
@@ -46,7 +49,10 @@ fn test_detect_language_typescript() {
     assert_eq!(detect_language(Path::new("app.ts")), Some("typescript"));
     assert_eq!(detect_language(Path::new("module.mts")), Some("typescript"));
     assert_eq!(detect_language(Path::new("module.cts")), Some("typescript"));
-    assert_eq!(detect_language(Path::new("component.tsx")), Some("typescript"));
+    assert_eq!(
+        detect_language(Path::new("component.tsx")),
+        Some("typescript")
+    );
 }
 
 #[test]
@@ -101,7 +107,10 @@ fn test_language_parse_fallback_to_unknown() {
     assert_eq!(Language::from_str("cobol"), Ok(Language::Unknown));
     assert_eq!(Language::from_str("fortran"), Ok(Language::Unknown));
     assert_eq!(Language::from_str(""), Ok(Language::Unknown));
-    assert_eq!(Language::from_str("notareallanguage"), Ok(Language::Unknown));
+    assert_eq!(
+        Language::from_str("notareallanguage"),
+        Ok(Language::Unknown)
+    );
 }
 
 /// Test the combined behavior used in evaluate.rs lines 134-136:

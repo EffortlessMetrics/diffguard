@@ -3,6 +3,8 @@
 //! These tests verify key invariants of the XML escaping function using
 //! property-based testing with proptest.
 
+#![allow(unused_doc_comments)] // proptest macros generate doc comments that rustdoc can't process
+
 use proptest::prelude::*;
 
 /// Characters that must be escaped in XML text content
