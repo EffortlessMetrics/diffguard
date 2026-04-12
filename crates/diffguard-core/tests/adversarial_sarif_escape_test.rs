@@ -100,22 +100,19 @@ fn create_receipt_with_special_chars_in_path() -> CheckReceipt {
 fn challenge_uri_field_not_escaped() {
     let receipt = create_receipt_with_special_chars_in_path();
     let json = render_sarif_json(&receipt).expect("should serialize");
-    
+
     // The URI contains <, >, & but they are NOT escaped in the JSON output
     // because SarifArtifactLocation.uri does not have serialize_with
     assert!(
         json.contains("src/<repo>"),
         "URI with < is NOT escaped - this could break JSON if it contains double quotes"
     );
-    assert!(
-        json.contains("root&special"),
-        "URI with & is NOT escaped"
-    );
-    
+    assert!(json.contains("root&special"), "URI with & is NOT escaped");
+
     // The JSON is still valid because <, > don't break JSON strings,
     // but if someone tries to parse this as XML later, it could be problematic.
     let _: serde_json::Value = serde_json::from_str(&json).expect("should still be valid JSON");
-    
+
     println!("ISSUE: URI field is not HTML-escaped:");
     println!("{}", json);
 }
@@ -163,31 +160,32 @@ fn challenge_double_escaping_of_already_escaped_content() {
     };
 
     let json = render_sarif_json(&receipt).expect("should serialize");
-    
+
     // The &lt; becomes &amp;lt; (double-escaped)
     assert!(
         json.contains("&amp;lt;"),
         "Already-escaped content gets double-escaped: &lt; -> &amp;lt;"
     );
-    
+
     // This is technically "correct" for the serializer approach, but:
     // 1. It doubles the output size for escaped content
     // 2. If a SARIF viewer unescapes once, it still shows &lt; literally
     // 3. If the user is debugging why their XML entities appear in output,
     //    the double-escaping is surprising and not obvious why
-    
+
     println!("ISSUE: Double-escaping of already-escaped content:");
     println!("Original: 'Found &lt;tag&gt;' becomes: 'Found &amp;lt;tag&amp;gt;'");
     println!("{}", json);
 }
 
 /// Challenge 3: Control characters in fields other than message/snippet
+#[allow(clippy::useless_format)] // format!() on literal string needed to construct \x00 in rule_id
 #[test]
 fn challenge_control_chars_in_rule_id() {
     // This is a pathological case but demonstrates the point:
     // What if a rule ID somehow contains a control character?
     // (In practice this won't happen, but it's a theoretical concern)
-    
+
     let receipt = CheckReceipt {
         schema: CHECK_SCHEMA_V1.to_string(),
         tool: ToolMeta {
@@ -228,11 +226,11 @@ fn challenge_control_chars_in_rule_id() {
 
     // This might produce invalid JSON if the NUL character isn't properly handled
     let result = render_sarif_json(&receipt);
-    
+
     // The JSON serialization should either:
     // 1. Properly escape the control char
     // 2. Or panic/fail gracefully
-    
+
     match result {
         Ok(json) => {
             // If it succeeded, verify the JSON is valid
@@ -258,25 +256,25 @@ fn challenge_field_coverage_gap_analysis() {
     // - uri (SarifArtifactLocation.uri)
     // - uri_base_id (SarifArtifactLocation.uri_base_id)
     // - command_line (SarifInvocation.command_line)
-    
+
     // These fields COULD contain user-controlled content that should be escaped
     // for HTML safety in SARIF viewers.
-    
+
     let receipt = create_receipt_with_poisoned_fields();
     let json = render_sarif_json(&receipt).expect("should serialize");
-    
+
     // message and snippet ARE escaped (verify this is working)
     assert!(
         json.contains("&lt;script&gt;"),
         "message with <script> should be HTML-escaped"
     );
-    
+
     // But rule_id is NOT escaped (it's the raw string "test.rule")
     assert!(
         json.contains("\"test.rule\""),
         "rule_id is not escaped (which is fine for test.rule but illustrates the point)"
     );
-    
+
     // If we had a rule_id like "test<script>", it would NOT be escaped
     println!("Fields NOT escaped by serialize_with approach:");
     println!("- rule_id");
@@ -294,7 +292,7 @@ fn challenge_xml_escaping_in_json_html_context() {
     // escape_xml escapes ' as &apos; (XML single quote entity)
     // But in JSON, strings are already quoted with ""
     // And when rendered in HTML, &apos; might not work in all browsers
-    
+
     let receipt = CheckReceipt {
         schema: CHECK_SCHEMA_V1.to_string(),
         tool: ToolMeta {
@@ -334,16 +332,16 @@ fn challenge_xml_escaping_in_json_html_context() {
     };
 
     let json = render_sarif_json(&receipt).expect("should serialize");
-    
+
     // &apos; is used, which is XML-specific
     assert!(
         json.contains("&apos;"),
         "Single quote escaped as &apos; (XML entity, not HTML)"
     );
-    
+
     // In HTML5, the proper escape for single quote in attribute context is &#39;
     // But we're using &apos; which is not part of HTML5 spec (it's XML)
-    
+
     println!("Note: Using XML entity &apos; for single quotes");
     println!("HTML5 prefers &#39; or &#x27; for single quotes in HTML context");
     println!("{}", json);
