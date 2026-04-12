@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`--color` flag for CI log output control** — Controls ANSI color output with `--color <never|always|auto>`. Use `--color=never` to suppress ANSI codes in CI logs (GitHub Actions, GitLab CI), `--color=always` to force colors in piped output, `--color=auto` (default) to auto-detect based on terminal. Respects `NO_COLOR=1` environment variable.
 
+- **SARIF output escaping** — Escapes special characters in SARIF `Finding` fields (`text` in `SarifMessage` and `SarifSnippet`) for HTML/XML context using XML entity encoding (`<`, `>`, `&`, `"`, `'`). Prevents XSS and formatting issues when SARIF results are rendered in web-based tooling. Closes #160.
+
 - **`# Errors` sections for core public APIs** — Added `# Errors` sections to documentation for core public APIs per Rust API Guidelines C409:
   - `parse_unified_diff`
   - `compile_rules`
