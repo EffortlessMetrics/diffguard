@@ -2,10 +2,19 @@
 //!
 //! Converts CheckReceipt to SARIF 2.1.0 format for integration with
 //! code scanning tools and GitHub Advanced Security.
+//!
+//! # Special Character Escaping
+//!
+//! SARIF text fields (message, snippet) are escaped for HTML context since
+//! SARIF viewers may render them in web browsers. The escaping handles:
+//! - `<`, `>`, `&` as HTML entities (`&lt;`, `&gt;`, `&amp;`)
+//! - `"`, `'` as HTML entities (`&quot;`, `&apos;`)
+//! - Control characters (0x00-0x1F except tab/LF/CR) as `&#xNN;`
 
 use serde::Serialize;
 use std::collections::BTreeMap;
 
+use super::xml_utils::escape_xml;
 use diffguard_types::{CheckReceipt, Finding, Severity};
 
 /// SARIF schema URL
@@ -102,10 +111,30 @@ impl From<Severity> for SarifLevel {
     }
 }
 
+/// Custom serializer function that escapes SARIF text for HTML context.
+///
+/// SARIF viewers may render text fields in web browsers, so special HTML
+/// characters must be escaped to prevent XSS and rendering issues.
+fn escape_sarif_str<S>(s: &str, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let escaped = escape_xml(s);
+    serializer.serialize_str(&escaped)
+}
+
 /// Message with text.
+/// The text field is HTML-escaped for security in SARIF viewers.
 #[derive(Debug, Clone, Serialize)]
 pub struct SarifMessage {
+    #[serde(serialize_with = "escape_sarif_str")]
     pub text: String,
+}
+
+impl SarifMessage {
+    pub fn new(text: String) -> Self {
+        Self { text }
+    }
 }
 
 /// Location of a result.
@@ -145,9 +174,17 @@ pub struct SarifRegion {
 }
 
 /// Code snippet.
+/// The text field is HTML-escaped for security in SARIF viewers.
 #[derive(Debug, Clone, Serialize)]
 pub struct SarifSnippet {
+    #[serde(serialize_with = "escape_sarif_str")]
     pub text: String,
+}
+
+impl SarifSnippet {
+    pub fn new(text: String) -> Self {
+        Self { text }
+    }
 }
 
 /// Invocation information.
@@ -205,9 +242,7 @@ fn collect_rules_from_findings(findings: &[Finding]) -> Vec<SarifRule> {
                 f.rule_id.clone(),
                 SarifRule {
                     id: f.rule_id.clone(),
-                    short_description: Some(SarifMessage {
-                        text: f.message.clone(),
-                    }),
+                    short_description: Some(SarifMessage::new(f.message.clone())),
                     default_configuration: Some(SarifRuleConfiguration {
                         level: f.severity.into(),
                     }),
@@ -231,9 +266,7 @@ fn finding_to_sarif_result(f: &Finding) -> SarifResult {
     SarifResult {
         rule_id: f.rule_id.clone(),
         level: f.severity.into(),
-        message: SarifMessage {
-            text: f.message.clone(),
-        },
+        message: SarifMessage::new(f.message.clone()),
         locations: vec![SarifLocation {
             physical_location: SarifPhysicalLocation {
                 artifact_location: SarifArtifactLocation {
@@ -243,9 +276,7 @@ fn finding_to_sarif_result(f: &Finding) -> SarifResult {
                 region: Some(SarifRegion {
                     start_line: f.line,
                     start_column: f.column,
-                    snippet: Some(SarifSnippet {
-                        text: f.snippet.clone(),
-                    }),
+                    snippet: Some(SarifSnippet::new(f.snippet.clone())),
                 }),
             },
         }],
@@ -516,6 +547,113 @@ mod tests {
         let json = render_sarif_json(&receipt).expect("should serialize");
 
         // Should parse back successfully
+        let _: serde_json::Value = serde_json::from_str(&json).expect("should be valid JSON");
+    }
+
+    #[test]
+    fn sarif_escapes_special_html_characters() {
+        // Create a receipt with special characters that need HTML escaping
+        let receipt = CheckReceipt {
+            schema: CHECK_SCHEMA_V1.to_string(),
+            tool: ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: DiffMeta {
+                base: "origin/main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: Scope::Added,
+                files_scanned: 1,
+                lines_scanned: 10,
+            },
+            findings: vec![Finding {
+                rule_id: "test.rule".to_string(),
+                severity: Severity::Error,
+                message: "Test <special> & \"chars\"".to_string(),
+                path: "src/test.rs".to_string(),
+                line: 1,
+                column: Some(1),
+                match_text: "test".to_string(),
+                snippet: "let x = \"test\";".to_string(),
+            }],
+            verdict: Verdict {
+                status: VerdictStatus::Fail,
+                counts: VerdictCounts {
+                    info: 0,
+                    warn: 0,
+                    error: 1,
+                    suppressed: 0,
+                },
+                reasons: vec!["1 error-level finding".to_string()],
+            },
+            timing: None,
+        };
+
+        let json = render_sarif_json(&receipt).expect("should serialize");
+
+        // Verify the special characters are HTML-escaped in the output
+        assert!(json.contains("&lt;special&gt;"), "message should have < escaped");
+        assert!(json.contains("&amp;"), "message should have & escaped");
+        assert!(json.contains("&quot;"), "message should have \" escaped");
+
+        // Verify the original unescaped characters are NOT in the text
+        assert!(
+            !json.contains("\"Test <special>"),
+            "message should NOT have unescaped < or >"
+        );
+
+        // Verify the JSON is still valid
+        let _: serde_json::Value = serde_json::from_str(&json).expect("should be valid JSON");
+    }
+
+    #[test]
+    fn sarif_escapes_control_characters() {
+        // Create a receipt with control characters
+        let receipt = CheckReceipt {
+            schema: CHECK_SCHEMA_V1.to_string(),
+            tool: ToolMeta {
+                name: "diffguard".to_string(),
+                version: "0.1.0".to_string(),
+            },
+            diff: DiffMeta {
+                base: "origin/main".to_string(),
+                head: "HEAD".to_string(),
+                context_lines: 0,
+                scope: Scope::Added,
+                files_scanned: 1,
+                lines_scanned: 10,
+            },
+            findings: vec![Finding {
+                rule_id: "test.rule".to_string(),
+                severity: Severity::Error,
+                message: "Test\x00null\x07bell".to_string(),
+                path: "src/test.rs".to_string(),
+                line: 1,
+                column: Some(1),
+                match_text: "test".to_string(),
+                snippet: "let x = 1;".to_string(),
+            }],
+            verdict: Verdict {
+                status: VerdictStatus::Fail,
+                counts: VerdictCounts {
+                    info: 0,
+                    warn: 0,
+                    error: 1,
+                    suppressed: 0,
+                },
+                reasons: vec!["1 error-level finding".to_string()],
+            },
+            timing: None,
+        };
+
+        let json = render_sarif_json(&receipt).expect("should serialize");
+
+        // Control characters should be escaped as &#xNN; entities
+        assert!(json.contains("&#x0;"), "NUL should be escaped");
+        assert!(json.contains("&#x7;"), "BEL should be escaped");
+
+        // Verify the JSON is still valid
         let _: serde_json::Value = serde_json::from_str(&json).expect("should be valid JSON");
     }
 
