@@ -11,3 +11,14 @@ artifacts/
 *.pdb
 *.profraw
 .tmp_*
+# Conveyor artifacts — live in ~/.hermes/state/conveyor/, not repo
+.hermes/
+# Agent findings and plans — not part of code history
+findings/
+# Mutation testing output
+mutants.out*/
+# Vim swap files
+*.rs:*
+*~
+# Extra snapshot directories (not cargo snapshots)
+crates/diffguard/src/snapshots/
