@@ -8,16 +8,16 @@ use proptest::prelude::*;
 /// Characters that must be escaped in XML text content
 const SPECIAL_CHARS: &[char] = &['&', '<', '>', '"', '\''];
 
-/// Property 1: Length bound - output length >= input length
-///
-/// Escaping replaces single characters with multi-character sequences:
-/// - `&` → `&amp;` (5 chars)
-/// - `<` → `&lt;` (4 chars)
-/// - `>` → `&gt;` (4 chars)
-/// - `"` → `&quot;` (6 chars)
-/// - `'` → `&apos;` (6 chars)
-///
-/// Therefore, output.len() >= input.len() always holds.
+// Property 1: Length bound - output length >= input length
+//
+// Escaping replaces single characters with multi-character sequences:
+// - `&` → `&amp;` (5 chars)
+// - `<` → `&lt;` (4 chars)
+// - `>` → `&gt;` (4 chars)
+// - `"` → `&quot;` (6 chars)
+// - `'` → `&apos;` (6 chars)
+//
+// Therefore, output.len() >= input.len() always holds.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(200))]
 
@@ -34,10 +34,10 @@ proptest! {
     }
 }
 
-/// Property 2: Special chars escaped - &,<,>,",' must never appear unescaped in output
-///
-/// After escaping, none of the special XML characters should appear unescaped
-/// in the output. They should only appear as part of their entity references.
+// Property 2: Special chars escaped - &,<,>,",' must never appear unescaped in output
+//
+// After escaping, none of the special XML characters should appear unescaped
+// in the output. They should only appear as part of their entity references.
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(200))]
 
@@ -111,7 +111,7 @@ fn empty_input_produces_empty_output() {
     assert_eq!(output, "", "Empty input should produce empty output");
 }
 
-/// Property 4: Normal text preserved - chars not in {&,<,>,",'} pass through unchanged
+// Property 4: Normal text preserved - chars not in {&,<,>,",'} pass through unchanged
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(200))]
 
@@ -160,8 +160,8 @@ fn single_quote_maps_to_apos() {
     assert_eq!(escape_xml("'"), "&apos;");
 }
 
-/// Property 6: No information loss - verify original content can be reconstructed
-/// for text without special chars
+// Property 6: No information loss - verify original content can be reconstructed
+// for text without special chars
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(200))]
 
