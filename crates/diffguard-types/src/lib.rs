@@ -49,6 +49,7 @@ pub enum Severity {
 }
 
 impl Severity {
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             Severity::Info => "info",
@@ -68,6 +69,7 @@ pub enum Scope {
 }
 
 impl Scope {
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             Scope::Added => "added",
@@ -87,6 +89,7 @@ pub enum FailOn {
 }
 
 impl FailOn {
+    #[must_use]
     pub fn as_str(self) -> &'static str {
         match self {
             FailOn::Error => "error",
