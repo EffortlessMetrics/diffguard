@@ -45,6 +45,18 @@ pub fn render_tsv_for_receipt(receipt: &CheckReceipt) -> String {
 }
 
 /// Renders a single finding as a CSV row.
+///
+/// Escapes the path, rule_id, message, and snippet fields according to RFC 4180.
+/// The severity and line fields are written as-is since they cannot contain
+/// special CSV characters.
+///
+/// # Arguments
+///
+/// * `f` - The finding to render
+///
+/// # Returns
+///
+/// A CSV row string with properly escaped fields.
 fn render_csv_row(f: &Finding) -> String {
     format!(
         "{},{},{},{},{},{}\n",
@@ -58,6 +70,18 @@ fn render_csv_row(f: &Finding) -> String {
 }
 
 /// Renders a single finding as a TSV row.
+///
+/// Escapes the path, rule_id, message, and snippet fields with backslash notation.
+/// Tabs, newlines, carriage returns, and backslashes are escaped.
+/// The severity and line fields are written as-is.
+///
+/// # Arguments
+///
+/// * `f` - The finding to render
+///
+/// # Returns
+///
+/// A TSV row string with properly escaped fields.
 fn render_tsv_row(f: &Finding) -> String {
     format!(
         "{}\t{}\t{}\t{}\t{}\t{}\n",

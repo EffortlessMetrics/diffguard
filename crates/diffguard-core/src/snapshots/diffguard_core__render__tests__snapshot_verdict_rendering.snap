@@ -8,4 +8,4 @@ Scanned **2** file(s), **35** line(s) (scope: `changed`, base: `feature/branch`,
 
 | Severity | Rule | Location | Message | Snippet |
 |---|---|---|---|---|
-| warn | `js.no_console` | `src/utils.ts:42` | Remove console.log before merging. | `  console.log("debug info");` |
+| warn | `js.no\_console` | `src/utils.ts:42` | Remove console.log before merging. | `  console.log("debug info");` |

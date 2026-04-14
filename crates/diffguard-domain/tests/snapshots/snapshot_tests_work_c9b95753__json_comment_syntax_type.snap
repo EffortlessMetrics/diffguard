@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_c9b95753.rs
+expression: syntax_name
+---
+CStyle
