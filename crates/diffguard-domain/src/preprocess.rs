@@ -79,7 +79,6 @@ impl Language {
             Language::Php => CommentSyntax::Php,
             // YAML/TOML use # comments
             Language::Yaml | Language::Toml => CommentSyntax::Hash,
-            // JSON supports comments in jsonc/json5 dialects (handled by wildcard)
             _ => CommentSyntax::CStyle,
         }
     }
