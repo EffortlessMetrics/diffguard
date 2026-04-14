@@ -17,8 +17,8 @@ use diffguard_core::{
     render_markdown_for_receipt, render_sarif_json, render_tsv_for_receipt,
 };
 use diffguard_types::{
-    CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-    VerdictStatus, CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
+    VerdictCounts, VerdictStatus,
 };
 
 // ============================================================================
@@ -117,9 +117,9 @@ fn test_markdown_empty_finding_fields() {
         rule_id: "".to_string(), // empty rule_id
         severity: Severity::Warn,
         message: "".to_string(), // empty message
-        path: "".to_string(), // empty path
-        line: 0, // zero line number
-        column: Some(0), // zero column
+        path: "".to_string(),    // empty path
+        line: 0,                 // zero line number
+        column: Some(0),         // zero column
         match_text: "".to_string(),
         snippet: "".to_string(),
     }];
@@ -236,7 +236,7 @@ fn test_sarif_control_characters() {
     let findings = vec![Finding {
         rule_id: "test.rule".to_string(),
         severity: Severity::Error,
-        message: format!("Test with control char: \x00 and \x07"),
+        message: "Test with control char: \x00 and \x07".to_string(),
         path: "src/test.rs".to_string(),
         line: 1,
         column: Some(1),
@@ -616,5 +616,5 @@ fn test_all_renderers_handle_edge_cases() {
 
     // If we got here without panicking, the test passes
     // The actual correctness of the output is tested by the other tests
-    assert!(true);
+    let _ = (_md, _json, _xml, _csv, _tsv, _checkstyle);
 }

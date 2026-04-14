@@ -1,3 +1,8 @@
-crates/diffguard-diff/src/unified.rs:134:5: replace parse_unified_diff -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> with Ok((vec![Default::default()], Default::default()))
-crates/diffguard-diff/src/unified.rs:341:5: replace parse_hunk_header -> Result<HunkHeader, DiffParseError> with Ok(Default::default())
-crates/diffguard-diff/src/unified.rs:423:5: replace tokenize_git_paths -> Vec<GitPathToken> with vec![Default::default()]
+crates/diffguard-domain/src/evaluate.rs:76:5: replace evaluate_lines -> Evaluation with Default::default()
+crates/diffguard-domain/src/evaluate.rs:85:5: replace evaluate_lines_with_overrides -> Evaluation with Default::default()
+crates/diffguard-domain/src/evaluate.rs:95:5: replace evaluate_lines_with_overrides_and_language -> Evaluation with Default::default()
+crates/diffguard-domain/src/evaluate.rs:373:5: replace find_positive_matches_for_rule -> Vec<RawMatchEvent> with vec![Default::default()]
+crates/diffguard-domain/src/evaluate.rs:393:5: replace find_single_line_matches -> Vec<RawMatchEvent> with vec![Default::default()]
+crates/diffguard-domain/src/evaluate.rs:413:5: replace find_multiline_matches -> Vec<RawMatchEvent> with vec![Default::default()]
+crates/diffguard-domain/src/evaluate.rs:504:5: replace maybe_escalate_severity -> Severity with Default::default()
+crates/diffguard-domain/src/evaluate.rs:533:5: replace max_severity -> Severity with Default::default()

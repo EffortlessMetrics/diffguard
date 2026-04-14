@@ -1,0 +1,18 @@
+crates/diffguard-domain/src/evaluate.rs:413:27: replace < with > in find_multiline_matches
+crates/diffguard-domain/src/evaluate.rs:422:38: replace < with > in find_multiline_matches
+crates/diffguard-domain/src/evaluate.rs:446:24: replace < with <= in find_multiline_matches
+crates/diffguard-domain/src/evaluate.rs:446:20: replace + with * in find_multiline_matches
+crates/diffguard-domain/src/evaluate.rs:457:41: replace + with - in find_multiline_matches
+crates/diffguard-domain/src/evaluate.rs:457:41: replace + with * in find_multiline_matches
+crates/diffguard-domain/src/evaluate.rs:481:5: replace has_required_context -> bool with false
+crates/diffguard-domain/src/evaluate.rs:486:54: replace + with - in has_required_context
+crates/diffguard-domain/src/evaluate.rs:486:54: replace + with * in has_required_context
+crates/diffguard-domain/src/evaluate.rs:486:32: replace + with * in has_required_context
+crates/diffguard-domain/src/evaluate.rs:509:32: replace + with - in maybe_escalate_severity
+crates/diffguard-domain/src/evaluate.rs:509:32: replace + with * in maybe_escalate_severity
+crates/diffguard-domain/src/overrides.rs:151:30: replace || with && in normalize_directory
+crates/diffguard-domain/src/overrides.rs:158:5: replace directory_depth -> usize with 0
+crates/diffguard-domain/src/overrides.rs:158:5: replace directory_depth -> usize with 1
+crates/diffguard-domain/src/overrides.rs:161:41: delete ! in directory_depth
+crates/diffguard-domain/src/overrides.rs:172:33: replace && with || in path_in_directory
+crates/diffguard-domain/src/overrides.rs:203:29: replace || with && in scope_glob_to_directory
