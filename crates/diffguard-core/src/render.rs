@@ -13,6 +13,22 @@ const RENDERABLE_META_REASONS: &[&str] = &[
     REASON_TOOL_ERROR,
 ];
 
+/// Renders a CheckReceipt as a Markdown table for human-readable output.
+///
+/// Produces a markdown-formatted report with:
+/// - Header with status (PASS/WARN/FAIL/SKIP)
+/// - Scan summary (file count, line count, scope, base, head)
+/// - Verdict reasons (only meta-level reasons like truncation/errors)
+/// - Suppressed findings count if any
+/// - Table of findings with severity, rule, location, message, and snippet
+///
+/// # Arguments
+///
+/// * `receipt` - The check receipt containing findings and verdict
+///
+/// # Returns
+///
+/// A markdown-formatted string suitable for console output or documentation.
 pub fn render_markdown_for_receipt(receipt: &CheckReceipt) -> String {
     let status = match receipt.verdict.status {
         VerdictStatus::Pass => "PASS",
@@ -70,6 +86,18 @@ pub fn render_markdown_for_receipt(receipt: &CheckReceipt) -> String {
     out
 }
 
+/// Renders a single Finding as a markdown table row.
+///
+/// Escapes all special markdown characters in the finding fields to ensure
+/// the table structure remains valid. The location is formatted as "path:line".
+///
+/// # Arguments
+///
+/// * `f` - The finding to render
+///
+/// # Returns
+///
+/// A markdown table row string with escaped cell contents.
 fn render_finding_row(f: &Finding) -> String {
     let sev = f.severity.as_str();
     let loc = format!("{}:{}", escape_md(&f.path), f.line);
@@ -88,22 +116,24 @@ fn render_finding_row(f: &Finding) -> String {
 
 /// Escapes special Markdown characters in table cell content.
 ///
-/// Escapes pipe (`|`) and backtick (`` ` ``) characters by prefixing with backslash.
-/// These are the minimal escapes needed to prevent breaking the markdown table
-/// structure.
+/// Escapes pipe (`|`), backtick (`` ` ``), hash (`#`), asterisk (`*`),
+/// underscore (`_`), open bracket (`[`), close bracket (`]`), and greater-than
+/// (`>`) characters by prefixing with backslash. Also escapes CRLF (`\r\n`)
+/// and LF (`\n`) line endings to prevent breaking the markdown table structure.
 ///
-/// # Limitations
-///
-/// This function does NOT escape other Markdown special characters:
-/// - `#` headers (could create ATX headings)
-/// - `*` and `_` (could create bold/italic)
-/// - `[` and `](url)` (could create links)
-/// - `>` blockquotes
-///
-/// These omissions are known issues that may cause rendering problems when these
-/// characters appear in finding fields.
+/// These escapes are needed to prevent breaking the markdown table structure
+/// and prevent unintended markdown formatting.
 fn escape_md(s: &str) -> String {
-    s.replace('|', "\\|").replace('`', "\\`")
+    s.replace('|', "\\|")
+        .replace('`', "\\`")
+        .replace('#', "\\#")
+        .replace('*', "\\*")
+        .replace('_', "\\_")
+        .replace('[', "\\[")
+        .replace(']', "\\]")
+        .replace('>', "\\>")
+        .replace('\r', "\\r")
+        .replace('\n', "\\n")
 }
 
 #[cfg(test)]
