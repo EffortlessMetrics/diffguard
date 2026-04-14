@@ -17,8 +17,8 @@ use diffguard_core::{
     render_markdown_for_receipt, render_sarif_json, render_tsv_for_receipt,
 };
 use diffguard_types::{
-    CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-    VerdictStatus, CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
+    VerdictCounts, VerdictStatus,
 };
 
 // ============================================================================
@@ -117,17 +117,17 @@ fn test_markdown_empty_finding_fields() {
         rule_id: "".to_string(), // empty rule_id
         severity: Severity::Warn,
         message: "".to_string(), // empty message
-        path: "".to_string(), // empty path
-        line: 0, // zero line number
-        column: Some(0), // zero column
+        path: "".to_string(),    // empty path
+        line: 0,                 // zero line number
+        column: Some(0),         // zero column
         match_text: "".to_string(),
         snippet: "".to_string(),
     }];
     let receipt = make_receipt(findings);
     let md = render_markdown_for_receipt(&receipt);
 
-    // Should render even with empty fields - table row should have empty cells
-    assert!(md.contains("| warn | `` | ``:0"));
+    // Should render with empty fields (empty strings escape as `` in markdown cells)
+    assert!(md.contains("| warn | `` | :0 | `` |"));
 }
 
 /// Test markdown output with VerdictStatus::Skip
@@ -413,7 +413,7 @@ fn test_csv_empty_fields() {
     // Should render with empty quoted fields or just empty fields
     let lines: Vec<&str> = csv.lines().collect();
     assert!(lines.len() == 2); // header + 1 data row
-    assert!(lines[1].contains(",,,,")); // empty fields
+    assert!(lines[1].contains(",0,,warn,,")); // empty fields
 }
 
 /// Test TSV output with backslash escape sequences
@@ -480,7 +480,7 @@ fn test_tsv_empty_fields() {
     let lines: Vec<&str> = tsv.lines().collect();
     assert!(lines.len() == 2); // header + 1 data row
     // Tab-separated empty fields
-    assert!(lines[1].contains("\t\t\t\t\t"));
+    assert!(lines[1].contains("\t0\t\twarn\t\t\t")); // 5 tabs for 6 fields: "",0,"",warn,"",""
 }
 
 // ============================================================================
