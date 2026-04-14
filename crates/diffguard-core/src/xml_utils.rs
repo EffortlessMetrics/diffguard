@@ -3,6 +3,8 @@
 //! Provides shared XML escaping functionality used by JUnit, Checkstyle,
 //! and other XML-based output formats.
 
+use std::fmt::Write;
+
 /// Escapes special XML characters and illegal control characters in a string.
 ///
 /// Handles:
@@ -22,7 +24,7 @@ pub fn escape_xml(s: &str) -> String {
             '\'' => out.push_str("&apos;"),
             // Illegal XML control characters (0x00-0x1F except tab/LF/CR)
             c if c <= '\u{001F}' && c != '\t' && c != '\n' && c != '\r' => {
-                out.push_str(&format!("&#x{:X};", c as u32));
+                write!(out, "&#x{:X};", c as u32).unwrap();
             }
             _ => out.push(c),
         }
