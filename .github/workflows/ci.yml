@@ -58,8 +58,14 @@ jobs:
       - name: Check PR body references an issue
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
+          BRANCH: ${{ github.head_ref }}
         run: |
           echo "$PR_BODY" > /tmp/pr-body.txt
+          # Allow chore/ branches (maintenance, no issue needed)
+          if echo "$BRANCH" | grep -qE '^chore/'; then
+            echo "✅ chore/ branch — issue link waived for maintenance PRs"
+            exit 0
+          fi
           if grep -qiE '(closes|fixes|resolves)\s+#[0-9]+' /tmp/pr-body.txt; then
             echo "✅ PR references an issue"
           else
