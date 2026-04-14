@@ -86,6 +86,22 @@ fn render_finding_row(f: &Finding) -> String {
     )
 }
 
+/// Escapes special Markdown characters in table cell content.
+///
+/// Escapes pipe (`|`) and backtick (`` ` ``) characters by prefixing with backslash.
+/// These are the minimal escapes needed to prevent breaking the markdown table
+/// structure.
+///
+/// # Limitations
+///
+/// This function does NOT escape other Markdown special characters:
+/// - `#` headers (could create ATX headings)
+/// - `*` and `_` (could create bold/italic)
+/// - `[` and `](url)` (could create links)
+/// - `>` blockquotes
+///
+/// These omissions are known issues that may cause rendering problems when these
+/// characters appear in finding fields.
 fn escape_md(s: &str) -> String {
     s.replace('|', "\\|").replace('`', "\\`")
 }
