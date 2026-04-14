@@ -2867,9 +2867,8 @@ fn cmd_test(args: TestArgs) -> Result<i32> {
     if rules.is_empty() {
         if let Some(filter) = &args.rule {
             bail!("No rules match filter '{}'", filter);
-        } else {
-            bail!("No rules defined in configuration");
         }
+        bail!("No rules defined in configuration");
     }
 
     // Count total test cases
