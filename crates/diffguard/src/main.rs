@@ -1990,7 +1990,7 @@ fn cmd_check(mut args: CheckArgs) -> Result<i32> {
                                     build_tool_error_sensor_report(&args, &detail, &ctx);
                                 if let Ok(json) = serialize_sensor_report_checked(&sensor_report) {
                                     if write_text(sensor_path, &json).is_ok() {
-                                        eprintln!("diffguard: tool error: {detail}");
+                                        eprintln!("diffguard: check failed: {detail}");
                                         return Ok(0);
                                     }
                                 }
@@ -1998,7 +1998,7 @@ fn cmd_check(mut args: CheckArgs) -> Result<i32> {
 
                             // Also write the regular receipt
                             if write_json(&out_path, &fail_receipt).is_ok() {
-                                eprintln!("diffguard: tool error: {detail}");
+                                eprintln!("diffguard: check failed: {detail}");
                                 return Ok(0);
                             }
                         }
