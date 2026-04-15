@@ -28,6 +28,7 @@ pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
     changed
 }
 
+#[must_use]
 pub fn build_synthetic_diff(path: &str, text: &str, changed_lines: &BTreeSet<u32>) -> String {
     let mut diff = format!(
         "diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n",
@@ -117,6 +118,7 @@ pub fn byte_offset_at_position(text: &str, position: Position) -> Option<usize> 
     }
 }
 
+#[must_use]
 pub fn utf16_length(text: &str) -> u32 {
     text.chars().map(|ch| ch.len_utf16() as u32).sum()
 }

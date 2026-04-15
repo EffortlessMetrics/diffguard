@@ -20,6 +20,7 @@ pub enum ChangeKind {
 /// - "Binary files /dev/null and b/foo.png differ"
 ///
 /// Requirements: 4.1
+#[must_use]
 pub fn is_binary_file(line: &str) -> bool {
     line.starts_with("Binary files ") && line.contains(" differ")
 }
@@ -30,6 +31,7 @@ pub fn is_binary_file(line: &str) -> bool {
 /// - "Subproject commit abc123..."
 ///
 /// Requirements: 4.2
+#[must_use]
 pub fn is_submodule(line: &str) -> bool {
     line.starts_with("Subproject commit ")
 }
@@ -40,6 +42,7 @@ pub fn is_submodule(line: &str) -> bool {
 /// - "deleted file mode 100644"
 ///
 /// Requirements: 4.5
+#[must_use]
 pub fn is_deleted_file(line: &str) -> bool {
     line.starts_with("deleted file mode ")
 }
@@ -48,6 +51,7 @@ pub fn is_deleted_file(line: &str) -> bool {
 ///
 /// New files are marked with lines like:
 /// - "new file mode 100644"
+#[must_use]
 pub fn is_new_file(line: &str) -> bool {
     line.starts_with("new file mode ")
 }
@@ -62,6 +66,7 @@ pub fn is_new_file(line: &str) -> bool {
 /// A mode-only change is one where only the file permissions changed, not the content.
 ///
 /// Requirements: 4.4
+#[must_use]
 pub fn is_mode_change_only(line: &str) -> bool {
     line.starts_with("old mode ") || line.starts_with("new mode ")
 }
