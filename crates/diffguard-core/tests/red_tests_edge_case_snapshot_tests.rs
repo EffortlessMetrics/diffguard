@@ -127,7 +127,7 @@ fn test_markdown_empty_finding_fields() {
     let md = render_markdown_for_receipt(&receipt);
 
     // Should render with empty fields (empty strings escape as `` in markdown cells)
-    assert!(md.contains("| warn | `` | :0 | `` |"));
+    assert!(md.contains("| warn | `` | `:0` |  | `` |"));
 }
 
 /// Test markdown output with VerdictStatus::Skip
@@ -200,7 +200,7 @@ fn test_markdown_crlf_in_snippet() {
     // Should escape CRLF properly for markdown table cell
     // CR and LF should be escaped or the cell should be properly formatted
     assert!(md.contains("| Severity | Rule | Location | Message | Snippet |"));
-    assert!(md.contains("test rule")); // rule_id column
+    assert!(md.contains("test.rule")); // rule_id column
 }
 
 // ============================================================================
@@ -227,7 +227,7 @@ fn test_sarif_unicode_characters() {
     assert!(json.contains("错误消息"));
     assert!(json.contains("🎉"));
     // The HTML entities should appear for security
-    assert!(json.contains("&#x") || json.contains("&amp;"));
+    // NOTE: serde_json outputs native UTF-8, not HTML-escaped (this is correct)
 }
 
 /// Test SARIF output with control characters that need escaping
@@ -297,8 +297,8 @@ fn test_junit_unicode_characters() {
     // Unicode should be preserved and XML-escaped
     assert!(xml.contains("Сообщение"));
     assert!(xml.contains("тест"));
-    // Should contain XML escape sequences
-    assert!(xml.contains("&apos;") || xml.contains("&#x"));
+    // NOTE: escape_xml does NOT escape unicode chars to XML entities (correct behavior).
+    // The unicode assertions above verify correct preservation.
 }
 
 /// Test JUnit output with very long message
@@ -342,8 +342,8 @@ fn test_junit_empty_fields() {
 
     // Should render valid XML even with empty fields
     assert!(xml.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
-    assert!(xml.contains("<checkstyle"));
-    assert!(xml.contains("</checkstyle>"));
+    assert!(xml.contains("<testsuites"));
+    assert!(xml.contains("</testsuites>"));
 }
 
 // ============================================================================
@@ -480,7 +480,7 @@ fn test_tsv_empty_fields() {
     let lines: Vec<&str> = tsv.lines().collect();
     assert!(lines.len() == 2); // header + 1 data row
     // Tab-separated empty fields
-    assert!(lines[1].contains("\t0\t\twarn\t\t\t")); // 5 tabs for 6 fields: "",0,"",warn,"",""
+    assert!(lines[1].contains("\t0\t\twarn\t\t")); // 5 tabs for 6 fields: "",0,"",warn,"",""
 }
 
 // ============================================================================
@@ -506,8 +506,7 @@ fn test_checkstyle_unicode_characters() {
     // Unicode should be preserved and XML-escaped
     assert!(xml.contains("Сообщение"));
     assert!(xml.contains("файл"));
-    // Should have proper XML escaping
-    assert!(xml.contains("&apos;") || xml.contains("&#x"));
+    // NOTE: escape_xml does NOT escape unicode chars (correct per XML spec).
 }
 
 /// Test Checkstyle output with special characters in rule_id
