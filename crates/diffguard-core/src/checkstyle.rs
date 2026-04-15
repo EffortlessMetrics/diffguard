@@ -26,7 +26,7 @@ use diffguard_types::{CheckReceipt, Finding, Severity};
 /// - `Error` → "error"
 /// - `Warn`  → "warning"
 /// - `Info`  → "info"
-
+///
 /// Formats a `<error>` element for a finding.
 ///
 /// Column is optional in Checkstyle — only included when present.
