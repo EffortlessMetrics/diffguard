@@ -114,16 +114,9 @@ pub fn run_conformance(quick: bool) -> Result<()> {
 
     // Test 8: Vocabulary constants
     print!("  [8/15] Vocabulary constants... ");
-    match test_vocabulary_constants() {
-        Ok(()) => {
-            println!("PASS");
-            passed += 1;
-        }
-        Err(e) => {
-            println!("FAIL: {e}");
-            failed += 1;
-        }
-    }
+    test_vocabulary_constants();
+    println!("PASS");
+    passed += 1;
 
     // Test 9: Tool error code in sensor report
     print!("  [9/15] Tool error code field... ");
@@ -717,7 +710,7 @@ fn canonicalize_json(value: &serde_json::Value) -> String {
 }
 
 /// Test that frozen vocabulary constants have the expected values.
-fn test_vocabulary_constants() -> Result<()> {
+fn test_vocabulary_constants() {
     use diffguard_types::{
         CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_SKIPPED, CAP_STATUS_UNAVAILABLE,
         CHECK_ID_INTERNAL, CHECK_ID_PATTERN, CHECK_SCHEMA_V1, CODE_TOOL_RUNTIME_ERROR,
@@ -751,7 +744,6 @@ fn test_vocabulary_constants() -> Result<()> {
     assert_eq!(CAP_STATUS_UNAVAILABLE, "unavailable");
     assert_eq!(CAP_STATUS_SKIPPED, "skipped");
 
-    Ok(())
 }
 
 /// Test that cockpit-mode tool errors produce the correct code field.

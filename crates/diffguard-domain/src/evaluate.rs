@@ -559,8 +559,8 @@ fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
 }
 
 fn trim_snippet(s: &str) -> String {
-    let trimmed = s.trim_end();
     const MAX_CHARS: usize = 240;
+    let trimmed = s.trim_end();
 
     // Avoid slicing by byte indices (which can panic on Unicode boundaries).
     let mut out = String::new();
