@@ -74,7 +74,7 @@ impl DocumentState {
         }
 
         if let Some(full_change) = changes.iter().rev().find(|change| change.range.is_none()) {
-            self.text = full_change.text.clone();
+            self.text.clone_from(&full_change.text);
             self.changed_lines = changed_lines_between(&self.baseline_text, &self.text);
             return Ok(());
         }
