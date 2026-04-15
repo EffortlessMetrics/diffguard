@@ -236,7 +236,7 @@ fn test_sarif_control_characters() {
     let findings = vec![Finding {
         rule_id: "test.rule".to_string(),
         severity: Severity::Error,
-        message: format!("Test with control char: \x00 and \x07"),
+        message: "Test with control char: \x00 and \x07".to_string(),
         path: "src/test.rs".to_string(),
         line: 1,
         column: Some(1),
@@ -615,5 +615,4 @@ fn test_all_renderers_handle_edge_cases() {
 
     // If we got here without panicking, the test passes
     // The actual correctness of the output is tested by the other tests
-    assert!(true);
 }
