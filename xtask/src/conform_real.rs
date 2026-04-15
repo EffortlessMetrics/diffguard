@@ -684,15 +684,17 @@ fn test_schema_drift() -> Result<()> {
             .zip(contract_canonical.lines())
             .enumerate()
             .find(|(_, (a, b))| a != b)
-            .map(|(i, (a, b))| {
-                format!(
-                    "first divergence at line {}:\n  generated: {}\n  contract:  {}",
-                    i + 1,
-                    a,
-                    b
-                )
-            })
-            .unwrap_or_else(|| "files differ in length".to_string());
+            .map_or_else(
+                || "files differ in length".to_string(),
+                |(i, (a, b))| {
+                    format!(
+                        "first divergence at line {}:\n  generated: {}\n  contract:  {}",
+                        i + 1,
+                        a,
+                        b
+                    )
+                },
+            );
 
         bail!(
             "schema drift detected!\n\
