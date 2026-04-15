@@ -1691,7 +1691,16 @@ fn render_finding_row_with_baseline(f: &Finding, is_baseline: bool) -> String {
 
 /// Escapes special markdown characters in a string.
 fn escape_md(s: &str) -> String {
-    s.replace('|', "\\|").replace('`', "\\`")
+    s.replace('|', "\\|")
+        .replace('`', "\\`")
+        .replace('#', "\\#")
+        .replace('*', "\\*")
+        .replace('_', "\\_")
+        .replace('[', "\\[")
+        .replace(']', "\\]")
+        .replace('>', "\\>")
+        .replace('\r', "\\r")
+        .replace('\n', "\\n")
 }
 
 /// Renders markdown output with baseline/new annotations.

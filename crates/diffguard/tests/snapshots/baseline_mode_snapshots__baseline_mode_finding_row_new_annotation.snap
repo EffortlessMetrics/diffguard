@@ -1,6 +1,6 @@
 ---
 source: crates/diffguard/tests/baseline_mode_snapshots.rs
-expression: markdown
+expression: normalize_git_hashes(&markdown)
 ---
 ## diffguard — FAIL
 
@@ -8,4 +8,4 @@ Scanned **1** file(s), **1** line(s) (scope: `added`, base: `GIT_HASH_PLACEHOLDE
 
 | Severity | Classification | Rule | Location | Message | Snippet |
 |---|---|---|---|---|---|
-| error | [NEW] `rust.no_unwrap` | `src/lib.rs:2` | Avoid unwrap/expect in production code. | `pub fn g() -> u32 { Some(1).unwrap() }` |
+| error | [NEW] `rust.no\_unwrap` | `src/lib.rs:2` | Avoid unwrap/expect in production code. | `pub fn g() -\> u32 { Some(1).unwrap() }` |

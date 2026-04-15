@@ -1,6 +1,6 @@
 ---
 source: crates/diffguard/tests/baseline_mode_snapshots.rs
-expression: "format!(\"exit_code={:?}\\n\\n{}\", exit_code, markdown)"
+expression: "format!(\"exit_code={:?}\\n\\n{}\", exit_code, normalize_git_hashes(&markdown))"
 ---
 exit_code=Some(0)
 
@@ -10,4 +10,4 @@ Scanned **1** file(s), **1** line(s) (scope: `added`, base: `GIT_HASH_PLACEHOLDE
 
 | Severity | Classification | Rule | Location | Message | Snippet |
 |---|---|---|---|---|---|
-| error | [BASELINE] `rust.no_unwrap` | `src/lib.rs:2` | Avoid unwrap/expect in production code. | `pub fn g() -> u32 { Some(1).unwrap() }` |
+| error | [BASELINE] `rust.no\_unwrap` | `src/lib.rs:2` | Avoid unwrap/expect in production code. | `pub fn g() -\> u32 { Some(1).unwrap() }` |
