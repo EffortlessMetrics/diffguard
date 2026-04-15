@@ -131,8 +131,8 @@ fn snapshot_checkstyle_all_severities() {
         ),
     ]);
     let xml = render_checkstyle_for_receipt(&receipt);
-    // Info should map to "warning" (Checkstyle has no info equivalent)
-    assert!(xml.contains("severity=\"warning\""));
+    // Info should map to "info"
+    assert!(xml.contains("severity=\"info\""));
     // Error should be "error"
     assert!(xml.contains("severity=\"error\""));
     insta::assert_snapshot!("checkstyle_all_severities", xml);
