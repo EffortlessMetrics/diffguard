@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use anyhow::{Context, Result, bail};
@@ -55,7 +55,7 @@ where
 
     match cli.cmd {
         Cmd::Ci => ci(),
-        Cmd::Schema { out_dir } => schema(out_dir),
+        Cmd::Schema { out_dir } => schema(out_dir.as_path()),
         Cmd::Conform { quick } => conform::run_conformance(quick),
         Cmd::Mutants { package } => mutants(package),
     }
@@ -79,8 +79,8 @@ fn ci() -> Result<()> {
     Ok(())
 }
 
-fn schema(out_dir: PathBuf) -> Result<()> {
-    std::fs::create_dir_all(&out_dir).context("create schema output dir")?;
+fn schema(out_dir: &Path) -> Result<()> {
+    std::fs::create_dir_all(out_dir).context("create schema output dir")?;
 
     let cfg_schema = schema_for!(diffguard_types::ConfigFile);
     let receipt_schema = schema_for!(diffguard_types::CheckReceipt);
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn schema_writes_expected_files() {
         let dir = TempDir::new().expect("temp");
-        schema(dir.path().to_path_buf()).expect("schema generation");
+        schema(dir.path()).expect("schema generation");
 
         assert!(dir.path().join("diffguard.config.schema.json").exists());
         assert!(dir.path().join("diffguard.check.schema.json").exists());
