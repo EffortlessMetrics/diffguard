@@ -642,7 +642,9 @@ impl LanguageArg {
 #[cfg(not(test))]
 fn main() -> std::process::ExitCode {
     match run_with_args(std::env::args_os()) {
-        Ok(code) => std::process::ExitCode::from(code.clamp(i32::from(u8::MIN), i32::from(u8::MAX)) as u8),
+        Ok(code) => {
+            std::process::ExitCode::from(code.clamp(i32::from(u8::MIN), i32::from(u8::MAX)) as u8)
+        }
         Err(err) => {
             eprintln!("{err:?}");
             std::process::ExitCode::from(1)
