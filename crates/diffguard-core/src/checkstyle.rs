@@ -26,6 +26,29 @@ use diffguard_types::{CheckReceipt, Finding, Severity};
 /// - `Error` → "error"
 /// - `Warn`  → "warning"
 /// - `Info`  → "info"
+
+/// Formats a `<error>` element for a finding.
+///
+/// Column is optional in Checkstyle — only included when present.
+fn error_element(
+    line: u32,
+    column: Option<u32>,
+    severity: &str,
+    message: &str,
+    rule_id: &str,
+) -> String {
+    let column_attr = column
+        .map(|c| format!(" column=\"{}\"", c))
+        .unwrap_or_default();
+    format!(
+        "    <error line=\"{}\"{column_attr} severity=\"{}\" message=\"{}\" source=\"{}\"/>\n",
+        line,
+        severity,
+        escape_xml(message),
+        escape_xml(rule_id),
+    )
+}
+
 pub fn render_checkstyle_for_receipt(receipt: &CheckReceipt) -> String {
     let mut out = String::new();
 
@@ -51,25 +74,13 @@ pub fn render_checkstyle_for_receipt(receipt: &CheckReceipt) -> String {
                 Severity::Info => "info",
             };
 
-            // column is optional in Checkstyle — only emit if present
-            if let Some(col) = f.column {
-                out.push_str(&format!(
-                    "    <error line=\"{}\" column=\"{}\" severity=\"{}\" message=\"{}\" source=\"{}\"/>\n",
-                    f.line,
-                    col,
-                    severity_str,
-                    escape_xml(&f.message),
-                    escape_xml(&f.rule_id),
-                ));
-            } else {
-                out.push_str(&format!(
-                    "    <error line=\"{}\" severity=\"{}\" message=\"{}\" source=\"{}\"/>\n",
-                    f.line,
-                    severity_str,
-                    escape_xml(&f.message),
-                    escape_xml(&f.rule_id),
-                ));
-            }
+            out.push_str(&error_element(
+                f.line,
+                f.column,
+                severity_str,
+                &f.message,
+                &f.rule_id,
+            ));
         }
         out.push_str("  </file>\n");
     }
