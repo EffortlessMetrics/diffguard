@@ -265,8 +265,7 @@ fn test_schema_validation() -> Result<()> {
 
     if schema_field != "sensor.report.v1" {
         bail!(
-            "invalid schema field: expected 'sensor.report.v1', got '{}'",
-            schema_field
+            "invalid schema field: expected 'sensor.report.v1', got '{schema_field}'"
         );
     }
 
@@ -389,7 +388,7 @@ fn test_survivability() -> Result<()> {
             .and_then(|s| s.as_str());
 
         if status != Some("skip") {
-            bail!("expected verdict.status to be 'skip', got {:?}", status);
+            bail!("expected verdict.status to be 'skip', got {status:?}");
         }
     }
 
@@ -515,9 +514,7 @@ fn test_vocabulary() -> Result<()> {
 
     if !valid_statuses.contains(&status) {
         bail!(
-            "invalid verdict.status '{}', must be one of: {:?}",
-            status,
-            valid_statuses
+            "invalid verdict.status '{status}', must be one of: {valid_statuses:?}"
         );
     }
 
@@ -532,10 +529,7 @@ fn test_vocabulary() -> Result<()> {
 
             if !valid_severities.contains(&severity) {
                 bail!(
-                    "invalid severity '{}' at findings[{}], must be one of: {:?}",
-                    severity,
-                    i,
-                    valid_severities
+                    "invalid severity '{severity}' at findings[{i}], must be one of: {valid_severities:?}"
                 );
             }
         }
@@ -556,10 +550,7 @@ fn test_vocabulary() -> Result<()> {
 
             if !valid_cap_statuses.contains(&status) {
                 bail!(
-                    "invalid capability status '{}' for '{}', must be one of: {:?}",
-                    status,
-                    name,
-                    valid_cap_statuses
+                    "invalid capability status '{status}' for '{name}', must be one of: {valid_cap_statuses:?}"
                 );
             }
         }
@@ -799,8 +790,7 @@ fn test_tool_error_code() -> Result<()> {
                     if let Some(code) = finding.get("code").and_then(|c| c.as_str()) {
                         if code != "tool.runtime_error" {
                             bail!(
-                                "expected tool error code 'tool.runtime_error', got '{}'",
-                                code
+                                "expected tool error code 'tool.runtime_error', got '{code}'"
                             );
                         }
                     }
@@ -847,14 +837,13 @@ fn test_token_lint() -> Result<()> {
             if let Some(check_id) = finding.get("check_id").and_then(|v| v.as_str()) {
                 if !token_re.is_match(check_id) {
                     bail!(
-                        "findings[{i}].check_id '{}' does not match token format",
-                        check_id
+                        "findings[{i}].check_id '{check_id}' does not match token format"
                     );
                 }
             }
             if let Some(code) = finding.get("code").and_then(|v| v.as_str()) {
                 if !token_re.is_match(code) {
-                    bail!("findings[{i}].code '{}' does not match token format", code);
+                    bail!("findings[{i}].code '{code}' does not match token format");
                 }
             }
         }
@@ -869,7 +858,7 @@ fn test_token_lint() -> Result<()> {
         for (i, reason) in reasons.iter().enumerate() {
             if let Some(r) = reason.as_str() {
                 if !token_re.is_match(r) {
-                    bail!("verdict.reasons[{i}] '{}' does not match token format", r);
+                    bail!("verdict.reasons[{i}] '{r}' does not match token format");
                 }
             }
         }
@@ -883,7 +872,7 @@ fn test_token_lint() -> Result<()> {
     {
         for name in capabilities.keys() {
             if !token_re.is_match(name) {
-                bail!("capabilities key '{}' does not match token format", name);
+                bail!("capabilities key '{name}' does not match token format");
             }
         }
     }
@@ -896,7 +885,7 @@ fn test_token_lint() -> Result<()> {
         .and_then(|s| s.as_str())
     {
         if !valid_statuses.contains(&status) {
-            bail!("verdict.status '{}' not in frozen enum", status);
+            bail!("verdict.status '{status}' not in frozen enum");
         }
     }
 
@@ -906,7 +895,7 @@ fn test_token_lint() -> Result<()> {
         for (i, finding) in findings.iter().enumerate() {
             if let Some(sev) = finding.get("severity").and_then(|s| s.as_str()) {
                 if !valid_severities.contains(&sev) {
-                    bail!("findings[{i}].severity '{}' not in frozen enum", sev);
+                    bail!("findings[{i}].severity '{sev}' not in frozen enum");
                 }
             }
         }
@@ -956,12 +945,11 @@ fn test_path_hygiene() -> Result<()> {
 
                 if path.contains('\\') {
                     bail!(
-                        "findings[{i}].location.path '{}' contains backslashes",
-                        path
+                        "findings[{i}].location.path '{path}' contains backslashes"
                     );
                 }
                 if path.starts_with('/') {
-                    bail!("findings[{i}].location.path '{}' is an absolute path", path);
+                    bail!("findings[{i}].location.path '{path}' is an absolute path");
                 }
                 // Check for Windows drive letters (e.g., C:)
                 if path.len() >= 2
@@ -969,14 +957,12 @@ fn test_path_hygiene() -> Result<()> {
                     && path.as_bytes()[1] == b':'
                 {
                     bail!(
-                        "findings[{i}].location.path '{}' contains a drive letter",
-                        path
+                        "findings[{i}].location.path '{path}' contains a drive letter"
                     );
                 }
                 if path.contains("..") {
                     bail!(
-                        "findings[{i}].location.path '{}' contains traversal '..'",
-                        path
+                        "findings[{i}].location.path '{path}' contains traversal '..'"
                     );
                 }
             }
@@ -1026,8 +1012,7 @@ fn test_fingerprint_format() -> Result<()> {
 
             if !fingerprint_re.is_match(fingerprint) {
                 bail!(
-                    "findings[{i}].fingerprint '{}' does not match ^[0-9a-f]{{64}}$",
-                    fingerprint
+                    "findings[{i}].fingerprint '{fingerprint}' does not match ^[0-9a-f]{{64}}$"
                 );
             }
         }
@@ -1068,19 +1053,19 @@ fn test_artifact_path_hygiene() -> Result<()> {
         for (i, artifact) in artifacts.iter().enumerate() {
             if let Some(path) = artifact.get("path").and_then(|p| p.as_str()) {
                 if path.contains('\\') {
-                    bail!("artifacts[{i}].path '{}' contains backslashes", path);
+                    bail!("artifacts[{i}].path '{path}' contains backslashes");
                 }
                 if path.starts_with('/') {
-                    bail!("artifacts[{i}].path '{}' is an absolute path", path);
+                    bail!("artifacts[{i}].path '{path}' is an absolute path");
                 }
                 if path.len() >= 2
                     && path.as_bytes()[0].is_ascii_alphabetic()
                     && path.as_bytes()[1] == b':'
                 {
-                    bail!("artifacts[{i}].path '{}' contains a drive letter", path);
+                    bail!("artifacts[{i}].path '{path}' contains a drive letter");
                 }
                 if path.contains("..") {
-                    bail!("artifacts[{i}].path '{}' contains traversal '..'", path);
+                    bail!("artifacts[{i}].path '{path}' contains traversal '..'");
                 }
             }
         }
@@ -1135,9 +1120,7 @@ fn test_cockpit_output_layout() -> Result<()> {
     let expected_top = vec!["comment.md", "extras", "report.json"];
     if top_entries != expected_top {
         bail!(
-            "unexpected top-level layout: got {:?}, expected {:?}",
-            top_entries,
-            expected_top
+            "unexpected top-level layout: got {top_entries:?}, expected {expected_top:?}"
         );
     }
 
@@ -1160,9 +1143,7 @@ fn test_cockpit_output_layout() -> Result<()> {
     ];
     if extras_entries != expected_extras {
         bail!(
-            "unexpected extras layout: got {:?}, expected {:?}",
-            extras_entries,
-            expected_extras
+            "unexpected extras layout: got {extras_entries:?}, expected {expected_extras:?}"
         );
     }
 
@@ -1190,19 +1171,19 @@ fn test_cockpit_output_layout() -> Result<()> {
     for (i, artifact) in artifacts.iter().enumerate() {
         if let Some(path) = artifact.get("path").and_then(|p| p.as_str()) {
             if path.contains('\\') {
-                bail!("artifacts[{i}].path '{}' contains backslashes", path);
+                bail!("artifacts[{i}].path '{path}' contains backslashes");
             }
             if path.starts_with('/') {
-                bail!("artifacts[{i}].path '{}' is an absolute path", path);
+                bail!("artifacts[{i}].path '{path}' is an absolute path");
             }
             if path.len() >= 2
                 && path.as_bytes()[0].is_ascii_alphabetic()
                 && path.as_bytes()[1] == b':'
             {
-                bail!("artifacts[{i}].path '{}' contains a drive letter", path);
+                bail!("artifacts[{i}].path '{path}' contains a drive letter");
             }
             if path.contains("..") {
-                bail!("artifacts[{i}].path '{}' contains traversal '..'", path);
+                bail!("artifacts[{i}].path '{path}' contains traversal '..'");
             }
         }
     }
