@@ -25,7 +25,7 @@ use diffguard_types::{CheckReceipt, Finding, Severity};
 /// Severity mapping:
 /// - `Error` → "error"
 /// - `Warn`  → "warning"
-/// - `Info`  → "warning" (Checkstyle has no Info equivalent)
+/// - `Info`  → "info"
 pub fn render_checkstyle_for_receipt(receipt: &CheckReceipt) -> String {
     let mut out = String::new();
 
@@ -48,7 +48,7 @@ pub fn render_checkstyle_for_receipt(receipt: &CheckReceipt) -> String {
             let severity_str = match f.severity {
                 Severity::Error => "error",
                 Severity::Warn => "warning",
-                Severity::Info => "warning",
+                Severity::Info => "info",
             };
 
             // column is optional in Checkstyle — only emit if present
@@ -176,7 +176,7 @@ mod tests {
     }
 
     #[test]
-    fn info_maps_to_warning() {
+    fn info_maps_to_info() {
         let findings = vec![Finding {
             rule_id: "todo".into(),
             severity: Severity::Info,
@@ -190,9 +190,9 @@ mod tests {
         let receipt = make_receipt(findings);
         let xml = render_checkstyle_for_receipt(&receipt);
 
-        // Info should map to "warning" in Checkstyle
-        assert!(xml.contains("severity=\"warning\""));
-        assert!(!xml.contains("severity=\"info\""));
+        // Info should map to "info" in Checkstyle
+        assert!(xml.contains("severity=\"info\""));
+        assert!(!xml.contains("severity=\"warning\""));
     }
 
     #[test]
