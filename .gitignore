@@ -22,3 +22,6 @@ mutants.out*/
 *~
 # Extra snapshot directories (not cargo snapshots)
 crates/diffguard/src/snapshots/
+
+# Debug/test artifacts
+bool
