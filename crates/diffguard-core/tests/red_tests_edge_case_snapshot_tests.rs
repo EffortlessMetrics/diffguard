@@ -17,8 +17,8 @@ use diffguard_core::{
     render_markdown_for_receipt, render_sarif_json, render_tsv_for_receipt,
 };
 use diffguard_types::{
-    CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
-    VerdictCounts, VerdictStatus,
+    CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
+    VerdictStatus, CHECK_SCHEMA_V1,
 };
 
 // ============================================================================
@@ -117,17 +117,17 @@ fn test_markdown_empty_finding_fields() {
         rule_id: "".to_string(), // empty rule_id
         severity: Severity::Warn,
         message: "".to_string(), // empty message
-        path: "".to_string(),    // empty path
-        line: 0,                 // zero line number
-        column: Some(0),         // zero column
+        path: "".to_string(), // empty path
+        line: 0, // zero line number
+        column: Some(0), // zero column
         match_text: "".to_string(),
         snippet: "".to_string(),
     }];
     let receipt = make_receipt(findings);
     let md = render_markdown_for_receipt(&receipt);
 
-    // Should render with empty fields (empty strings escape as `` in markdown cells)
-    assert!(md.contains("| warn | `` | `:0` |  | `` |"));
+    // Should render even with empty fields - table row should have empty cells
+    assert!(md.contains("| warn | `` | ``:0"));
 }
 
 /// Test markdown output with VerdictStatus::Skip
@@ -200,7 +200,7 @@ fn test_markdown_crlf_in_snippet() {
     // Should escape CRLF properly for markdown table cell
     // CR and LF should be escaped or the cell should be properly formatted
     assert!(md.contains("| Severity | Rule | Location | Message | Snippet |"));
-    assert!(md.contains("test.rule")); // rule_id column
+    assert!(md.contains("test rule")); // rule_id column
 }
 
 // ============================================================================
@@ -227,7 +227,7 @@ fn test_sarif_unicode_characters() {
     assert!(json.contains("错误消息"));
     assert!(json.contains("🎉"));
     // The HTML entities should appear for security
-    // NOTE: serde_json outputs native UTF-8, not HTML-escaped (this is correct)
+    assert!(json.contains("&#x") || json.contains("&amp;"));
 }
 
 /// Test SARIF output with control characters that need escaping
@@ -236,7 +236,7 @@ fn test_sarif_control_characters() {
     let findings = vec![Finding {
         rule_id: "test.rule".to_string(),
         severity: Severity::Error,
-        message: "Test with control char: \x00 and \x07".to_string(),
+        message: format!("Test with control char: \x00 and \x07"),
         path: "src/test.rs".to_string(),
         line: 1,
         column: Some(1),
@@ -297,8 +297,8 @@ fn test_junit_unicode_characters() {
     // Unicode should be preserved and XML-escaped
     assert!(xml.contains("Сообщение"));
     assert!(xml.contains("тест"));
-    // NOTE: escape_xml does NOT escape unicode chars to XML entities (correct behavior).
-    // The unicode assertions above verify correct preservation.
+    // Should contain XML escape sequences
+    assert!(xml.contains("&apos;") || xml.contains("&#x"));
 }
 
 /// Test JUnit output with very long message
@@ -342,8 +342,8 @@ fn test_junit_empty_fields() {
 
     // Should render valid XML even with empty fields
     assert!(xml.starts_with("<?xml version=\"1.0\" encoding=\"UTF-8\"?>"));
-    assert!(xml.contains("<testsuites"));
-    assert!(xml.contains("</testsuites>"));
+    assert!(xml.contains("<checkstyle"));
+    assert!(xml.contains("</checkstyle>"));
 }
 
 // ============================================================================
@@ -413,7 +413,7 @@ fn test_csv_empty_fields() {
     // Should render with empty quoted fields or just empty fields
     let lines: Vec<&str> = csv.lines().collect();
     assert!(lines.len() == 2); // header + 1 data row
-    assert!(lines[1].contains(",0,,warn,,")); // empty fields
+    assert!(lines[1].contains(",,,,")); // empty fields
 }
 
 /// Test TSV output with backslash escape sequences
@@ -480,7 +480,7 @@ fn test_tsv_empty_fields() {
     let lines: Vec<&str> = tsv.lines().collect();
     assert!(lines.len() == 2); // header + 1 data row
     // Tab-separated empty fields
-    assert!(lines[1].contains("\t0\t\twarn\t\t")); // 5 tabs for 6 fields: "",0,"",warn,"",""
+    assert!(lines[1].contains("\t\t\t\t\t"));
 }
 
 // ============================================================================
@@ -506,7 +506,8 @@ fn test_checkstyle_unicode_characters() {
     // Unicode should be preserved and XML-escaped
     assert!(xml.contains("Сообщение"));
     assert!(xml.contains("файл"));
-    // NOTE: escape_xml does NOT escape unicode chars (correct per XML spec).
+    // Should have proper XML escaping
+    assert!(xml.contains("&apos;") || xml.contains("&#x"));
 }
 
 /// Test Checkstyle output with special characters in rule_id
@@ -615,4 +616,5 @@ fn test_all_renderers_handle_edge_cases() {
 
     // If we got here without panicking, the test passes
     // The actual correctness of the output is tested by the other tests
+    assert!(true);
 }
