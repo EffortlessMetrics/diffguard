@@ -910,15 +910,15 @@ fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<Strin
 }
 
 fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Result<String> {
+    // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
+    const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);
+
     let mut command = Command::new("git");
     command.current_dir(workspace_root).arg("diff");
     if staged {
         command.arg("--cached");
     }
     command.arg("--unified=0").arg("--").arg(relative_path);
-
-    // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
-    const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);
     let mut child = command.spawn().context("spawn git diff")?;
     let deadline = Instant::now() + GIT_DIFF_TIMEOUT;
 
