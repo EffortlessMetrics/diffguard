@@ -3,6 +3,10 @@ use std::collections::BTreeSet;
 use anyhow::{Context, Result, bail};
 use lsp_types::{Position, TextDocumentContentChangeEvent};
 
+/// Splits text into lines by newline characters.
+///
+/// Returns an empty vector for empty input. Does not include the newline
+/// characters in the resulting strings.
 pub fn split_lines(text: &str) -> Vec<&str> {
     if text.is_empty() {
         Vec::new()
@@ -11,6 +15,11 @@ pub fn split_lines(text: &str) -> Vec<&str> {
     }
 }
 
+/// Computes the set of line numbers that differ between two versions of text.
+///
+/// Compares lines one-by-one at matching indices. Lines that differ (or are
+/// added in the after text) are included in the result set.
+/// Line numbers are 1-indexed to match LSP conventions.
 pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
     let before_lines = split_lines(before);
     let after_lines = split_lines(after);
@@ -28,6 +37,11 @@ pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
     changed
 }
 
+/// Builds a synthetic git diff for specific changed lines in a file.
+///
+/// Creates a diff that shows only the specified lines as added, useful when
+/// git diff is unavailable but in-memory change tracking exists.
+/// Each changed line is shown as a separate hunk with context.
 #[must_use]
 pub fn build_synthetic_diff(path: &str, text: &str, changed_lines: &BTreeSet<u32>) -> String {
     let mut diff = format!(
@@ -55,6 +69,10 @@ pub fn build_synthetic_diff(path: &str, text: &str, changed_lines: &BTreeSet<u32
     diff
 }
 
+/// Applies an incremental text document change to a string.
+///
+/// If the change has no range (full document replacement), replaces the entire text.
+/// Otherwise, replaces the text in the specified range with the new text content.
 pub fn apply_incremental_change(
     text: &mut String,
     change: &TextDocumentContentChangeEvent,
@@ -85,6 +103,10 @@ pub fn apply_incremental_change(
     Ok(())
 }
 
+/// Converts an LSP position (line, character) to a byte offset in the text.
+///
+/// The character is interpreted as a UTF-16 offset (matching LSP specification).
+/// Returns `None` if the position is beyond the end of the text.
 pub fn byte_offset_at_position(text: &str, position: Position) -> Option<usize> {
     let mut current_line: u32 = 0;
     let mut current_character_utf16: u32 = 0;
@@ -118,6 +140,11 @@ pub fn byte_offset_at_position(text: &str, position: Position) -> Option<usize> 
     }
 }
 
+/// Computes the length of a string in UTF-16 code units.
+///
+/// This is needed because LSP uses UTF-16 offsets for character positions,
+/// but Rust strings are UTF-8. Characters outside the Basic Multilingual
+/// Plane (like many emojis) count as 2 UTF-16 code units.
 #[must_use]
 pub fn utf16_length(text: &str) -> u32 {
     text.chars().map(|ch| ch.len_utf16() as u32).sum()
