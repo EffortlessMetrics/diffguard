@@ -998,14 +998,14 @@ fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
         if p.exists() { Some(p) } else { None }
     });
 
-    all_pass &= validate_config_for_doctor(&config_path, args.config.is_some());
+    all_pass &= validate_config_for_doctor(config_path.as_ref(), args.config.is_some());
 
     if all_pass { Ok(0) } else { Ok(1) }
 }
 
 /// Validate config file for the doctor command.
 /// Returns true if the config check passes (or no config is expected).
-fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bool) -> bool {
+fn validate_config_for_doctor(config_path: Option<&PathBuf>, explicit_config: bool) -> bool {
     let Some(path) = config_path else {
         // Explicit --config pointing to missing file
         if explicit_config {
@@ -5563,5 +5563,46 @@ should_match = true
             assert!(write_json(json_path, &serde_json::json!({"ok": true})).is_err());
             assert!(write_text(text_path, "hi").is_err());
         });
+    }
+
+    // ============================================================================
+    // Red tests for validate_config_for_doctor API signature
+    // These tests verify the function accepts Option<&PathBuf> not &Option<PathBuf>
+    // ============================================================================
+
+    /// Test that `validate_config_for_doctor` accepts `Option<&PathBuf>`.
+    ///
+    /// With the old signature `&Option<PathBuf>`, this test fails to compile because
+    /// `None` cannot be passed where `&Option<PathBuf>` is expected.
+    /// With the new signature `Option<&PathBuf>`, `None` can be passed directly.
+    ///
+    /// This is a compile-time test that verifies the API signature change.
+    #[test]
+    fn validate_config_for_doctor_accepts_option_ref_pathbuf_none() {
+        // This line will NOT compile with &Option<PathBuf> because you can't pass None
+        // to a function expecting &Option<PathBuf>. It WILL compile with Option<&PathBuf>.
+        let result = validate_config_for_doctor(None, false);
+        // When explicit_config is false and config_path is None, the function should
+        // return true (no config file and none expected — defaults are fine).
+        assert!(result);
+    }
+
+    /// Test that `validate_config_for_doctor` accepts `Option<&PathBuf>` via as_ref().
+    ///
+    /// This verifies that when an Option<PathBuf> is converted via as_ref(),
+    /// it produces Option<&PathBuf> which the function accepts.
+    #[test]
+    fn validate_config_for_doctor_accepts_option_ref_pathbuf_some() {
+        // Create a temp file to ensure the path exists and is readable
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        std::fs::write(&config_path, "").unwrap();
+
+        // Build an Option<PathBuf> and convert it to Option<&PathBuf> via as_ref()
+        let config: Option<PathBuf> = Some(config_path);
+        // This line will NOT compile with &Option<PathBuf> because as_ref() produces
+        // Option<&PathBuf>, not &Option<PathBuf>. It WILL compile with Option<&PathBuf>.
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(result);
     }
 }
