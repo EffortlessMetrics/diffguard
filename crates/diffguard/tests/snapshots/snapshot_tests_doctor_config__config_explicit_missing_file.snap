@@ -1,0 +1,5 @@
+---
+source: crates/diffguard/tests/snapshot_tests_doctor_config.rs
+expression: config_line
+---
+config: FAIL (No such file or directory (os error 2))
