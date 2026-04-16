@@ -678,7 +678,9 @@ fn test_schema_drift() -> Result<()> {
     let contract_canonical = canonicalize_json(&contract_value);
 
     if generated_canonical != contract_canonical {
-        // Find first divergence line for diagnostics
+        // Find first divergence line for diagnostics.
+        // zip() stops at the shorter iterator, so if files differ only in length,
+        // find() returns None. In that case, map_or_else provides "files differ in length".
         let first_diff = generated_canonical
             .lines()
             .zip(contract_canonical.lines())
@@ -1354,6 +1356,10 @@ fn run_diffguard(dir: &Path, args: &[&str]) -> Result<Output> {
     Ok(output)
 }
 
+/// Ensures the diffguard binary is built in the current workspace.
+///
+/// Uses a OnceLock to memoize the build result, so cargo build is only invoked
+/// once even if multiple conformance tests call this function simultaneously.
 fn ensure_diffguard_built() -> Result<()> {
     static BUILD_RESULT: OnceLock<Result<(), String>> = OnceLock::new();
 
@@ -1374,6 +1380,11 @@ fn ensure_diffguard_built() -> Result<()> {
     }
 }
 
+/// Returns the path to the workspace root directory.
+///
+/// Traverses up from the xtask crate's manifest directory to find the Cargo.toml
+/// workspace root. The `unwrap_or` fallback handles the unlikely case where
+/// CARGO_MANIFEST_DIR is already the filesystem root.
 fn workspace_root() -> PathBuf {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     manifest_dir
