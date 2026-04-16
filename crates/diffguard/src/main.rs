@@ -1,7 +1,8 @@
 #![allow(clippy::collapsible_if)]
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::io::{self, BufRead, IsTerminal, Read, Write};
+use std::fmt::Write;
+use std::io::{self, BufRead, IsTerminal, Read, Write as IoWrite};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
@@ -952,7 +953,13 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
 }
 
 /// Validate the environment for running diffguard.
-/// Returns 0 if all checks pass, 1 if any check fails.
+///
+/// Performs three checks:
+/// 1. Git availability and version
+/// 2. Whether current directory is inside a git repository
+/// 3. Config file presence and validity (if expected or explicitly provided)
+///
+/// Returns `Ok(0)` if all checks pass, `Ok(1)` if any check fails.
 fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
     let mut all_pass = true;
 
@@ -1055,6 +1062,9 @@ fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bo
     }
 }
 
+/// Print detailed information about a specific rule.
+/// If the rule is found, prints its explanation to stdout.
+/// If not found, returns an error with suggestions for similar rules.
 fn cmd_explain(args: ExplainArgs) -> Result<()> {
     let cfg = load_config(args.config, args.no_default_rules)?;
 
@@ -1074,7 +1084,7 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
             if !suggestions.is_empty() {
                 msg.push_str("\n\nDid you mean one of these?\n");
                 for s in &suggestions {
-                    msg.push_str(&format!("  - {}\n", s));
+                    let _ = writeln!(&mut msg, "  - {}", s);
                 }
             }
 
@@ -1085,17 +1095,21 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
     }
 }
 
-/// Format rule explanation for display.
+/// Format a rule configuration into a human-readable explanation string.
+///
+/// Output includes: rule ID, severity, message, patterns, match mode,
+/// multiline settings, context patterns, escalation rules, dependencies,
+/// language/path scope, preprocessing settings, and remediation help.
 fn format_rule_explanation(rule: &RuleConfig) -> String {
     let mut out = String::new();
 
-    out.push_str(&format!("Rule: {}\n", rule.id));
-    out.push_str(&format!("Severity: {}\n", rule.severity.as_str()));
-    out.push_str(&format!("Message: {}\n", rule.message));
+    let _ = writeln!(&mut out, "Rule: {}", rule.id);
+    let _ = writeln!(&mut out, "Severity: {}", rule.severity.as_str());
+    let _ = writeln!(&mut out, "Message: {}", rule.message);
 
     out.push_str("\nPatterns:\n");
     for p in &rule.patterns {
-        out.push_str(&format!("  - {}\n", p));
+        let _ = writeln!(&mut out, "  - {}", p);
     }
 
     out.push_str("\nSemantics:\n");
@@ -1103,71 +1117,81 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
         MatchMode::Any => "any",
         MatchMode::Absent => "absent",
     };
-    out.push_str(&format!("  - Match mode: {match_mode}\n"));
-    out.push_str(&format!(
-        "  - Multiline: {}{}\n",
+    let _ = writeln!(&mut out, "  - Match mode: {match_mode}");
+    let window_str = rule
+        .multiline_window
+        .map(|w| format!(" (window={w})"))
+        .unwrap_or_default();
+    writeln!(
+        &mut out,
+        "  - Multiline: {}{}",
         if rule.multiline { "yes" } else { "no" },
-        rule.multiline_window
-            .map(|w| format!(" (window={w})"))
-            .unwrap_or_default()
-    ));
+        window_str
+    )
+    .unwrap();
     if !rule.context_patterns.is_empty() {
-        out.push_str(&format!(
-            "  - Context patterns (window={}): {}\n",
+        writeln!(
+            &mut out,
+            "  - Context patterns (window={}): {}",
             rule.context_window.unwrap_or(3),
             rule.context_patterns.join(", ")
-        ));
+        )
+        .unwrap();
     }
     if !rule.escalate_patterns.is_empty() {
-        out.push_str(&format!(
-            "  - Escalation to {} (window={}): {}\n",
+        writeln!(
+            &mut out,
+            "  - Escalation to {} (window={}): {}",
             rule.escalate_to
                 .unwrap_or(diffguard_types::Severity::Error)
                 .as_str(),
             rule.escalate_window.unwrap_or(0),
             rule.escalate_patterns.join(", ")
-        ));
+        )
+        .unwrap();
     }
     if !rule.depends_on.is_empty() {
-        out.push_str(&format!("  - Depends on: {}\n", rule.depends_on.join(", ")));
+        let _ = writeln!(&mut out, "  - Depends on: {}", rule.depends_on.join(", "));
     }
 
     out.push_str("\nApplies to:\n");
 
     if !rule.languages.is_empty() {
-        out.push_str(&format!("  - Languages: {}\n", rule.languages.join(", ")));
+        let _ = writeln!(&mut out, "  - Languages: {}", rule.languages.join(", "));
     }
 
     if !rule.paths.is_empty() {
-        out.push_str(&format!("  - Paths: {}\n", rule.paths.join(", ")));
+        let _ = writeln!(&mut out, "  - Paths: {}", rule.paths.join(", "));
     }
 
     if !rule.exclude_paths.is_empty() {
-        out.push_str(&format!(
-            "  - Excludes: {}\n",
-            rule.exclude_paths.join(", ")
-        ));
+        let _ = writeln!(&mut out, "  - Excludes: {}", rule.exclude_paths.join(", "));
     }
 
     out.push_str("\nPreprocessing:\n");
-    out.push_str(&format!(
-        "  - Ignore comments: {}\n",
+    writeln!(
+        &mut out,
+        "  - Ignore comments: {}",
         if rule.ignore_comments { "yes" } else { "no" }
-    ));
-    out.push_str(&format!(
-        "  - Ignore strings: {}\n",
+    )
+    .unwrap();
+    writeln!(
+        &mut out,
+        "  - Ignore strings: {}",
         if rule.ignore_strings { "yes" } else { "no" }
-    ));
+    )
+    .unwrap();
 
     if let Some(help) = &rule.help {
         out.push_str("\nRemediation:\n");
         for line in help.lines() {
-            out.push_str(&format!("  {}\n", line));
+            let _ = writeln!(&mut out, "  {}", line);
         }
     }
 
     if let Some(url) = &rule.url {
-        out.push_str(&format!("\nSee also: {}\n", url));
+        let _ = writeln!(&mut out);
+        let _ = writeln!(&mut out, "See also: {}", url);
     }
 
     out
@@ -1721,16 +1745,20 @@ fn render_markdown_with_baseline_annotations(
     };
 
     let mut out = String::new();
-    out.push_str(&format!("## diffguard — {status}\n\n"));
+    let _ = writeln!(&mut out, "## diffguard — {status}");
+    out.push('\n');
 
-    out.push_str(&format!(
-        "Scanned **{}** file(s), **{}** line(s) (scope: `{}`, base: `{}`, head: `{}`)\n\n",
+    writeln!(
+        &mut out,
+        "Scanned **{}** file(s), **{}** line(s) (scope: `{}`, base: `{}`, head: `{}`)",
         receipt.diff.files_scanned,
         receipt.diff.lines_scanned,
         receipt.diff.scope.as_str(),
         receipt.diff.base,
         receipt.diff.head
-    ));
+    )
+    .unwrap();
+    out.push('\n');
 
     // Build a set of baseline finding fingerprints for quick lookup
     let _baseline_fps: BTreeSet<String> = baseline_findings
@@ -1772,6 +1800,8 @@ fn render_markdown_with_baseline_annotations(
     out
 }
 
+/// Parse git blame --line-porcelain output into a map of line numbers to metadata.
+/// The porcelain format has a header for each line group followed by the line content.
 fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
     let mut out = BTreeMap::<u32, BlameLineMeta>::new();
     let lines: Vec<&str> = blame_text.lines().collect();
@@ -1825,6 +1855,8 @@ fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
     out
 }
 
+/// Run git blame in porcelain mode and return the raw output.
+/// Used to extract author metadata for blame-based filtering.
 fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     let output = Command::new("git")
         .args(["blame", "--line-porcelain", head_ref, "--", path])
@@ -1843,6 +1875,8 @@ fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Collect lines that are allowed based on git blame author/time filters.
+/// Returns lines that match the specified blame filters from the diff scope.
 fn collect_blame_allowed_lines(
     diff_text: &str,
     scope: Scope,
@@ -1879,6 +1913,9 @@ fn collect_blame_allowed_lines(
     Ok(allowed)
 }
 
+/// Test hook to force a sensor JSON serialization error.
+/// Only active in test builds when DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR is set.
+/// This is used to verify error handling paths.
 fn maybe_force_sensor_json_error() -> Option<serde_json::Error> {
     if cfg!(test) && std::env::var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR").is_ok() {
         Some(<serde_json::Error as serde::ser::Error>::custom(
@@ -1889,6 +1926,8 @@ fn maybe_force_sensor_json_error() -> Option<serde_json::Error> {
     }
 }
 
+/// Render sensor JSON report with test error injection support.
+/// Wraps render_sensor_json to allow forcing errors in tests.
 fn render_sensor_json_checked(
     receipt: &CheckReceipt,
     ctx: &SensorReportContext,
@@ -1899,6 +1938,8 @@ fn render_sensor_json_checked(
     render_sensor_json(receipt, ctx)
 }
 
+/// Serialize a sensor report to JSON with test error injection support.
+/// Wraps serde_json::to_string to allow forcing errors in tests.
 fn serialize_sensor_report_checked(
     report: &diffguard_types::SensorReport,
 ) -> Result<String, serde_json::Error> {
@@ -2787,7 +2828,7 @@ fn cmd_trend(args: TrendArgs) -> Result<()> {
     Ok(())
 }
 
-fn confirm_overwrite<R: BufRead, W: Write>(
+fn confirm_overwrite<R: BufRead, W: IoWrite>(
     input: &mut R,
     mut err: W,
     output_path: &Path,
@@ -2810,7 +2851,7 @@ fn cmd_init(args: InitArgs) -> Result<()> {
     cmd_init_with_io(args, &mut input, io::stderr())
 }
 
-fn cmd_init_with_io<R: BufRead, W: Write>(args: InitArgs, input: &mut R, err: W) -> Result<()> {
+fn cmd_init_with_io<R: BufRead, W: IoWrite>(args: InitArgs, input: &mut R, err: W) -> Result<()> {
     let output_path = &args.output;
 
     // Check if file already exists
@@ -3007,6 +3048,9 @@ fn cmd_test(args: TestArgs) -> Result<i32> {
     if failed > 0 { Ok(1) } else { Ok(0) }
 }
 
+/// Load configuration from a file or fall back to built-in rules.
+/// If no config file exists, returns the built-in rules.
+/// If --no-default-rules is set, only returns user-defined rules.
 fn load_config(path: Option<PathBuf>, no_default_rules: bool) -> Result<ConfigFile> {
     let user_path = path.or_else(|| {
         let p = PathBuf::from("diffguard.toml");
@@ -3093,6 +3137,9 @@ fn expand_env_vars(content: &str) -> Result<String> {
     Ok(result)
 }
 
+/// Merge user-defined config with built-in rules.
+/// User rules override built-in rules with the same ID.
+/// Built-in rules are used for any rule ID not defined by the user.
 fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     let mut built = ConfigFile::built_in();
 
@@ -3112,6 +3159,8 @@ fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     built
 }
 
+/// Run git diff with the specified base, head, and context lines.
+/// Returns the unified diff output as a string.
 fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
     let range = format!("{base}...{head}");
     let unified = format!("--unified={context_lines}");
@@ -3132,6 +3181,9 @@ fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Run git diff --cached to get staged changes.
+/// Used for pre-commit hook mode when --staged is specified.
+/// Returns the unified diff output as a string.
 fn git_staged_diff(context_lines: u32) -> Result<String> {
     let unified = format!("--unified={context_lines}");
 
@@ -3151,6 +3203,9 @@ fn git_staged_diff(context_lines: u32) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Write a serializable value to a JSON file.
+/// Creates parent directories if they don't exist.
+/// Returns an error if serialization or file writing fails.
 fn write_json(path: &Path, value: &impl serde::Serialize) -> Result<()> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
@@ -5382,7 +5437,7 @@ patterns = ["alpha"]
 
     struct FailingWriter;
 
-    impl Write for FailingWriter {
+    impl IoWrite for FailingWriter {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             Ok(buf.len())
         }
