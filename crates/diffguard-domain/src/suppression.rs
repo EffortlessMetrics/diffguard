@@ -43,6 +43,7 @@ pub struct Suppression {
 
 impl Suppression {
     /// Returns true if this suppression applies to the given rule ID.
+    #[must_use]
     pub fn suppresses(&self, rule_id: &str) -> bool {
         match &self.rule_ids {
             None => true, // Wildcard - suppress all
