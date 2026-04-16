@@ -1084,7 +1084,7 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
             if !suggestions.is_empty() {
                 msg.push_str("\n\nDid you mean one of these?\n");
                 for s in &suggestions {
-                    writeln!(&mut msg, "  - {}", s).unwrap();
+                    let _ = writeln!(&mut msg, "  - {}", s);
                 }
             }
 
@@ -1103,13 +1103,13 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
 fn format_rule_explanation(rule: &RuleConfig) -> String {
     let mut out = String::new();
 
-    writeln!(&mut out, "Rule: {}", rule.id).unwrap();
-    writeln!(&mut out, "Severity: {}", rule.severity.as_str()).unwrap();
-    writeln!(&mut out, "Message: {}", rule.message).unwrap();
+    let _ = writeln!(&mut out, "Rule: {}", rule.id);
+    let _ = writeln!(&mut out, "Severity: {}", rule.severity.as_str());
+    let _ = writeln!(&mut out, "Message: {}", rule.message);
 
     out.push_str("\nPatterns:\n");
     for p in &rule.patterns {
-        writeln!(&mut out, "  - {}", p).unwrap();
+        let _ = writeln!(&mut out, "  - {}", p);
     }
 
     out.push_str("\nSemantics:\n");
@@ -1117,7 +1117,7 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
         MatchMode::Any => "any",
         MatchMode::Absent => "absent",
     };
-    writeln!(&mut out, "  - Match mode: {match_mode}").unwrap();
+    let _ = writeln!(&mut out, "  - Match mode: {match_mode}");
     let window_str = rule
         .multiline_window
         .map(|w| format!(" (window={w})"))
@@ -1151,21 +1151,21 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
         .unwrap();
     }
     if !rule.depends_on.is_empty() {
-        writeln!(&mut out, "  - Depends on: {}", rule.depends_on.join(", ")).unwrap();
+        let _ = writeln!(&mut out, "  - Depends on: {}", rule.depends_on.join(", "));
     }
 
     out.push_str("\nApplies to:\n");
 
     if !rule.languages.is_empty() {
-        writeln!(&mut out, "  - Languages: {}", rule.languages.join(", ")).unwrap();
+        let _ = writeln!(&mut out, "  - Languages: {}", rule.languages.join(", "));
     }
 
     if !rule.paths.is_empty() {
-        writeln!(&mut out, "  - Paths: {}", rule.paths.join(", ")).unwrap();
+        let _ = writeln!(&mut out, "  - Paths: {}", rule.paths.join(", "));
     }
 
     if !rule.exclude_paths.is_empty() {
-        writeln!(&mut out, "  - Excludes: {}", rule.exclude_paths.join(", ")).unwrap();
+        let _ = writeln!(&mut out, "  - Excludes: {}", rule.exclude_paths.join(", "));
     }
 
     out.push_str("\nPreprocessing:\n");
@@ -1185,13 +1185,13 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
     if let Some(help) = &rule.help {
         out.push_str("\nRemediation:\n");
         for line in help.lines() {
-            writeln!(&mut out, "  {}", line).unwrap();
+            let _ = writeln!(&mut out, "  {}", line);
         }
     }
 
     if let Some(url) = &rule.url {
-        writeln!(&mut out).unwrap();
-        writeln!(&mut out, "See also: {}", url).unwrap();
+        let _ = writeln!(&mut out);
+        let _ = writeln!(&mut out, "See also: {}", url);
     }
 
     out
@@ -1745,7 +1745,7 @@ fn render_markdown_with_baseline_annotations(
     };
 
     let mut out = String::new();
-    writeln!(&mut out, "## diffguard — {status}").unwrap();
+    let _ = writeln!(&mut out, "## diffguard — {status}");
     out.push('\n');
 
     writeln!(
