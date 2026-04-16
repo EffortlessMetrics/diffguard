@@ -102,7 +102,7 @@ pub fn evaluate_lines_with_overrides_and_language(
         .iter()
         .map(|line| line.path.clone())
         .collect::<BTreeSet<_>>();
-    let lines_scanned = (input_lines.len().min(u32::MAX as usize)) as u32;
+    let lines_scanned = u32::try_from(input_lines.len()).unwrap_or(u32::MAX);
 
     let mut current_file: Option<String> = None;
     let mut current_lang = Language::Unknown;
@@ -295,7 +295,7 @@ pub fn evaluate_lines_with_overrides_and_language(
             let column = event
                 .match_start
                 .and_then(|start| byte_to_column(&prepared.line.content, start))
-                .map(|c| c as u32);
+                .and_then(|c| u32::try_from(c).ok());
             findings.push(Finding {
                 rule_id: rule.id.clone(),
                 severity: event.severity,

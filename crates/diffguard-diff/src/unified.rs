@@ -117,6 +117,8 @@ pub struct DiffStats {
 pub enum DiffParseError {
     #[error("malformed hunk header: {0}")]
     MalformedHunkHeader(String),
+    #[error("diff stats overflow: {0}")]
+    Overflow(String),
 }
 
 /// Parse a unified diff (git-style) and return scoped lines in diff order.
@@ -333,8 +335,10 @@ pub fn parse_unified_diff(
     }
 
     let stats = DiffStats {
-        files: files.len() as u32,
-        lines: out.len() as u32,
+        files: u32::try_from(files.len())
+            .map_err(|_| DiffParseError::Overflow(format!("too many files (> {})", u32::MAX)))?,
+        lines: u32::try_from(out.len())
+            .map_err(|_| DiffParseError::Overflow(format!("too many lines (> {})", u32::MAX)))?,
     };
 
     Ok((out, stats))
