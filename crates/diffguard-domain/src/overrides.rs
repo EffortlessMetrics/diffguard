@@ -105,6 +105,7 @@ impl RuleOverrideMatcher {
     }
 
     /// Resolve the effective override for a specific path and rule id.
+    #[must_use]
     pub fn resolve(&self, path: &str, rule_id: &str) -> ResolvedRuleOverride {
         let Some(entries) = self.by_rule.get(rule_id) else {
             return ResolvedRuleOverride::default();

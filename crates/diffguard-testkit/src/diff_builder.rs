@@ -87,6 +87,7 @@ impl DiffBuilder {
 }
 
 /// Helper struct for building a file within a diff.
+#[must_use]
 #[derive(Debug)]
 pub struct FileBuilderInProgress {
     diff_builder: DiffBuilder,
@@ -146,6 +147,7 @@ impl FileBuilderInProgress {
 }
 
 /// Helper struct for building a hunk within a file.
+#[must_use]
 #[derive(Debug)]
 pub struct HunkBuilderInProgress {
     file_in_progress: FileBuilderInProgress,
