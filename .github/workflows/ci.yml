@@ -66,7 +66,7 @@ jobs:
             echo "✅ chore/ branch — issue link waived for maintenance PRs"
             exit 0
           fi
-          if grep -qiE '(closes|fixes|resolves)\s+#[0-9]+' /tmp/pr-body.txt; then
+          if grep -qiE '(closes|fixes|resolves)(\s+#[0-9]+|\s+https?://[^/]+/[^/]+/issues/[0-9]+)' /tmp/pr-body.txt; then
             echo "✅ PR references an issue"
           else
             echo "❌ PR does not reference an issue"

@@ -67,6 +67,7 @@ const DIRECTIVE_PREFIX: &str = "diffguard:";
 ///
 /// This function should be called on the raw line BEFORE preprocessing
 /// (so that comment content is visible).
+#[must_use]
 pub fn parse_suppression(line: &str) -> Option<Suppression> {
     let lower = line.to_ascii_lowercase();
     lower
@@ -81,6 +82,7 @@ pub fn parse_suppression(line: &str) -> Option<Suppression> {
 /// `masked_comments` should be the output of the comments-only preprocessor
 /// for the same line and language. The directive is accepted only if the
 /// directive prefix is fully masked (spaces) in `masked_comments`.
+#[must_use]
 #[allow(clippy::collapsible_if)]
 pub fn parse_suppression_in_comments(line: &str, masked_comments: &str) -> Option<Suppression> {
     if line.len() != masked_comments.len() {
