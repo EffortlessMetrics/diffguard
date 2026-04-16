@@ -41,23 +41,44 @@ const CMD_EXPLAIN_RULE: &str = "diffguard.explainRule";
 const CMD_RELOAD_CONFIG: &str = "diffguard.reloadConfig";
 const CMD_SHOW_RULE_URL: &str = "diffguard.showRuleUrl";
 
+/// Tracks whether `git diff` is available in the workspace.
+/// This is used to provide user feedback only — diffguard falls back to
+/// in-memory changed-lines tracking when git is unavailable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum GitSupport {
+    /// Haven't attempted to run git diff yet.
     Unknown,
+    /// Git diff ran successfully at least once.
     Available,
+    /// Git diff failed or timed out; don't retry unnecessarily.
     Unavailable,
 }
 
+/// Holds the current state of an open text document within the LSP session.
+///
+/// `baseline_text` tracks the last saved version of the document, used to compute
+/// which lines have changed. `changed_lines` is a sorted set of line numbers (1-indexed)
+/// that have been modified since the baseline, enabling diffguard to check only
+/// the relevant portions of the file.
 #[derive(Debug, Clone)]
 struct DocumentState {
+    /// Absolute path to the document on disk.
     path: PathBuf,
+    /// LSP document version number, incremented on each change.
     version: i32,
+    /// The text content at last save (the "baseline" for computing changes).
     baseline_text: String,
+    /// The current in-memory text content (may be unsaved).
     text: String,
+    /// Line numbers (1-indexed) that differ from `baseline_text`.
     changed_lines: BTreeSet<u32>,
 }
 
 impl DocumentState {
+    /// Creates a new document state for a freshly opened file.
+    ///
+    /// The `text` becomes both the current content and the baseline (since the
+    /// file is assumed to be saved at this point). Changed-lines is empty.
     fn new(path: PathBuf, version: i32, text: String) -> Self {
         Self {
             path,
@@ -68,11 +89,23 @@ impl DocumentState {
         }
     }
 
+    /// Applies a batch of content changes to the document.
+    ///
+    /// The LSP sends changes as an array, which may contain:
+    /// - A single full-document replacement (when `range` is `None`), or
+    /// - One or more incremental edits (each with a `range`).
+    ///
+    /// When a full replacement is present it supersedes any prior incremental
+    /// changes in the same batch — we find it by scanning *in reverse* so that
+    /// a full-change appearing later in the array (the more recent event) wins.
     fn apply_changes(&mut self, changes: &[TextDocumentContentChangeEvent]) -> Result<()> {
         if changes.is_empty() {
             return Ok(());
         }
 
+        // Find the last full-change in the batch, if any. A full-change replaces
+        // the entire document, so incremental edits that precede it are irrelevant.
+        // Scanning in reverse ensures the most recent full-change takes precedence.
         if let Some(full_change) = changes.iter().rev().find(|change| change.range.is_none()) {
             self.text.clone_from(&full_change.text);
             self.changed_lines = changed_lines_between(&self.baseline_text, &self.text);
@@ -87,37 +120,69 @@ impl DocumentState {
         Ok(())
     }
 
+    /// Marks the document as saved, updating the baseline to the current text.
+    ///
+    /// If the editor supplies the saved text (via `DidSaveTextDocumentParams.text`)
+    /// we use it; otherwise we use the current in-memory text. Changed-lines is
+    /// cleared since the baseline now matches the on-disk content.
     fn mark_saved(&mut self, new_text: Option<String>) {
         if let Some(text) = new_text {
             self.text = text;
         }
-        self.baseline_text = self.text.clone();
+        self.baseline_text.clone_from(&self.text);
         self.changed_lines.clear();
     }
 }
 
+/// Deserialized initialization options passed by the client via
+/// `initializeParams.initializationOptions`. All fields are optional;
+/// defaults are applied when values are absent.
 #[derive(Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct InitOptions {
+    /// Path to a diffguard config file, relative to the workspace root.
     config_path: Option<String>,
+    /// If true, skip loading built-in rules and only use rules from the config file.
     no_default_rules: bool,
+    /// Upper bound on findings to report per document (default: 200).
     max_findings: Option<usize>,
+    /// Override the auto-detected programming language for the document.
     force_language: Option<String>,
 }
 
+/// Maintains all mutable state for the LSP server session.
+///
+/// This includes the workspace configuration, the set of open documents,
+/// and the cached git-support status. It does not hold any client-specific state —
+/// the `Connection` handle is passed separately to each handler.
 #[derive(Debug)]
 struct ServerState {
+    /// Root of the workspace (the directory containing `.git`, or the
+    /// root folder opened in the editor). Used to resolve relative paths.
     workspace_root: Option<PathBuf>,
+    /// Absolute path to the effective diffguard config file, if found.
     config_path: Option<PathBuf>,
+    /// Whether to skip built-in rules when loading the config.
     no_default_rules: bool,
+    /// Cap on findings reported per document to avoid overwhelming the client.
     max_findings: usize,
+    /// Override for the auto-detected language (None = auto-detect).
     force_language: Option<String>,
+    /// The effective rule set (built-in plus any user config).
     config: ConfigFile,
+    /// All text documents currently open in the editor, keyed by URI.
     documents: HashMap<Uri, DocumentState>,
+    /// Tracks whether `git diff` works in this workspace.
     git_support: GitSupport,
 }
 
 impl ServerState {
+    /// Builds a `ServerState` from the LSP `InitializeParams`.
+    ///
+    /// This parses `initializationOptions`, resolves the config file path,
+    /// loads the effective rule set, and returns both the state and an
+    /// optional warning message to display to the user (e.g. if the config
+    /// could not be loaded and built-in rules are being used instead).
     fn from_initialize(params: &InitializeParams) -> (Self, Option<String>) {
         let options = parse_init_options(params.initialization_options.as_ref());
         let workspace_root = extract_workspace_root(params);
@@ -161,6 +226,12 @@ impl ServerState {
     }
 }
 
+/// Entry point for the diffguard LSP server.
+///
+/// Establishes an LSP connection, processes the `initialize` handshake,
+/// then enters the main message loop. Incoming requests are dispatched to
+/// `handle_request` and notifications to `handle_notification`. Returns
+/// `Ok(())` on clean shutdown, or an error if initialization fails.
 pub fn run_server(connection: Connection) -> Result<()> {
     // Use the lower-level initialize_start/initialize_finish methods
     // to send a custom InitializeResult with server_info.
@@ -661,6 +732,16 @@ fn refresh_all_documents(connection: &Connection, state: &mut ServerState) -> Re
     Ok(())
 }
 
+/// Refreshes and publishes diagnostics for a single document.
+///
+/// This is the core diagnostic pipeline:
+/// 1. If the document has unsaved changes, builds a synthetic diff from the
+///    in-memory changed lines; otherwise falls back to `git diff`.
+/// 2. Runs the diffguard checker on the diff text.
+/// 3. Converts findings to LSP diagnostics and publishes them to the client.
+///
+/// If no diff is available (e.g., git is unavailable and there are no in-memory
+/// changes), publishes an empty diagnostic set to clear any stale findings.
 fn refresh_document_diagnostics(
     connection: &Connection,
     state: &mut ServerState,
@@ -910,30 +991,35 @@ fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<Strin
 }
 
 fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Result<String> {
-    // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
-    const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);
-
     let mut command = Command::new("git");
     command.current_dir(workspace_root).arg("diff");
     if staged {
         command.arg("--cached");
     }
     command.arg("--unified=0").arg("--").arg(relative_path);
+
+    // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely.
+    // We use a busy-wait loop with try_wait rather than Command::timeout() because
+    // try_wait gives us a clean exit path: we can check the deadline on each
+    // iteration and kill the child if time expires, whereas wait() blocks until
+    // completion. The 100ms sleep between checks keeps CPU usage reasonable.
+    const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);
     let mut child = command.spawn().context("spawn git diff")?;
     let deadline = Instant::now() + GIT_DIFF_TIMEOUT;
 
     let output = loop {
         match child.try_wait() {
             Ok(Some(_)) => {
-                // Process has exited; wait_with_output() returns immediately
+                // Process exited normally; wait_with_output() will not block
                 break child.wait_with_output().context("wait for git diff")?;
             }
             Ok(None) => {
-                // Still running
+                // Still running — check whether we've exceeded the deadline
                 if Instant::now() >= deadline {
                     let _ = child.kill();
                     bail!("git diff timed out after {}s", GIT_DIFF_TIMEOUT.as_secs());
                 }
+                // Sleep briefly before polling again to avoid busy-waiting
                 thread::sleep(Duration::from_millis(100));
             }
             Err(e) => bail!("checking git diff status: {e}"),
