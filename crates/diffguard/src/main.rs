@@ -5605,4 +5605,241 @@ should_match = true
         let result = validate_config_for_doctor(config.as_ref(), true);
         assert!(result);
     }
+
+    // ============================================================================
+    // Edge case tests for validate_config_for_doctor behavior
+    // ============================================================================
+
+    /// Test: explicit --config with no path → FAIL
+    /// When explicit_config=true but config_path=None, the user passed --config
+    /// but the file doesn't exist, so validation should fail.
+    #[test]
+    fn validate_config_for_doctor_explicit_config_none_returns_false() {
+        let result = validate_config_for_doctor(None, true);
+        assert!(!result, "explicit config with no path should fail");
+    }
+
+    /// Test: invalid TOML → FAIL
+    /// When the config file contains malformed TOML, parsing fails and the
+    /// function should return false.
+    #[test]
+    fn validate_config_for_doctor_invalid_toml_returns_false() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        std::fs::write(&config_path, "this is not valid TOML {").unwrap();
+
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(!result, "invalid TOML should cause validation to fail");
+    }
+
+    /// Test: valid TOML with empty rules list → PASS
+    /// An empty rule list is valid TOML — the config passes validation.
+    #[test]
+    fn validate_config_for_doctor_empty_rules_returns_true() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        std::fs::write(&config_path, "rule = []").unwrap();
+
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), false);
+        assert!(result, "empty rule list should pass validation");
+    }
+
+    /// Test: invalid regex pattern → FAIL
+    /// When a rule has an invalid regex pattern, the function should return false.
+    #[test]
+    fn validate_config_for_doctor_invalid_regex_returns_false() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        let content = r#"
+[[rule]]
+id = "test-rule"
+severity = "error"
+message = "test"
+patterns = ["[invalid regex ("]
+"#;
+        std::fs::write(&config_path, content).unwrap();
+
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(
+            !result,
+            "invalid regex pattern should cause validation to fail"
+        );
+    }
+
+    /// Test: duplicate rule IDs → FAIL
+    /// When two rules have the same id, validation should fail.
+    #[test]
+    fn validate_config_for_doctor_duplicate_rule_ids_returns_false() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        let content = r#"
+[[rule]]
+id = "dup-rule"
+severity = "error"
+message = "test1"
+patterns = ["test1"]
+
+[[rule]]
+id = "dup-rule"
+severity = "warn"
+message = "test2"
+patterns = ["test2"]
+"#;
+        std::fs::write(&config_path, content).unwrap();
+
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(
+            !result,
+            "duplicate rule IDs should cause validation to fail"
+        );
+    }
+
+    /// Test: rule with no patterns → FAIL
+    /// A rule must have at least one pattern defined.
+    #[test]
+    fn validate_config_for_doctor_rule_with_no_patterns_returns_false() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        let content = r#"
+[[rule]]
+id = "no-patterns"
+severity = "error"
+message = "rule without patterns"
+"#;
+        std::fs::write(&config_path, content).unwrap();
+
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(
+            !result,
+            "rule with no patterns should cause validation to fail"
+        );
+    }
+
+    /// Test: invalid context_pattern → FAIL
+    /// When a rule has an invalid context_pattern regex, validation should fail.
+    #[test]
+    fn validate_config_for_doctor_invalid_context_pattern_returns_false() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        let content = r#"
+[[rule]]
+id = "bad-context"
+severity = "error"
+message = "test"
+patterns = ["test"]
+context_patterns = ["[bad pattern ("]
+"#;
+        std::fs::write(&config_path, content).unwrap();
+
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(
+            !result,
+            "invalid context_pattern should cause validation to fail"
+        );
+    }
+
+    /// Test: invalid escalate_pattern → FAIL
+    /// When a rule has an invalid escalate_pattern regex, validation should fail.
+    #[test]
+    fn validate_config_for_doctor_invalid_escalate_pattern_returns_false() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        let content = r#"
+[[rule]]
+id = "bad-escalate"
+severity = "error"
+message = "test"
+patterns = ["test"]
+escalate_patterns = ["[bad pattern ("]
+"#;
+        std::fs::write(&config_path, content).unwrap();
+
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(
+            !result,
+            "invalid escalate_pattern should cause validation to fail"
+        );
+    }
+
+    /// Test: multiline=true with multiline_window < 2 → FAIL
+    /// When multiline is true, multiline_window must be >= 2.
+    #[test]
+    fn validate_config_for_doctor_multiline_window_too_small_returns_false() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        let content = r#"
+[[rule]]
+id = "bad-multiline"
+severity = "error"
+message = "test"
+patterns = ["test"]
+multiline = true
+multiline_window = 1
+"#;
+        std::fs::write(&config_path, content).unwrap();
+
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(
+            !result,
+            "multiline_window < 2 with multiline=true should fail"
+        );
+    }
+
+    /// Test: unknown rule dependency → FAIL
+    /// When a rule depends on a non-existent rule, validation should fail.
+    #[test]
+    fn validate_config_for_doctor_unknown_dependency_returns_false() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        let content = r#"
+[[rule]]
+id = "has-dep"
+severity = "error"
+message = "test"
+patterns = ["test"]
+depends_on = ["nonexistent-rule"]
+"#;
+        std::fs::write(&config_path, content).unwrap();
+
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(
+            !result,
+            "unknown dependency should cause validation to fail"
+        );
+    }
+
+    /// Test: unexpandable env var → FAIL
+    /// When ${VAR} syntax is used but the var doesn't exist and has no default,
+    /// env var expansion fails and validation should fail.
+    #[test]
+    fn validate_config_for_doctor_unexpandable_env_var_returns_false() {
+        let temp_dir = TempDir::new().unwrap();
+        let config_path = temp_dir.path().join("diffguard.toml");
+        // This config has an env var that doesn't exist and has no default
+        let content = r#"
+[[rule]]
+id = "env-test"
+severity = "error"
+message = "test ${NONEXISTENT_VAR_ABC123}"
+patterns = ["test"]
+"#;
+        std::fs::write(&config_path, content).unwrap();
+
+        // NONEXISTENT_VAR_ABC123 is not set by default, so expansion will fail
+        let config: Option<PathBuf> = Some(config_path);
+        let result = validate_config_for_doctor(config.as_ref(), true);
+        assert!(
+            !result,
+            "unexpandable env var should cause validation to fail"
+        );
+    }
 }
