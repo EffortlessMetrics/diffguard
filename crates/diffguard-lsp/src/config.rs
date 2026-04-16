@@ -96,6 +96,7 @@ pub fn extract_rule_id(diagnostic: &Diagnostic) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+#[must_use]
 pub fn find_rule<'a>(config: &'a ConfigFile, rule_id: &str) -> Option<&'a RuleConfig> {
     config.rule.iter().find(|rule| rule.id == rule_id)
 }
