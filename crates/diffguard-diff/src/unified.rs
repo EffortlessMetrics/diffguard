@@ -79,6 +79,7 @@ pub fn is_mode_change_only(line: &str) -> bool {
 /// Returns the path after "rename from " if the line matches, None otherwise.
 ///
 /// Requirements: 4.3
+#[must_use]
 pub fn parse_rename_from(line: &str) -> Option<String> {
     let rest = line.strip_prefix("rename from ")?;
     parse_rename_path(rest)
@@ -92,6 +93,7 @@ pub fn parse_rename_from(line: &str) -> Option<String> {
 /// Returns the path after "rename to " if the line matches, None otherwise.
 ///
 /// Requirements: 4.3
+#[must_use]
 pub fn parse_rename_to(line: &str) -> Option<String> {
     let rest = line.strip_prefix("rename to ")?;
     parse_rename_path(rest)
