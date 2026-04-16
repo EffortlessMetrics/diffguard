@@ -1,7 +1,8 @@
 #![allow(clippy::collapsible_if)]
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::io::{self, BufRead, IsTerminal, Read, Write};
+use std::fmt::Write;
+use std::io::{self, BufRead, IsTerminal, Read, Write as IoWrite};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
@@ -1074,7 +1075,7 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
             if !suggestions.is_empty() {
                 msg.push_str("\n\nDid you mean one of these?\n");
                 for s in &suggestions {
-                    msg.push_str(&format!("  - {}\n", s));
+                    writeln!(&mut msg, "  - {}", s).unwrap();
                 }
             }
 
@@ -1089,13 +1090,13 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
 fn format_rule_explanation(rule: &RuleConfig) -> String {
     let mut out = String::new();
 
-    out.push_str(&format!("Rule: {}\n", rule.id));
-    out.push_str(&format!("Severity: {}\n", rule.severity.as_str()));
-    out.push_str(&format!("Message: {}\n", rule.message));
+    writeln!(&mut out, "Rule: {}", rule.id).unwrap();
+    writeln!(&mut out, "Severity: {}", rule.severity.as_str()).unwrap();
+    writeln!(&mut out, "Message: {}", rule.message).unwrap();
 
     out.push_str("\nPatterns:\n");
     for p in &rule.patterns {
-        out.push_str(&format!("  - {}\n", p));
+        writeln!(&mut out, "  - {}", p).unwrap();
     }
 
     out.push_str("\nSemantics:\n");
@@ -1103,71 +1104,81 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
         MatchMode::Any => "any",
         MatchMode::Absent => "absent",
     };
-    out.push_str(&format!("  - Match mode: {match_mode}\n"));
-    out.push_str(&format!(
-        "  - Multiline: {}{}\n",
+    writeln!(&mut out, "  - Match mode: {match_mode}").unwrap();
+    let window_str = rule
+        .multiline_window
+        .map(|w| format!(" (window={w})"))
+        .unwrap_or_default();
+    writeln!(
+        &mut out,
+        "  - Multiline: {}{}",
         if rule.multiline { "yes" } else { "no" },
-        rule.multiline_window
-            .map(|w| format!(" (window={w})"))
-            .unwrap_or_default()
-    ));
+        window_str
+    )
+    .unwrap();
     if !rule.context_patterns.is_empty() {
-        out.push_str(&format!(
-            "  - Context patterns (window={}): {}\n",
+        writeln!(
+            &mut out,
+            "  - Context patterns (window={}): {}",
             rule.context_window.unwrap_or(3),
             rule.context_patterns.join(", ")
-        ));
+        )
+        .unwrap();
     }
     if !rule.escalate_patterns.is_empty() {
-        out.push_str(&format!(
-            "  - Escalation to {} (window={}): {}\n",
+        writeln!(
+            &mut out,
+            "  - Escalation to {} (window={}): {}",
             rule.escalate_to
                 .unwrap_or(diffguard_types::Severity::Error)
                 .as_str(),
             rule.escalate_window.unwrap_or(0),
             rule.escalate_patterns.join(", ")
-        ));
+        )
+        .unwrap();
     }
     if !rule.depends_on.is_empty() {
-        out.push_str(&format!("  - Depends on: {}\n", rule.depends_on.join(", ")));
+        writeln!(&mut out, "  - Depends on: {}", rule.depends_on.join(", ")).unwrap();
     }
 
     out.push_str("\nApplies to:\n");
 
     if !rule.languages.is_empty() {
-        out.push_str(&format!("  - Languages: {}\n", rule.languages.join(", ")));
+        writeln!(&mut out, "  - Languages: {}", rule.languages.join(", ")).unwrap();
     }
 
     if !rule.paths.is_empty() {
-        out.push_str(&format!("  - Paths: {}\n", rule.paths.join(", ")));
+        writeln!(&mut out, "  - Paths: {}", rule.paths.join(", ")).unwrap();
     }
 
     if !rule.exclude_paths.is_empty() {
-        out.push_str(&format!(
-            "  - Excludes: {}\n",
-            rule.exclude_paths.join(", ")
-        ));
+        writeln!(&mut out, "  - Excludes: {}", rule.exclude_paths.join(", ")).unwrap();
     }
 
     out.push_str("\nPreprocessing:\n");
-    out.push_str(&format!(
-        "  - Ignore comments: {}\n",
+    writeln!(
+        &mut out,
+        "  - Ignore comments: {}",
         if rule.ignore_comments { "yes" } else { "no" }
-    ));
-    out.push_str(&format!(
-        "  - Ignore strings: {}\n",
+    )
+    .unwrap();
+    writeln!(
+        &mut out,
+        "  - Ignore strings: {}",
         if rule.ignore_strings { "yes" } else { "no" }
-    ));
+    )
+    .unwrap();
 
     if let Some(help) = &rule.help {
         out.push_str("\nRemediation:\n");
         for line in help.lines() {
-            out.push_str(&format!("  {}\n", line));
+            writeln!(&mut out, "  {}", line).unwrap();
         }
     }
 
     if let Some(url) = &rule.url {
-        out.push_str(&format!("\nSee also: {}\n", url));
+        writeln!(&mut out).unwrap();
+        writeln!(&mut out, "See also: {}", url).unwrap();
     }
 
     out
@@ -1721,16 +1732,20 @@ fn render_markdown_with_baseline_annotations(
     };
 
     let mut out = String::new();
-    out.push_str(&format!("## diffguard — {status}\n\n"));
+    writeln!(&mut out, "## diffguard — {status}").unwrap();
+    out.push('\n');
 
-    out.push_str(&format!(
-        "Scanned **{}** file(s), **{}** line(s) (scope: `{}`, base: `{}`, head: `{}`)\n\n",
+    writeln!(
+        &mut out,
+        "Scanned **{}** file(s), **{}** line(s) (scope: `{}`, base: `{}`, head: `{}`)",
         receipt.diff.files_scanned,
         receipt.diff.lines_scanned,
         receipt.diff.scope.as_str(),
         receipt.diff.base,
         receipt.diff.head
-    ));
+    )
+    .unwrap();
+    out.push('\n');
 
     // Build a set of baseline finding fingerprints for quick lookup
     let _baseline_fps: BTreeSet<String> = baseline_findings
@@ -2787,7 +2802,7 @@ fn cmd_trend(args: TrendArgs) -> Result<()> {
     Ok(())
 }
 
-fn confirm_overwrite<R: BufRead, W: Write>(
+fn confirm_overwrite<R: BufRead, W: IoWrite>(
     input: &mut R,
     mut err: W,
     output_path: &Path,
@@ -2810,7 +2825,7 @@ fn cmd_init(args: InitArgs) -> Result<()> {
     cmd_init_with_io(args, &mut input, io::stderr())
 }
 
-fn cmd_init_with_io<R: BufRead, W: Write>(args: InitArgs, input: &mut R, err: W) -> Result<()> {
+fn cmd_init_with_io<R: BufRead, W: IoWrite>(args: InitArgs, input: &mut R, err: W) -> Result<()> {
     let output_path = &args.output;
 
     // Check if file already exists
@@ -5382,7 +5397,7 @@ patterns = ["alpha"]
 
     struct FailingWriter;
 
-    impl Write for FailingWriter {
+    impl IoWrite for FailingWriter {
         fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
             Ok(buf.len())
         }
