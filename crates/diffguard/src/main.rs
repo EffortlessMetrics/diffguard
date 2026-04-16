@@ -953,7 +953,13 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
 }
 
 /// Validate the environment for running diffguard.
-/// Returns 0 if all checks pass, 1 if any check fails.
+///
+/// Performs three checks:
+/// 1. Git availability and version
+/// 2. Whether current directory is inside a git repository
+/// 3. Config file presence and validity (if expected or explicitly provided)
+///
+/// Returns `Ok(0)` if all checks pass, `Ok(1)` if any check fails.
 fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
     let mut all_pass = true;
 
@@ -1056,6 +1062,9 @@ fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bo
     }
 }
 
+/// Print detailed information about a specific rule.
+/// If the rule is found, prints its explanation to stdout.
+/// If not found, returns an error with suggestions for similar rules.
 fn cmd_explain(args: ExplainArgs) -> Result<()> {
     let cfg = load_config(args.config, args.no_default_rules)?;
 
@@ -1086,7 +1095,11 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
     }
 }
 
-/// Format rule explanation for display.
+/// Format a rule configuration into a human-readable explanation string.
+///
+/// Output includes: rule ID, severity, message, patterns, match mode,
+/// multiline settings, context patterns, escalation rules, dependencies,
+/// language/path scope, preprocessing settings, and remediation help.
 fn format_rule_explanation(rule: &RuleConfig) -> String {
     let mut out = String::new();
 
@@ -1787,6 +1800,8 @@ fn render_markdown_with_baseline_annotations(
     out
 }
 
+/// Parse git blame --line-porcelain output into a map of line numbers to metadata.
+/// The porcelain format has a header for each line group followed by the line content.
 fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
     let mut out = BTreeMap::<u32, BlameLineMeta>::new();
     let lines: Vec<&str> = blame_text.lines().collect();
@@ -1840,6 +1855,8 @@ fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
     out
 }
 
+/// Run git blame in porcelain mode and return the raw output.
+/// Used to extract author metadata for blame-based filtering.
 fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     let output = Command::new("git")
         .args(["blame", "--line-porcelain", head_ref, "--", path])
@@ -1858,6 +1875,8 @@ fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Collect lines that are allowed based on git blame author/time filters.
+/// Returns lines that match the specified blame filters from the diff scope.
 fn collect_blame_allowed_lines(
     diff_text: &str,
     scope: Scope,
@@ -1894,6 +1913,9 @@ fn collect_blame_allowed_lines(
     Ok(allowed)
 }
 
+/// Test hook to force a sensor JSON serialization error.
+/// Only active in test builds when DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR is set.
+/// This is used to verify error handling paths.
 fn maybe_force_sensor_json_error() -> Option<serde_json::Error> {
     if cfg!(test) && std::env::var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR").is_ok() {
         Some(<serde_json::Error as serde::ser::Error>::custom(
@@ -1904,6 +1926,8 @@ fn maybe_force_sensor_json_error() -> Option<serde_json::Error> {
     }
 }
 
+/// Render sensor JSON report with test error injection support.
+/// Wraps render_sensor_json to allow forcing errors in tests.
 fn render_sensor_json_checked(
     receipt: &CheckReceipt,
     ctx: &SensorReportContext,
@@ -1914,6 +1938,8 @@ fn render_sensor_json_checked(
     render_sensor_json(receipt, ctx)
 }
 
+/// Serialize a sensor report to JSON with test error injection support.
+/// Wraps serde_json::to_string to allow forcing errors in tests.
 fn serialize_sensor_report_checked(
     report: &diffguard_types::SensorReport,
 ) -> Result<String, serde_json::Error> {
@@ -3022,6 +3048,9 @@ fn cmd_test(args: TestArgs) -> Result<i32> {
     if failed > 0 { Ok(1) } else { Ok(0) }
 }
 
+/// Load configuration from a file or fall back to built-in rules.
+/// If no config file exists, returns the built-in rules.
+/// If --no-default-rules is set, only returns user-defined rules.
 fn load_config(path: Option<PathBuf>, no_default_rules: bool) -> Result<ConfigFile> {
     let user_path = path.or_else(|| {
         let p = PathBuf::from("diffguard.toml");
@@ -3108,6 +3137,9 @@ fn expand_env_vars(content: &str) -> Result<String> {
     Ok(result)
 }
 
+/// Merge user-defined config with built-in rules.
+/// User rules override built-in rules with the same ID.
+/// Built-in rules are used for any rule ID not defined by the user.
 fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     let mut built = ConfigFile::built_in();
 
@@ -3127,6 +3159,8 @@ fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     built
 }
 
+/// Run git diff with the specified base, head, and context lines.
+/// Returns the unified diff output as a string.
 fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
     let range = format!("{base}...{head}");
     let unified = format!("--unified={context_lines}");
@@ -3147,6 +3181,9 @@ fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Run git diff --cached to get staged changes.
+/// Used for pre-commit hook mode when --staged is specified.
+/// Returns the unified diff output as a string.
 fn git_staged_diff(context_lines: u32) -> Result<String> {
     let unified = format!("--unified={context_lines}");
 
@@ -3166,6 +3203,9 @@ fn git_staged_diff(context_lines: u32) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Write a serializable value to a JSON file.
+/// Creates parent directories if they don't exist.
+/// Returns an error if serialization or file writing fails.
 fn write_json(path: &Path, value: &impl serde::Serialize) -> Result<()> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
