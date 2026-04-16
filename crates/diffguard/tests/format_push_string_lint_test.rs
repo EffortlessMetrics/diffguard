@@ -60,12 +60,24 @@ fn count_warnings_from_file(combined: &str, main_rs_marker: &str, lint_name: &st
 fn test_no_format_push_string_warnings_in_main_rs() {
     // Invalidate any cached clippy results by touching the source file
     // This ensures we get fresh lint results.
+    let manifest_dir =
+        std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR should be set");
+    let main_rs_path = format!("{}/src/main.rs", manifest_dir);
     let touch_output = Command::new("touch")
-        .arg("/home/hermes/repos/diffguard/crates/diffguard/src/main.rs")
+        .arg(&main_rs_path)
         .output()
         .expect("touch should succeed");
 
     assert!(touch_output.status.success(), "touch should succeed");
+
+    // Use the workspace root as current_dir (parent of manifest_dir)
+    let workspace_root = std::path::Path::new(&manifest_dir)
+        .parent()
+        .and_then(|p| p.parent())
+        .expect("CARGO_MANIFEST_DIR should have at least two parent levels");
+    let workspace_root_str = workspace_root
+        .to_str()
+        .expect("workspace root should be valid UTF-8");
 
     let output = Command::new("cargo")
         .args([
@@ -76,7 +88,7 @@ fn test_no_format_push_string_warnings_in_main_rs() {
             "-W",
             "clippy::format_push_string",
         ])
-        .current_dir("/home/hermes/repos/diffguard")
+        .current_dir(workspace_root_str)
         .output()
         .expect("cargo clippy should execute");
 
