@@ -146,6 +146,7 @@ pub fn parse_unified_diff(
     scope: Scope,
 ) -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> {
     let mut out: Vec<DiffLine> = Vec::new();
+    tracing::debug!(input_bytes = diff_text.len(), "diff_parse_start");
     let mut current_path: Option<String> = None;
 
     let mut old_line_no: u32 = 0;
@@ -178,24 +179,40 @@ pub fn parse_unified_diff(
         // Detect binary files (Requirements 4.1)
         if is_binary_file(raw) {
             skip_current_file = true;
+            tracing::debug!(
+                path = current_path.as_deref().unwrap_or("<unknown>"),
+                "file_skip_binary"
+            );
             continue;
         }
 
         // Detect submodule changes (Requirements 4.2)
         if is_submodule(raw) {
             skip_current_file = true;
+            tracing::debug!(
+                path = current_path.as_deref().unwrap_or("<unknown>"),
+                "file_skip_submodule"
+            );
             continue;
         }
 
         // Detect deleted files (Requirements 4.5)
         if is_deleted_file(raw) {
             skip_current_file = !matches!(scope, Scope::Deleted);
+            tracing::debug!(
+                path = current_path.as_deref().unwrap_or("<unknown>"),
+                "file_skip_deleted"
+            );
             continue;
         }
 
         // Detect mode changes (Requirements 4.4)
         // Mode-only changes are skipped - they have no content to scan
         if is_mode_change_only(raw) {
+            tracing::debug!(
+                path = current_path.as_deref().unwrap_or("<unknown>"),
+                "file_skip_mode_only"
+            );
             continue;
         }
 
@@ -235,8 +252,14 @@ pub fn parse_unified_diff(
                     new_line_no = hdr.new_start;
                     in_hunk = true;
                     pending_removed = false;
+                    tracing::trace!(
+                        old_start = hdr.old_start,
+                        new_start = hdr.new_start,
+                        "hunk_header"
+                    );
                 }
-                Err(_) => {
+                Err(err) => {
+                    tracing::debug!(error = ?err, "diff_parse_error");
                     // Malformed hunk header - skip this hunk but continue processing
                     // This allows subsequent files to be processed (Requirements 4.6)
                     in_hunk = false;
@@ -341,6 +364,7 @@ pub fn parse_unified_diff(
             .map_err(|_| DiffParseError::Overflow(format!("too many lines (> {})", u32::MAX)))?,
     };
 
+    tracing::debug!(lines_output = out.len(), stats = ?stats, "diff_parse_complete");
     Ok((out, stats))
 }
 
