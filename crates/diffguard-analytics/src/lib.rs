@@ -42,6 +42,7 @@ pub struct FalsePositiveEntry {
 /// - ensures schema id is set
 /// - sorts entries
 /// - deduplicates by fingerprint
+#[must_use]
 pub fn normalize_false_positive_baseline(
     mut baseline: FalsePositiveBaseline,
 ) -> FalsePositiveBaseline {
@@ -64,6 +65,7 @@ pub fn normalize_false_positive_baseline(
 /// Computes the stable finding fingerprint used for baseline tracking.
 ///
 /// Format: SHA-256 of `rule_id:path:line:match_text`.
+#[must_use]
 pub fn fingerprint_for_finding(finding: &Finding) -> String {
     let input = format!(
         "{}:{}:{}:{}",
@@ -74,6 +76,7 @@ pub fn fingerprint_for_finding(finding: &Finding) -> String {
 }
 
 /// Builds a baseline from receipt findings.
+#[must_use]
 pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
     let mut baseline = FalsePositiveBaseline {
         schema: FALSE_POSITIVE_BASELINE_SCHEMA_V1.to_string(),
