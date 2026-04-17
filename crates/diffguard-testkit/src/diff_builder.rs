@@ -29,7 +29,7 @@
 //! assert!(diff.contains("+fn new_function() {}"));
 //! ```
 
-use crate::arb::{MAX_FILES, MAX_HUNKS_PER_FILE, MAX_LINES_PER_HUNK, MAX_LINE_LENGTH};
+use crate::arb::{MAX_FILES, MAX_HUNKS_PER_FILE, MAX_LINE_LENGTH, MAX_LINES_PER_HUNK};
 
 /// A builder for constructing unified diff strings.
 #[derive(Debug, Clone, Default)]
@@ -61,6 +61,10 @@ impl DiffBuilder {
     }
 
     /// Add a pre-built file to the diff.
+    ///
+    /// # Panics
+    ///
+    /// Panics if MAX_FILES would be exceeded.
     pub fn add_file(mut self, file: FileBuilder) -> Self {
         assert!(
             self.files.len() < MAX_FILES,
@@ -140,6 +144,10 @@ impl FileBuilderInProgress {
     }
 
     /// Finish this file and return to the diff builder.
+    ///
+    /// # Panics
+    ///
+    /// Panics if MAX_FILES would be exceeded.
     pub fn done(mut self) -> DiffBuilder {
         self.diff_builder.files.push(self.file_builder);
         self.diff_builder
@@ -174,6 +182,10 @@ impl HunkBuilderInProgress {
     }
 
     /// Finish this hunk and return to the file builder.
+    ///
+    /// # Panics
+    ///
+    /// Panics if MAX_HUNKS_PER_FILE would be exceeded.
     pub fn done(mut self) -> FileBuilderInProgress {
         self.file_in_progress.file_builder = self
             .file_in_progress
@@ -583,6 +595,10 @@ impl HunkBuilder {
 
 impl FileBuilderInProgress {
     /// Add a pre-built hunk directly.
+    ///
+    /// # Panics
+    ///
+    /// Panics if MAX_HUNKS_PER_FILE would be exceeded.
     pub fn add_hunk_directly(mut self, hunk: HunkBuilder) -> Self {
         self.file_builder = self.file_builder.add_hunk(hunk);
         self
