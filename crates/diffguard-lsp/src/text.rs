@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use lsp_types::{Position, TextDocumentContentChangeEvent};
 
 /// Splits text into lines by newline characters, preserving the lines themselves.
@@ -199,5 +199,200 @@ mod tests {
 
         apply_incremental_change(&mut text, &change).expect("apply");
         assert_eq!(text, "alpha\ngamma\n");
+    }
+
+    // === utf16_length edge case tests ===
+
+    #[test]
+    fn utf16_length_empty_string_returns_zero() {
+        assert_eq!(utf16_length(""), 0);
+    }
+
+    #[test]
+    fn utf16_length_ascii_only_returns_char_count() {
+        // ASCII chars: each is exactly 1 UTF-16 code unit
+        assert_eq!(utf16_length("a"), 1);
+        assert_eq!(utf16_length("hello"), 5);
+        assert_eq!(utf16_length("Hello, World!"), 13);
+    }
+
+    #[test]
+    fn utf16_length_bmp_non_ascii_returns_correct_count() {
+        // Latin-1 Supplement characters (U+00C0-U+00FF): 1 UTF-16 code unit each
+        assert_eq!(utf16_length("é"), 1);
+        assert_eq!(utf16_length("ñ"), 1);
+        assert_eq!(utf16_length("ü"), 1);
+        assert_eq!(utf16_length("Ç"), 1);
+
+        // Cyrillic: 1 UTF-16 code unit per char
+        assert_eq!(utf16_length("Привет"), 6);
+
+        // Chinese characters (BMP): 1 UTF-16 code unit per char
+        assert_eq!(utf16_length("中文"), 2);
+
+        // Japanese Hiragana: 1 UTF-16 code unit per char
+        assert_eq!(utf16_length("こんにちは"), 5);
+    }
+
+    #[test]
+    fn utf16_length_emoji_requires_two_code_units() {
+        // Emoji U+1F600 (Grinning Face) is beyond U+FFFF → requires surrogate pair → 2 UTF-16 code units
+        assert_eq!(utf16_length("😀"), 2);
+        // Multiple emoji
+        assert_eq!(utf16_length("😀😀"), 4);
+        // Mixed emoji and ASCII: h(1) + i(1) + 😀(2) = 4
+        assert_eq!(utf16_length("hi😀"), 4);
+    }
+
+    #[test]
+    fn utf16_length_mixed_scripts_returns_correct_count() {
+        // "Héllo世界😀": H(1)+é(1)+l(1)+l(1)+o(1)+世(1)+界(1)+😀(2) = 9 UTF-16 code units
+        assert_eq!(utf16_length("Héllo世界😀"), 9);
+    }
+
+    #[test]
+    fn utf16_length_newlines_and_whitespace() {
+        // \n is 1 UTF-16 code unit
+        assert_eq!(utf16_length("\n"), 1);
+        assert_eq!(utf16_length("a\nb"), 3);
+        // tab
+        assert_eq!(utf16_length("\t"), 1);
+        assert_eq!(utf16_length("a\tb"), 3);
+    }
+
+    #[test]
+    fn utf16_length_combining_characters() {
+        // Precomposed é (U+00E9) → 1 UTF-16 code unit
+        assert_eq!(utf16_length("é"), 1);
+        // Decomposed: e (U+0065) + combining acute (U+0301) → 2 UTF-16 code units
+        assert_eq!(utf16_length("e\u{0301}"), 2);
+    }
+
+    #[test]
+    fn utf16_length_zero_width_and_control_characters() {
+        // Zero-width space (U+200B) → 1 UTF-16 code unit
+        assert_eq!(utf16_length("\u{200B}"), 1);
+        // BOM (U+FEFF) → 1 UTF-16 code unit
+        assert_eq!(utf16_length("\u{FEFF}"), 1);
+        // Null character → 1 UTF-16 code unit
+        assert_eq!(utf16_length("\0"), 1);
+    }
+
+    #[test]
+    fn utf16_length_surrogate_pair_characters_beyond_bmp() {
+        // Musical G clef symbol (U+1D11E) → requires surrogate pair → 2 UTF-16 code units
+        assert_eq!(utf16_length("\u{1D11E}"), 2);
+        // Gothic letter (U+10330) → 2 UTF-16 code units
+        assert_eq!(utf16_length("\u{10330}"), 2);
+    }
+
+    // === Property-based tests (proptest) ===
+
+    #[test]
+    fn utf16_length_equals_manual_char_sum() {
+        // utf16_length(s) must equal sum of each char's len_utf16
+        use proptest::prelude::*;
+        proptest!(|(s in ".*")| {
+            let expected: u32 = s.chars().map(|ch| ch.len_utf16() as u32).sum();
+            prop_assert_eq!(utf16_length(&s), expected);
+        });
+    }
+
+    #[test]
+    fn utf16_length_ascii_equals_byte_length() {
+        // For ASCII-only strings, utf16_length == byte length
+        use proptest::prelude::*;
+        proptest!(|(s in ".*")| {
+            // Check only for strings that are purely ASCII
+            if s.is_ascii() {
+                prop_assert_eq!(utf16_length(&s), s.len() as u32);
+            }
+        });
+    }
+
+    #[test]
+    fn utf16_length_additive_concatenation() {
+        // utf16_length(a ++ b) == utf16_length(a) + utf16_length(b)
+        use proptest::prelude::*;
+        proptest!(|
+            (a in ".*", b in ".*")|
+        {
+            let combined = format!("{}{}", a, b);
+            prop_assert_eq!(
+                utf16_length(&combined),
+                utf16_length(&a).saturating_add(utf16_length(&b))
+            );
+        });
+    }
+
+    #[test]
+    fn utf16_length_bounded_by_char_count() {
+        // For any string: char_count <= utf16_length <= char_count * 2
+        // (each char is at least 1 UTF-16 unit, at most 2)
+        use proptest::prelude::*;
+        proptest!(|(s in ".*")| {
+            let char_count = s.chars().count() as u32;
+            let result = utf16_length(&s);
+            prop_assert!(result >= char_count, "utf16_length {} < char_count {}", result, char_count);
+            prop_assert!(result <= char_count.saturating_mul(2), "utf16_length {} > char_count * 2 {}", result, char_count);
+        });
+    }
+
+    #[test]
+    fn utf16_length_bounded_by_byte_length() {
+        // utf16_length(s) <= bytes * 2 (worst case: every byte is a leading byte of a 4-byte char)
+        use proptest::prelude::*;
+        proptest!(|(s in ".*")| {
+            let byte_len = s.len() as u32;
+            let result = utf16_length(&s);
+            prop_assert!(result <= byte_len.saturating_mul(2),
+                "utf16_length {} > bytes * 2 = {}", result, byte_len * 2);
+        });
+    }
+
+    #[test]
+    fn utf16_length_non_empty_positive() {
+        // Non-empty strings must have utf16_length >= 1
+        use proptest::prelude::*;
+        proptest!(|(s in "[^\\x00]{1,200}")| {
+            prop_assert!(utf16_length(&s) >= 1, "non-empty string has utf16_length 0");
+        });
+    }
+
+    #[test]
+    fn utf16_length_returns_u32_compatible_value() {
+        // utf16_length returns u32, which is what LSP uses for character positions
+        // This is a compile-time verification - no runtime test needed
+        // The return type itself guarantees u32 compatibility
+    }
+
+    #[test]
+    fn utf16_length_single_bmp_char_is_one() {
+        // Any single BMP character (U+0000 to U+FFFF, excluding surrogates) has utf16_length == 1
+        use proptest::prelude::*;
+        // Generate a random BMP char (not a surrogate) by filtering the full u32 range
+        proptest!(|(ch in 0x0000u32..0xFFFFu32)| {
+            // Skip surrogate range 0xD800..0xE000
+            if (0xD800..0xE000).contains(&ch) {
+                return Ok(());
+            }
+            if let Some(c) = char::from_u32(ch) {
+                let s = c.to_string();
+                prop_assert_eq!(utf16_length(&s), 1,
+                    "BMP char U+{:04X} expected len 1, got {}", ch, utf16_length(&s));
+            }
+        });
+    }
+
+    #[test]
+    fn utf16_length_single_non_bmp_char_is_two() {
+        // Any single non-BMP character (U+10000+) has utf16_length == 2
+        use proptest::prelude::*;
+        // Generate a random non-BMP char
+        proptest!(|(ch in 0x10000u32..0x10FFFFu32)| {
+            let s = char::from_u32(ch).unwrap().to_string();
+            prop_assert_eq!(utf16_length(&s), 2,
+                "Non-BMP char U+{:04X} expected len 2, got {}", ch, utf16_length(&s));
+        });
     }
 }
