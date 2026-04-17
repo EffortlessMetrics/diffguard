@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: fp
+---
+d8a3884a7bb468e50b1d4fa92b537a927eeb19c26e082089d1e5aa46d1582612

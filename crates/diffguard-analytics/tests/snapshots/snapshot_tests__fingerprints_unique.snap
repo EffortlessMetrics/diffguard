@@ -1,0 +1,9 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: fps
+---
+[
+  "68a46ca2c408944a0e5eda6f81e21ada3b8fbf57e3a1bb2fc7ef2b3912548bce",
+  "6464e2cb4b2bcadfa71d187084249c7bd9bd4ec2fd893b8c2450f7d3112e0da0",
+  "d270afbbdc701f2c00cb211899945110e324e9a4e5955612a75c22ad6fef7fea"
+]

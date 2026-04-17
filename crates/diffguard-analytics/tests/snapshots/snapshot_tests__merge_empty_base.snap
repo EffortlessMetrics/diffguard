@@ -1,0 +1,22 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: merged
+---
+{
+  "schema": "diffguard.false_positive_baseline.v1",
+  "entries": [
+    {
+      "fingerprint": "aaa_fp",
+      "rule_id": "py.bare-except",
+      "path": "main.py",
+      "line": 5,
+      "note": "intentional"
+    },
+    {
+      "fingerprint": "bbb_fp",
+      "rule_id": "go.no_error_panic",
+      "path": "util.go",
+      "line": 11
+    }
+  ]
+}
