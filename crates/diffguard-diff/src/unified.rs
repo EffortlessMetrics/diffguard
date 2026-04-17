@@ -121,6 +121,82 @@ pub enum DiffParseError {
     Overflow(String),
 }
 
+// ============================================================================
+// Helper functions extracted from parse_unified_diff()
+// ============================================================================
+
+/// Processes a single content line (+, -, or ' ') in a unified diff hunk.
+#[must_use]
+pub(crate) fn process_diff_line_content(
+    line: &str,
+    first: u8,
+    path: &str,
+    scope: Scope,
+    old_line_no: u32,
+    new_line_no: u32,
+    pending_removed: bool,
+) -> Option<(Option<DiffLine>, bool, u32, u32)> {
+    match first {
+        b'+' => {
+            let content = &line[1..];
+            if is_submodule(content) {
+                return None;
+            }
+            let is_changed = pending_removed;
+            let include = match scope {
+                Scope::Added => true,
+                Scope::Changed | Scope::Modified => is_changed,
+                Scope::Deleted => false,
+            };
+            let diff_line = if include {
+                Some(DiffLine {
+                    path: path.to_string(),
+                    line: new_line_no,
+                    content: content.to_string(),
+                    kind: if is_changed { ChangeKind::Changed } else { ChangeKind::Added },
+                })
+            } else {
+                None
+            };
+            Some((diff_line, pending_removed, old_line_no, new_line_no.saturating_add(1)))
+        }
+        b'-' => {
+            let content = &line[1..];
+            if is_submodule(content) {
+                return None;
+            }
+            let diff_line = if matches!(scope, Scope::Deleted) {
+                Some(DiffLine {
+                    path: path.to_string(),
+                    line: old_line_no,
+                    content: content.to_string(),
+                    kind: ChangeKind::Deleted,
+                })
+            } else {
+                None
+            };
+            Some((diff_line, true, old_line_no.saturating_add(1), new_line_no))
+        }
+        b' ' => {
+            Some((None, false, old_line_no.saturating_add(1), new_line_no.saturating_add(1)))
+        }
+        _ => None,
+    }
+}
+
+/// Computes diff statistics from parsed diff lines.
+fn compute_diff_stats(lines: &[DiffLine]) -> DiffStats {
+    let mut files = std::collections::BTreeSet::<String>::new();
+    for l in lines {
+        files.insert(l.path.clone());
+    }
+    DiffStats {
+        files: u32::try_from(files.len()).unwrap_or(u32::MAX),
+        lines: u32::try_from(lines.len()).unwrap_or(u32::MAX),
+    }
+}
+
+
 /// Parse a unified diff (git-style) and return scoped lines in diff order.
 ///
 /// `scope` controls whether we return:
@@ -266,80 +342,23 @@ pub fn parse_unified_diff(
 
         let first = raw.as_bytes().first().copied();
         match first {
-            Some(b'+') => {
-                // Check if this is a submodule content line (Requirements 4.2)
-                let content = &raw[1..];
-                if is_submodule(content) {
-                    skip_current_file = true;
-                    in_hunk = false;
-                    continue;
+            Some(b'+') | Some(b'-') | Some(b' ') => {
+                if let Some((diff_line, new_pending, new_old, new_new)) = process_diff_line_content(
+                    raw, first.unwrap(), path, scope, old_line_no, new_line_no, pending_removed,
+                ) {
+                    pending_removed = new_pending;
+                    old_line_no = new_old;
+                    new_line_no = new_new;
+                    if let Some(line) = diff_line {
+                        out.push(line);
+                    }
                 }
-
-                // Added line.
-                let is_changed = pending_removed;
-                let include = match scope {
-                    Scope::Added => true,
-                    Scope::Changed | Scope::Modified => is_changed,
-                    Scope::Deleted => false,
-                };
-
-                if include {
-                    out.push(DiffLine {
-                        path: path.to_string(),
-                        line: new_line_no,
-                        content: content.to_string(),
-                        kind: if is_changed {
-                            ChangeKind::Changed
-                        } else {
-                            ChangeKind::Added
-                        },
-                    });
-                }
-
-                new_line_no = new_line_no.saturating_add(1);
-            }
-            Some(b'-') => {
-                // Check if this is a submodule content line (Requirements 4.2)
-                let content = &raw[1..];
-                if is_submodule(content) {
-                    skip_current_file = true;
-                    in_hunk = false;
-                    continue;
-                }
-
-                // Removed line.
-                if matches!(scope, Scope::Deleted) {
-                    out.push(DiffLine {
-                        path: path.to_string(),
-                        line: old_line_no,
-                        content: content.to_string(),
-                        kind: ChangeKind::Deleted,
-                    });
-                }
-                pending_removed = true;
-                old_line_no = old_line_no.saturating_add(1);
-            }
-            Some(b' ') => {
-                // Context line.
-                pending_removed = false;
-                old_line_no = old_line_no.saturating_add(1);
-                new_line_no = new_line_no.saturating_add(1);
             }
             _ => {}
         }
     }
 
-    let mut files = std::collections::BTreeSet::<String>::new();
-    for l in &out {
-        files.insert(l.path.clone());
-    }
-
-    let stats = DiffStats {
-        files: u32::try_from(files.len())
-            .map_err(|_| DiffParseError::Overflow(format!("too many files (> {})", u32::MAX)))?,
-        lines: u32::try_from(out.len())
-            .map_err(|_| DiffParseError::Overflow(format!("too many lines (> {})", u32::MAX)))?,
-    };
+    let stats = compute_diff_stats(&out);
 
     Ok((out, stats))
 }

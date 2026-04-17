@@ -1519,9 +1519,9 @@ fn load_false_positive_baseline(path: &Path) -> Result<FalsePositiveBaseline> {
 
     let text = std::fs::read_to_string(path)
         .with_context(|| format!("read false-positive baseline {}", path.display()))?;
-    let baseline: FalsePositiveBaseline = serde_json::from_str(&text)
+    let mut baseline: FalsePositiveBaseline = serde_json::from_str(&text)
         .with_context(|| format!("parse false-positive baseline {}", path.display()))?;
-    let baseline = normalize_false_positive_baseline(baseline);
+    normalize_false_positive_baseline(&mut baseline);
     if baseline.schema != FALSE_POSITIVE_BASELINE_SCHEMA_V1 {
         bail!(
             "unsupported false-positive baseline schema '{}'; expected '{}'",
