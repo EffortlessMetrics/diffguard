@@ -216,6 +216,7 @@
       ]
     },
     "ToolMeta": {
+      "description": "Metadata describing the tool that produced a check receipt.\n\nIncludes the tool name and version for traceability in CI/CD pipelines.",
       "type": "object",
       "properties": {
         "name": {
@@ -231,6 +232,7 @@
       ]
     },
     "Verdict": {
+      "description": "The overall result of a check run.\n\n`status` is the top-level disposition, `counts` breaks down findings by\nseverity, and `reasons` provides human-readable tokens explaining any\nnon-pass outcome (e.g., `no_diff_input`, `truncated`).",
       "type": "object",
       "properties": {
         "counts": {
@@ -253,6 +255,7 @@
       ]
     },
     "VerdictCounts": {
+      "description": "Severity counts for a check run.\n\n`suppressed` tracks matches disabled by inline directives and is omitted\nfrom serialized output when zero to keep receipts clean.",
       "type": "object",
       "properties": {
         "error": {
@@ -284,6 +287,7 @@
       ]
     },
     "VerdictStatus": {
+      "description": "The overall disposition of a check run.\n\n`VerdictStatus` is the top-level pass/fail/skip result, while `counts`\nprovides a breakdown by severity and `reasons` explains any non-pass outcomes.",
       "oneOf": [
         {
           "type": "string",
