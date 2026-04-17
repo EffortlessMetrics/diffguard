@@ -72,10 +72,18 @@ fn extract_test_cases(rule_block: &str) -> Vec<(Option<&str>, &str, bool)> {
                     break;
                 }
                 if field_trimmed.starts_with("description = ") {
-                    description = Some(field_trimmed.trim_start_matches("description = ").trim_matches('"'));
+                    description = Some(
+                        field_trimmed
+                            .trim_start_matches("description = ")
+                            .trim_matches('"'),
+                    );
                 }
                 if field_trimmed.starts_with("input = ") {
-                    input = Some(field_trimmed.trim_start_matches("input = ").trim_matches('"'));
+                    input = Some(
+                        field_trimmed
+                            .trim_start_matches("input = ")
+                            .trim_matches('"'),
+                    );
                 }
                 if field_trimmed.starts_with("should_match = ") {
                     let val = field_trimmed.trim_start_matches("should_match = ");
@@ -116,8 +124,6 @@ fn rust_no_unwrap_rule_has_tags_safety() {
         "diffguard.toml.example rust.no_unwrap rule is MISSING `tags = [\"safety\"]`.\n\n\
         Expected: The rust.no_unwrap rule block should contain `tags = [\"safety\"]`\n        to demonstrate the tags feature and be consistent with built_in.json (line 30).\n\n\
         Actual: The rust.no_unwrap rule block does not contain `tags = [\"safety\"]`.",
-        start + 1,
-        end + 1
     );
 }
 
@@ -141,8 +147,6 @@ fn rust_no_unwrap_rule_has_test_cases_blocks() {
         rule_block.contains("[[rule.test_cases]]"),
         "diffguard.toml.example rust.no_unwrap rule is MISSING `[[rule.test_cases]]` blocks.\n\n\
         Expected: The rust.no_unwrap rule should contain at least one `[[rule.test_cases]]`\n        block to demonstrate the test_cases feature for `diff test` command.",
-        start + 1,
-        end + 1
     );
 }
 
@@ -165,7 +169,7 @@ fn rust_no_unwrap_has_positive_test_case() {
     let test_cases = extract_test_cases(&rule_block);
 
     // Find a positive test case (should_match = true and input contains .unwrap() or .expect())
-    let has_positive_case = test_cases.iter().any(|(desc, input, should_match)| {
+    let has_positive_case = test_cases.iter().any(|(_desc, input, should_match)| {
         *should_match && (input.contains(".unwrap()") || input.contains(".expect()"))
     });
 
@@ -198,7 +202,7 @@ fn rust_no_unwrap_has_negative_test_case() {
 
     // Find a negative test case (should_match = false and input does NOT contain .unwrap() or .expect())
     // CORRECTION: We check ONLY the negative test case's input, not the entire block!
-    let has_negative_case = test_cases.iter().any(|(desc, input, should_match)| {
+    let has_negative_case = test_cases.iter().any(|(_desc, input, should_match)| {
         !*should_match && !input.contains(".unwrap()") && !input.contains(".expect()")
     });
 
@@ -261,8 +265,8 @@ fn toml_parses_correctly() {
     let content = DIFFGUARD_EXAMPLE_CONTENT;
 
     // If this parsing doesn't panic, the TOML is valid
-    let _parsed: toml::Table = toml::from_str(content)
-        .expect("diffguard.toml.example should be valid TOML");
+    let _parsed: toml::Table =
+        toml::from_str(content).expect("diffguard.toml.example should be valid TOML");
 
     // If we get here, the TOML is valid
 }
