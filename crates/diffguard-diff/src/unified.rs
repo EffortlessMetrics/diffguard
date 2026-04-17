@@ -2,10 +2,19 @@ use std::path::Path;
 
 use diffguard_types::Scope;
 
+/// The kind of change represented by a diff line.
+///
+/// This is used to distinguish between:
+/// - `Added`: a line that was added (starts with `+`)
+/// - `Changed`: a line that was added but immediately followed a removed line (changed context)
+/// - `Deleted`: a line that was removed (starts with `-`)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeKind {
+    /// A line that was added in the new version.
     Added,
+    /// An added line that appears in a changed hunk (directly follows a removed line).
     Changed,
+    /// A line that was deleted in the new version.
     Deleted,
 }
 
@@ -99,17 +108,32 @@ pub fn parse_rename_to(line: &str) -> Option<String> {
     parse_rename_path(rest)
 }
 
+/// A single line extracted from a unified diff.
+///
+/// Returned by [`parse_unified_diff`] as part of the result vector.
+/// Each `DiffLine` represents one line of content with its
+/// file path, 1-based line number in the post-image, and change kind.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffLine {
+    /// The path of the file this line belongs to (post-image path for renames).
     pub path: String,
+    /// The 1-based line number in the post-image file.
     pub line: u32,
+    /// The content of the line (without the leading `+`, `-`, or ` ` sigil).
     pub content: String,
+    /// The kind of change this line represents.
     pub kind: ChangeKind,
 }
 
+/// Aggregate statistics from parsing a unified diff.
+///
+/// Returned by [`parse_unified_diff`] alongside the extracted lines.
+/// Use this to determine how many files and lines were processed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DiffStats {
+    /// The number of unique files that had changes.
     pub files: u32,
+    /// The total number of lines extracted (not the total lines in the diff).
     pub lines: u32,
 }
 
