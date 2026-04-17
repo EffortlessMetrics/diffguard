@@ -1,0 +1,14 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: file
+---
+diff --git a/src/original.rs b/src/renamed.rs
+index 0000000..1111111 100644
+similarity index 90%
+rename from src/original.rs
+rename to src/renamed.rs
+--- a/src/original.rs
++++ b/src/renamed.rs
+@@ -1,1 +1,2 @@
+ fn foo() {}
++fn bar() {}

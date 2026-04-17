@@ -1,0 +1,16 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: diff
+---
+diff --git a/src/a.rs b/src/a.rs
+index 0000000..1111111 100644
+--- a/src/a.rs
++++ b/src/a.rs
+@@ -1,0 +1,1 @@
++fn a() {}
+diff --git a/src/b.rs b/src/b.rs
+index 0000000..1111111 100644
+--- a/src/b.rs
++++ b/src/b.rs
+@@ -1,0 +1,1 @@
++fn b() {}

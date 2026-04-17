@@ -1,0 +1,8 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: hunk
+---
+@@ -9,1 +10,4 @@
++new line 1
++new line 2
++new line 3

@@ -1,0 +1,7 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: file
+---
+diff --git a/asset.bin b/asset.bin
+index 0000000..1111111 100644
+Binary files a/asset.bin and b/asset.bin differ

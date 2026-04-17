@@ -1,0 +1,13 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: hunk
+---
+@@ -10,3 +10,5 @@
+-fn old_main() {
+-    // old code
+-}
++fn new_main() {
++    // new code
++    // more new
++}
+ fn helper() {}
