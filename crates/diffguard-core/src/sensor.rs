@@ -2,7 +2,7 @@
 //!
 //! This module converts CheckReceipt to the `sensor.report.v1` format.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use diffguard_types::{
     Artifact, CHECK_ID_PATTERN, CapabilityStatus, CheckReceipt, RunMeta, SENSOR_REPORT_SCHEMA_V1,
@@ -86,7 +86,7 @@ pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -
 
     // Count distinct rule_ids across findings
     let rules_matched = {
-        let mut seen = std::collections::BTreeSet::new();
+        let mut seen = BTreeSet::new();
         for f in &receipt.findings {
             seen.insert(&f.rule_id);
         }
