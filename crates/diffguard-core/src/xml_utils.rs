@@ -24,6 +24,8 @@ pub fn escape_xml(s: &str) -> String {
             '\'' => out.push_str("&apos;"),
             // Illegal XML control characters (0x00-0x1F except tab/LF/CR)
             c if c <= '\u{001F}' && c != '\t' && c != '\n' && c != '\r' => {
+                // write! to a String can only fail on system errors (OOM, signal) —
+                // not logic errors — so unwrap is safe and appropriate here.
                 write!(out, "&#x{:X};", c as u32).unwrap();
             }
             _ => out.push(c),
