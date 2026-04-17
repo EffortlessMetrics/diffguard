@@ -175,7 +175,11 @@ pub struct TrendRun {
     /// Stored as `u64` to avoid silent truncation for very large repositories
     /// (those with more than 2^32 - 1 unique files).
     pub files_scanned: u64,
-    pub lines_scanned: u32,
+    /// Number of distinct lines that were scanned.
+    ///
+    /// Stored as `u64` to avoid silent truncation for very large diffs
+    /// (those with more than 2^32 - 1 unique lines).
+    pub lines_scanned: u64,
     pub findings: u32,
 }
 

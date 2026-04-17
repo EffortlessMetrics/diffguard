@@ -181,7 +181,7 @@ fn arb_diff_meta() -> impl Strategy<Value = DiffMeta> {
         0u32..100,              // context_lines
         arb_scope(),            // scope
         0u64..1000,             // files_scanned (u64 to handle large repos)
-        0u32..10000,            // lines_scanned
+        0u64..10000,            // lines_scanned
     )
         .prop_map(
             |(base, head, context_lines, scope, files_scanned, lines_scanned)| DiffMeta {
@@ -1155,7 +1155,7 @@ mod unit_tests {
                 context_lines: u32::MAX,
                 scope: Scope::Added,
                 files_scanned: u64::MAX,
-                lines_scanned: u32::MAX,
+                lines_scanned: u64::MAX,
             },
             findings: vec![Finding {
                 rule_id: "test".to_string(),

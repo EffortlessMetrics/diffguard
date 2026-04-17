@@ -114,28 +114,6 @@ fn render_finding_row(f: &Finding) -> String {
     )
 }
 
-/// Escapes special Markdown characters in table cell content.
-///
-/// Escapes pipe (`|`), backtick (`` ` ``), hash (`#`), asterisk (`*`),
-/// underscore (`_`), open bracket (`[`), close bracket (`]`), and greater-than
-/// (`>`) characters by prefixing with backslash. Also escapes CRLF (`\r\n`)
-/// and LF (`\n`) line endings to prevent breaking the markdown table structure.
-///
-/// These escapes are needed to prevent breaking the markdown table structure
-/// and prevent unintended markdown formatting.
-fn escape_md(s: &str) -> String {
-    s.replace('|', "\\|")
-        .replace('`', "\\`")
-        .replace('#', "\\#")
-        .replace('*', "\\*")
-        .replace('_', "\\_")
-        .replace('[', "\\[")
-        .replace(']', "\\]")
-        .replace('>', "\\>")
-        .replace('\r', "\\r")
-        .replace('\n', "\\n")
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
