@@ -12,13 +12,6 @@ use sha2::{Digest, Sha256};
 pub const FALSE_POSITIVE_BASELINE_SCHEMA_V1: &str = "diffguard.false_positive_baseline.v1";
 pub const TREND_HISTORY_SCHEMA_V1: &str = "diffguard.trend_history.v1";
 
-/// A versioned snapshot of false-positive findings used to suppress repeated alerts.
-///
-/// The baseline is a collection of [`FalsePositiveEntry`] records, each representing
-/// a finding that was reviewed and deemed a false positive. Entries are de-duplicated
-/// by `fingerprint` and sorted for deterministic serialization.
-///
-/// Serialized as JSON with schema version identified by [`FALSE_POSITIVE_BASELINE_SCHEMA_V1`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveBaseline {
     pub schema: String,
@@ -35,11 +28,6 @@ impl Default for FalsePositiveBaseline {
     }
 }
 
-/// A single false-positive entry in a [`FalsePositiveBaseline`].
-///
-/// Each entry records the identifying attributes of a finding (`rule_id`, `path`,
-/// `line`) plus a computed `fingerprint` used for de-duplication. The optional
-/// `note` field allows reviewers to record why a finding was dismissed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveEntry {
     pub fingerprint: String,
@@ -125,11 +113,7 @@ pub fn merge_false_positive_baselines(
             .iter_mut()
             .find(|e| e.fingerprint == entry.fingerprint)
         {
-            // Merge semantics: the `base` baseline holds the canonical record for each
-            // fingerprint. For fields that are empty/missing in `merged` (the normalized
-            // incoming), copy the corresponding value from `base` — this transfers
-            // manually curated metadata (notes, rule IDs, paths) into the merged result
-            // without disturbing entries that already have those fields populated.
+            // Preserve manually curated metadata from the existing baseline.
             if existing.note.is_none() && entry.note.is_some() {
                 existing.note = entry.note.clone();
             }
@@ -158,13 +142,6 @@ pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTree
         .collect()
 }
 
-/// A time-ordered history of diffguard check runs.
-///
-/// Each [`TrendRun`] records the git base/head, verdict counts, and scan statistics
-/// for a single invocation. `TrendHistory` is append-only; runs are added via
-/// [`append_trend_run`] and never removed except when trimmed to a maximum size.
-///
-/// Serialized as JSON with schema version identified by [`TREND_HISTORY_SCHEMA_V1`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendHistory {
     pub schema: String,
@@ -181,11 +158,6 @@ impl Default for TrendHistory {
     }
 }
 
-/// A single diffguard check run, suitable for trend analysis.
-///
-/// `TrendRun` captures the git base and head commits, the resulting verdict,
-/// and aggregate statistics about what was scanned. All fields are plain data
-/// (no file handles, network handles, or other resource handles).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendRun {
     pub started_at: String,
@@ -205,13 +177,6 @@ pub struct TrendRun {
     pub findings: u32,
 }
 
-/// Aggregated statistics across all runs in a [`TrendHistory`].
-///
-/// `TrendSummary` collapses a full `TrendHistory` into a single summary struct
-/// containing `run_count`, `totals` (summed verdict counts), `total_findings`,
-/// the most recent `run`, and the `delta_from_previous` run (if at least two runs exist).
-///
-/// Use [`summarize_trend_history`] to compute this from a `TrendHistory`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendSummary {
     pub run_count: u32,
@@ -223,11 +188,6 @@ pub struct TrendSummary {
     pub delta_from_previous: Option<TrendDelta>,
 }
 
-/// The change in verdict counts between two consecutive [`TrendRun`]s.
-///
-/// Each field is the signed difference `current_count - previous_count`.
-/// Positive values indicate more findings of that severity; negative values
-/// indicate fewer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendDelta {
     pub findings: i64,
