@@ -426,6 +426,29 @@ fn is_match_mode_any(mode: &MatchMode) -> bool {
     matches!(mode, MatchMode::Any)
 }
 
+// Utility for markdown escaping, used by rendering crates — kept here to avoid duplication across crates.
+pub fn escape_md(s: &str) -> String {
+    // Escapes special Markdown characters in table cell content.
+    //
+    // Escapes pipe (`|`), backtick (`` ` ``), hash (`#`), asterisk (`*`),
+    // underscore (`_`), open bracket (`[`), close bracket (`]`), and greater-than
+    // (`>`) characters by prefixing with backslash. Also escapes CRLF (`\r\n`)
+    // and LF (`\n`) line endings to prevent breaking the markdown table structure.
+    //
+    // These escapes are needed to prevent breaking the markdown table structure
+    // and prevent unintended markdown formatting.
+    s.replace('|', "\\|")
+        .replace('`', "\\`")
+        .replace('#', "\\#")
+        .replace('*', "\\*")
+        .replace('_', "\\_")
+        .replace('[', "\\[")
+        .replace(']', "\\]")
+        .replace('>', "\\>")
+        .replace('\r', "\\r")
+        .replace('\n', "\\n")
+}
+
 // ============================================================================
 // Per-directory override types
 // ============================================================================
