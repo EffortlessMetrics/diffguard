@@ -395,11 +395,11 @@ pub struct RuleTestCase {
     /// Whether the rule should match this input.
     pub should_match: bool,
 
-    /// Optional: override ignore_comments for this test case.
+    /// Optional: override `ignore_comments` for this test case.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ignore_comments: Option<bool>,
 
-    /// Optional: override ignore_strings for this test case.
+    /// Optional: override `ignore_strings` for this test case.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ignore_strings: Option<bool>,
 
