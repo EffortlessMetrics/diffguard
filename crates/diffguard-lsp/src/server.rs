@@ -161,6 +161,13 @@ impl ServerState {
     }
 }
 
+/// Entry point for the diffguard-lsp server.
+///
+/// Runs the LSP message loop, handling initialize requests and then processing
+/// document notifications and requests until the connection closes.
+///
+/// # Errors
+/// Returns an error if initialization fails or if message handling returns an error.
 pub fn run_server(connection: Connection) -> Result<()> {
     // Use the lower-level initialize_start/initialize_finish methods
     // to send a custom InitializeResult with server_info.
@@ -890,6 +897,14 @@ fn publish_diagnostics(
     Ok(())
 }
 
+/// Returns the combined git diff output for both staged and unstaged changes.
+///
+/// Calls `run_git_diff` twice—once for unstaged and once for staged—and concatenates
+/// them. If only one type of change exists, returns that alone to avoid an empty diff
+/// section.
+///
+/// # Errors
+/// Returns an error if either the staged or unstaged git diff command fails.
 fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<String> {
     let unstaged = run_git_diff(workspace_root, relative_path, false)?;
     let staged = run_git_diff(workspace_root, relative_path, true)?;
@@ -909,8 +924,25 @@ fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<Strin
     Ok(combined)
 }
 
+/// Runs `git diff` (or `git diff --cached` for staged) with a timeout.
+///
+/// Spawns a git subprocess and waits for it to complete, polling periodically to detect
+/// timeout. The timeout prevents the LSP from blocking indefinitely on a hung git process.
+///
+/// # Arguments
+/// * `workspace_root` - The root directory of the workspace (used as git's current dir)
+/// * `relative_path` - Path to the file relative to the workspace root
+/// * `staged` - If true, runs `git diff --cached` (staged changes); if false, runs `git diff` (unstaged)
+///
+/// # Returns
+/// The stdout output from git diff on success.
+///
+/// # Errors
+/// Returns an error if spawning git fails, if the process times out after 10 seconds,
+/// or if git exits with a non-zero status.
 fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Result<String> {
-    // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
+    // The const must be declared before any executable statements to avoid
+    // clippy::items_after_statements lint. See GitHub issue #503.
     const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);
 
     let mut command = Command::new("git");
