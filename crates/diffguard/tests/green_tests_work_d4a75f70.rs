@@ -72,10 +72,18 @@ fn extract_test_cases(rule_block: &str) -> Vec<(Option<&str>, &str, bool)> {
                     break;
                 }
                 if field_trimmed.starts_with("description = ") {
-                    description = Some(field_trimmed.trim_start_matches("description = ").trim_matches('"'));
+                    description = Some(
+                        field_trimmed
+                            .trim_start_matches("description = ")
+                            .trim_matches('"'),
+                    );
                 }
                 if field_trimmed.starts_with("input = ") {
-                    input = Some(field_trimmed.trim_start_matches("input = ").trim_matches('"'));
+                    input = Some(
+                        field_trimmed
+                            .trim_start_matches("input = ")
+                            .trim_matches('"'),
+                    );
                 }
                 if field_trimmed.starts_with("should_match = ") {
                     let val = field_trimmed.trim_start_matches("should_match = ");
@@ -112,12 +120,10 @@ fn rust_no_unwrap_rule_has_tags_safety() {
 
     // Check for tags field with "safety" value
     assert!(
-        rule_block.contains("tags = [\"safety\"]"),
-        "diffguard.toml.example rust.no_unwrap rule is MISSING `tags = [\"safety\"]`.\n\n\
-        Expected: The rust.no_unwrap rule block should contain `tags = [\"safety\"]`\n        to demonstrate the tags feature and be consistent with built_in.json (line 30).\n\n\
-        Actual: The rust.no_unwrap rule block does not contain `tags = [\"safety\"]`.",
-        start + 1,
-        end + 1
+        rule_block.contains("tags = [\\\"safety\\\"]"),
+        "diffguard.toml.example rust.no_unwrap rule is MISSING `tags = [\\\"safety\\\"]`.\n\n\
+        Expected: The rust.no_unwrap rule block should contain `tags = [\\\"safety\\\"]`\n        to demonstrate the tags feature and be consistent with built_in.json (line 30).\n\n\
+        Actual: The rust.no_unwrap rule block does not contain `tags = [\\\"safety\\\"]`.",
     );
 }
 
@@ -259,8 +265,8 @@ fn toml_parses_correctly() {
     let content = DIFFGUARD_EXAMPLE_CONTENT;
 
     // If this parsing doesn't panic, the TOML is valid
-    let _parsed: toml::Table = toml::from_str(content)
-        .expect("diffguard.toml.example should be valid TOML");
+    let _parsed: toml::Table =
+        toml::from_str(content).expect("diffguard.toml.example should be valid TOML");
 
     // If we get here, the TOML is valid
 }
