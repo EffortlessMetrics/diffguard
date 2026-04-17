@@ -166,6 +166,7 @@ pub struct PreprocessOptions {
 }
 
 impl PreprocessOptions {
+    #[must_use]
     pub fn none() -> Self {
         Self {
             mask_comments: false,
@@ -173,6 +174,7 @@ impl PreprocessOptions {
         }
     }
 
+    #[must_use]
     pub fn comments_only() -> Self {
         Self {
             mask_comments: true,
