@@ -23,6 +23,8 @@ bail!(msg)
 
 ## Acceptance Criteria
 
+These acceptance criteria verify the inline format arguments change is complete and correct. Each criterion is verifiable via cargo clippy and cargo test.
+
 1. **`cargo clippy --package diffguard -- -W clippy::uninlined_format_args` emits zero warnings**
 
 2. **`cargo clippy --package diffguard-core -- -W clippy::uninlined_format_args` emits zero warnings**

@@ -53,7 +53,7 @@ Rely solely on `cargo clippy --fix` without manual edge-case handling.
 
 ---
 
-## Consequences
+## Tradeoffs and Consequences
 
 | | |
 |---|---|
