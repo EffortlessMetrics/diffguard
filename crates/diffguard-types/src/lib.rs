@@ -245,6 +245,11 @@ impl ConfigFile {
     ///
     /// Rules are loaded from `rules/built_in.json` at compile time via `include_str!`.
     /// This ensures the JSON is embedded in the binary and avoids any I/O at runtime.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `rules/built_in.json` is malformed or cannot be parsed as valid
+    /// ConfigFile JSON.
     #[must_use]
     pub fn built_in() -> Self {
         serde_json::from_str(include_str!("rules/built_in.json"))
