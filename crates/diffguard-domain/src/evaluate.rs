@@ -7,17 +7,31 @@ use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
 use crate::rules::{CompiledRule, detect_language};
 use crate::suppression::SuppressionTracker;
 
+/// A single line of input to be evaluated against rule patterns.
+///
+/// `path` identifies the source file, `line` is the 1-based line number,
+/// and `content` is the raw text content of the line.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InputLine {
+    /// Path to the file this line belongs to.
     pub path: String,
+    /// 1-based line number within the file.
     pub line: u32,
+    /// Raw text content of the line.
     pub content: String,
 }
 
+/// Result of evaluating a set of lines against a set of rules.
+///
+/// Contains all findings (matches), aggregated counts by severity,
+/// and statistics about files and lines scanned.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Evaluation {
+    /// All individual rule matches produced during evaluation.
     pub findings: Vec<Finding>,
+    /// Aggregated counts of findings by severity level.
     pub counts: VerdictCounts,
+    /// Number of findings that were suppressed because `max_findings` was exceeded.
     pub truncated_findings: u32,
     /// Number of distinct files that were scanned.
     ///
@@ -31,6 +45,12 @@ pub struct Evaluation {
     pub rule_hits: Vec<RuleHitStat>,
 }
 
+/// Per-rule statistics for a single evaluation run.
+///
+/// Tracks how many times a rule matched (`total`), how many findings
+/// were actually emitted (`emitted`), and how many were suppressed
+/// by suppression directives or dependency gating (`suppressed`).
+/// The `info`/`warn`/`error` fields break down `emitted` by severity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuleHitStat {
     pub rule_id: String,
@@ -42,6 +62,11 @@ pub struct RuleHitStat {
     pub error: u32,
 }
 
+/// An `InputLine` with all preprocessing applied, ready for rule matching.
+///
+/// After construction, `masked_comments` has comment syntax replaced by spaces,
+/// `masked_strings` has string literals replaced, and `masked_both` has both
+/// replaced. The original `line.content` is preserved for display purposes.
 #[derive(Debug, Clone)]
 struct PreparedLine {
     line: InputLine,
@@ -52,6 +77,11 @@ struct PreparedLine {
     suppressions: crate::suppression::EffectiveSuppressions,
 }
 
+/// A raw match found by a single-line or multiline pattern search.
+///
+/// `anchor_file_pos` is the index within the current file's line list (not global).
+/// `match_start` is the byte offset within the candidate (preprocessed) string.
+/// `match_text` is the actual matched substring extracted from the original content.
 #[derive(Debug, Clone)]
 struct RawMatchEvent {
     anchor_file_pos: usize,
@@ -59,6 +89,11 @@ struct RawMatchEvent {
     match_text: String,
 }
 
+/// A `RawMatchEvent` enriched with rule index and resolved severity.
+///
+/// `rule_idx` points into the rules slice. `anchor_idx` is the global index into
+/// `prepared_lines`. `severity` may be escalated from the rule's base severity
+/// based on context patterns.
 #[derive(Debug, Clone)]
 struct MatchEvent {
     rule_idx: usize,
@@ -68,6 +103,18 @@ struct MatchEvent {
     severity: Severity,
 }
 
+/// Evaluates a set of input lines against compiled rules, producing findings.
+///
+/// This is the main entry point for the evaluation pipeline. It matches each line
+/// against all applicable rules, applies suppression directives, and returns an
+/// `Evaluation` containing all findings and aggregated statistics.
+///
+/// - `lines`: Iterator of `InputLine` values to evaluate.
+/// - `rules`: Slice of pre-compiled rules (from `compile_rules`).
+/// - `max_findings`: Maximum number of findings to return. Findings beyond this
+///   cap are counted in `Evaluation.truncated_findings` but not included in `findings`.
+///
+/// Returns an `Evaluation` with all findings, counts by severity, and scan stats.
 pub fn evaluate_lines(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -76,6 +123,11 @@ pub fn evaluate_lines(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, None, None)
 }
 
+/// Evaluates lines with rule override support.
+///
+/// Like `evaluate_lines`, but allows individual rules to be selectively disabled
+/// or have their severity changed via `RuleOverrideMatcher`. This is useful for
+/// CI environments where certain rules may need to be relaxed for specific paths.
 pub fn evaluate_lines_with_overrides(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -85,6 +137,12 @@ pub fn evaluate_lines_with_overrides(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, overrides, None)
 }
 
+/// Full-featured evaluation entry point with language override support.
+///
+/// This is the most general entry point, supporting both rule overrides and
+/// forced language detection. When `force_language` is `None`, the language is
+/// inferred from the file path. Forced language is useful for files whose
+/// extension doesn't match their actual content (e.g., `.txt` scripts).
 pub fn evaluate_lines_with_overrides_and_language(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -324,6 +382,16 @@ pub fn evaluate_lines_with_overrides_and_language(
     }
 }
 
+/// Resolves which rules are active after dependency gating.
+///
+/// A rule is "active" if it has at least one match AND all of its `depends_on`
+/// rules are also active. This function computes the transitive closure using
+/// a fixpoint iteration: repeatedly remove rules whose dependencies are missing
+/// until no more rules are removed.
+///
+/// For example, if RuleC depends on RuleB and RuleB depends on RuleA, and only
+/// RuleC has matches, the algorithm removes RuleC (missing RuleB), then RuleB
+/// (missing RuleA), leaving an empty set.
 fn resolve_dependency_gated_rule_ids(
     rules: &[CompiledRule],
     per_rule_events: &[Vec<MatchEvent>],
@@ -365,6 +433,11 @@ fn resolve_dependency_gated_rule_ids(
     active_rule_ids
 }
 
+/// Finds all matches for a single rule across a group of lines from one file.
+///
+/// Delegates to either `find_single_line_matches` or `find_multiline_matches`
+/// depending on the rule's `multiline` flag, then filters by `context_patterns`
+/// if any are defined (requires surrounding context lines to contain a pattern).
 fn find_positive_matches_for_rule(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -385,6 +458,12 @@ fn find_positive_matches_for_rule(
     events
 }
 
+/// Finds matches where the pattern can fit entirely within a single line.
+///
+/// For each line in `file_indices`, applies the rule's patterns to the preprocessed
+/// candidate (comments/strings masked depending on rule flags). When a match is found,
+/// `safe_slice` extracts the matched text from the original (unmasked) content using
+/// byte indices from the preprocessed match.
 fn find_single_line_matches(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -405,6 +484,15 @@ fn find_single_line_matches(
     out
 }
 
+/// Finds matches that span multiple consecutive lines.
+///
+/// Sliding window approach: for each possible window of `multiline_window` consecutive
+/// lines, joins them into a single candidate string (with newlines preserved) and
+/// searches for the pattern. The `offsets` vector tracks byte positions of each line
+/// within the joined string to map the pattern match back to a specific line/column.
+///
+/// Uses a `BTreeSet` dedupe key `(anchor_file_pos, start_in_line, match_text)` to
+/// avoid returning duplicate matches when the same line participates in multiple windows.
 fn find_multiline_matches(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -472,6 +560,12 @@ fn find_multiline_matches(
     out
 }
 
+/// Checks whether a match has the required surrounding context.
+///
+/// If `rule.context_patterns` is empty, always returns `true`. Otherwise, examines
+/// the `context_window` lines surrounding `anchor_file_pos` and returns `true` if
+/// any of those lines contain a match against `context_patterns`. This is an
+/// AND-style requirement: all `context_patterns` must match somewhere within the window.
 fn has_required_context(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -494,6 +588,11 @@ fn has_required_context(
     false
 }
 
+/// Potentially escalates the severity of a finding based on surrounding context.
+///
+/// If `rule.escalate_patterns` is non-empty, examines the `escalate_window` lines
+/// surrounding the anchor. If any escalate pattern matches, returns the higher of
+/// `base` and `rule.escalate_to` (defaulting to `Error`). Otherwise returns `base`.
 fn maybe_escalate_severity(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -520,6 +619,11 @@ fn maybe_escalate_severity(
     max_severity(base, target)
 }
 
+/// Selects the appropriate preprocessed line content for pattern matching.
+///
+/// Returns the masked variant that matches the rule's `ignore_comments` and
+/// `ignore_strings` flags: `masked_both`, `masked_comments`, `masked_strings`,
+/// or the original `line.content` if neither flag is set.
 fn candidate_line_for_rule<'a>(rule: &CompiledRule, line: &'a PreparedLine) -> &'a str {
     match (rule.ignore_comments, rule.ignore_strings) {
         (true, true) => line.masked_both.as_str(),
