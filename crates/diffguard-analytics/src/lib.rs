@@ -42,10 +42,7 @@ pub struct FalsePositiveEntry {
 /// - ensures schema id is set
 /// - sorts entries
 /// - deduplicates by fingerprint
-#[must_use]
-pub fn normalize_false_positive_baseline(
-    mut baseline: FalsePositiveBaseline,
-) -> FalsePositiveBaseline {
+pub fn normalize_false_positive_baseline(baseline: &mut FalsePositiveBaseline) {
     if baseline.schema.is_empty() {
         baseline.schema = FALSE_POSITIVE_BASELINE_SCHEMA_V1.to_string();
     }
@@ -59,7 +56,6 @@ pub fn normalize_false_positive_baseline(
     baseline
         .entries
         .dedup_by(|a, b| a.fingerprint == b.fingerprint);
-    baseline
 }
 
 /// Computes the stable finding fingerprint used for baseline tracking.
@@ -92,7 +88,7 @@ pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
             })
             .collect(),
     };
-    baseline = normalize_false_positive_baseline(baseline);
+    normalize_false_positive_baseline(&mut baseline);
     baseline
 }
 
@@ -101,7 +97,8 @@ pub fn merge_false_positive_baselines(
     base: &FalsePositiveBaseline,
     incoming: &FalsePositiveBaseline,
 ) -> FalsePositiveBaseline {
-    let mut merged = normalize_false_positive_baseline(incoming.clone());
+    let mut merged = incoming.clone();
+    normalize_false_positive_baseline(&mut merged);
     let mut seen = merged
         .entries
         .iter()
@@ -132,7 +129,8 @@ pub fn merge_false_positive_baselines(
         }
     }
 
-    normalize_false_positive_baseline(merged)
+    normalize_false_positive_baseline(&mut merged);
+    merged
 }
 
 /// Returns the baseline as a fingerprint set for fast lookup.
