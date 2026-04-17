@@ -12,7 +12,12 @@ mod sensor;
 mod sensor_api;
 pub mod xml_utils;
 
-pub use check::{CheckPlan, CheckRun, PathFilterError, run_check};
+pub use check::{
+    BlameFilters, BlameLineMeta, CheckPlan, CheckRun, DiffInput, PathFilterError,
+    collect_blame_allowed_lines, load_directory_overrides_for_diff, parse_blame_porcelain,
+    prepare_diff_input_from_file, prepare_diff_input_from_git, prepare_diff_input_staged,
+    run_check,
+};
 pub use checkstyle::render_checkstyle_for_receipt;
 pub use csv::{render_csv_for_receipt, render_tsv_for_receipt};
 pub use fingerprint::{compute_fingerprint, compute_fingerprint_raw};

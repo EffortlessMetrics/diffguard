@@ -1,6 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::path::Path;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::path::{Path, PathBuf};
 
+use anyhow::Context;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 
 use diffguard_diff::parse_unified_diff;
@@ -9,11 +10,356 @@ use diffguard_domain::{
     evaluate_lines_with_overrides_and_language,
 };
 use diffguard_types::{
-    CheckReceipt, DiffMeta, FailOn, Finding, REASON_TRUNCATED, ToolMeta, Verdict, VerdictCounts,
-    VerdictStatus,
+    CheckReceipt, DiffMeta, DirectoryOverrideConfig, FailOn, Finding, REASON_TRUNCATED, ToolMeta,
+    Verdict, VerdictCounts, VerdictStatus,
 };
 
 use crate::fingerprint::compute_fingerprint;
+
+// ============================================================================
+// Blame filtering types and functions (data-driven, no I/O)
+// ============================================================================
+
+/// Filters for git-blame-based line allowlisting.
+/// Matches lines by author patterns and/or maximum age.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlameFilters {
+    /// Case-insensitive substrings matched against `author` and `author-mail`.
+    author_patterns: Vec<String>,
+    /// Maximum age in days (lines older than this are excluded).
+    max_age_days: Option<u32>,
+}
+
+impl BlameFilters {
+    /// Create filters from author patterns and max age.
+    ///
+    /// Returns `None` if no filters are specified (i.e., empty patterns and no max age).
+    pub fn new(author_patterns: Vec<String>, max_age_days: Option<u32>) -> Option<Self> {
+        let author_patterns: Vec<String> = author_patterns
+            .into_iter()
+            .map(|s| s.trim().to_ascii_lowercase())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        if author_patterns.is_empty() && max_age_days.is_none() {
+            return None;
+        }
+
+        Some(Self {
+            author_patterns,
+            max_age_days,
+        })
+    }
+
+    /// Returns true if the given line metadata matches the filters.
+    fn matches(&self, line: &BlameLineMeta, now_unix_seconds: i64) -> bool {
+        if !self.author_patterns.is_empty() {
+            let haystack = format!(
+                "{} {}",
+                line.author.to_ascii_lowercase(),
+                line.author_mail.to_ascii_lowercase()
+            );
+            if !self
+                .author_patterns
+                .iter()
+                .any(|pattern| haystack.contains(pattern))
+            {
+                return false;
+            }
+        }
+
+        if let Some(max_age_days) = self.max_age_days {
+            if line.author_time <= 0 {
+                return false;
+            }
+            let age_seconds = now_unix_seconds.saturating_sub(line.author_time).max(0);
+            let age_days = age_seconds / 86_400;
+            if age_days > i64::from(max_age_days) {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+/// Metadata for a single line from git blame porcelain output.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BlameLineMeta {
+    pub author: String,
+    pub author_mail: String,
+    pub author_time: i64,
+}
+
+/// Parse git blame porcelain output into a map of line number → metadata.
+///
+/// The porcelain format is:
+/// <sha> <src line> <dst line> [<options>]
+/// author <name>
+/// author-mail <email>
+/// author-time <timestamp>
+/// <tab><orig line content>
+///
+/// Each line group starts with a header, followed by metadata lines,
+/// then a tab-prefixed source line.
+pub fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
+    let mut out = BTreeMap::<u32, BlameLineMeta>::new();
+    let lines: Vec<&str> = blame_text.lines().collect();
+    let mut idx = 0usize;
+
+    while idx < lines.len() {
+        let header = lines[idx];
+        let header_parts: Vec<&str> = header.split_whitespace().collect();
+        if header_parts.len() < 4 {
+            idx += 1;
+            continue;
+        }
+
+        let final_line = match header_parts[2].parse::<u32>() {
+            Ok(v) => v,
+            Err(_) => {
+                idx += 1;
+                continue;
+            }
+        };
+        let group_lines = header_parts[3].parse::<u32>().unwrap_or(1);
+
+        idx += 1;
+        let mut meta = BlameLineMeta::default();
+        let mut found_source_line = false;
+
+        while idx < lines.len() {
+            let row = lines[idx];
+            if row.starts_with('\t') {
+                found_source_line = true;
+                idx += 1;
+                break;
+            }
+            if let Some(v) = row.strip_prefix("author ") {
+                meta.author = v.to_string();
+            } else if let Some(v) = row.strip_prefix("author-mail ") {
+                meta.author_mail = v.trim_matches('<').trim_matches('>').to_string();
+            } else if let Some(v) = row.strip_prefix("author-time ") {
+                meta.author_time = v.parse::<i64>().unwrap_or(0);
+            }
+            idx += 1;
+        }
+
+        if found_source_line {
+            for offset in 0..group_lines {
+                out.insert(final_line.saturating_add(offset), meta.clone());
+            }
+        }
+    }
+
+    out
+}
+
+/// Collect allowed lines by filtering diff lines through git blame metadata.
+///
+/// This is a data-driven function: it accepts the diff text, scope, and a map
+/// of file paths to their git blame porcelain output. The caller is responsible
+/// for fetching blame data via `git blame --line-porcelain`.
+///
+/// Returns a set of (path, line) pairs that pass the blame filters.
+pub fn collect_blame_allowed_lines(
+    diff_text: &str,
+    scope: diffguard_types::Scope,
+    blame_by_path: &HashMap<String, String>,
+    filters: &BlameFilters,
+    now_unix_seconds: i64,
+) -> anyhow::Result<BTreeSet<(String, u32)>> {
+    let (diff_lines, _) =
+        parse_unified_diff(diff_text, scope).context("parse diff for blame filtering")?;
+
+    let mut lines_by_path = BTreeMap::<String, BTreeSet<u32>>::new();
+    for line in diff_lines {
+        lines_by_path
+            .entry(line.path)
+            .or_default()
+            .insert(line.line);
+    }
+
+    let mut allowed = BTreeSet::<(String, u32)>::new();
+
+    for (path, lines) in lines_by_path {
+        let blame_text = blame_by_path.get(&path);
+        let Some(blame_text) = blame_text else {
+            continue;
+        };
+        let blame_map = parse_blame_porcelain(blame_text);
+        for line in lines {
+            let Some(meta) = blame_map.get(&line) else {
+                continue;
+            };
+            if filters.matches(meta, now_unix_seconds) {
+                allowed.insert((path.clone(), line));
+            }
+        }
+    }
+
+    Ok(allowed)
+}
+
+// ============================================================================
+// Directory override loading (data-driven, no I/O)
+// ============================================================================
+
+/// Collect all candidate override file paths for a given file path.
+/// Returns the `.diffguard.toml` paths from the file's directory up to root.
+fn collect_override_candidates_for_path(file_path: &str, out: &mut BTreeSet<PathBuf>) {
+    let path = Path::new(file_path);
+    let mut current = path.parent();
+
+    if current.is_none() {
+        out.insert(PathBuf::from(".diffguard.toml"));
+        return;
+    }
+
+    while let Some(dir) = current {
+        let mut candidate = PathBuf::new();
+        if !dir.as_os_str().is_empty() {
+            candidate.push(dir);
+        }
+        candidate.push(".diffguard.toml");
+        out.insert(candidate);
+
+        if dir.as_os_str().is_empty() {
+            break;
+        }
+        current = dir.parent();
+    }
+}
+
+/// Normalize a directory path for override matching.
+/// Converts backslashes to forward slashes and trims trailing slashes.
+fn normalize_override_directory(path: &Path) -> String {
+    let raw = path.to_string_lossy().replace('\\', "/");
+    let trimmed = raw.trim_matches('/');
+    if trimmed.is_empty() || trimmed == "." {
+        String::new()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+/// Compute the depth of a path (number of components).
+fn directory_depth(path: &Path) -> usize {
+    path.components().count()
+}
+
+/// Load directory rule overrides from a map of file paths to their contents.
+///
+/// This is a data-driven function: it accepts a map of override file paths
+/// to their TOML contents. The caller is responsible for reading the files.
+///
+/// Files are processed in depth order (shallowest first) so that deeper
+/// overrides can override shallower ones.
+pub fn load_directory_overrides_for_diff(
+    diff_text: &str,
+    scope: diffguard_types::Scope,
+    override_contents: &HashMap<PathBuf, String>,
+) -> anyhow::Result<Vec<DirectoryRuleOverride>> {
+    let (diff_lines, _) =
+        parse_unified_diff(diff_text, scope).context("parse diff for directory overrides")?;
+
+    let mut candidates = BTreeSet::<PathBuf>::new();
+    for line in diff_lines {
+        collect_override_candidates_for_path(&line.path, &mut candidates);
+    }
+
+    let mut candidate_paths: Vec<PathBuf> = candidates.into_iter().collect();
+    candidate_paths.sort_by(|a, b| {
+        let a_parent = a.parent().unwrap_or_else(|| Path::new(""));
+        let b_parent = b.parent().unwrap_or_else(|| Path::new(""));
+        directory_depth(a_parent)
+            .cmp(&directory_depth(b_parent))
+            .then_with(|| a.to_string_lossy().cmp(&b.to_string_lossy()))
+    });
+
+    let mut overrides = Vec::new();
+
+    for override_path in candidate_paths {
+        let text = match override_contents.get(&override_path) {
+            Some(contents) => contents,
+            None => continue,
+        };
+
+        let parsed: DirectoryOverrideConfig = toml::from_str(text)
+            .with_context(|| format!("parse directory override config {}", override_path.display()))?;
+
+        let directory =
+            normalize_override_directory(override_path.parent().unwrap_or_else(|| Path::new("")));
+
+        for rule in parsed.rules {
+            overrides.push(DirectoryRuleOverride {
+                directory: directory.clone(),
+                rule_id: rule.id,
+                enabled: rule.enabled,
+                severity: rule.severity,
+                exclude_paths: rule.exclude_paths,
+            });
+        }
+    }
+
+    Ok(overrides)
+}
+
+// ============================================================================
+// DiffInput and diff-mode preparation (data-driven)
+// ============================================================================
+
+/// Input data for a diff check, containing base, head, and the diff text itself.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DiffInput {
+    /// The base ref(s) for the diff comparison.
+    pub base: String,
+    /// The head ref for the diff comparison.
+    pub head: String,
+    /// The unified diff text.
+    pub diff_text: String,
+}
+
+/// Prepare diff input for the `--staged` mode.
+/// The diff text should be the output of `git diff --cached`.
+pub fn prepare_diff_input_staged(diff_text: &str) -> DiffInput {
+    DiffInput {
+        base: "(staged)".to_string(),
+        head: "HEAD".to_string(),
+        diff_text: diff_text.to_string(),
+    }
+}
+
+/// Prepare diff input for the `--diff-file` mode.
+pub fn prepare_diff_input_from_file(
+    diff_text: &str,
+    head: &str,
+    diff_file_path: Option<&Path>,
+) -> DiffInput {
+    let base = match diff_file_path {
+        Some(p) if p == Path::new("-") => "(stdin)".to_string(),
+        Some(p) => format!("(file:{})", p.display()),
+        None => "(stdin)".to_string(),
+    };
+    DiffInput {
+        base,
+        head: head.to_string(),
+        diff_text: diff_text.to_string(),
+    }
+}
+
+/// Prepare diff input for the default git diff mode.
+pub fn prepare_diff_input_from_git(diff_text: &str, bases: &[String], head: &str) -> DiffInput {
+    DiffInput {
+        base: if bases.len() == 1 {
+            bases[0].clone()
+        } else {
+            bases.join(",")
+        },
+        head: head.to_string(),
+        diff_text: diff_text.to_string(),
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CheckPlan {
