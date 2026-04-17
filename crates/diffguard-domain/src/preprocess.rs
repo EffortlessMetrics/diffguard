@@ -103,8 +103,8 @@ impl Language {
             Language::Xml => StringSyntax::Xml,
             // PHP uses both single and double quotes
             Language::Php => StringSyntax::Php,
-            // YAML/TOML/JSON strings are C-style-like in this best-effort model
-            Language::Yaml | Language::Toml | Language::Json => StringSyntax::CStyle,
+            // YAML/TOML strings are C-style-like in this best-effort model
+            Language::Yaml | Language::Toml => StringSyntax::CStyle,
             // All other languages (C, C++, Java, etc.) use C-style strings
             _ => StringSyntax::CStyle,
         }
