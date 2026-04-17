@@ -41,6 +41,21 @@ pub struct RuleMetadata {
 }
 
 /// Renders a CheckReceipt as a SensorReport.
+///
+/// The `#[must_use]` attribute is enforced by the R2 Library Contract — callers
+/// MUST NOT discard the returned `SensorReport`. Discarding it would cause silent
+/// sensor data loss, which is unacceptable for Cockpit ecosystem integration where
+/// every run must produce an immutable, auditable sensor record.
+///
+/// # Returns
+///
+/// A `SensorReport` with schema `sensor.report.v1` containing:
+/// - Tool identity and version
+/// - Run metadata (timestamps, duration, capabilities)
+/// - The original verdict (status and counts)
+/// - All findings mapped to `SensorFinding` format with fingerprints
+/// - Artifacts produced during the run
+/// - Diff metadata and diffguard-specific stats (rules matched, suppressed count, etc.)
 #[must_use]
 pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -> SensorReport {
     let findings = receipt
@@ -98,6 +113,8 @@ pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -
         "rules_total": ctx.rules_total,
     });
 
+    // Only include tags_matched when non-empty to keep the sensor payload clean.
+    // Omitting an empty tags_matched avoids sending null/empty values to the Cockpit backend.
     if !tags_matched.is_empty() {
         diffguard_data["tags_matched"] =
             serde_json::to_value(&tags_matched).expect("serialize tags_matched");
@@ -132,6 +149,15 @@ pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -
 }
 
 /// Renders a CheckReceipt as a sensor.report.v1 JSON string.
+///
+/// This is a convenience wrapper around [`render_sensor_report`] that serializes
+/// the result to a pretty-printed JSON string. Use this when you need the JSON
+/// representation directly (e.g., for file output or HTTP responses).
+///
+/// # Errors
+///
+/// Returns a [`serde_json::Error`] if serialization fails (e.g., if the `SensorReport`
+/// contains values that cannot be serialized to JSON).
 pub fn render_sensor_json(
     receipt: &CheckReceipt,
     ctx: &SensorReportContext,
