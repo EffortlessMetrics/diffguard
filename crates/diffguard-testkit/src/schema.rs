@@ -150,6 +150,11 @@ fn collect_field_names_recursive(value: &serde_json::Value, names: &mut Vec<Stri
 ///
 /// - `Ok(())` if all field names are snake_case
 /// - `Err(Vec<String>)` with the non-snake_case field names
+///
+/// # Errors
+///
+/// Returns `Err(Vec<String>)` if any field name in the JSON value is not
+/// valid snake_case. The returned vector contains the offending field names.
 pub fn verify_snake_case_fields(value: &serde_json::Value) -> Result<(), Vec<String>> {
     let field_names = collect_field_names(value);
 
