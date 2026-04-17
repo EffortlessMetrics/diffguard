@@ -2,6 +2,12 @@ use std::path::Path;
 
 use diffguard_types::Scope;
 
+/// Represents the kind of change a diff line represents.
+///
+/// This is used to distinguish between:
+/// - `Added`: a line that was added (exists only in the new version)
+/// - `Changed`: an added line that directly replaces a removed line in the same hunk
+/// - `Deleted`: a line that was removed (exists only in the old version)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeKind {
     Added,
@@ -99,24 +105,38 @@ pub fn parse_rename_to(line: &str) -> Option<String> {
     parse_rename_path(rest)
 }
 
+/// Represents a single line extracted from a unified diff.
+///
+/// Contains the file path, line number in the new version of the file,
+/// the actual line content, and the kind of change it represents.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffLine {
+    /// Path to the file this line belongs to (uses destination path for renames).
     pub path: String,
+    /// Line number in the new (post-change) version of the file.
     pub line: u32,
+    /// The actual line content (without the leading `+`, `-`, or ` ` marker).
     pub content: String,
+    /// The kind of change this line represents.
     pub kind: ChangeKind,
 }
 
+/// Aggregate statistics about a parsed diff.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DiffStats {
+    /// Number of files that had changes matching the requested scope.
     pub files: u32,
-    pub lines: u32,
+    /// Total number of lines matching the requested scope.
+    pub lines: u64,
 }
 
+/// Errors that can occur when parsing a unified diff.
 #[derive(Debug, thiserror::Error)]
 pub enum DiffParseError {
+    /// The hunk header (`@@ ... @@` line) could not be parsed.
     #[error("malformed hunk header: {0}")]
     MalformedHunkHeader(String),
+    /// The diff contains more files or lines than can be represented in the result.
     #[error("diff stats overflow: {0}")]
     Overflow(String),
 }
@@ -337,8 +357,8 @@ pub fn parse_unified_diff(
     let stats = DiffStats {
         files: u32::try_from(files.len())
             .map_err(|_| DiffParseError::Overflow(format!("too many files (> {})", u32::MAX)))?,
-        lines: u32::try_from(out.len())
-            .map_err(|_| DiffParseError::Overflow(format!("too many lines (> {})", u32::MAX)))?,
+        lines: u64::try_from(out.len())
+            .map_err(|_| DiffParseError::Overflow(format!("too many lines (> {})", u64::MAX)))?,
     };
 
     Ok((out, stats))
