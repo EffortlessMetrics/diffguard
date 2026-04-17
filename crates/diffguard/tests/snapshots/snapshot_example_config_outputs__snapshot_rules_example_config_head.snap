@@ -1,0 +1,59 @@
+---
+source: crates/diffguard/tests/snapshot_example_config_outputs.rs
+expression: "format!(\"exit_code={:?}\\n\\nSTDOUT (first 50 lines):\\n{}\\n\\nSTDERR:\\n{}\",\nexit_code, stdout_head, stderr)"
+---
+exit_code=Some(0)
+
+STDOUT (first 50 lines):
+[defaults]
+base = "origin/main"
+scope = "added"
+fail_on = "error"
+max_findings = 200
+diff_context = 0
+
+[[rule]]
+id = "csharp.no_console"
+severity = "warn"
+message = "Remove Console.WriteLine before merging."
+languages = ["csharp"]
+patterns = ['\bConsole\.WriteLine\s*\(']
+paths = ["**/*.cs"]
+exclude_paths = [
+    "**/Tests/**",
+    "**/*.Tests/**",
+]
+ignore_comments = true
+ignore_strings = true
+help = "Use a logging framework (e.g., Serilog, NLog, Microsoft.Extensions.Logging) instead of Console.WriteLine for production code. Logging frameworks provide structured logging, log levels, and configurable sinks."
+url = "https://learn.microsoft.com/en-us/dotnet/core/extensions/logging"
+tags = ["debug"]
+
+[[rule]]
+id = "go.no_fmt_print"
+severity = "warn"
+message = "Remove fmt.Print* before merging."
+languages = ["go"]
+patterns = ['\bfmt\.(Print|Println|Printf)\s*\(']
+paths = ["**/*.go"]
+exclude_paths = ["**/*_test.go"]
+ignore_comments = true
+ignore_strings = true
+help = "Use the log package or a structured logging library (e.g., zap, zerolog, logrus) instead of fmt.Print* for production code."
+url = "https://pkg.go.dev/log"
+tags = ["debug"]
+
+[[rule]]
+id = "go.no_panic"
+severity = "warn"
+message = "Avoid panic() in production code."
+languages = ["go"]
+patterns = ['\bpanic\s*\(']
+paths = ["**/*.go"]
+exclude_paths = ["**/*_test.go"]
+ignore_comments = true
+ignore_strings = true
+help = "Return errors instead of panicking. Use panic only for truly unrecoverable situations. Consider using errors.New() or fmt.Errorf() to create descriptive error values that callers can handle gracefully."
+url = "https://go.dev/doc/effective_go#errors"
+
+STDERR:

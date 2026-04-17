@@ -1,0 +1,14 @@
+---
+source: crates/diffguard/tests/snapshot_example_config_outputs.rs
+expression: "format!(\"exit_code={:?}\\n\\nSTDOUT:\\n{}\\n\\nSTDERR:\\n{}\", exit_code, stdout,\nstderr)"
+---
+exit_code=Some(0)
+
+STDOUT:
+Validating diffguard.toml.example...
+
+Configuration is valid!
+  3 rule(s) defined
+
+
+STDERR:
