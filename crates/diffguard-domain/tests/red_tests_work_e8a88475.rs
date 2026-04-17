@@ -21,8 +21,6 @@
 //! - BEFORE fix: Tests FAIL because #[must_use] is not present on those functions
 //! - AFTER fix: Tests PASS because #[must_use] is correctly placed
 
-
-
 /// Load the preprocess.rs source file for inspection.
 /// We use include_str! to get the raw source at compile time.
 const PREPROCESS_SOURCE: &str = include_str!("../src/preprocess.rs");
@@ -31,7 +29,7 @@ const PREPROCESS_SOURCE: &str = include_str!("../src/preprocess.rs");
 /// Returns the line number of the function if #[must_use] is found, or None if not found.
 fn find_must_use_before_function(source: &str, fn_signature: &str) -> Option<(bool, usize)> {
     let lines: Vec<&str> = source.lines().collect();
-    
+
     for (i, line) in lines.iter().enumerate() {
         if line.contains(fn_signature) {
             // Check if the previous non-empty line has #[must_use]
@@ -46,7 +44,10 @@ fn find_must_use_before_function(source: &str, fn_signature: &str) -> Option<(bo
                 if prev_line.starts_with("//") {
                     continue;
                 }
-                if prev_line.starts_with("/*") || prev_line.starts_with("*/") || prev_line.starts_with("*") {
+                if prev_line.starts_with("/*")
+                    || prev_line.starts_with("*/")
+                    || prev_line.starts_with("*")
+                {
                     continue;
                 }
                 // Found a meaningful previous line
@@ -68,7 +69,7 @@ fn preprocess_options_none_has_must_use() {
         result.is_some(),
         "Could not find 'pub fn none() -> Self' in preprocess.rs"
     );
-    
+
     let (has_must_use, line_num) = result.unwrap();
     assert!(
         has_must_use,
@@ -87,7 +88,7 @@ fn preprocess_options_comments_only_has_must_use() {
         result.is_some(),
         "Could not find 'pub fn comments_only() -> Self' in preprocess.rs"
     );
-    
+
     let (has_must_use, line_num) = result.unwrap();
     assert!(
         has_must_use,
@@ -106,7 +107,7 @@ fn preprocess_options_strings_only_has_must_use() {
         result.is_some(),
         "Could not find 'pub fn strings_only() -> Self' in preprocess.rs"
     );
-    
+
     let (has_must_use, line_num) = result.unwrap();
     assert!(
         has_must_use,
@@ -120,12 +121,13 @@ fn preprocess_options_strings_only_has_must_use() {
 /// Test that PreprocessOptions::comments_and_strings() has #[must_use]
 #[test]
 fn preprocess_options_comments_and_strings_has_must_use() {
-    let result = find_must_use_before_function(PREPROCESS_SOURCE, "pub fn comments_and_strings() -> Self");
+    let result =
+        find_must_use_before_function(PREPROCESS_SOURCE, "pub fn comments_and_strings() -> Self");
     assert!(
         result.is_some(),
         "Could not find 'pub fn comments_and_strings() -> Self' in preprocess.rs"
     );
-    
+
     let (has_must_use, line_num) = result.unwrap();
     assert!(
         has_must_use,
@@ -139,12 +141,15 @@ fn preprocess_options_comments_and_strings_has_must_use() {
 /// Test that Preprocessor::new() has #[must_use]
 #[test]
 fn preprocessor_new_has_must_use() {
-    let result = find_must_use_before_function(PREPROCESS_SOURCE, "pub fn new(opts: PreprocessOptions) -> Self");
+    let result = find_must_use_before_function(
+        PREPROCESS_SOURCE,
+        "pub fn new(opts: PreprocessOptions) -> Self",
+    );
     assert!(
         result.is_some(),
         "Could not find 'pub fn new(opts: PreprocessOptions) -> Self' in preprocess.rs"
     );
-    
+
     let (has_must_use, line_num) = result.unwrap();
     assert!(
         has_must_use,
@@ -158,12 +163,15 @@ fn preprocessor_new_has_must_use() {
 /// Test that Preprocessor::with_language() has #[must_use]
 #[test]
 fn preprocessor_with_language_has_must_use() {
-    let result = find_must_use_before_function(PREPROCESS_SOURCE, "pub fn with_language(opts: PreprocessOptions, lang: Language) -> Self");
+    let result = find_must_use_before_function(
+        PREPROCESS_SOURCE,
+        "pub fn with_language(opts: PreprocessOptions, lang: Language) -> Self",
+    );
     assert!(
         result.is_some(),
         "Could not find 'pub fn with_language(opts: PreprocessOptions, lang: Language) -> Self' in preprocess.rs"
     );
-    
+
     let (has_must_use, line_num) = result.unwrap();
     assert!(
         has_must_use,
@@ -182,7 +190,7 @@ fn exactly_six_must_use_attributes_in_preprocess() {
         .lines()
         .filter(|line| line.trim() == "#[must_use]")
         .count();
-    
+
     assert_eq!(
         must_use_count, 6,
         "Expected exactly 6 #[must_use] attributes in preprocess.rs, but found {}. \
