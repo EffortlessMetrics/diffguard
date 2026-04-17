@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_e8a88475.rs
+assertion_line: 36
+expression: "format!(\"{:?}\", opts)"
+---
+PreprocessOptions { mask_comments: false, mask_strings: true }

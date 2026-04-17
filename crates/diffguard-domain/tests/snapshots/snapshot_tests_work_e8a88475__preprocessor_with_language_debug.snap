@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_e8a88475.rs
+assertion_line: 68
+expression: "format!(\"{:?}\", preprocessor)"
+---
+Preprocessor { opts: PreprocessOptions { mask_comments: true, mask_strings: false }, mode: Normal, lang: Rust }
