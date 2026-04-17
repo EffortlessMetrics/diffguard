@@ -2129,3 +2129,252 @@ mod edge_case_tests {
         );
     }
 }
+
+// ============================================================================
+// Property: pending_removed State Machine Correctness
+// ============================================================================
+//
+// Feature: comprehensive-test-coverage, Property: pending_removed State Machine
+//
+// The pending_removed flag is set when a `-` line is seen. Based on actual
+// implementation behavior (confirmed by passing tests):
+// - A `+` line following a `-` line (without an intervening context line) is Changed
+// - A new hunk header resets pending_removed
+// - A new file (diff --git) resets pending_removed
+//
+// Note: Context lines do NOT reset pending_removed in this implementation.
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(100))]
+
+    // Feature: comprehensive-test-coverage, Property: pending_removed State Machine
+    // Second hunk starts fresh - pending_removed does not carry over between hunks
+    #[test]
+    fn property_hunk_boundary_resets_pending_removed(
+        path in full_path_strategy(),
+        first_hunk_removed in line_content_strategy(),
+        second_hunk_added in line_content_strategy(),
+    ) {
+        prop_assume!(!first_hunk_removed.is_empty() && !second_hunk_added.is_empty());
+
+        // Create diff with two hunks:
+        // Hunk 1: -removed (pending_removed = true)
+        // Hunk 2: +added (should be Added, not Changed, because hunk header resets)
+        let diff = format!(
+            "diff --git a/{path} b/{path}\n\
+             --- a/{path}\n\
+             +++ b/{path}\n\
+             @@ -1,1 +1,1 @@\n\
+             -{first_hunk_removed}\n\
+             @@ -2,1 +2,1 @@\n\
+             +{second_hunk_added}",
+            path = path,
+            first_hunk_removed = first_hunk_removed,
+            second_hunk_added = second_hunk_added
+        );
+
+        let result_added = parse_unified_diff(&diff, Scope::Added);
+        let result_changed = parse_unified_diff(&diff, Scope::Changed);
+
+        prop_assert!(result_added.is_ok(), "Added scope parse should succeed");
+        prop_assert!(result_changed.is_ok(), "Changed scope parse should succeed");
+
+        let (added_lines, _) = result_added.unwrap();
+        let (changed_lines, _) = result_changed.unwrap();
+
+        // The +added in hunk 2 should be in Added scope
+        prop_assert!(
+            !added_lines.is_empty(),
+            "Added scope should contain the + line from hunk 2"
+        );
+
+        // The +added in hunk 2 should NOT be in Changed scope
+        // (hunk header should reset pending_removed)
+        prop_assert!(
+            changed_lines.is_empty(),
+            "Changed scope should be empty (hunk header resets pending_removed), but got {} lines",
+            changed_lines.len()
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property: pending_removed State Machine
+    // Multiple - lines followed by + should all be Changed (not just the first)
+    #[test]
+    fn property_multiple_removed_before_addition(
+        path in full_path_strategy(),
+        removed1 in line_content_strategy(),
+        removed2 in line_content_strategy(),
+        added_line in line_content_strategy(),
+    ) {
+        prop_assume!(!removed1.is_empty() && !removed2.is_empty() && !added_line.is_empty());
+
+        // Create diff with: -removed1, -removed2, +added
+        // The +added should be Changed (not Added)
+        let diff = format!(
+            "diff --git a/{path} b/{path}\n\
+             --- a/{path}\n\
+             +++ b/{path}\n\
+             @@ -1,3 +1,3 @@\n\
+             -{removed1}\n\
+             -{removed2}\n\
+             +{added_line}",
+            path = path,
+            removed1 = removed1,
+            removed2 = removed2,
+            added_line = added_line
+        );
+
+        let result_added = parse_unified_diff(&diff, Scope::Added);
+        let result_changed = parse_unified_diff(&diff, Scope::Changed);
+
+        prop_assert!(result_added.is_ok(), "Added scope parse should succeed");
+        prop_assert!(result_changed.is_ok(), "Changed scope parse should succeed");
+
+        let (added_lines, _) = result_added.unwrap();
+        let (changed_lines, _) = result_changed.unwrap();
+
+        // Added should have 1 line (the + line)
+        prop_assert_eq!(
+            added_lines.len(), 1,
+            "Added scope should have 1 line, got {}",
+            added_lines.len()
+        );
+
+        // Changed should also have 1 line (the + line is Changed because preceded by -)
+        prop_assert_eq!(
+            changed_lines.len(), 1,
+            "Changed scope should have 1 line (the + after - lines), got {}",
+            changed_lines.len()
+        );
+
+        // The line should be the same in both
+        prop_assert_eq!(
+            &added_lines[0].content, &changed_lines[0].content,
+            "Added and Changed should have same content"
+        );
+        prop_assert_eq!(
+            added_lines[0].line, changed_lines[0].line,
+            "Added and Changed should have same line number"
+        );
+    }
+
+    // Feature: comprehensive-test-coverage, Property: pending_removed State Machine
+    // Deleted scope returns all - lines (even those followed by +)
+    #[test]
+    fn property_deleted_scope_returns_all_removed_lines(
+        path in full_path_strategy(),
+        removed1 in line_content_strategy(),
+        removed2 in line_content_strategy(),
+    ) {
+        prop_assume!(!removed1.is_empty() && !removed2.is_empty());
+
+        let diff = format!(
+            "diff --git a/{path} b/{path}\n\
+             --- a/{path}\n\
+             +++ b/{path}\n\
+             @@ -1,2 +1,1 @@\n\
+             -{removed1}\n\
+             -{removed2}",
+            path = path,
+            removed1 = removed1,
+            removed2 = removed2
+        );
+
+        let result_deleted = parse_unified_diff(&diff, Scope::Deleted);
+
+        prop_assert!(result_deleted.is_ok(), "Deleted scope parse should succeed");
+
+        let (deleted_lines, _) = result_deleted.unwrap();
+
+        // Should have 2 deleted lines
+        prop_assert_eq!(
+            deleted_lines.len(), 2,
+            "Deleted scope should have 2 lines, got {}",
+            deleted_lines.len()
+        );
+
+        // All should have kind Deleted
+        for line in &deleted_lines {
+            prop_assert_eq!(
+                line.kind, diffguard_diff::ChangeKind::Deleted,
+                "All lines in Deleted scope should have ChangeKind::Deleted"
+            );
+        }
+    }
+}
+
+// ============================================================================
+// Edge case tests for pending_removed state machine
+// ============================================================================
+
+mod pending_removed_edge_cases {
+    use super::*;
+
+    /// Second hunk starts fresh - pending_removed does not carry over.
+    #[test]
+    fn test_hunk_boundary_resets_pending_removed() {
+        let diff = "diff --git a/f.rs b/f.rs\n\
+                    --- a/f.rs\n\
+                    +++ b/f.rs\n\
+                    @@ -1,1 +1,1 @@\n\
+                    -first_removed\n\
+                    @@ -2,1 +2,1 @@\n\
+                    +second_added";
+
+        let result_added = parse_unified_diff(diff, Scope::Added).unwrap();
+        let result_changed = parse_unified_diff(diff, Scope::Changed).unwrap();
+
+        // second_added should be in Added scope
+        assert_eq!(result_added.0.len(), 1);
+        assert_eq!(result_added.0[0].content, "second_added");
+
+        // second_added should NOT be in Changed scope
+        // (hunk header resets pending_removed)
+        assert!(
+            result_changed.0.is_empty(),
+            "Changed should be empty - hunk header resets pending_removed"
+        );
+    }
+
+    /// Multiple - lines followed by + makes + be Changed.
+    #[test]
+    fn test_multiple_removed_before_addition() {
+        let diff = "diff --git a/f.rs b/f.rs\n\
+                    --- a/f.rs\n\
+                    +++ b/f.rs\n\
+                    @@ -1,3 +1,3 @@\n\
+                    -removed1\n\
+                    -removed2\n\
+                    +added";
+
+        let result_added = parse_unified_diff(diff, Scope::Added).unwrap();
+        let result_changed = parse_unified_diff(diff, Scope::Changed).unwrap();
+
+        assert_eq!(result_added.0.len(), 1);
+        assert_eq!(result_changed.0.len(), 1);
+        assert_eq!(&result_added.0[0].content, &result_changed.0[0].content);
+        assert_eq!(
+            result_changed.0[0].kind,
+            diffguard_diff::ChangeKind::Changed
+        );
+    }
+
+    /// Deleted lines: all - lines returned, even when followed by +.
+    #[test]
+    fn test_deleted_scope_returns_all_removed() {
+        let diff = "diff --git a/f.rs b/f.rs\n\
+                    --- a/f.rs\n\
+                    +++ b/f.rs\n\
+                    @@ -1,3 +1,2 @@\n\
+                    -removed1\n\
+                    -removed2\n\
+                    +added";
+
+        let result_deleted = parse_unified_diff(diff, Scope::Deleted).unwrap();
+
+        // Should have both - lines
+        assert_eq!(result_deleted.0.len(), 2);
+        assert_eq!(result_deleted.0[0].content, "removed1");
+        assert_eq!(result_deleted.0[1].content, "removed2");
+    }
+}
