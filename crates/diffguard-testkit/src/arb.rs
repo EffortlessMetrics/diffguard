@@ -224,6 +224,10 @@ fn arb_dir_name() -> impl Strategy<Value = String> {
 }
 
 /// Strategy for generating non-empty strings suitable for IDs and messages.
+///
+/// # Panics
+///
+/// Panics if the hardcoded regex pattern is invalid (which it won't be).
 pub fn arb_non_empty_string() -> impl Strategy<Value = String> {
     prop::string::string_regex("[a-zA-Z][a-zA-Z0-9_.\\-]{0,49}")
         .expect("valid regex for non-empty string")
@@ -445,6 +449,10 @@ pub fn arb_file_path() -> impl Strategy<Value = String> {
 }
 
 /// Strategy for generating line content (no diff markers at start).
+///
+/// # Panics
+///
+/// Panics if the hardcoded regex pattern is invalid (which it won't be).
 pub fn arb_line_content() -> impl Strategy<Value = String> {
     prop::string::string_regex("[a-zA-Z0-9_(){}\\[\\];:,.<>=+\\-*/& ]{1,200}")
         .expect("valid regex for line content")
@@ -458,6 +466,10 @@ pub fn arb_line_content() -> impl Strategy<Value = String> {
 }
 
 /// Strategy for generating line content that is safe for diffs.
+///
+/// # Panics
+///
+/// Panics if the hardcoded regex pattern is invalid (which it won't be).
 pub fn arb_safe_line_content() -> impl Strategy<Value = String> {
     prop::string::string_regex("[a-zA-Z][a-zA-Z0-9_(){}\\[\\];:,.<>=*/& ]{0,199}")
         .expect("valid regex for safe line content")
