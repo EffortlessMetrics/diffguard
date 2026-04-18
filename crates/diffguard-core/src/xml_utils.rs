@@ -23,8 +23,9 @@ pub fn escape_xml(s: &str) -> String {
             '"' => out.push_str("&quot;"),
             '\'' => out.push_str("&apos;"),
             // Illegal XML control characters (0x00-0x1F except tab/LF/CR)
+            // write! to String is infallible — String can always grow
             c if c <= '\u{001F}' && c != '\t' && c != '\n' && c != '\r' => {
-                write!(out, "&#x{:X};", c as u32).unwrap();
+                let _ = write!(out, "&#x{:X};", c as u32);
             }
             _ => out.push(c),
         }
