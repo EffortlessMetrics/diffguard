@@ -96,6 +96,12 @@ pub fn extract_rule_id(diagnostic: &Diagnostic) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+/// Looks up a rule by its exact ID within the given config.
+///
+/// Returns a reference to the matching `RuleConfig` if found.
+///
+/// The `#[must_use]` attribute ensures callers handle the case where no rule matches.
+/// A missing rule is a configuration error that should be reported, not silently ignored.
 #[must_use]
 pub fn find_rule<'a>(config: &'a ConfigFile, rule_id: &str) -> Option<&'a RuleConfig> {
     config.rule.iter().find(|rule| rule.id == rule_id)
@@ -170,6 +176,22 @@ pub fn format_rule_explanation(rule: &RuleConfig) -> String {
     output
 }
 
+/// Finds rule IDs similar to the given `rule_id` using a multi-stage similarity scoring.
+///
+/// The scoring prioritizes matches in this order:
+/// - **Score 0**: Exact prefix match (e.g., `"rust.no_unwrap"` matches query `"rust.no_unw"`).
+///   This catches typos where the user typed a valid rule prefix incorrectly.
+/// - **Score 1**: Substring match (e.g., `"security.no_eval"` contains `"no_eval"`).
+///   This helps when the query is a partial rule ID fragment.
+/// - **Score 2-5**: Edit distance ≤ 3 (Levenshtein). The score is `distance + 2`, so a
+///   distance of 0 scores 2, distance 1 scores 3, etc. This catches character-level typos.
+///
+/// Results are sorted by score (ascending) and truncated to 5 candidates.
+///
+/// The `#[must_use]` attribute is critical: callers that discard this result lose the
+/// similarity suggestions that help users recover from misspelled rule IDs. The LSP server
+/// uses these suggestions to provide "Did you mean X?" quick-fixes — if the result is
+/// dropped, users get no helpful feedback on unknown rule IDs.
 #[must_use]
 pub fn find_similar_rules(rule_id: &str, rules: &[RuleConfig]) -> Vec<String> {
     let rule_id_lower = rule_id.to_lowercase();
@@ -196,6 +218,15 @@ pub fn find_similar_rules(rule_id: &str, rules: &[RuleConfig]) -> Vec<String> {
     candidates.into_iter().map(|(id, _)| id).collect()
 }
 
+/// Loads all directory-level rule overrides that apply to a given file path.
+///
+/// Directory overrides are stored in `.diffguard.toml` files found by walking up
+/// the directory tree from the file's directory to the workspace root. Override files
+/// further from the file take precedence over those closer (later entries in the result
+/// override earlier ones for the same rule ID).
+///
+/// Each override can enable/disable a rule, change its severity, or add path exclusions
+/// for a specific directory subtree.
 pub fn load_directory_overrides_for_file(
     workspace_root: &Path,
     relative_file_path: &str,
@@ -424,6 +455,12 @@ fn directory_depth(path: &Path) -> usize {
     path.components().count()
 }
 
+/// Computes the Levenshtein (edit) distance between two strings.
+///
+/// Uses a two-row DP matrix to keep memory O(min(m, n)) rather than O(mn).
+/// The algorithm walks through both strings, computing the minimum cost of
+/// insertion, deletion, or substitution at each position. A character match
+/// (left[i-1] == right[j-1]) costs 0; a mismatch costs 1.
 fn simple_edit_distance(left: &str, right: &str) -> usize {
     let left_chars: Vec<char> = left.chars().collect();
     let right_chars: Vec<char> = right.chars().collect();
