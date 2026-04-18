@@ -1,0 +1,8 @@
+---
+source: crates/diffguard-diff/tests/snapshot_tests.rs
+expression: snapshot
+---
+lines:
+[]
+stats:
+DiffStats { files: 0, lines: 0 }
