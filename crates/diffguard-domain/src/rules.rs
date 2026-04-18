@@ -419,6 +419,26 @@ mod tests {
         assert_eq!(detect_language(Path::new("page.htm")), Some("xml"));
     }
 
+    /// Test that XML family extensions are detected case-insensitively.
+    /// This was the fix for clippy::match_same_arms — html/htm were previously
+    /// in a separate arm mapping to the same "xml" value.
+    #[test]
+    fn detect_language_xml_case_insensitive() {
+        // Uppercase variants
+        assert_eq!(detect_language(Path::new("config.XML")), Some("xml"));
+        assert_eq!(detect_language(Path::new("style.XSL")), Some("xml"));
+        assert_eq!(detect_language(Path::new("transform.XSLT")), Some("xml"));
+        assert_eq!(detect_language(Path::new("schema.XSD")), Some("xml"));
+        assert_eq!(detect_language(Path::new("icon.SVG")), Some("xml"));
+        assert_eq!(detect_language(Path::new("page.XHTML")), Some("xml"));
+        assert_eq!(detect_language(Path::new("page.HTML")), Some("xml"));
+        assert_eq!(detect_language(Path::new("page.HTM")), Some("xml"));
+        // Mixed case variants
+        assert_eq!(detect_language(Path::new("config.Xml")), Some("xml"));
+        assert_eq!(detect_language(Path::new("page.Html")), Some("xml"));
+        assert_eq!(detect_language(Path::new("icon.Svg")), Some("xml"));
+    }
+
     #[test]
     fn detect_language_php() {
         assert_eq!(detect_language(Path::new("index.php")), Some("php"));
