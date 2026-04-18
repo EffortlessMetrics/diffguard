@@ -86,7 +86,7 @@ fn validate_with_schema(
 ) -> Result<(), SchemaValidationError> {
     let validation_result = schema.validate(json);
     match validation_result {
-        Ok(_) => Ok(()),
+        Ok(()) => Ok(()),
         Err(errors) => {
             // Collect errors - we consume the iterator
             let error_strings: Vec<String> = errors.map(|e| e.to_string()).collect();
