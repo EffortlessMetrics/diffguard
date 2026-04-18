@@ -25,3 +25,9 @@ crates/diffguard/src/snapshots/
 
 # Debug/test artifacts
 bool
+
+# Orphaned build artifacts (issue #569)
+*.rlib
+info,
+issue_body.txt
+integration_outcome_work-*.json
