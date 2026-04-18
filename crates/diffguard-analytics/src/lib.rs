@@ -117,14 +117,16 @@ pub fn merge_false_positive_baselines(
             .find(|e| e.fingerprint == entry.fingerprint)
         {
             // Preserve manually curated metadata from the existing baseline.
+            // Use clone_from (not clone) to reuse existing string allocations
+            // instead of allocating fresh memory on every field update.
             if existing.note.is_none() && entry.note.is_some() {
-                existing.note = entry.note.clone();
+                existing.note.clone_from(&entry.note);
             }
             if existing.rule_id.is_empty() {
-                existing.rule_id = entry.rule_id.clone();
+                existing.rule_id.clone_from(&entry.rule_id);
             }
             if existing.path.is_empty() {
-                existing.path = entry.path.clone();
+                existing.path.clone_from(&entry.path);
             }
             if existing.line == 0 {
                 existing.line = entry.line;
@@ -190,6 +192,9 @@ pub struct TrendSummary {
     pub delta_from_previous: Option<TrendDelta>,
 }
 
+/// Per-severity change between two consecutive [`TrendRun`]s.
+///
+/// All fields are absolute differences (current − previous), not percentages.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendDelta {
     pub findings: i64,
