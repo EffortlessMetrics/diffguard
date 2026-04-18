@@ -14,8 +14,7 @@ use std::fs;
 /// This verifies the `rust.no_unwrap` rule is not self-defeating.
 #[test]
 fn test_rust_quality_preset_test_uses_expect_not_unwrap() {
-    let source = fs::read_to_string("src/presets.rs")
-        .expect("presets.rs source file should exist");
+    let source = fs::read_to_string("src/presets.rs").expect("presets.rs source file should exist");
 
     // Find the test function for rust-quality preset
     let test_fn_start = source
@@ -44,8 +43,7 @@ fn test_rust_quality_preset_test_uses_expect_not_unwrap() {
 /// This verifies the `rust.no_unwrap` rule is not self-defeating.
 #[test]
 fn test_secrets_preset_test_uses_expect_not_unwrap() {
-    let source = fs::read_to_string("src/presets.rs")
-        .expect("presets.rs source file should exist");
+    let source = fs::read_to_string("src/presets.rs").expect("presets.rs source file should exist");
 
     // Find the test function for secrets preset
     let test_fn_start = source
@@ -73,8 +71,7 @@ fn test_secrets_preset_test_uses_expect_not_unwrap() {
 /// This verifies the `rust.no_unwrap` rule is not self-defeating.
 #[test]
 fn test_js_console_preset_test_uses_expect_not_unwrap() {
-    let source = fs::read_to_string("src/presets.rs")
-        .expect("presets.rs source file should exist");
+    let source = fs::read_to_string("src/presets.rs").expect("presets.rs source file should exist");
 
     // Find the test function for js-console preset
     let test_fn_start = source
@@ -102,8 +99,7 @@ fn test_js_console_preset_test_uses_expect_not_unwrap() {
 /// This verifies the `rust.no_unwrap` rule is not self-defeating.
 #[test]
 fn test_python_debug_preset_test_uses_expect_not_unwrap() {
-    let source = fs::read_to_string("src/presets.rs")
-        .expect("presets.rs source file should exist");
+    let source = fs::read_to_string("src/presets.rs").expect("presets.rs source file should exist");
 
     // Find the test function for python-debug preset
     let test_fn_start = source
