@@ -55,6 +55,7 @@ pub struct CompiledRule {
 }
 
 impl CompiledRule {
+    #[must_use]
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
         if self
             .include
