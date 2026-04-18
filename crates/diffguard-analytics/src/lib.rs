@@ -9,9 +9,26 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+/// Schema identifier for false-positive baseline files (version 1).
+///
+/// Used in the `schema` field of [`FalsePositiveBaseline`] to enable
+/// future schema migrations.
 pub const FALSE_POSITIVE_BASELINE_SCHEMA_V1: &str = "diffguard.false_positive_baseline.v1";
+
+/// Schema identifier for trend history files (version 1).
+///
+/// Used in the `schema` field of [`TrendHistory`] to enable
+/// future schema migrations.
 pub const TREND_HISTORY_SCHEMA_V1: &str = "diffguard.trend_history.v1";
 
+/// A set of known false positives used to suppress recurring findings.
+///
+/// The baseline is identified by a schema version and contains a list of
+/// [`FalsePositiveEntry`] records. Each entry records the fingerprint of
+/// a finding that was manually reviewed and determined to be a false positive.
+///
+/// baselines are merged when new findings are reviewed, using
+/// [`merge_false_positive_baselines`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveBaseline {
     pub schema: String,
@@ -28,6 +45,12 @@ impl Default for FalsePositiveBaseline {
     }
 }
 
+/// A single known false positive entry within a [`FalsePositiveBaseline`].
+///
+/// The `fingerprint` is the stable key used to match findings. The other
+/// fields store the original finding metadata for human readability and
+/// audit purposes. If a conflict arises during merge, the `base` entry's
+/// metadata fills in only the empty/zero fields of the `incoming` entry.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveEntry {
     pub fingerprint: String,
@@ -97,6 +120,21 @@ pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
 }
 
 /// Merges two baselines (union by fingerprint), preferring existing entries in `base`.
+///
+/// Returns a **new** [`FalsePositiveBaseline`] — neither `base` nor `incoming` is modified.
+///
+/// The merge strategy:
+/// - All entries from `incoming` are included.
+/// - Entries from `base` are added only if their fingerprint is not already present.
+/// - When a fingerprint exists in both: `incoming` is the primary entry, but empty/zero
+///   fields (`rule_id`, `path`, `line`, `note`) are filled from `base` if they provide data.
+///
+/// The result is then normalized (sorted, deduplicated).
+///
+/// # Panics
+///
+/// Does not panic.
+#[must_use]
 pub fn merge_false_positive_baselines(
     base: &FalsePositiveBaseline,
     incoming: &FalsePositiveBaseline,
@@ -135,7 +173,10 @@ pub fn merge_false_positive_baselines(
     normalize_false_positive_baseline(merged)
 }
 
-/// Returns the baseline as a fingerprint set for fast lookup.
+/// Returns the baseline as a fingerprint set for fast O(log n) lookup.
+///
+/// Each fingerprint appears exactly once, making this useful for checking
+/// whether a given finding is a known false positive without iterating the full list.
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
     baseline
         .entries
@@ -144,6 +185,10 @@ pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTree
         .collect()
 }
 
+/// A chronological record of check runs used to track finding trends over time.
+///
+/// Each [`TrendRun`] represents a single invocation of the checker. The runs
+/// are stored oldest-first and trimmed via [`append_trend_run`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendHistory {
     pub schema: String,
@@ -160,6 +205,10 @@ impl Default for TrendHistory {
     }
 }
 
+/// A single check run snapshot, suitable for trend analysis.
+///
+/// `base` and `head` identify the diff scope. `counts` provides the verdict
+/// breakdown, and `findings` is the total number of individual findings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendRun {
     pub started_at: String,
@@ -179,6 +228,8 @@ pub struct TrendRun {
     pub findings: u32,
 }
 
+/// A statistical summary of a [`TrendHistory`], including totals, the latest run,
+/// and the delta between the most recent two runs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendSummary {
     pub run_count: u32,
@@ -190,6 +241,9 @@ pub struct TrendSummary {
     pub delta_from_previous: Option<TrendDelta>,
 }
 
+/// The change in finding counts between two consecutive [`TrendRun`]s.
+///
+/// Positive values indicate an increase, negative values indicate a decrease.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendDelta {
     pub findings: i64,
