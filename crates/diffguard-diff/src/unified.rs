@@ -141,7 +141,6 @@ pub enum DiffParseError {
 ///
 /// Returns [`DiffParseError`] if the diff text contains a malformed hunk header.
 /// See that type's documentation for all possible variants.
-#[must_use = "ignoring the parse Result may lead to silent parse failures"]
 pub fn parse_unified_diff(
     diff_text: &str,
     scope: Scope,

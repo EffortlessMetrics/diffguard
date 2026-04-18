@@ -146,7 +146,6 @@ impl DiffInput {
     }
 }
 
-#[allow(unused_must_use)]
 fuzz_target!(|input: DiffInput| {
     let diff_text = input.to_diff_string();
     let scope = match input.scope_selector % 4 {
