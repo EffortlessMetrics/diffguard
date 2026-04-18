@@ -72,10 +72,18 @@ fn extract_test_cases(rule_block: &str) -> Vec<(Option<&str>, &str, bool)> {
                     break;
                 }
                 if field_trimmed.starts_with("description = ") {
-                    description = Some(field_trimmed.trim_start_matches("description = ").trim_matches('"'));
+                    description = Some(
+                        field_trimmed
+                            .trim_start_matches("description = ")
+                            .trim_matches('"'),
+                    );
                 }
                 if field_trimmed.starts_with("input = ") {
-                    input = Some(field_trimmed.trim_start_matches("input = ").trim_matches('"'));
+                    input = Some(
+                        field_trimmed
+                            .trim_start_matches("input = ")
+                            .trim_matches('"'),
+                    );
                 }
                 if field_trimmed.starts_with("should_match = ") {
                     let val = field_trimmed.trim_start_matches("should_match = ");
@@ -261,8 +269,8 @@ fn toml_parses_correctly() {
     let content = DIFFGUARD_EXAMPLE_CONTENT;
 
     // If this parsing doesn't panic, the TOML is valid
-    let _parsed: toml::Table = toml::from_str(content)
-        .expect("diffguard.toml.example should be valid TOML");
+    let _parsed: toml::Table =
+        toml::from_str(content).expect("diffguard.toml.example should be valid TOML");
 
     // If we get here, the TOML is valid
 }
