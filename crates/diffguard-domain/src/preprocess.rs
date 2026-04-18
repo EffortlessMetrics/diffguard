@@ -269,6 +269,9 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
+    /// Create a new preprocessor with no language set (defaults to `Language::Unknown`).
+    ///
+    /// Use `with_language()` or `set_language()` to configure language-specific syntax.
     pub fn new(opts: PreprocessOptions) -> Self {
         Self {
             opts,
@@ -292,6 +295,10 @@ impl Preprocessor {
         self.reset();
     }
 
+    /// Reset the preprocessor state, clearing any in-progress comment or string mode.
+    ///
+    /// This does not change the language or options, only the internal mode tracking.
+    /// Call this when starting to process a new file.
     pub fn reset(&mut self) {
         self.mode = Mode::Normal;
     }
