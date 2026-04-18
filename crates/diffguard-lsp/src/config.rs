@@ -170,6 +170,7 @@ pub fn format_rule_explanation(rule: &RuleConfig) -> String {
     output
 }
 
+#[must_use]
 pub fn find_similar_rules(rule_id: &str, rules: &[RuleConfig]) -> Vec<String> {
     let rule_id_lower = rule_id.to_lowercase();
     let mut candidates: Vec<(String, usize)> = Vec::new();

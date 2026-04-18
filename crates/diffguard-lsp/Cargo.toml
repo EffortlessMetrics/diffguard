@@ -20,6 +20,8 @@ path = "src/lib.rs"
 name = "diffguard-lsp"
 path = "src/main.rs"
 
+[build-dependencies]
+
 [dependencies]
 anyhow.workspace = true
 serde.workspace = true
