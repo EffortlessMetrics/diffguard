@@ -117,6 +117,8 @@ pub fn merge_false_positive_baselines(
             .find(|e| e.fingerprint == entry.fingerprint)
         {
             // Preserve manually curated metadata from the existing baseline.
+            // Use clone_from (not clone) to reuse existing string allocations
+            // instead of allocating fresh memory on every field update.
             if existing.note.is_none() && entry.note.is_some() {
                 existing.note.clone_from(&entry.note);
             }
@@ -190,6 +192,9 @@ pub struct TrendSummary {
     pub delta_from_previous: Option<TrendDelta>,
 }
 
+/// Per-severity change between two consecutive [`TrendRun`]s.
+///
+/// All fields are absolute differences (current − previous), not percentages.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendDelta {
     pub findings: i64,
