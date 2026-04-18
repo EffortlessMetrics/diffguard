@@ -1327,6 +1327,10 @@ fn run_diffguard(dir: &Path, args: &[&str]) -> Result<Output> {
     Ok(output)
 }
 
+/// Ensures the diffguard binary is built in target/debug.
+///
+/// Uses OnceLock to guarantee the build runs exactly once per process
+/// lifetime, preventing redundant cargo builds across many test invocations.
 fn ensure_diffguard_built() -> Result<()> {
     static BUILD_RESULT: OnceLock<Result<(), String>> = OnceLock::new();
 
@@ -1347,6 +1351,10 @@ fn ensure_diffguard_built() -> Result<()> {
     }
 }
 
+/// Returns the path to the workspace root (the directory containing Cargo.toml).
+///
+/// Derived from CARGO_MANIFEST_DIR which points to xtask/ directory,
+/// then navigating up one level to reach the workspace root.
 fn workspace_root() -> PathBuf {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     manifest_dir
