@@ -2,10 +2,19 @@ use std::path::Path;
 
 use diffguard_types::Scope;
 
+/// Represents the kind of change a line represents in a diff.
+///
+/// This is used to distinguish between:
+/// - `Added`: A line that was added (prefixed with `+`)
+/// - `Changed`: An added line that directly follows a removed line in the same hunk
+/// - `Deleted`: A line that was removed (prefixed with `-`)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeKind {
+    /// A line that was added (appears as `+line` in the diff).
     Added,
+    /// An added line that replaces a removed line (changed content).
     Changed,
+    /// A line that was deleted (appears as `-line` in the diff).
     Deleted,
 }
 
@@ -99,24 +108,51 @@ pub fn parse_rename_to(line: &str) -> Option<String> {
     parse_rename_path(rest)
 }
 
+/// Represents a single line extracted from a unified diff.
+///
+/// Each `DiffLine` contains the file path, line number in the new version,
+/// the line content (without the `+`/`-`/` ` prefix), and the kind of change.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffLine {
+    /// The file path this line belongs to (normalized with forward slashes).
     pub path: String,
+    /// The line number in the new (post-diff) version of the file.
     pub line: u32,
+    /// The line content without the diff prefix character.
     pub content: String,
+    /// The kind of change this line represents.
     pub kind: ChangeKind,
 }
 
+/// Aggregate statistics from parsing a unified diff.
+///
+/// This is returned alongside the parsed lines to provide summary information
+/// about the diff without needing to iterate through all lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DiffStats {
+    /// The number of unique files that had changes.
     pub files: u32,
+    /// The total number of lines extracted (not necessarily unique).
     pub lines: u32,
 }
 
+/// Errors that can occur when parsing a unified diff.
+///
+/// This enum captures the different failure modes that `parse_unified_diff`
+/// can encounter. The parser is designed to be resilient—it tries to continue
+/// processing even when encountering malformed content within a file, but will
+/// return an error for truly malformed hunk headers.
 #[derive(Debug, thiserror::Error)]
 pub enum DiffParseError {
+    /// The hunk header (`@@ ... @@` line) could not be parsed.
+    ///
+    /// This happens when the header doesn't match the expected format
+    /// `@@ -old_start[,old_count] +new_start[,new_count] @@`.
     #[error("malformed hunk header: {0}")]
     MalformedHunkHeader(String),
+    /// The diff contains more files or lines than can be represented in `DiffStats`.
+    ///
+    /// This is unlikely in practice but can occur with very large diffs.
     #[error("diff stats overflow: {0}")]
     Overflow(String),
 }
