@@ -431,6 +431,84 @@ mod tests {
         assert_eq!(compute_exit_code(FailOn::Never, &counts), 0);
     }
 
+    // =============================================================================
+    // RED TESTS: exit_code type change i32 → u8
+    //
+    // These tests verify the compile-time type of exit_code functions.
+    // They will FAIL TO COMPILE if the functions return i32 (current state).
+    // They will COMPILE and PASS once the functions return u8 (after fix).
+    // =============================================================================
+
+    /// Helper: forces the argument to be u8 at compile time.
+    /// If the argument is i32, this produces a compilation error.
+    fn require_u8(code: u8) -> u8 {
+        code
+    }
+
+    /// RED TEST: compute_exit_code must return u8, not i32.
+    /// This test fails to compile if compute_exit_code returns i32.
+    #[test]
+    fn test_compute_exit_code_returns_u8_type() {
+        let counts = VerdictCounts::default();
+        // If compute_exit_code returns i32, this line fails: "mismatched types"
+        // If it returns u8, this compiles and we can assert on the value.
+        let code: u8 = compute_exit_code(FailOn::Error, &counts);
+        assert!(code == 0 || code == 2 || code == 3);
+    }
+
+    /// RED TEST: compute_exit_code for all FailOn modes returns u8.
+    #[test]
+    fn test_compute_exit_code_all_modes_return_u8() {
+        let mut counts = VerdictCounts::default();
+
+        // All of these require u8 return type
+        assert_eq!(require_u8(compute_exit_code(FailOn::Never, &counts)), 0u8);
+        assert_eq!(require_u8(compute_exit_code(FailOn::Error, &counts)), 0u8);
+        assert_eq!(require_u8(compute_exit_code(FailOn::Warn, &counts)), 0u8);
+
+        counts.error = 1;
+        assert_eq!(require_u8(compute_exit_code(FailOn::Error, &counts)), 2u8);
+        assert_eq!(require_u8(compute_exit_code(FailOn::Warn, &counts)), 2u8);
+
+        counts.error = 0;
+        counts.warn = 1;
+        assert_eq!(require_u8(compute_exit_code(FailOn::Warn, &counts)), 3u8);
+    }
+
+    /// RED TEST: compute_baseline_exit_code must return u8, not i32.
+    /// This test fails to compile if compute_baseline_exit_code returns i32.
+    #[test]
+    fn test_compute_baseline_exit_code_returns_u8_type() {
+        let counts = VerdictCounts::default();
+        // If compute_baseline_exit_code returns i32, this line fails: "mismatched types"
+        let code: u8 = compute_baseline_exit_code(FailOn::Error, &counts);
+        assert!(code == 0 || code == 2 || code == 3);
+    }
+
+    /// RED TEST: compute_baseline_exit_code returns valid u8 values.
+    #[test]
+    fn test_compute_baseline_exit_code_returns_valid_u8() {
+        let mut counts = VerdictCounts::default();
+
+        assert_eq!(
+            require_u8(compute_baseline_exit_code(FailOn::Error, &counts)),
+            0u8
+        );
+
+        counts.error = 1;
+        assert_eq!(
+            require_u8(compute_baseline_exit_code(FailOn::Error, &counts)),
+            2u8
+        );
+
+        counts.error = 0;
+        counts.warn = 1;
+        assert_eq!(
+            require_u8(compute_baseline_exit_code(FailOn::Warn, &counts)),
+            3u8
+        );
+    }
+
     #[test]
     fn compile_filter_globs_rejects_invalid() {
         let err = compile_filter_globs(&["[".to_string()]).unwrap_err();
