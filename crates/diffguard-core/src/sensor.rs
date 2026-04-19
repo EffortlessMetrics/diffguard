@@ -5,8 +5,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use diffguard_types::{
-    Artifact, CapabilityStatus, CheckReceipt, RunMeta, SensorFinding, SensorLocation, SensorReport,
-    CHECK_ID_PATTERN, SENSOR_REPORT_SCHEMA_V1,
+    Artifact, CHECK_ID_PATTERN, CapabilityStatus, CheckReceipt, RunMeta, SENSOR_REPORT_SCHEMA_V1,
+    SensorFinding, SensorLocation, SensorReport,
 };
 
 use crate::fingerprint::compute_fingerprint;
@@ -148,8 +148,8 @@ fn normalize_path(path: &str) -> String {
 mod tests {
     use super::*;
     use diffguard_types::{
-        DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
-        CAP_GIT, CAP_STATUS_UNAVAILABLE, REASON_GIT_UNAVAILABLE,
+        CAP_GIT, CAP_STATUS_UNAVAILABLE, DiffMeta, Finding, REASON_GIT_UNAVAILABLE, Scope,
+        Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
     };
 
     fn test_receipt() -> CheckReceipt {
