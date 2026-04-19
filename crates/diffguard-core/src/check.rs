@@ -746,7 +746,6 @@ diff --git a/src/lib.rs b/src/lib.rs
 
             let expected = format!(
                 "::{level} file={path},line={line}::{rule} {msg}",
-                level = level,
                 path = finding.path,
                 line = finding.line,
                 rule = finding.rule_id,
