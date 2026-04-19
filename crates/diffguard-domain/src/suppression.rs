@@ -82,8 +82,18 @@ pub fn parse_suppression(line: &str) -> Option<Suppression> {
 /// `masked_comments` should be the output of the comments-only preprocessor
 /// for the same line and language. The directive is accepted only if the
 /// directive prefix is fully masked (spaces) in `masked_comments`.
+///
+/// # Why This Matters
+///
+/// The preprocessor replaces comment content with spaces but leaves string
+/// content unchanged. This allows us to distinguish between:
+/// - `// diffguard: ignore` (in a comment) → masked version has spaces at those positions
+/// - `"diffguard: ignore"` (in a string) → masked version has original chars
+///
+/// By checking that the directive prefix is masked to spaces, we ensure we
+/// only suppress rules when the directive is actually in a comment.
 #[must_use]
-#[allow(clippy::collapsible_if)]
+#[allow(clippy::collapsible_if)] // Collapsing would obscure the comment-vs-string distinction logic
 pub fn parse_suppression_in_comments(line: &str, masked_comments: &str) -> Option<Suppression> {
     if line.len() != masked_comments.len() {
         return None;
