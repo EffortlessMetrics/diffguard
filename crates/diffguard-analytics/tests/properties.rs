@@ -665,8 +665,6 @@ proptest! {
 // ============================================================================
 
 proptest! {
-    #![proptest_config(ProptestConfig::with_cases(200))]
-
     #[test]
     fn property_fingerprint_set_contains_all_fingerprints(baseline in arb_baseline()) {
         let set = false_positive_fingerprint_set(&baseline);
