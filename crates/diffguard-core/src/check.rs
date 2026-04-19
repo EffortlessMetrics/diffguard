@@ -306,6 +306,16 @@ fn filter_rule_by_tags(rule: &diffguard_types::RuleConfig, plan: &CheckPlan) -> 
     true
 }
 
+/// Compute the process exit code based on policy verdict.
+///
+/// Exit codes are part of the stable CLI API and MUST NOT change:
+/// - 0: Pass (no errors, or `fail_on: never`)
+/// - 2: Policy failure (errors found, or warnings when `fail_on: warn`)
+/// - 3: Warning-only failure (warnings found with `fail_on: warn`)
+///
+/// Returns `u8` specifically to avoid any lossy cast when converting to
+/// `std::process::ExitCode` in main.rs — a silent truncation would corrupt
+/// exit codes above 255.
 fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> u8 {
     if matches!(fail_on, FailOn::Never) {
         return 0;
