@@ -50,6 +50,8 @@ struct FuzzDefaults {
 }
 
 /// Fuzz-friendly rule config.
+/// Only contains fields that directly implement Arbitrary.
+/// Complex/defaulted fields are computed in to_toml_string().
 #[derive(Arbitrary, Debug)]
 struct FuzzRuleConfig {
     id: String,
@@ -61,17 +63,10 @@ struct FuzzRuleConfig {
     exclude_paths: Vec<String>,
     ignore_comments: bool,
     ignore_strings: bool,
-    match_mode: Default::default(),
-    multiline: false,
-    multiline_window: None,
-    context_patterns: vec![],
-    context_window: None,
-    escalate_patterns: vec![],
-    escalate_window: None,
-    escalate_to: None,
-    depends_on: vec![],
-    help: Option<String>,
-    url: Option<String>,
+    /// Dummy field to satisfy RuleConfig structure - always false
+    multiline: bool,
+    /// Dummy field to satisfy RuleConfig structure - always empty
+    escalate_to: String,
 }
 
 impl StructuredConfig {
@@ -169,13 +164,6 @@ impl StructuredConfig {
 
             out.push_str(&format!("ignore_comments = {}\n", rule.ignore_comments));
             out.push_str(&format!("ignore_strings = {}\n", rule.ignore_strings));
-
-            if let Some(ref help) = rule.help {
-                out.push_str(&format!("help = {}\n", escape_toml_string(help)));
-            }
-            if let Some(ref url) = rule.url {
-                out.push_str(&format!("url = {}\n", escape_toml_string(url)));
-            }
         }
 
         out
