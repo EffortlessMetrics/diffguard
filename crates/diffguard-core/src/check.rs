@@ -343,7 +343,6 @@ fn render_annotations(findings: &[Finding]) -> Vec<String> {
             };
             format!(
                 "::{level} file={path},line={line}::{rule} {msg}",
-                level = level,
                 path = f.path,
                 line = f.line,
                 rule = f.rule_id,
