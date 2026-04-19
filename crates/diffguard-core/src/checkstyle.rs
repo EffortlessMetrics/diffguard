@@ -27,9 +27,18 @@ use diffguard_types::{CheckReceipt, Finding, Severity};
 /// - `Warn`  → "warning"
 /// - `Info`  → "info"
 ///
-/// Formats a `<error>` element for a finding.
+/// Builds a single `<error>` XML element for one finding.
 ///
-/// Column is optional in Checkstyle — only included when present.
+/// - `line` — source line number (1-indexed)
+/// - `column` — optional source column; omitted from output when `None`
+/// - `severity` — Checkstyle severity string: `"error"`, `"warning"`, or `"info"`
+/// - `message` — human-readable description (XML-escaped)
+/// - `rule_id` — rule identifier used as the `source` attribute (XML-escaped)
+///
+/// Returns a single line like:
+/// ```text
+///     <error line="42" column="8" severity="warning" message="..." source="no-secrets"/>
+/// ```
 fn error_element(
     line: u32,
     column: Option<u32>,
