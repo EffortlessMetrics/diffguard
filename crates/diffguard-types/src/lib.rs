@@ -545,7 +545,7 @@ pub struct SensorFinding {
     /// Optional URL for more information.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
-    /// Additional data (match_text, snippet).
+    /// Additional data (`match_text`, `snippet`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<serde_json::Value>,
 }
