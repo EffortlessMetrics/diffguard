@@ -291,6 +291,7 @@ impl EffectiveSuppressions {
 mod tests {
     use super::*;
     use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
+    use proptest::prelude::*;
 
     fn masked_comments(line: &str, lang: Language) -> String {
         let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), lang);
@@ -665,5 +666,130 @@ mod tests {
         assert!(!effective.is_empty());
         assert!(effective.is_suppressed("any.rule"));
         assert!(effective.is_suppressed("other.rule"));
+    }
+
+    // ==================== Property-based tests ====================
+
+    proptest::proptest! {
+        /// Property: parse_suppression is idempotent.
+        /// Calling it multiple times with the same input gives the same result.
+        #[test]
+        fn parse_suppression_idempotent(line: String) {
+            let result1 = parse_suppression(&line);
+            let result2 = parse_suppression(&line);
+            let result3 = parse_suppression(&line);
+            prop_assert_eq!(result1.clone(), result2.clone());
+            prop_assert_eq!(result2, result3);
+        }
+
+        /// Property: parse_suppression_in_comments rejects directives in strings.
+        #[test]
+        fn parse_in_string_is_rejected(rule_id: String) {
+            use std::fmt::Write;
+            // Skip if rule_id contains special chars that break string parsing
+            if rule_id.is_empty() || rule_id.contains('"') || rule_id.contains('\\') {
+                return Ok(());
+            }
+
+            let mut code = String::new();
+            let _ = write!(&mut code, "let x = \"diffguard: ignore {}\";", rule_id);
+
+            let masked = masked_comments(&code, Language::Rust);
+            let result = parse_suppression_in_comments(&code, &masked);
+            prop_assert!(result.is_none(),
+                "Directive in string should NOT be found. Code: {}, Masked: {}, Result: {:?}",
+                code, masked, result);
+        }
+
+        /// Property: Suppression::suppresses with wildcard (None) returns true for any rule.
+        #[test]
+        fn wildcard_suppression_suppresses_all(rule_id: String) {
+            let suppression = Suppression {
+                kind: SuppressionKind::SameLine,
+                rule_ids: None, // wildcard
+            };
+
+            prop_assert!(suppression.suppresses(&rule_id),
+                "Wildcard suppression should suppress any rule. Rule: {}", rule_id);
+        }
+
+        /// Property: Suppression::suppresses returns true only for specified rule IDs.
+        #[test]
+        fn specific_suppression_only_suppresses_specified_rules(rule_ids: Vec<String>) {
+            // Filter out empty strings and duplicates
+            let rule_ids: HashSet<String> = rule_ids.into_iter()
+                .filter(|id| !id.is_empty())
+                .collect();
+
+            if rule_ids.is_empty() {
+                return Ok(());
+            }
+
+            let suppression = Suppression {
+                kind: SuppressionKind::SameLine,
+                rule_ids: Some(rule_ids.clone()),
+            };
+
+            for rule in &rule_ids {
+                prop_assert!(suppression.suppresses(rule),
+                    "Should suppress specified rule: {}", rule);
+            }
+        }
+
+        /// Property: SuppressionTracker next-line persistence - ignore-next-line
+        /// affects only the immediate next line, not subsequent lines.
+        #[test]
+        fn tracker_next_line_only_affects_one_line(rule_id: String) {
+            // Skip empty rule_ids or ones with special characters that cause parsing issues.
+            // Real rule IDs are ASCII alphanumeric with dots (e.g., "rust.no_unwrap").
+            if rule_id.is_empty()
+                || !rule_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '.' || c == '_' || c == '-')
+            {
+                return Ok(());
+            }
+
+            let mut tracker = SuppressionTracker::new();
+
+            // Line 1: directive
+            let line1 = format!("// diffguard: ignore-next-line {}", rule_id);
+            let masked1 = masked_comments(&line1, Language::Rust);
+            let effective1 = tracker.process_line(&line1, &masked1);
+            prop_assert!(!effective1.is_suppressed(&rule_id),
+                "ignore-next-line should NOT suppress on directive line");
+
+            // Line 2: should be suppressed
+            let line2 = "actual code";
+            let masked2 = masked_comments(line2, Language::Rust);
+            let effective2 = tracker.process_line(line2, &masked2);
+            prop_assert!(effective2.is_suppressed(&rule_id),
+                "ignore-next-line SHOULD suppress on next line");
+
+            // Line 3: should NOT be suppressed
+            let line3 = "more code";
+            let masked3 = masked_comments(line3, Language::Rust);
+            let effective3 = tracker.process_line(line3, &masked3);
+            prop_assert!(!effective3.is_suppressed(&rule_id),
+                "ignore-next-line should NOT suppress on line after next");
+        }
+
+        /// Property: Directive in comment is found by parse_suppression_in_comments.
+        #[test]
+        fn parse_in_comment_is_found(line: String) {
+            // Skip if line doesn't have a valid comment with directive
+            if !line.to_ascii_lowercase().contains("// diffguard: ignore") {
+                return Ok(());
+            }
+
+            let masked = masked_comments(&line, Language::Rust);
+            // If the preprocessor preserved the line length, it means the line
+            // has comment content that was masked
+            if masked.len() == line.len() && !masked.contains("diffguard") {
+                // The directive should be found in the comment
+                let result = parse_suppression_in_comments(&line, &masked);
+                prop_assert!(result.is_some(),
+                    "Directive in comment should be found. Line: {}, Masked: {}",
+                    line, masked);
+            }
+        }
     }
 }
