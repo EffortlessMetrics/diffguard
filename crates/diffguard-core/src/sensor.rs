@@ -5,8 +5,8 @@
 use std::collections::{BTreeMap, HashMap};
 
 use diffguard_types::{
-    Artifact, CHECK_ID_PATTERN, CapabilityStatus, CheckReceipt, RunMeta, SENSOR_REPORT_SCHEMA_V1,
-    SensorFinding, SensorLocation, SensorReport,
+    Artifact, CapabilityStatus, CheckReceipt, RunMeta, SensorFinding, SensorLocation, SensorReport,
+    CHECK_ID_PATTERN, SENSOR_REPORT_SCHEMA_V1,
 };
 
 use crate::fingerprint::compute_fingerprint;
@@ -44,7 +44,9 @@ pub struct RuleMetadata {
 ///
 /// # Panics
 ///
-/// Panics if `serde_json::to_value` fails to serialize `tags_matched`.
+/// Never: `serde_json::to_value` on `BTreeMap<String, u32>` is infallible.
+/// The `.expect()` is present for API consistency with other serde calls but
+/// will never trigger in practice.
 pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -> SensorReport {
     let findings = receipt
         .findings
@@ -152,8 +154,8 @@ fn normalize_path(path: &str) -> String {
 mod tests {
     use super::*;
     use diffguard_types::{
-        CAP_GIT, CAP_STATUS_UNAVAILABLE, DiffMeta, Finding, REASON_GIT_UNAVAILABLE, Scope,
-        Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+        DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+        CAP_GIT, CAP_STATUS_UNAVAILABLE, REASON_GIT_UNAVAILABLE,
     };
 
     fn test_receipt() -> CheckReceipt {
