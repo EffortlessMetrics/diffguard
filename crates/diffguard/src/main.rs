@@ -642,9 +642,7 @@ impl LanguageArg {
 #[cfg(not(test))]
 fn main() -> std::process::ExitCode {
     match run_with_args(std::env::args_os()) {
-        Ok(code) => {
-            std::process::ExitCode::from(code.clamp(i32::from(u8::MIN), i32::from(u8::MAX)) as u8)
-        }
+        Ok(code) => std::process::ExitCode::from(code),
         Err(err) => {
             eprintln!("{err:?}");
             std::process::ExitCode::from(1)
@@ -652,7 +650,7 @@ fn main() -> std::process::ExitCode {
     }
 }
 
-fn run_with_args<I, T>(args: I) -> Result<i32>
+fn run_with_args<I, T>(args: I) -> Result<u8>
 where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
@@ -860,7 +858,7 @@ fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     errors
 }
 
-fn cmd_validate(args: ValidateArgs) -> Result<i32> {
+fn cmd_validate(args: ValidateArgs) -> Result<u8> {
     info!("Validating configuration file");
 
     // Determine config path
@@ -953,7 +951,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
 
 /// Validate the environment for running diffguard.
 /// Returns 0 if all checks pass, 1 if any check fails.
-fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
+fn cmd_doctor(args: DoctorArgs) -> Result<u8> {
     let mut all_pass = true;
 
     // Check 1: Git availability
@@ -1648,7 +1646,7 @@ fn compare_against_baseline(
 }
 
 /// Determines the exit code for baseline mode based only on new findings.
-fn compute_baseline_exit_code(fail_on: FailOn, new_counts: &VerdictCounts) -> i32 {
+fn compute_baseline_exit_code(fail_on: FailOn, new_counts: &VerdictCounts) -> u8 {
     // If there are no new findings, exit 0 (grandfathered)
     if new_counts.error == 0 && new_counts.warn == 0 && new_counts.info == 0 {
         return 0;
@@ -1908,7 +1906,7 @@ fn serialize_sensor_report_checked(
     serde_json::to_string_pretty(report)
 }
 
-fn cmd_check(mut args: CheckArgs) -> Result<i32> {
+fn cmd_check(mut args: CheckArgs) -> Result<u8> {
     let mode = resolve_mode(&args);
     resolve_extras_paths(&mut args, mode);
     let out_path = resolve_out_path(&args, mode);
@@ -2239,7 +2237,7 @@ fn cmd_check_inner(
     _mode: Mode,
     started_at: &chrono::DateTime<Utc>,
     out_path: &Path,
-) -> Result<i32> {
+) -> Result<u8> {
     info!("Starting diffguard check");
 
     let cfg = load_config(args.config.clone(), args.no_default_rules)?;
@@ -2860,7 +2858,7 @@ fn cmd_init_with_io<R: BufRead, W: Write>(args: InitArgs, input: &mut R, err: W)
     Ok(())
 }
 
-fn cmd_test(args: TestArgs) -> Result<i32> {
+fn cmd_test(args: TestArgs) -> Result<u8> {
     info!("Running rule test cases");
 
     let cfg = load_config(args.config.clone(), args.no_default_rules)?;

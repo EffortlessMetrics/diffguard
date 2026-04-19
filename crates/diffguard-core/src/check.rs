@@ -49,7 +49,7 @@ pub struct CheckRun {
     pub receipt: CheckReceipt,
     pub markdown: String,
     pub annotations: Vec<String>,
-    pub exit_code: i32,
+    pub exit_code: u8,
     /// Number of findings dropped due to max_findings truncation.
     pub truncated_findings: u32,
     /// Number of rules that were evaluated (after tag filtering).
@@ -306,7 +306,17 @@ fn filter_rule_by_tags(rule: &diffguard_types::RuleConfig, plan: &CheckPlan) -> 
     true
 }
 
-fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> i32 {
+/// Compute the process exit code based on policy verdict.
+///
+/// Exit codes are part of the stable CLI API and MUST NOT change:
+/// - 0: Pass (no errors, or `fail_on: never`)
+/// - 2: Policy failure (errors found, or warnings when `fail_on: warn`)
+/// - 3: Warning-only failure (warnings found with `fail_on: warn`)
+///
+/// Returns `u8` specifically to avoid any lossy cast when converting to
+/// `std::process::ExitCode` in main.rs — a silent truncation would corrupt
+/// exit codes above 255.
+fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> u8 {
     if matches!(fail_on, FailOn::Never) {
         return 0;
     }
@@ -333,7 +343,6 @@ fn render_annotations(findings: &[Finding]) -> Vec<String> {
             };
             format!(
                 "::{level} file={path},line={line}::{rule} {msg}",
-                level = level,
                 path = f.path,
                 line = f.line,
                 rule = f.rule_id,
@@ -429,6 +438,50 @@ mod tests {
         assert_eq!(compute_exit_code(FailOn::Error, &counts), 2);
         assert_eq!(compute_exit_code(FailOn::Warn, &counts), 2);
         assert_eq!(compute_exit_code(FailOn::Never, &counts), 0);
+    }
+
+    // =============================================================================
+    // RED TESTS: exit_code type change i32 → u8
+    //
+    // These tests verify the compile-time type of exit_code functions.
+    // They will FAIL TO COMPILE if the functions return i32 (current state).
+    // They will COMPILE and PASS once the functions return u8 (after fix).
+    // =============================================================================
+
+    /// Helper: forces the argument to be u8 at compile time.
+    /// If the argument is i32, this produces a compilation error.
+    fn require_u8(code: u8) -> u8 {
+        code
+    }
+
+    /// RED TEST: compute_exit_code must return u8, not i32.
+    /// This test fails to compile if compute_exit_code returns i32.
+    #[test]
+    fn test_compute_exit_code_returns_u8_type() {
+        let counts = VerdictCounts::default();
+        // If compute_exit_code returns i32, this line fails: "mismatched types"
+        // If it returns u8, this compiles and we can assert on the value.
+        let code: u8 = compute_exit_code(FailOn::Error, &counts);
+        assert!(code == 0 || code == 2 || code == 3);
+    }
+
+    /// RED TEST: compute_exit_code for all FailOn modes returns u8.
+    #[test]
+    fn test_compute_exit_code_all_modes_return_u8() {
+        let mut counts = VerdictCounts::default();
+
+        // All of these require u8 return type
+        assert_eq!(require_u8(compute_exit_code(FailOn::Never, &counts)), 0u8);
+        assert_eq!(require_u8(compute_exit_code(FailOn::Error, &counts)), 0u8);
+        assert_eq!(require_u8(compute_exit_code(FailOn::Warn, &counts)), 0u8);
+
+        counts.error = 1;
+        assert_eq!(require_u8(compute_exit_code(FailOn::Error, &counts)), 2u8);
+        assert_eq!(require_u8(compute_exit_code(FailOn::Warn, &counts)), 2u8);
+
+        counts.error = 0;
+        counts.warn = 1;
+        assert_eq!(require_u8(compute_exit_code(FailOn::Warn, &counts)), 3u8);
     }
 
     #[test]
@@ -693,7 +746,6 @@ diff --git a/src/lib.rs b/src/lib.rs
 
             let expected = format!(
                 "::{level} file={path},line={line}::{rule} {msg}",
-                level = level,
                 path = finding.path,
                 line = finding.line,
                 rule = finding.rule_id,
@@ -701,6 +753,122 @@ diff --git a/src/lib.rs b/src/lib.rs
             );
 
             prop_assert_eq!(annotations[0].as_str(), expected.as_str());
+        }
+
+        // =====================================================================
+        // Property tests for compute_exit_code
+        // These verify the key invariants of exit code computation.
+        // The type change i32→u8 is safe because compute_exit_code only ever
+        // returns values in {0, 2, 3}, all within u8 range.
+        // =====================================================================
+
+        #[test]
+        fn property_exit_code_always_within_u8_bounds(
+            fail_on in prop_oneof![
+                Just(FailOn::Error),
+                Just(FailOn::Warn),
+                Just(FailOn::Never)
+            ],
+            info in 0u32..1000,
+            warn in 0u32..1000,
+            error in 0u32..1000,
+        ) {
+            let counts = VerdictCounts { info, warn, error, suppressed: 0 };
+            let code = compute_exit_code(fail_on, &counts);
+            // Invariant: exit code must be in the valid set {0, 2, 3}
+            prop_assert!(matches!(code, 0 | 2 | 3));
+            // This also implies code fits in u8 (since all values are < 256)
+        }
+
+        #[test]
+        fn property_error_takes_precedence_over_warn(
+            fail_on in prop_oneof![Just(FailOn::Error), Just(FailOn::Warn)],
+            // Note: FailOn::Never always returns 0 (it ignores all findings, including errors)
+            warn in 1u32..1000,  // warn > 0
+            error in 1u32..1000, // error > 0
+        ) {
+            let counts = VerdictCounts { info: 0, warn, error, suppressed: 0 };
+            let code = compute_exit_code(fail_on, &counts);
+            // Error always produces exit code 2, regardless of fail_on (when not Never)
+            prop_assert_eq!(code, 2);
+        }
+
+        #[test]
+        fn property_fail_on_never_always_returns_zero(
+            info in 0u32..1000,
+            warn in 0u32..1000,
+            error in 0u32..1000,
+        ) {
+            let counts = VerdictCounts { info, warn, error, suppressed: 0 };
+            let code = compute_exit_code(FailOn::Never, &counts);
+            // FailOn::Never always returns 0, regardless of finding counts
+            prop_assert_eq!(code, 0);
+        }
+
+        #[test]
+        fn property_warn_only_with_fail_on_warn_returns_3(
+            info in 0u32..1000,
+            warn in 1u32..1000, // warn > 0
+        ) {
+            let counts = VerdictCounts { info, warn, error: 0, suppressed: 0 };
+            let code = compute_exit_code(FailOn::Warn, &counts);
+            // With warnings (no errors) and FailOn::Warn, exit code is 3
+            prop_assert_eq!(code, 3);
+        }
+
+        #[test]
+        fn property_fail_on_error_with_warn_only_returns_0(
+            info in 0u32..1000,
+            warn in 1u32..1000, // warn > 0
+        ) {
+            let counts = VerdictCounts { info, warn, error: 0, suppressed: 0 };
+            let code = compute_exit_code(FailOn::Error, &counts);
+            // With only warnings (no errors) and FailOn::Error, exit code is 0
+            prop_assert_eq!(code, 0);
+        }
+
+        #[test]
+        fn property_info_never_affects_exit_code(
+            fail_on in prop_oneof![
+                Just(FailOn::Error),
+                Just(FailOn::Warn),
+                Just(FailOn::Never)
+            ],
+            info in 0u32..1000,
+            warn in 0u32..10,
+            error in 0u32..10,
+        ) {
+            let counts_base = VerdictCounts { info, warn, error, suppressed: 0 };
+            let code_base = compute_exit_code(fail_on, &counts_base);
+
+            // Bump info count — exit code should be unchanged
+            let counts_bumped = VerdictCounts { info: info.saturating_add(1000), warn, error, suppressed: 0 };
+            let code_bumped = compute_exit_code(fail_on, &counts_bumped);
+
+            prop_assert_eq!(code_base, code_bumped,
+                "exit_code changed when info count changed: info={}→{} for fail_on={:?}, warn={}, error={}",
+                info, info.saturating_add(1000), fail_on, warn, error
+            );
+        }
+
+        #[test]
+        fn property_exit_code_values_are_stable_under_large_counts(
+            fail_on in prop_oneof![
+                Just(FailOn::Error),
+                Just(FailOn::Warn),
+                Just(FailOn::Never)
+            ],
+            info in 0u32..u32::MAX,
+            warn in 0u32..u32::MAX,
+            error in 0u32..u32::MAX,
+        ) {
+            let counts = VerdictCounts { info, warn, error, suppressed: 0 };
+            let code = compute_exit_code(fail_on, &counts);
+            // Large counts must not cause integer overflow or invalid exit codes
+            prop_assert!(matches!(code, 0 | 2 | 3),
+                "compute_exit_code returned {} for large counts info={}, warn={}, error={}, fail_on={:?}",
+                code, info, warn, error, fail_on
+            );
         }
     }
 
