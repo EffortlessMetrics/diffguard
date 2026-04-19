@@ -9,12 +9,32 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+/// Schema identifier for version 1 false-positive baseline files.
+///
+/// Persisted in the `schema` field of [`FalsePositiveBaseline`] to support
+/// forward compatibility when the format evolves.
 pub const FALSE_POSITIVE_BASELINE_SCHEMA_V1: &str = "diffguard.false_positive_baseline.v1";
+
+/// Schema identifier for version 1 trend history files.
+///
+/// Persisted in the `schema` field of [`TrendHistory`] to support forward
+/// compatibility when the format evolves.
 pub const TREND_HISTORY_SCHEMA_V1: &str = "diffguard.trend_history.v1";
 
+/// A set of known false-positive findings used to suppress repeated alerts.
+///
+/// Each entry represents a single finding that has been reviewed and deemed
+/// intentional or acceptable. Baselines are compared by fingerprint so that
+/// entries survive edits to rule metadata (e.g., renaming a rule ID).
+///
+/// Use [`normalize_false_positive_baseline`] before persisting or comparing
+/// baselines to guarantee a canonical form.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveBaseline {
+    /// Schema identifier. Set by [`normalize_false_positive_baseline`] when missing.
     pub schema: String,
+    /// Individual false-positive entries. Sorted and deduplicated by
+    /// [`normalize_false_positive_baseline`].
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub entries: Vec<FalsePositiveEntry>,
 }
@@ -28,12 +48,25 @@ impl Default for FalsePositiveBaseline {
     }
 }
 
+/// A single false-positive finding record.
+///
+/// The [`fingerprint`] is the primary key. All other fields are supplementary
+/// metadata used for human readability and auditability.
+///
+/// Created manually by a reviewer or generated automatically by
+/// [`baseline_from_receipt`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveEntry {
+    /// SHA-256 fingerprint of the finding, computed by [`fingerprint_for_finding`].
     pub fingerprint: String,
+    /// Rule that triggered this finding (e.g. `"rust.no_unwrap"`).
     pub rule_id: String,
+    /// Path to the file containing the finding (relative or absolute).
     pub path: String,
+    /// Line number in `path` where the finding occurs (1-indexed).
     pub line: u32,
+    /// Optional human-readable note explaining why this is a known false positive.
+    /// `base.note` wins when both `base` and `incoming` have `Some` during merge.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
 }
@@ -136,6 +169,10 @@ pub fn merge_false_positive_baselines(
 }
 
 /// Returns the baseline as a fingerprint set for fast lookup.
+///
+/// Use this when you need to test whether a given fingerprint is present
+/// without iterating the full baseline. The returned set is always empty when
+/// the baseline has no entries.
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
     baseline
         .entries
@@ -144,9 +181,18 @@ pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTree
         .collect()
 }
 
+/// A time-series of individual diffguard check runs.
+///
+/// Each [`TrendRun`] represents a single invocation of diffguard. History is
+/// stored in oldest-first order (the first entry is the earliest run).
+///
+/// Use [`append_trend_run`] to add new entries, and [`summarize_trend_history`]
+/// to produce aggregate statistics.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendHistory {
+    /// Schema identifier. Set by [`normalize_trend_history`] when missing.
     pub schema: String,
+    /// Ordered list of runs, oldest first.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub runs: Vec<TrendRun>,
 }
@@ -160,46 +206,79 @@ impl Default for TrendHistory {
     }
 }
 
+/// A single diffguard check run, suitable for trend analysis.
+///
+/// Produced by [`trend_run_from_receipt`] and appended to [`TrendHistory`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendRun {
+    /// ISO 8601 timestamp when the run started.
     pub started_at: String,
+    /// ISO 8601 timestamp when the run ended.
     pub ended_at: String,
+    /// Wall-clock duration of the run in milliseconds.
     pub duration_ms: u64,
+    /// Git ref (branch name, tag, or commit) at the base of the diff.
     pub base: String,
+    /// Git ref at the head of the diff.
     pub head: String,
+    /// Which lines were considered (`Added`, `Removed`, or `All`).
     pub scope: Scope,
+    /// Overall pass/fail status of the check.
     pub status: VerdictStatus,
+    /// Breakdown of findings by severity.
     pub counts: VerdictCounts,
     /// Number of distinct files that were scanned.
     ///
     /// Stored as `u64` to avoid silent truncation for very large repositories
     /// (those with more than 2^32 - 1 unique files).
     pub files_scanned: u64,
+    /// Total lines examined (context + added + removed).
     pub lines_scanned: u32,
+    /// Total findings reported (before suppression).
     pub findings: u32,
 }
 
+/// Aggregated summary of a [`TrendHistory`].
+///
+/// Use [`summarize_trend_history`] to produce this from raw history.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendSummary {
+    /// Total number of runs in the history.
     pub run_count: u32,
+    /// Sum of all verdict counts across all runs.
     pub totals: VerdictCounts,
+    /// Sum of all findings across all runs.
     pub total_findings: u32,
+    /// The most recent run, if the history is non-empty.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latest: Option<TrendRun>,
+    /// Change in counts between the most recent two runs, if at least two exist.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub delta_from_previous: Option<TrendDelta>,
 }
 
+/// Change in counts between two consecutive [`TrendRun`]s.
+///
+/// All fields are `current - previous`, so a negative value means the current
+/// run had fewer findings than the previous one.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendDelta {
+    /// Change in total findings count.
     pub findings: i64,
+    /// Change in info-level findings count.
     pub info: i64,
+    /// Change in warn-level findings count.
     pub warn: i64,
+    /// Change in error-level findings count.
     pub error: i64,
+    /// Change in suppressed findings count.
     pub suppressed: i64,
 }
 
-/// Deterministically normalizes trend history by setting schema id when missing.
+/// Normalizes a trend history by setting the schema id when missing.
+///
+/// Call this before persisting a history or before performing equality checks
+/// to ensure a consistent canonical form. Does not modify the `runs` vector.
 pub fn normalize_trend_history(mut history: TrendHistory) -> TrendHistory {
     if history.schema.is_empty() {
         history.schema = TREND_HISTORY_SCHEMA_V1.to_string();
@@ -208,6 +287,13 @@ pub fn normalize_trend_history(mut history: TrendHistory) -> TrendHistory {
 }
 
 /// Converts a check receipt into a trend run sample.
+///
+/// `started_at` and `ended_at` are passed in as strings to allow the caller to
+/// use any timestamp format (typically ISO 8601). The `duration_ms` should
+/// reflect wall-clock time, not CPU time.
+///
+/// The `findings` count is capped at `u32::MAX` to prevent truncation for
+/// extremely large scans.
 pub fn trend_run_from_receipt(
     receipt: &CheckReceipt,
     started_at: &str,
@@ -230,6 +316,10 @@ pub fn trend_run_from_receipt(
 }
 
 /// Appends a run to history and optionally trims to `max_runs` newest entries.
+///
+/// When `max_runs` is `Some(n)` with `n > 0`, the oldest runs are evicted once
+/// the history exceeds `n` entries. This keeps memory bounded for long-running
+/// pipelines. When `max_runs` is `None`, runs are never evicted.
 pub fn append_trend_run(
     mut history: TrendHistory,
     run: TrendRun,
@@ -263,6 +353,8 @@ pub fn summarize_trend_history(history: &TrendHistory) -> TrendSummary {
     }
 
     let latest = history.runs.last().cloned();
+    // Delta is always (second-last - last) → (previous - current), so a negative
+    // value means findings decreased since the previous run.
     let delta_from_previous = if history.runs.len() >= 2 {
         let prev = &history.runs[history.runs.len() - 2];
         let curr = &history.runs[history.runs.len() - 1];
