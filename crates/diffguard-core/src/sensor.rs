@@ -41,6 +41,10 @@ pub struct RuleMetadata {
 }
 
 /// Renders a CheckReceipt as a SensorReport.
+///
+/// # Panics
+///
+/// Panics if `serde_json::to_value` fails to serialize `tags_matched`.
 pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -> SensorReport {
     let findings = receipt
         .findings
