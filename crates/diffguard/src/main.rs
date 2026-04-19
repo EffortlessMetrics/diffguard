@@ -1888,6 +1888,12 @@ fn collect_blame_allowed_lines(
     Ok(allowed)
 }
 
+/// Injects a synthetic JSON serialization error for testing the sensor error path.
+///
+/// When the `DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR` environment variable is set
+/// (only in test builds), this returns an error that forces the sensor JSON writing
+/// code to exercise its error handling path. This allows testing what happens when
+/// the sensor JSON fails to serialize, even though the regular receipt succeeds.
 fn maybe_force_sensor_json_error() -> Option<serde_json::Error> {
     if cfg!(test) && std::env::var("DIFFGUARD_TEST_FORCE_SENSOR_JSON_ERROR").is_ok() {
         Some(<serde_json::Error as serde::ser::Error>::custom(
@@ -1898,6 +1904,11 @@ fn maybe_force_sensor_json_error() -> Option<serde_json::Error> {
     }
 }
 
+/// Renders sensor JSON with testable error injection.
+///
+/// This is a wrapper around `render_sensor_json` that allows tests to force
+/// JSON serialization failures via `maybe_force_sensor_json_error`. In production
+/// builds (without `cfg!(test)`), this simply calls `render_sensor_json`.
 fn render_sensor_json_checked(
     receipt: &CheckReceipt,
     ctx: &SensorReportContext,
@@ -1908,6 +1919,11 @@ fn render_sensor_json_checked(
     render_sensor_json(receipt, ctx)
 }
 
+/// Serializes a sensor report to JSON with testable error injection.
+///
+/// This is a wrapper around `serde_json::to_string_pretty` that allows tests to force
+/// serialization failures via `maybe_force_sensor_json_error`. In production builds,
+/// this simply serializes the report.
 fn serialize_sensor_report_checked(
     report: &diffguard_types::SensorReport,
 ) -> Result<String, serde_json::Error> {
@@ -1917,6 +1933,9 @@ fn serialize_sensor_report_checked(
     serde_json::to_string_pretty(report)
 }
 
+/// Main entry point for the `diffguard check` command.
+///
+/// Resolves mode (Standard or Cockpit), sets up paths, and executes the check.
 fn cmd_check(mut args: CheckArgs) -> Result<i32> {
     let mode = resolve_mode(&args);
     resolve_extras_paths(&mut args, mode);
@@ -2073,6 +2092,11 @@ fn cockpit_error_detail(err: &anyhow::Error) -> String {
         .unwrap_or_else(|| err.to_string())
 }
 
+/// Renders base refs as a human-readable string for receipts and reports.
+///
+/// - Empty slice → "origin/main" (default)
+/// - Single ref → that ref unchanged
+/// - Multiple refs → comma-separated list
 fn render_base_refs(bases: &[String]) -> String {
     match bases {
         [] => "origin/main".to_string(),
