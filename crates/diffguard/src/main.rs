@@ -1931,7 +1931,7 @@ fn cmd_check(mut args: CheckArgs) -> Result<i32> {
 
     // End timing
     let ended_at = Utc::now();
-    let duration_ms = start_time.elapsed().as_millis() as u64;
+    let duration_ms = start_time.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
 
     match mode {
         Mode::Standard => {
@@ -2615,7 +2615,10 @@ fn cmd_check_inner(
     }
 
     let ended_at = Utc::now();
-    let duration_ms = (ended_at - *started_at).num_milliseconds().max(0) as u64;
+    let duration_ms = (ended_at - *started_at)
+        .num_milliseconds()
+        .max(0)
+        .min(i64::MAX) as u64;
 
     if let Some(write_baseline_path) = &args.write_false_positive_baseline {
         let generated = baseline_from_receipt(&run.receipt);
