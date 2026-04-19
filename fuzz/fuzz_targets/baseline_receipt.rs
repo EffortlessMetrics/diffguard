@@ -22,51 +22,72 @@ use diffguard_types::{
 };
 
 /// Fuzz input that generates baseline receipt JSON.
-/// This exercises more paths than purely random bytes.
+///
+/// This exercises more paths than purely random bytes by generating
+/// well-formed JSON with potentially problematic values (extreme numbers,
+/// special characters, invalid enum values).
+///
+/// The fuzzer can operate in two modes:
+/// - Structured: generates valid-ish JSON from `StructuredReceipt`
+/// - Raw bytes: passes bytes directly to the JSON parser
 #[derive(Arbitrary, Debug)]
 struct FuzzBaselineReceipt {
-    /// Raw bytes for unstructured fuzzing
+    /// Raw bytes for unstructured fuzzing - passed directly to JSON parser.
     raw_bytes: Vec<u8>,
-    /// Structured receipt for targeted fuzzing
+    /// Structured receipt for targeted fuzzing - converted to JSON string.
     structured: StructuredReceipt,
-    /// Whether to use structured input
+    /// Whether to use structured input (true) or raw bytes (false).
     use_structured: bool,
 }
 
 /// A structured receipt that generates valid-ish JSON
 /// but with potentially problematic values.
+///
+/// This allows the fuzzer to exercise specific code paths while still
+/// testing edge cases in JSON parsing and schema validation.
 #[derive(Arbitrary, Debug)]
 struct StructuredReceipt {
-    /// Schema version to use
+    /// Schema version string (e.g., "diffguard.check.v1").
     schema_version: String,
-    /// Findings to include
+    /// Findings to include in the receipt.
     findings: Vec<FuzzFinding>,
-    /// Whether to omit required fields
+    /// Whether to omit the required `tool` field.
     omit_tool: bool,
-    /// Whether to omit diff meta
+    /// Whether to omit the required `diff` field.
     omit_diff: bool,
-    /// Whether to omit verdict
+    /// Whether to omit the required `verdict` field.
     omit_verdict: bool,
-    /// Invalid JSON injection
+    /// Whether to inject invalid JSON to test error handling.
     inject_json_error: bool,
-    /// Extra fields that might trip up parsing
+    /// Extra fields to append (key, value pairs) - tests unknown field handling.
     extra_fields: Vec<(String, String)>,
 }
 
 /// A fuzz finding with potentially problematic values.
 #[derive(Arbitrary, Debug)]
 struct FuzzFinding {
+    /// Rule identifier that triggered this finding.
     rule_id: String,
-    severity: u8, // Maps to info/warn/error
+    /// Severity level: 0=info, 1=warn, 2=error.
+    severity: u8,
+    /// Human-readable message describing the finding.
     message: String,
+    /// File path where the finding occurred.
     path: String,
+    /// Line number where the finding occurred.
     line: u32,
+    /// The exact text that matched the rule pattern.
     match_text: String,
+    /// Surrounding code snippet for context.
     snippet: String,
 }
 
 impl StructuredReceipt {
     /// Convert to JSON string for parsing.
+    ///
+    /// Generates a JSON document from the structured receipt.
+    /// Uses serde_json::to_string for proper escaping of special characters.
+    /// Can inject JSON errors to test error handling paths.
     fn to_json_string(&self) -> String {
         let mut out = String::new();
         out.push_str("{\n");
@@ -167,7 +188,16 @@ impl StructuredReceipt {
 }
 
 /// Compute exit code for baseline mode based on new findings.
-/// Mirrors the logic in main.rs::compute_baseline_exit_code
+///
+/// This mirrors the logic in main.rs::compute_baseline_exit_code for fuzz testing.
+///
+/// Exit codes:
+/// - 0: No new findings, or findings don't exceed fail_on threshold
+/// - 2: New errors found (when fail_on includes error)
+/// - 3: New warnings found and fail_on is "warn"
+///
+/// Note: In the actual CLI, exit code 1 is used for CLI argument errors,
+/// but this function only handles baseline comparison results.
 fn compute_baseline_exit_code(fail_on: &str, new_counts: &VerdictCounts) -> i32 {
     if new_counts.error == 0 && new_counts.warn == 0 && new_counts.info == 0 {
         return 0;

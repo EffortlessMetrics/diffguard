@@ -18,70 +18,113 @@ use libfuzzer_sys::fuzz_target;
 use diffguard_domain::compile_rules;
 use diffguard_types::{ConfigFile, Defaults, FailOn, RuleConfig, Scope, Severity};
 
-/// Structured fuzz input for generating valid-ish TOML configs.
-/// This exercises more paths than purely random bytes.
+/// Structured fuzz input for generating TOML config files.
+///
+/// This exercises more paths than purely random bytes by generating
+/// well-formed TOML with potentially problematic values (extreme numbers,
+/// special characters, invalid enum values).
+///
+/// The fuzzer can operate in two modes:
+/// - Structured: generates valid-ish TOML from `StructuredConfig`
+/// - Raw bytes: passes bytes directly to the TOML parser
 #[derive(Arbitrary, Debug)]
 struct FuzzConfig {
-    /// Whether to use structured input or raw bytes
+    /// Whether to use structured input (true) or raw bytes (false).
     use_structured: bool,
-    /// Raw bytes for unstructured fuzzing
+    /// Raw bytes for unstructured fuzzing - passed directly to TOML parser.
     raw_bytes: Vec<u8>,
-    /// Structured config for targeted fuzzing
+    /// Structured config for targeted fuzzing - converted to TOML string.
     structured: StructuredConfig,
 }
 
 /// A structured config that generates valid TOML structure
-/// but with potentially problematic values.
+/// but with potentially problematic values (extreme values, special chars).
 #[derive(Arbitrary, Debug)]
 struct StructuredConfig {
+    /// Defaults section (base, head, scope, fail_on, etc.).
     defaults: FuzzDefaults,
+    /// Rule configurations to include.
     rules: Vec<FuzzRuleConfig>,
 }
 
 /// Fuzz-friendly defaults section.
+///
+/// All fields are Optional to allow the fuzzer to omit them,
+/// which exercises missing-field handling in the deserializer.
 #[derive(Arbitrary, Debug)]
 struct FuzzDefaults {
+    /// Base commit/REF.
     base: Option<String>,
+    /// Head commit/REF.
     head: Option<String>,
+    /// Diff scope (0=added, 1=changed, 2=modified, 3=deleted).
     scope: Option<u8>,
+    /// Fail behavior (0=error, 1=warn, 2=never).
     fail_on: Option<u8>,
+    /// Maximum findings to report.
     max_findings: Option<u32>,
+    /// Number of context lines to show.
     diff_context: Option<u32>,
 }
 
 /// Fuzz-friendly rule config.
 ///
 /// All fields use types that implement Arbitrary directly.
-/// Complex RuleConfig fields are serialized as strings in to_toml_string().
+/// Complex RuleConfig fields (like match_mode enums) are represented
+/// as simple u8 values that get converted in `to_toml_string()`.
 #[derive(Arbitrary, Debug)]
 struct FuzzRuleConfig {
+    /// Rule identifier.
     id: String,
+    /// Severity (0=info, 1=warn, 2=error).
     severity: u8,
+    /// Human-readable message.
     message: String,
+    /// Detailed description.
     description: String,
+    /// Language filters.
     languages: Vec<String>,
+    /// Regex patterns to match.
     patterns: Vec<String>,
+    /// Path include globs.
     paths: Vec<String>,
+    /// Path exclude globs.
     exclude_paths: Vec<String>,
+    /// Whether to ignore matches in comments.
     ignore_comments: bool,
+    /// Whether to ignore matches in strings.
     ignore_strings: bool,
-    /// Match mode: 0=Any, 1=Absent
+    /// Match mode: 0=Any, 1=Absent.
     match_mode: u8,
+    /// Whether to enable multiline matching.
     multiline: bool,
+    /// Window size for multiline context.
     multiline_window: Option<u32>,
+    /// Patterns to require in surrounding context.
     context_patterns: Vec<String>,
+    /// Window size for context matching.
     context_window: Option<u32>,
+    /// Patterns that escalate severity.
     escalate_patterns: Vec<String>,
+    /// Window size for escalation context.
     escalate_window: Option<u32>,
-    /// Escalate to severity: 0=info, 1=warn, 2=error
+    /// Escalate to severity: 0=info, 1=warn, 2=error.
     escalate_to: Option<u8>,
+    /// Rule IDs this rule depends on.
     depends_on: Vec<String>,
+    /// Help text URL.
     help: Option<String>,
+    /// Documentation URL.
     url: Option<String>,
 }
 
 impl StructuredConfig {
-    /// Convert to TOML string for parsing.
+    /// Convert to a TOML string for parsing.
+    ///
+    /// Generates a well-formed TOML document from the structured config.
+    /// Values that could cause TOML parsing errors (like quotes in strings)
+    /// are escaped. Enum values like severity, scope, and match_mode are
+    /// converted from their numeric representations to their string names.
     fn to_toml_string(&self) -> String {
         let mut out = String::new();
 
@@ -258,6 +301,10 @@ impl StructuredConfig {
 }
 
 /// Escape a string for TOML, handling special characters.
+///
+/// TOML strings require escaping: double quotes, backslashes, and control characters.
+/// This function wraps the input in double quotes and escapes any problematic characters.
+/// Control characters other than \n, \r, \t are skipped to avoid TOML parsing issues.
 fn escape_toml_string(s: &str) -> String {
     // Use basic string with escapes for simplicity
     let mut out = String::with_capacity(s.len() + 2);
