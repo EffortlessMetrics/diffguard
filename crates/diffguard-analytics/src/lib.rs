@@ -130,38 +130,57 @@ pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
 }
 
 /// Merges two baselines (union by fingerprint), preferring existing entries in `base`.
+///
+/// `base` fills its empty/None fields from `incoming`. When both have non-empty
+/// values for a field, `base`'s value is kept (curated metadata takes precedence
+/// over ephemeral incoming data).
+///
+/// # Empty incoming fast-path
+///
+/// If `incoming.entries` is empty, returns `normalize_false_positive_baseline(base.clone())`
+/// without cloning or iterating `incoming`.
 pub fn merge_false_positive_baselines(
     base: &FalsePositiveBaseline,
     incoming: &FalsePositiveBaseline,
 ) -> FalsePositiveBaseline {
-    let mut merged = normalize_false_positive_baseline(incoming.clone());
-    let mut seen = merged
-        .entries
-        .iter()
-        .map(|e| e.fingerprint.clone())
-        .collect::<BTreeSet<_>>();
+    // Fast path: empty incoming cannot contribute anything
+    if incoming.entries.is_empty() {
+        return normalize_false_positive_baseline(base.clone());
+    }
 
-    for entry in &base.entries {
-        if seen.insert(entry.fingerprint.clone()) {
+    // Start from base and lazily add only incoming entries whose fingerprints
+    // are genuinely absent from base. This avoids the upfront
+    // `normalize_false_positive_baseline(incoming.clone())` cost.
+    let mut merged = base.clone();
+    let mut base_fingerprints: BTreeSet<_> = base.entries.iter().map(|e| &e.fingerprint).collect();
+
+    for entry in &incoming.entries {
+        if base_fingerprints.contains(&entry.fingerprint) {
+            // Fingerprint already in base — fill any empty fields from incoming
+            if let Some(existing) = merged
+                .entries
+                .iter_mut()
+                .find(|e| e.fingerprint == entry.fingerprint)
+            {
+                // Preserve manually curated metadata from the existing baseline.
+                // base.note wins when both are Some (base is curated, incoming is ephemeral)
+                if existing.note.is_none() && entry.note.is_some() {
+                    existing.note = entry.note.clone();
+                }
+                if existing.rule_id.is_empty() {
+                    existing.rule_id = entry.rule_id.clone();
+                }
+                if existing.path.is_empty() {
+                    existing.path = entry.path.clone();
+                }
+                if existing.line == 0 {
+                    existing.line = entry.line;
+                }
+            }
+        } else {
+            // Fingerprint is new — clone only this entry into merged
             merged.entries.push(entry.clone());
-        } else if let Some(existing) = merged
-            .entries
-            .iter_mut()
-            .find(|e| e.fingerprint == entry.fingerprint)
-        {
-            // Preserve manually curated metadata from the existing baseline.
-            if existing.note.is_none() && entry.note.is_some() {
-                existing.note = entry.note.clone();
-            }
-            if existing.rule_id.is_empty() {
-                existing.rule_id = entry.rule_id.clone();
-            }
-            if existing.path.is_empty() {
-                existing.path = entry.path.clone();
-            }
-            if existing.line == 0 {
-                existing.line = entry.line;
-            }
+            base_fingerprints.insert(&entry.fingerprint);
         }
     }
 
@@ -500,5 +519,305 @@ mod tests {
         let delta = summary.delta_from_previous.expect("delta");
         assert_eq!(delta.findings, -2);
         assert_eq!(delta.warn, -1);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Edge case tests for merge_false_positive_baselines
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// AC1: Empty incoming returns base normalized (no clone/iterate of incoming).
+    #[test]
+    fn merge_incoming_empty_returns_base_normalized() {
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: "rule.one".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: Some("curated".to_string()),
+        });
+
+        let incoming = FalsePositiveBaseline::default();
+        let merged = merge_false_positive_baselines(&base, &incoming);
+        let expected = normalize_false_positive_baseline(base.clone());
+
+        assert_eq!(merged.entries.len(), 1);
+        assert_eq!(merged.entries[0].fingerprint, "aaa");
+        assert_eq!(merged.entries[0].note.as_deref(), Some("curated"));
+        // Result should equal normalized base
+        assert_eq!(merged.schema, expected.schema);
+        assert_eq!(merged.entries.len(), expected.entries.len());
+    }
+
+    /// AC2: Non-empty incoming with new fingerprints adds only the new entries.
+    /// base has "a", incoming has "b" → result has both, neither cloned from the other.
+    #[test]
+    fn merge_incoming_adds_only_new_entries() {
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: "rule.a".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: None,
+        });
+
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "bbb".to_string(),
+            rule_id: "rule.b".to_string(),
+            path: "b.rs".to_string(),
+            line: 2,
+            note: None,
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+
+        assert_eq!(merged.entries.len(), 2);
+        let fps: Vec<_> = merged
+            .entries
+            .iter()
+            .map(|e| e.fingerprint.as_str())
+            .collect();
+        assert!(fps.contains(&"aaa"));
+        assert!(fps.contains(&"bbb"));
+    }
+
+    /// AC3 variant: Empty fields in base are filled from incoming,
+    /// but non-empty base fields are preserved.
+    #[test]
+    fn merge_fills_empty_fields_from_incoming() {
+        // base entry: fingerprint "aaa", empty rule_id and path, line=0, note=None
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: String::new(),
+            path: String::new(),
+            line: 0,
+            note: None,
+        });
+
+        // incoming entry: fingerprint "aaa", non-empty rule_id and path, note
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: "rule.incoming".to_string(),
+            path: "incoming.rs".to_string(),
+            line: 99,
+            note: Some("incoming note".to_string()),
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+
+        assert_eq!(merged.entries.len(), 1);
+        // rule_id and path should be filled from incoming (base had empty strings)
+        assert_eq!(merged.entries[0].rule_id, "rule.incoming");
+        assert_eq!(merged.entries[0].path, "incoming.rs");
+        assert_eq!(merged.entries[0].line, 99);
+        // note: base had None, incoming has Some → should be filled
+        assert_eq!(merged.entries[0].note.as_deref(), Some("incoming note"));
+    }
+
+    /// AC4: Result is normalized (sorted, deduplicated) even when incoming
+    /// contains duplicate fingerprints.
+    #[test]
+    fn merge_handles_duplicate_fingerprints_in_incoming() {
+        let base = FalsePositiveBaseline::default();
+
+        // incoming has two entries with same fingerprint but different rule_ids
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "dup".to_string(),
+            rule_id: "rule.one".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: None,
+        });
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "dup".to_string(),
+            rule_id: "rule.two".to_string(),
+            path: "b.rs".to_string(),
+            line: 2,
+            note: None,
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+
+        // Should be deduplicated to 1 entry
+        assert_eq!(merged.entries.len(), 1);
+        assert_eq!(merged.entries[0].fingerprint, "dup");
+    }
+
+    /// Edge case: base.note wins when BOTH base and incoming have Some notes.
+    /// This is the bug that was masked by the original test only checking note=None.
+    #[test]
+    fn merge_note_precedence_both_some_base_wins() {
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "abc".to_string(),
+            rule_id: "rule.one".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: Some("base curated note".to_string()),
+        });
+
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "abc".to_string(),
+            rule_id: "rule.one".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: Some("incoming ephemeral note".to_string()),
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+
+        // base.note should win when both are Some (curated > ephemeral)
+        assert_eq!(merged.entries.len(), 1);
+        assert_eq!(
+            merged.entries[0].note.as_deref(),
+            Some("base curated note"),
+            "base note should win when both have Some"
+        );
+    }
+
+    /// Edge case: Multiple entries where some overlap and some are unique.
+    #[test]
+    fn merge_multiple_entries_mixed_overlap() {
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: "rule.a".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: None,
+        });
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "ccc".to_string(),
+            rule_id: "rule.c".to_string(),
+            path: "c.rs".to_string(),
+            line: 3,
+            note: None,
+        });
+
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "bbb".to_string(),
+            rule_id: "rule.b".to_string(),
+            path: "b.rs".to_string(),
+            line: 2,
+            note: None,
+        });
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "ccc".to_string(),
+            rule_id: "rule.c".to_string(),
+            path: "c.rs".to_string(),
+            line: 3,
+            note: None,
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+
+        assert_eq!(merged.entries.len(), 3);
+        let fps: Vec<_> = merged
+            .entries
+            .iter()
+            .map(|e| e.fingerprint.as_str())
+            .collect();
+        assert!(fps.contains(&"aaa"));
+        assert!(fps.contains(&"bbb"));
+        assert!(fps.contains(&"ccc"));
+    }
+
+    /// Edge case: All incoming fingerprints already exist in base (superset case).
+    /// No new entries should be added.
+    #[test]
+    fn merge_incoming_all_exist_in_base() {
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: "rule.a".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: None,
+        });
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "bbb".to_string(),
+            rule_id: "rule.b".to_string(),
+            path: "b.rs".to_string(),
+            line: 2,
+            note: None,
+        });
+
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: "rule.a".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: None,
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+
+        // No new entries should be added
+        assert_eq!(merged.entries.len(), 2);
+    }
+
+    /// Edge case: Unicode in strings.
+    #[test]
+    fn merge_handles_unicode_strings() {
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "ααα".to_string(),
+            rule_id: "rust.unicode".to_string(),
+            path: "src/café.rs".to_string(),
+            line: 1,
+            note: Some("über".to_string()),
+        });
+
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "βββ".to_string(),
+            rule_id: "rust.unicode".to_string(),
+            path: "src/日本語.rs".to_string(),
+            line: 2,
+            note: None,
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+
+        assert_eq!(merged.entries.len(), 2);
+        assert!(merged.entries.iter().any(|e| e.fingerprint == "ααα"));
+        assert!(merged.entries.iter().any(|e| e.fingerprint == "βββ"));
+    }
+
+    /// Edge case: Empty strings in rule_id and path are treated as "empty" for filling.
+    #[test]
+    fn merge_empty_strings_vs_populated() {
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: String::new(),
+            path: String::new(),
+            line: 0,
+            note: None,
+        });
+
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: "populated".to_string(),
+            path: "populated.rs".to_string(),
+            line: 42,
+            note: Some("note".to_string()),
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+
+        assert_eq!(merged.entries[0].rule_id, "populated");
+        assert_eq!(merged.entries[0].path, "populated.rs");
+        assert_eq!(merged.entries[0].line, 42);
+        assert_eq!(merged.entries[0].note.as_deref(), Some("note"));
     }
 }
