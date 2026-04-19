@@ -516,7 +516,7 @@ pub struct RunMeta {
 pub struct CapabilityStatus {
     /// Status: "available", "unavailable", or "skipped".
     pub status: String,
-    /// Stable token reason (e.g., "missing_base", "tool_error").
+    /// Stable token reason (e.g., `missing_base`, `tool_error`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     /// Human-readable detail for diagnostics.
