@@ -74,6 +74,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
+- **Checkstyle output documentation and tests improved** — Added parameter documentation to `error_element` helper function and added edge case tests covering severity mapping boundaries, Unicode inputs, and special characters. Issue #289 (Severity::Info mapping to "warning" instead of "info") was closed as already resolved by PR #460.
+
 ## [0.2.0] - 2026-04-06
 
 ### Added
