@@ -86,6 +86,8 @@ struct FuzzRule {
     severity: u8,
     /// Rule message.
     message: String,
+    /// Description (required by RuleConfig).
+    description: String,
     /// Language filters.
     languages: Vec<String>,
     /// Regex patterns to match.
@@ -128,6 +130,7 @@ impl FuzzRule {
             id: self.id.clone(),
             severity,
             message: self.message.clone(),
+            description: self.description.clone(),
             languages: self.languages.clone(),
             patterns: self.patterns.clone(),
             paths: self.paths.clone(),
