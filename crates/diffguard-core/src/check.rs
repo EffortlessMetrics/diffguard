@@ -49,7 +49,7 @@ pub struct CheckRun {
     pub receipt: CheckReceipt,
     pub markdown: String,
     pub annotations: Vec<String>,
-    pub exit_code: i32,
+    pub exit_code: u8,
     /// Number of findings dropped due to max_findings truncation.
     pub truncated_findings: u32,
     /// Number of rules that were evaluated (after tag filtering).
@@ -306,7 +306,7 @@ fn filter_rule_by_tags(rule: &diffguard_types::RuleConfig, plan: &CheckPlan) -> 
     true
 }
 
-fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> i32 {
+fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> u8 {
     if matches!(fail_on, FailOn::Never) {
         return 0;
     }
