@@ -28,3 +28,6 @@ mod multiple_file_types;
 
 #[path = "integration/directory_overrides.rs"]
 mod directory_overrides;
+
+#[path = "integration/green_tests_check_failed_message.rs"]
+mod green_tests_check_failed_message;
