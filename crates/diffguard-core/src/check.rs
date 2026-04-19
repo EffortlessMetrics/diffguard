@@ -49,7 +49,7 @@ pub struct CheckRun {
     pub receipt: CheckReceipt,
     pub markdown: String,
     pub annotations: Vec<String>,
-    pub exit_code: i32,
+    pub exit_code: u8,
     /// Number of findings dropped due to max_findings truncation.
     pub truncated_findings: u32,
     /// Number of rules that were evaluated (after tag filtering).
@@ -306,7 +306,7 @@ fn filter_rule_by_tags(rule: &diffguard_types::RuleConfig, plan: &CheckPlan) -> 
     true
 }
 
-fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> i32 {
+fn compute_exit_code(fail_on: FailOn, counts: &VerdictCounts) -> u8 {
     if matches!(fail_on, FailOn::Never) {
         return 0;
     }
@@ -473,40 +473,6 @@ mod tests {
         counts.error = 0;
         counts.warn = 1;
         assert_eq!(require_u8(compute_exit_code(FailOn::Warn, &counts)), 3u8);
-    }
-
-    /// RED TEST: compute_baseline_exit_code must return u8, not i32.
-    /// This test fails to compile if compute_baseline_exit_code returns i32.
-    #[test]
-    fn test_compute_baseline_exit_code_returns_u8_type() {
-        let counts = VerdictCounts::default();
-        // If compute_baseline_exit_code returns i32, this line fails: "mismatched types"
-        let code: u8 = compute_baseline_exit_code(FailOn::Error, &counts);
-        assert!(code == 0 || code == 2 || code == 3);
-    }
-
-    /// RED TEST: compute_baseline_exit_code returns valid u8 values.
-    #[test]
-    fn test_compute_baseline_exit_code_returns_valid_u8() {
-        let mut counts = VerdictCounts::default();
-
-        assert_eq!(
-            require_u8(compute_baseline_exit_code(FailOn::Error, &counts)),
-            0u8
-        );
-
-        counts.error = 1;
-        assert_eq!(
-            require_u8(compute_baseline_exit_code(FailOn::Error, &counts)),
-            2u8
-        );
-
-        counts.error = 0;
-        counts.warn = 1;
-        assert_eq!(
-            require_u8(compute_baseline_exit_code(FailOn::Warn, &counts)),
-            3u8
-        );
     }
 
     #[test]
