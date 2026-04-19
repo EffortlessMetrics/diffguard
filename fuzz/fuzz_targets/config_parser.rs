@@ -50,26 +50,32 @@ struct FuzzDefaults {
 }
 
 /// Fuzz-friendly rule config.
+///
+/// All fields use types that implement Arbitrary directly.
+/// Complex RuleConfig fields are serialized as strings in to_toml_string().
 #[derive(Arbitrary, Debug)]
 struct FuzzRuleConfig {
     id: String,
     severity: u8,
     message: String,
+    description: String,
     languages: Vec<String>,
     patterns: Vec<String>,
     paths: Vec<String>,
     exclude_paths: Vec<String>,
     ignore_comments: bool,
     ignore_strings: bool,
-    match_mode: Default::default(),
-    multiline: false,
-    multiline_window: None,
-    context_patterns: vec![],
-    context_window: None,
-    escalate_patterns: vec![],
-    escalate_window: None,
-    escalate_to: None,
-    depends_on: vec![],
+    /// Match mode: 0=Any, 1=Absent
+    match_mode: u8,
+    multiline: bool,
+    multiline_window: Option<u32>,
+    context_patterns: Vec<String>,
+    context_window: Option<u32>,
+    escalate_patterns: Vec<String>,
+    escalate_window: Option<u32>,
+    /// Escalate to severity: 0=info, 1=warn, 2=error
+    escalate_to: Option<u8>,
+    depends_on: Vec<String>,
     help: Option<String>,
     url: Option<String>,
 }
@@ -121,7 +127,14 @@ impl StructuredConfig {
                 _ => "error",
             };
             out.push_str(&format!("severity = \"{}\"\n", sev));
-            out.push_str(&format!("message = {}\n", escape_toml_string(&rule.message)));
+            out.push_str(&format!(
+                "message = {}\n",
+                escape_toml_string(&rule.message)
+            ));
+            out.push_str(&format!(
+                "description = {}\n",
+                escape_toml_string(&rule.description)
+            ));
 
             if !rule.languages.is_empty() {
                 out.push_str(&format!(
@@ -169,6 +182,68 @@ impl StructuredConfig {
 
             out.push_str(&format!("ignore_comments = {}\n", rule.ignore_comments));
             out.push_str(&format!("ignore_strings = {}\n", rule.ignore_strings));
+
+            // Match mode: 0=Any, 1=Absent
+            let match_mode_str = if rule.match_mode % 2 == 0 {
+                "any"
+            } else {
+                "absent"
+            };
+            out.push_str(&format!("match_mode = \"{}\"\n", match_mode_str));
+
+            if rule.multiline {
+                out.push_str("multiline = true\n");
+            }
+            if let Some(window) = rule.multiline_window {
+                out.push_str(&format!("multiline_window = {}\n", window));
+            }
+
+            if !rule.context_patterns.is_empty() {
+                out.push_str(&format!(
+                    "context_patterns = [{}]\n",
+                    rule.context_patterns
+                        .iter()
+                        .map(|s| escape_toml_string(s))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+            }
+            if let Some(cw) = rule.context_window {
+                out.push_str(&format!("context_window = {}\n", cw));
+            }
+
+            if !rule.escalate_patterns.is_empty() {
+                out.push_str(&format!(
+                    "escalate_patterns = [{}]\n",
+                    rule.escalate_patterns
+                        .iter()
+                        .map(|s| escape_toml_string(s))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+            }
+            if let Some(ew) = rule.escalate_window {
+                out.push_str(&format!("escalate_window = {}\n", ew));
+            }
+            if let Some(et) = rule.escalate_to {
+                let escalate_str = match et % 3 {
+                    0 => "info",
+                    1 => "warn",
+                    _ => "error",
+                };
+                out.push_str(&format!("escalate_to = \"{}\"\n", escalate_str));
+            }
+
+            if !rule.depends_on.is_empty() {
+                out.push_str(&format!(
+                    "depends_on = [{}]\n",
+                    rule.depends_on
+                        .iter()
+                        .map(|s| escape_toml_string(s))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                ));
+            }
 
             if let Some(ref help) = rule.help {
                 out.push_str(&format!("help = {}\n", escape_toml_string(help)));
