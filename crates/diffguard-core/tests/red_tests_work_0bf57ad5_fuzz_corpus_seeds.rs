@@ -15,8 +15,7 @@ use std::path::Path;
 /// Test that the rule_matcher corpus directory exists.
 #[test]
 fn test_rule_matcher_corpus_directory_exists() {
-    let corpus_dir =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../fuzz/corpus/rule_matcher");
+    let corpus_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fuzz/corpus/rule_matcher");
 
     let path_str = corpus_dir.display().to_string();
     assert!(
@@ -34,8 +33,7 @@ fn test_rule_matcher_corpus_directory_exists() {
 /// Test that the config_parser corpus directory exists.
 #[test]
 fn test_config_parser_corpus_directory_exists() {
-    let corpus_dir =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../fuzz/corpus/config_parser");
+    let corpus_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fuzz/corpus/config_parser");
 
     let path_str = corpus_dir.display().to_string();
     assert!(
@@ -53,8 +51,7 @@ fn test_config_parser_corpus_directory_exists() {
 /// Test that rule_matcher corpus contains at least one seed file.
 #[test]
 fn test_rule_matcher_corpus_has_seed_file() {
-    let corpus_dir =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../fuzz/corpus/rule_matcher");
+    let corpus_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fuzz/corpus/rule_matcher");
 
     let entries =
         fs::read_dir(&corpus_dir).expect("fuzz/corpus/rule_matcher/ directory should be readable");
@@ -83,8 +80,7 @@ fn test_rule_matcher_corpus_has_seed_file() {
 /// Test that config_parser corpus contains at least one seed file.
 #[test]
 fn test_config_parser_corpus_has_seed_file() {
-    let corpus_dir =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../fuzz/corpus/config_parser");
+    let corpus_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fuzz/corpus/config_parser");
 
     let entries =
         fs::read_dir(&corpus_dir).expect("fuzz/corpus/config_parser/ directory should be readable");
@@ -117,8 +113,7 @@ fn test_config_parser_corpus_has_seed_file() {
 /// not be mistaken for text-based seed files.
 #[test]
 fn test_rule_matcher_seed_is_binary_format() {
-    let corpus_dir =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../fuzz/corpus/rule_matcher");
+    let corpus_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fuzz/corpus/rule_matcher");
 
     let entries =
         fs::read_dir(&corpus_dir).expect("fuzz/corpus/rule_matcher/ directory should be readable");
@@ -156,8 +151,7 @@ fn test_rule_matcher_seed_is_binary_format() {
 /// produces binary corpus files in libfuzzer's custom binary format.
 #[test]
 fn test_config_parser_seed_is_binary_format() {
-    let corpus_dir =
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../fuzz/corpus/config_parser");
+    let corpus_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fuzz/corpus/config_parser");
 
     let entries =
         fs::read_dir(&corpus_dir).expect("fuzz/corpus/config_parser/ directory should be readable");
