@@ -29,5 +29,5 @@ mod multiple_file_types;
 #[path = "integration/directory_overrides.rs"]
 mod directory_overrides;
 
-#[path = "integration/red_tests_tool_error_message.rs"]
-mod red_tests_tool_error_message;
+#[path = "integration/green_tests_check_failed_message.rs"]
+mod green_tests_check_failed_message;
