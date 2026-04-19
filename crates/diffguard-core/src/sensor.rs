@@ -41,6 +41,12 @@ pub struct RuleMetadata {
 }
 
 /// Renders a CheckReceipt as a SensorReport.
+///
+/// # Panics
+///
+/// Never: `serde_json::to_value` on `BTreeMap<String, u32>` is infallible.
+/// The `.expect()` is present for API consistency with other serde calls but
+/// will never trigger in practice.
 pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -> SensorReport {
     let findings = receipt
         .findings
