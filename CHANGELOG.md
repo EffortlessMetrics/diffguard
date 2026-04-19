@@ -75,6 +75,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
+- **Fuzz target improvements** — Fixed compilation errors in `rule_matcher` and `config_parser` fuzz targets:
+  - Added missing `description` field to `FuzzRule` struct in `rule_matcher.rs`
+  - Fixed invalid Rust syntax in `FuzzRuleConfig` (replaced `Default::default()` and bare `false` with proper types)
+  - Added comprehensive docstrings to fuzz target structs and methods
+  - Extracted `severity_label()`, `u8_to_severity()` helpers and `EMPTY_VERDICT_COUNTS` constant in `baseline_receipt.rs`
+  - Added missing fields (`description`, `match_mode`, `context_patterns`, etc.) to `config_parser` fuzz target
+
 ## [0.2.0] - 2026-04-06
 
 ### Added
