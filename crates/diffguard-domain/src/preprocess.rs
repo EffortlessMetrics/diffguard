@@ -164,6 +164,7 @@ pub struct PreprocessOptions {
 }
 
 impl PreprocessOptions {
+    /// Create options that mask neither comments nor strings.
     pub fn none() -> Self {
         Self {
             mask_comments: false,
@@ -171,6 +172,7 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask only comments, not strings.
     pub fn comments_only() -> Self {
         Self {
             mask_comments: true,
@@ -178,6 +180,7 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask only strings, not comments.
     pub fn strings_only() -> Self {
         Self {
             mask_comments: false,
@@ -185,6 +188,7 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask both comments and strings.
     pub fn comments_and_strings() -> Self {
         Self {
             mask_comments: true,
@@ -192,6 +196,11 @@ impl PreprocessOptions {
         }
     }
 
+    /// Returns true if string tracking is needed for correct comment masking.
+    ///
+    /// Even when string masking is disabled, the preprocessor may still track
+    /// string boundaries to ensure comment markers inside strings don't start
+    /// a comment.
     fn track_strings(self) -> bool {
         self.mask_strings || self.mask_comments
     }
@@ -267,6 +276,10 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
+    /// Create a new preprocessor with no language set (defaults to Unknown).
+    ///
+    /// The preprocessor will use C-style comment and string syntax until a language
+    /// is set via `set_language()`.
     pub fn new(opts: PreprocessOptions) -> Self {
         Self {
             opts,
@@ -290,6 +303,11 @@ impl Preprocessor {
         self.reset();
     }
 
+    /// Reset the preprocessor state to Normal mode.
+    ///
+    /// This clears any in-progress comment or string state, treating the next
+    /// line as the start of a new file. Use this when switching between files
+    /// or when the preprocessor state may be out of sync.
     pub fn reset(&mut self) {
         self.mode = Mode::Normal;
     }
