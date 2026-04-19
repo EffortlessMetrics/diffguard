@@ -7,11 +7,9 @@
 //! Key invariant: Yaml, Toml, and Json languages must return StringSyntax::CStyle
 //! even though they are now handled by the wildcard `_ => StringSyntax::CStyle`.
 
-use proptest::prelude::*;
 use diffguard_domain::preprocess::{Language, StringSyntax};
+use proptest::prelude::*;
 
-/// Property 1: All Language variants return a valid StringSyntax without panicking.
-/// This verifies the match expression is exhaustive and doesn't panic for any variant.
 proptest! {
     #[test]
     fn all_languages_return_valid_string_syntax(lang in prop_oneof![
@@ -72,12 +70,10 @@ fn json_returns_cstyle() {
     );
 }
 
-/// Property 3: Roundtrip - parsing yaml aliases and then calling string_syntax()
-/// should return CStyle.
 proptest! {
     #[test]
     fn yaml_aliases_return_cstyle(alias in prop_oneof![
-        Just("yaml"), Just("yml"), Just("YAML"), Just("YML"), 
+        Just("yaml"), Just("yml"), Just("YAML"), Just("YML"),
         Just("Yaml"), Just("Yml"), Just("YAM"), Just("ymL")
     ]) {
         let lang: Language = alias.parse().unwrap();
@@ -90,8 +86,6 @@ proptest! {
     }
 }
 
-/// Property 4: Roundtrip - parsing json aliases and then calling string_syntax()
-/// should return CStyle.
 proptest! {
     #[test]
     fn json_aliases_return_cstyle(alias in prop_oneof![
@@ -119,8 +113,6 @@ fn toml_string_parse_returns_cstyle() {
     );
 }
 
-/// Property 5: All C-style-like languages should return CStyle.
-/// These are: C, Cpp, CSharp, Java, Kotlin, Unknown, Yaml, Toml, Json
 proptest! {
     #[test]
     fn cstyle_languages_return_cstyle(lang in prop_oneof![
@@ -143,7 +135,6 @@ proptest! {
     }
 }
 
-/// Property 6: Non-CStyle languages return their specific syntax, not CStyle.
 proptest! {
     #[test]
     fn non_cstyle_languages_do_not_return_cstyle(lang in prop_oneof![
@@ -176,8 +167,14 @@ fn each_non_cstyle_language_returns_correct_syntax() {
     // These languages have specific string syntax that is NOT CStyle
     assert_eq!(Language::Rust.string_syntax(), StringSyntax::Rust);
     assert_eq!(Language::Python.string_syntax(), StringSyntax::Python);
-    assert_eq!(Language::JavaScript.string_syntax(), StringSyntax::JavaScript);
-    assert_eq!(Language::TypeScript.string_syntax(), StringSyntax::JavaScript); // Same as JS
+    assert_eq!(
+        Language::JavaScript.string_syntax(),
+        StringSyntax::JavaScript
+    );
+    assert_eq!(
+        Language::TypeScript.string_syntax(),
+        StringSyntax::JavaScript
+    ); // Same as JS
     assert_eq!(Language::Ruby.string_syntax(), StringSyntax::JavaScript); // Same as JS
     assert_eq!(Language::Go.string_syntax(), StringSyntax::Go);
     assert_eq!(Language::Shell.string_syntax(), StringSyntax::Shell);

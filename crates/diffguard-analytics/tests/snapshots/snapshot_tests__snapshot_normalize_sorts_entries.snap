@@ -1,0 +1,27 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "schema": "diffguard.false_positive_baseline.v1",
+  "entries": [
+    {
+      "fingerprint": "aaa",
+      "rule_id": "a.rule",
+      "path": "a.rs",
+      "line": 1
+    },
+    {
+      "fingerprint": "mmm",
+      "rule_id": "m.rule",
+      "path": "m.rs",
+      "line": 2
+    },
+    {
+      "fingerprint": "zzz",
+      "rule_id": "z.rule",
+      "path": "z.rs",
+      "line": 3
+    }
+  ]
+}
