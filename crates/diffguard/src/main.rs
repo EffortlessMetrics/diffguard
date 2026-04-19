@@ -2614,6 +2614,7 @@ fn cmd_check_inner(
         });
     }
 
+    #[allow(clippy::unnecessary_min_or_max, clippy::manual_clamp)]
     let ended_at = Utc::now();
     let duration_ms = (ended_at - *started_at)
         .num_milliseconds()
