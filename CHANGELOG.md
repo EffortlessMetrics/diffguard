@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **`exit_code` field typed as `u8`** — `CheckRun.exit_code` in `diffguard-core` and all functions in the call chain (`compute_exit_code`, `compute_baseline_exit_code`, `run_with_args`, command handlers) changed from `i32` to `u8`. Exit code values are 0..=255 per POSIX, and using `i32` allowed future code to produce values outside this range that would be silently truncated by the `clamp` before casting. Invalid exit code values are now a compile-time error. The lossy `clamp` pattern in `main()` is eliminated.
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
 ## [0.2.0] - 2026-04-06
