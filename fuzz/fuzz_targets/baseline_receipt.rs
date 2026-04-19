@@ -82,6 +82,34 @@ struct FuzzFinding {
     snippet: String,
 }
 
+/// Maps a u8 severity value to a string label for JSON serialization.
+///
+/// 0 → "info", 1 → "warn", 2+ → "error"
+fn severity_label(severity: u8) -> &'static str {
+    match severity % 3 {
+        0 => "info",
+        1 => "warn",
+        _ => "error",
+    }
+}
+
+/// Maps a u8 severity value to the Severity enum.
+fn u8_to_severity(severity: u8) -> Severity {
+    match severity % 3 {
+        0 => Severity::Info,
+        1 => Severity::Warn,
+        _ => Severity::Error,
+    }
+}
+
+/// Constant for empty verdict counts (all zeros).
+const EMPTY_VERDICT_COUNTS: VerdictCounts = VerdictCounts {
+    info: 0,
+    warn: 0,
+    error: 0,
+    suppressed: 0,
+};
+
 impl StructuredReceipt {
     /// Convert to JSON string for parsing.
     ///
@@ -129,11 +157,7 @@ impl StructuredReceipt {
                 "      \"rule_id\": {},\n",
                 serde_json::to_string(&finding.rule_id).unwrap_or_default()
             ));
-            let sev = match finding.severity % 3 {
-                0 => "info",
-                1 => "warn",
-                _ => "error",
-            };
+            let sev = severity_label(finding.severity);
             out.push_str(&format!(
                 "      \"severity\": {},\n",
                 serde_json::to_string(sev).unwrap_or_default()
@@ -262,13 +286,7 @@ fuzz_target!(|input: FuzzBaselineReceipt| {
             let fail_on_variants = ["error", "warn", "never"];
             for fail_on in &fail_on_variants {
                 // Empty new counts should always return 0
-                let empty_counts = VerdictCounts {
-                    info: 0,
-                    warn: 0,
-                    error: 0,
-                    suppressed: 0,
-                };
-                let code = compute_baseline_exit_code(fail_on, &empty_counts);
+                let code = compute_baseline_exit_code(fail_on, &EMPTY_VERDICT_COUNTS);
                 assert_eq!(code, 0, "Empty counts should always exit 0");
 
                 // Error counts should exit 2 if fail_on is error or warn
@@ -358,12 +376,7 @@ fuzz_target!(|input: FuzzBaselineReceipt| {
         findings: vec![],
         verdict: Verdict {
             status: VerdictStatus::Pass,
-            counts: VerdictCounts {
-                info: 0,
-                warn: 0,
-                error: 0,
-                suppressed: 0,
-            },
+            counts: EMPTY_VERDICT_COUNTS,
             reasons: vec![],
         },
         timing: None,
@@ -427,11 +440,7 @@ fuzz_target!(|input: FuzzBaselineReceipt| {
     for severity_val in 0..10u8 {
         let finding = Finding {
             rule_id: "test.rule".to_string(),
-            severity: match severity_val % 3 {
-                0 => Severity::Info,
-                1 => Severity::Warn,
-                _ => Severity::Error,
-            },
+            severity: u8_to_severity(severity_val),
             message: "Test".to_string(),
             path: "test.rs".to_string(),
             line: 1,
