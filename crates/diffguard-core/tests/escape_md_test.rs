@@ -230,3 +230,172 @@ fn test_markdown_all_special_characters_preserved_in_output() {
         md
     );
 }
+
+// =============================================================================
+// EDGE CASE TESTS - Green Test Builder (work-56c7c4e8)
+// =============================================================================
+
+/// Edge case: empty rule_id should not cause issues
+#[test]
+fn test_markdown_escapes_empty_rule_id() {
+    let receipt = make_receipt_with_finding("", "test message", "src/lib.rs", "test snippet");
+    let md = render_markdown_for_receipt(&receipt);
+    // Should render without panics or malformed output
+    assert!(md.contains("| Rule |"));
+}
+
+/// Edge case: empty message should not cause issues
+#[test]
+fn test_markdown_escapes_empty_message() {
+    let receipt = make_receipt_with_finding("test-rule", "", "src/lib.rs", "test snippet");
+    let md = render_markdown_for_receipt(&receipt);
+    // Should render without panics or malformed output
+    assert!(md.contains("| Message |"));
+}
+
+/// Edge case: strings with no special characters pass through unchanged
+#[test]
+fn test_markdown_no_special_chars_passthrough() {
+    let receipt = make_receipt_with_finding(
+        "simple-rule-id",
+        "simple message without special chars",
+        "src/simple/path.rs",
+        "simple snippet text",
+    );
+    let md = render_markdown_for_receipt(&receipt);
+    // These strings should appear unchanged (not escaped)
+    assert!(
+        md.contains("simple-rule-id"),
+        "rule_id without special chars should appear unchanged. Output:\n{}",
+        md
+    );
+    assert!(
+        md.contains("simple message without special chars"),
+        "message without special chars should appear unchanged. Output:\n{}",
+        md
+    );
+}
+
+/// Edge case: Unicode and non-ASCII characters are not escaped (not markdown special)
+#[test]
+fn test_markdown_unicode_characters_not_escaped() {
+    let receipt = make_receipt_with_finding(
+        "rule-日本語-rule",
+        "message with 日本語 and émojis 🎉",
+        "src/路径.rs",
+        "code with ñ and ü",
+    );
+    let md = render_markdown_for_receipt(&receipt);
+    // Unicode chars should NOT be escaped with backslash
+    assert!(
+        md.contains("rule-日本語-rule") && !md.contains("rule-\\日\\本\\語-rule"),
+        "Unicode in rule_id should not be escaped. Output:\n{}",
+        md
+    );
+    assert!(
+        md.contains("🎉") && !md.contains("\\🎉"),
+        "Emojis should not be escaped. Output:\n{}",
+        md
+    );
+}
+
+/// Edge case: multiple consecutive special characters all get escaped
+#[test]
+fn test_markdown_consecutive_special_chars() {
+    let receipt = make_receipt_with_finding(
+        "rule|||id",
+        "msg with ||| pipes",
+        "src/lib|||.rs",
+        "code with ||| pipes",
+    );
+    let md = render_markdown_for_receipt(&receipt);
+    // Multiple consecutive pipes should each be escaped
+    assert!(
+        md.contains("rule\\|\\|\\|id"),
+        "consecutive pipes should all be escaped. Output:\n{}",
+        md
+    );
+}
+
+/// Edge case: special characters at start and end of strings
+#[test]
+fn test_markdown_special_chars_at_boundaries() {
+    let receipt = make_receipt_with_finding(
+        "*start*",
+        "# starts with hash",
+        "src/lib.rs",
+        "> starts with gt",
+    );
+    let md = render_markdown_for_receipt(&receipt);
+    // Boundary special chars should be escaped
+    assert!(
+        md.contains("\\*start\\*"),
+        "asterisks at rule_id boundaries should be escaped. Output:\n{}",
+        md
+    );
+    assert!(
+        md.contains("\\# starts with hash"),
+        "hash at message start should be escaped. Output:\n{}",
+        md
+    );
+    assert!(
+        md.contains("\\> starts with gt"),
+        "greater-than at snippet start should be escaped. Output:\n{}",
+        md
+    );
+}
+
+/// Edge case: backslash before special char - backslash is NOT escaped by escape_md
+/// Input: `rule\*test` -> escape_md -> `rule\*test` (backslash preserved, asterisk escaped to \*)
+/// The asterisk becomes \*, so the sequence becomes backslash-asterisk which in markdown
+/// within backticks will display as \\* (two chars: backslash, asterisk).
+#[test]
+fn test_markdown_backslash_before_special_char() {
+    let receipt = make_receipt_with_finding(
+        "rule\\*test",
+        "msg with \\* asterisks",
+        "src/lib.rs",
+        "code with \\n backslash-n",
+    );
+    let md = render_markdown_for_receipt(&receipt);
+    // The backslash is preserved, asterisk is escaped, resulting in a backslash-asterisk sequence.
+    // Since the function doesn't escape backslash itself, "\*" stays "\*" (one backslash, one asterisk).
+    // In Rust string: "rule\\*test" is the string rule\*test
+    // After escape_md: still rule\*test (asterisk already preceded by backslash, but replace still applies)
+    // The output should contain the sequence backslash-asterisk.
+    assert!(
+        md.contains("rule\\*test") || md.contains("rule\\\\*test"),
+        "backslash-asterisk sequence should be preserved. Output:\n{}",
+        md
+    );
+}
+
+/// Edge case: very long strings with many special characters
+#[test]
+fn test_markdown_long_string_with_special_chars() {
+    let long_rule_id = "rule".to_string() + &"*test*".repeat(100);
+    let receipt = make_receipt_with_finding(&long_rule_id, "message", "src/lib.rs", "snippet");
+    let md = render_markdown_for_receipt(&receipt);
+    // Should handle many special chars without panic or truncation
+    assert!(
+        md.contains(&long_rule_id.replace('*', "\\*")),
+        "long string with many asterisks should be fully escaped. Output length: {}",
+        md.len()
+    );
+}
+
+/// Edge case: mixed content with spaces between special chars
+#[test]
+fn test_markdown_mixed_special_chars_with_spaces() {
+    let receipt = make_receipt_with_finding(
+        "rust_no*unwrap#v2",
+        "Check | value `test` #1 *bold* _italic_",
+        "src/lib.rs",
+        "result > expected",
+    );
+    let md = render_markdown_for_receipt(&receipt);
+    // All special chars should be escaped regardless of surrounding spaces
+    assert!(md.contains("rust\\_no\\*unwrap\\#v2"));
+    assert!(md.contains("\\| value \\`test\\` \\#1 \\*bold\\* \\_italic\\_"));
+    assert!(md.contains("result \\> expected"));
+}
