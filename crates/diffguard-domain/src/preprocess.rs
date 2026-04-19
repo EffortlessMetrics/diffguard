@@ -103,9 +103,7 @@ impl Language {
             Language::Xml => StringSyntax::Xml,
             // PHP uses both single and double quotes
             Language::Php => StringSyntax::Php,
-            // YAML/TOML/JSON strings are C-style-like in this best-effort model
-            Language::Yaml | Language::Toml | Language::Json => StringSyntax::CStyle,
-            // All other languages (C, C++, Java, etc.) use C-style strings
+            // All C-style languages (C, C++, Java, Kotlin, YAML, TOML, JSON, etc.)
             _ => StringSyntax::CStyle,
         }
     }
@@ -1121,6 +1119,10 @@ mod tests {
         assert_eq!(Language::Java.string_syntax(), StringSyntax::CStyle);
         assert_eq!(Language::Kotlin.string_syntax(), StringSyntax::CStyle);
         assert_eq!(Language::Unknown.string_syntax(), StringSyntax::CStyle);
+        // YAML, TOML, and JSON are handled by the wildcard (C-style-like)
+        assert_eq!(Language::Yaml.string_syntax(), StringSyntax::CStyle);
+        assert_eq!(Language::Toml.string_syntax(), StringSyntax::CStyle);
+        assert_eq!(Language::Json.string_syntax(), StringSyntax::CStyle);
     }
 
     #[test]
