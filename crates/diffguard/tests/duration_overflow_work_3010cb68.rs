@@ -24,9 +24,9 @@ fn find_line_with_pattern(
     let start = start_line.saturating_sub(1); // Convert to 0-indexed
     let end = (start + search_range).min(lines.len());
 
-    for i in start..end {
-        if lines[i].contains(pattern) {
-            return Some((i + 1, lines[i].to_string())); // Return 1-indexed line number
+    for (i, line) in lines.iter().enumerate().skip(start).take(end - start) {
+        if line.contains(pattern) {
+            return Some((i + 1, line.to_string())); // Return 1-indexed line number
         }
     }
     None
@@ -213,7 +213,7 @@ fn test_i64_to_u64_saturation_logic() {
     for (input, expected) in test_cases {
         // The .min(i64::MAX) is defensive - it prevents wrapping if input somehow exceeds i64::MAX
         // (which can't happen with num_milliseconds() but is good practice)
-        #[allow(clippy::unnecessary_min_or_max)]
+        #[allow(clippy::unnecessary_min_or_max, clippy::manual_clamp)]
         let result = input.max(0).min(i64::MAX) as u64;
         assert_eq!(
             result, expected,
