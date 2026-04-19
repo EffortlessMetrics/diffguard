@@ -2,6 +2,12 @@ use std::path::Path;
 
 use diffguard_types::Scope;
 
+/// Represents the kind of change a line underwent in the diff.
+///
+/// This is used to distinguish between:
+/// - `Added`: A line that was newly added
+/// - `Changed`: A line that was modified (replaced a removed line in the same hunk)
+/// - `Deleted`: A line that was removed
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeKind {
     Added,
@@ -99,20 +105,38 @@ pub fn parse_rename_to(line: &str) -> Option<String> {
     parse_rename_path(rest)
 }
 
+/// Represents a single line extracted from a unified diff.
+///
+/// Each `DiffLine` corresponds to one added, changed, or deleted line
+/// in the diff output, along with metadata about its location and content.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffLine {
+    /// The file path this line belongs to.
     pub path: String,
+    /// The 1-based line number in the post-image (after the change).
     pub line: u32,
+    /// The content of the line (without the leading +/-/space prefix).
     pub content: String,
+    /// The kind of change this line represents.
     pub kind: ChangeKind,
 }
 
+/// Aggregate statistics from parsing a diff.
+///
+/// These counts reflect the total number of files and lines
+/// that were extracted based on the requested scope.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DiffStats {
+    /// The number of unique files that had lines extracted.
     pub files: u32,
+    /// The total number of lines extracted.
     pub lines: u32,
 }
 
+/// Errors that can occur when parsing a unified diff.
+///
+/// These errors indicate malformed or unsupported diff format,
+/// not I/O errors (the parser operates on in-memory strings).
 #[derive(Debug, thiserror::Error)]
 pub enum DiffParseError {
     #[error("malformed hunk header: {0}")]
