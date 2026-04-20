@@ -29,7 +29,7 @@ use diffguard_types::{
     CHECK_SCHEMA_V1, CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta,
     DirectoryOverrideConfig, FailOn, Finding, MatchMode, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT,
     REASON_TOOL_ERROR, RuleConfig, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-    VerdictStatus,
+    VerdictStatus, escape_md,
 };
 
 mod config_loader;
@@ -998,14 +998,14 @@ fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
         if p.exists() { Some(p) } else { None }
     });
 
-    all_pass &= validate_config_for_doctor(&config_path, args.config.is_some());
+    all_pass &= validate_config_for_doctor(config_path.as_ref(), args.config.is_some());
 
     if all_pass { Ok(0) } else { Ok(1) }
 }
 
 /// Validate config file for the doctor command.
 /// Returns true if the config check passes (or no config is expected).
-fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bool) -> bool {
+fn validate_config_for_doctor(config_path: Option<&PathBuf>, explicit_config: bool) -> bool {
     let Some(path) = config_path else {
         // Explicit --config pointing to missing file
         if explicit_config {
@@ -1687,20 +1687,6 @@ fn render_finding_row_with_baseline(f: &Finding, is_baseline: bool) -> String {
         msg = msg,
         snippet = snippet
     )
-}
-
-/// Escapes special markdown characters in a string.
-fn escape_md(s: &str) -> String {
-    s.replace('|', "\\|")
-        .replace('`', "\\`")
-        .replace('#', "\\#")
-        .replace('*', "\\*")
-        .replace('_', "\\_")
-        .replace('[', "\\[")
-        .replace(']', "\\]")
-        .replace('>', "\\>")
-        .replace('\r', "\\r")
-        .replace('\n', "\\n")
 }
 
 /// Renders markdown output with baseline/new annotations.

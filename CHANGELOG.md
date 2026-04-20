@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Full workspace tests in CI** — `cargo test --workspace` now runs all tests including xtask tests in the CI test job (previously excluded with `--exclude xtask`)
 - **xtask CI job enabled** — The `xtask ci` job (which runs fmt + clippy + test + conform) now executes in CI on pull requests and pushes to main (was previously disabled via `if: false`)
+- **`Suppression::suppresses()` now enforces result handling** — Added `#[must_use]` to `Suppression::suppresses()` so the compiler warns when callers discard the boolean result. This prevents silent suppression failures where writing `suppressor.suppresses(rule_id);` without assigning the result defaults to `false`, incorrectly reporting suppressed findings as active. Closes #476.
 
 ### Added
 
@@ -73,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+- **`validate_config_for_doctor` parameter type refactored** — changed from `&Option<PathBuf>` to idiomatic `Option<&PathBuf>`. Aligns with Rust best practices and `diffguard-lsp` conventions. No behavioral changes.
 
 ## [0.2.0] - 2026-04-06
 
