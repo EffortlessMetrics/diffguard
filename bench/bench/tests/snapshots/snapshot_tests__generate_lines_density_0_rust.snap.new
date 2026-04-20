@@ -1,0 +1,15 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 86
+expression: "lines.join(\"\\n\")"
+---
+let x_0 = 0; // regular code line 0
+let x_1 = 2; // regular code line 1
+let x_2 = 4; // regular code line 2
+let x_3 = 6; // regular code line 3
+let x_4 = 8; // regular code line 4
+let x_5 = 10; // regular code line 5
+let x_6 = 12; // regular code line 6
+let x_7 = 14; // regular code line 7
+let x_8 = 16; // regular code line 8
+let x_9 = 18; // regular code line 9

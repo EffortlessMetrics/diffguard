@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_dff4aeb8.rs
+expression: snapshot
+---
+after_next_line_directive: EffectiveSuppressions { suppress_all: false, suppressed_rules: {} }
+after_same_line_with_pending: EffectiveSuppressions { suppress_all: false, suppressed_rules: {"rule1", "rule2"} }

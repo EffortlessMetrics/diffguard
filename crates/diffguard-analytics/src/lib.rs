@@ -9,9 +9,16 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+/// Schema identifier for false-positive baseline files, used for format versioning.
 pub const FALSE_POSITIVE_BASELINE_SCHEMA_V1: &str = "diffguard.false_positive_baseline.v1";
+
+/// Schema identifier for trend history files, used for format versioning.
 pub const TREND_HISTORY_SCHEMA_V1: &str = "diffguard.trend_history.v1";
 
+/// A set of false-positive entries used to suppress known-benign findings.
+///
+/// Baselines are persisted to disk and loaded across runs to remember which
+/// findings the user has explicitly approved to ignore.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveBaseline {
     pub schema: String,
@@ -28,6 +35,10 @@ impl Default for FalsePositiveBaseline {
     }
 }
 
+/// A single false-positive entry identifying one known-benign finding.
+///
+/// The entry is keyed by a fingerprint derived from the finding's content,
+/// so it remains stable across runs even if line numbers shift.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveEntry {
     pub fingerprint: String,
@@ -38,10 +49,32 @@ pub struct FalsePositiveEntry {
     pub note: Option<String>,
 }
 
+impl FalsePositiveEntry {
+    /// Fills empty fields from `other`, preferring `other`'s values for unset fields.
+    ///
+    /// This is used during baseline merging to preserve manually curated metadata
+    /// while filling in missing information from the new baseline.
+    fn fill_from(&mut self, other: &FalsePositiveEntry) {
+        if self.note.is_none() && other.note.is_some() {
+            self.note = other.note.clone();
+        }
+        if self.rule_id.is_empty() {
+            self.rule_id = other.rule_id.clone();
+        }
+        if self.path.is_empty() {
+            self.path = other.path.clone();
+        }
+        if self.line == 0 {
+            self.line = other.line;
+        }
+    }
+}
+
 /// Deterministically normalizes a false-positive baseline:
 /// - ensures schema id is set
 /// - sorts entries
 /// - deduplicates by fingerprint
+/// # Panics: Does not panic.
 #[must_use]
 pub fn normalize_false_positive_baseline(
     mut baseline: FalsePositiveBaseline,
@@ -65,6 +98,7 @@ pub fn normalize_false_positive_baseline(
 /// Computes the stable finding fingerprint used for baseline tracking.
 ///
 /// Format: SHA-256 of `rule_id:path:line:match_text`.
+/// # Panics: Does not panic.
 #[must_use]
 pub fn fingerprint_for_finding(finding: &Finding) -> String {
     let input = format!(
@@ -76,6 +110,7 @@ pub fn fingerprint_for_finding(finding: &Finding) -> String {
 }
 
 /// Builds a baseline from receipt findings.
+/// # Panics: Does not panic.
 #[must_use]
 pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
     let mut baseline = FalsePositiveBaseline {
@@ -97,6 +132,8 @@ pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
 }
 
 /// Merges two baselines (union by fingerprint), preferring existing entries in `base`.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn merge_false_positive_baselines(
     base: &FalsePositiveBaseline,
     incoming: &FalsePositiveBaseline,
@@ -116,19 +153,7 @@ pub fn merge_false_positive_baselines(
             .iter_mut()
             .find(|e| e.fingerprint == entry.fingerprint)
         {
-            // Preserve manually curated metadata from the existing baseline.
-            if existing.note.is_none() && entry.note.is_some() {
-                existing.note = entry.note.clone();
-            }
-            if existing.rule_id.is_empty() {
-                existing.rule_id = entry.rule_id.clone();
-            }
-            if existing.path.is_empty() {
-                existing.path = entry.path.clone();
-            }
-            if existing.line == 0 {
-                existing.line = entry.line;
-            }
+            existing.fill_from(entry);
         }
     }
 
@@ -136,6 +161,9 @@ pub fn merge_false_positive_baselines(
 }
 
 /// Returns the baseline as a fingerprint set for fast lookup.
+///
+/// # Panics: Does not panic.
+#[must_use]
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
     baseline
         .entries
@@ -144,6 +172,10 @@ pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTree
         .collect()
 }
 
+/// A chronological record of diffguard check runs used for trend analysis.
+///
+/// Each run captures the diff meta, verdict, and findings at a point in time,
+/// allowing diffguard to report how metrics change over successive commits.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendHistory {
     pub schema: String,
@@ -160,6 +192,10 @@ impl Default for TrendHistory {
     }
 }
 
+/// A single diffguard check run, capturing the environment and outcome.
+///
+/// `TrendRun` is the atomic unit stored in [`TrendHistory`]. It records what
+/// was scanned (base, head, scope), how long it took, and what was found.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendRun {
     pub started_at: String,
@@ -179,6 +215,10 @@ pub struct TrendRun {
     pub findings: u32,
 }
 
+/// A statistical summary of a [`TrendHistory`].
+///
+/// `TrendSummary` aggregates runs into totals and computes the delta between
+/// the most recent two runs to show whether findings are increasing or decreasing.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendSummary {
     pub run_count: u32,
@@ -190,6 +230,11 @@ pub struct TrendSummary {
     pub delta_from_previous: Option<TrendDelta>,
 }
 
+/// The change in verdict counts between two consecutive [`TrendRun`]s.
+///
+/// Each field is the difference (current − previous). Positive means increased;
+/// negative means decreased. This is stored as signed integers to capture both
+/// directions of change accurately.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendDelta {
     pub findings: i64,
@@ -200,6 +245,8 @@ pub struct TrendDelta {
 }
 
 /// Deterministically normalizes trend history by setting schema id when missing.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn normalize_trend_history(mut history: TrendHistory) -> TrendHistory {
     if history.schema.is_empty() {
         history.schema = TREND_HISTORY_SCHEMA_V1.to_string();
@@ -208,6 +255,8 @@ pub fn normalize_trend_history(mut history: TrendHistory) -> TrendHistory {
 }
 
 /// Converts a check receipt into a trend run sample.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn trend_run_from_receipt(
     receipt: &CheckReceipt,
     started_at: &str,
@@ -230,6 +279,8 @@ pub fn trend_run_from_receipt(
 }
 
 /// Appends a run to history and optionally trims to `max_runs` newest entries.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn append_trend_run(
     mut history: TrendHistory,
     run: TrendRun,
@@ -250,6 +301,8 @@ pub fn append_trend_run(
 }
 
 /// Summarizes trend history totals and latest delta.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn summarize_trend_history(history: &TrendHistory) -> TrendSummary {
     let mut totals = VerdictCounts::default();
     let mut total_findings = 0u32;
