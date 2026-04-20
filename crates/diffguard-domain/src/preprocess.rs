@@ -1019,6 +1019,15 @@ mod tests {
     }
 
     #[test]
+    fn language_from_str_yaml_toml_json_aliases() {
+        // YAML has 'yml' alias
+        assert_eq!("yml".parse::<Language>().unwrap(), Language::Yaml);
+        // JSON has 'jsonc' and 'json5' aliases (JSON with comments)
+        assert_eq!("jsonc".parse::<Language>().unwrap(), Language::Json);
+        assert_eq!("json5".parse::<Language>().unwrap(), Language::Json);
+    }
+
+    #[test]
     fn language_from_str_case_insensitive() {
         assert_eq!("RUST".parse::<Language>().unwrap(), Language::Rust);
         assert_eq!("Python".parse::<Language>().unwrap(), Language::Python);
@@ -2649,6 +2658,53 @@ mod tests {
         let s = p.sanitize_line("{\"key\": \"value\" // trailing note");
         assert!(s.contains("{\"key\": \"value\""));
         assert!(!s.contains("trailing note"));
+    }
+
+    // ==================== YAML/TOML/JSON string masking tests ====================
+    // These languages use C-style string syntax (double-quoted strings with escapes)
+
+    #[test]
+    fn yaml_masks_double_quoted_strings() {
+        // YAML uses C-style double-quoted strings
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Yaml);
+        let s = p.sanitize_line("key: \"secret value\"");
+        assert!(s.contains("key:")); // key: is preserved
+        assert!(!s.contains("secret")); // string content is masked
+        assert!(!s.contains("value"));
+    }
+
+    #[test]
+    fn toml_masks_double_quoted_strings() {
+        // TOML uses C-style double-quoted strings
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Toml);
+        let s = p.sanitize_line("name = \"secret\"");
+        assert!(s.contains("name =")); // name = is preserved
+        assert!(!s.contains("secret")); // string content is masked
+    }
+
+    #[test]
+    fn json_masks_double_quoted_strings() {
+        // JSON uses C-style double-quoted strings
+        // Both key and value are double-quoted strings, so both get masked
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Json);
+        let s = p.sanitize_line("{\"key\": \"value\"}");
+        // Only structural characters { } : , should remain
+        assert!(s.contains("{")); // opening brace preserved
+        assert!(s.contains("}")); // closing brace preserved
+        assert!(s.contains(":")); // colon preserved
+        assert!(!s.contains("key")); // string content masked
+        assert!(!s.contains("value")); // string content masked
+    }
+
+    #[test]
+    fn yaml_string_preserves_hash_comment() {
+        // YAML hash comments should still work even when strings are masked
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Yaml);
+        let s = p.sanitize_line("key: \"value\" # this is a comment");
+        assert!(s.contains("key:")); // key: is preserved
+        assert!(!s.contains("value")); // string is masked
+        assert!(!s.contains("comment")); // comment is masked
     }
 
     #[test]

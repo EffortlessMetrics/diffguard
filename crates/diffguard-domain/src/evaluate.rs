@@ -7,17 +7,32 @@ use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
 use crate::rules::{CompiledRule, detect_language};
 use crate::suppression::SuppressionTracker;
 
+/// A single line of input from a diff.
+///
+/// `InputLine` represents one line from the diff being scanned. It contains
+/// the file path, line number (1-indexed in the new version), and the
+/// raw line content.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InputLine {
+    /// Path to the file this line belongs to.
     pub path: String,
+    /// Line number in the new version of the file (1-indexed).
     pub line: u32,
+    /// Raw content of this line (excluding trailing newline).
     pub content: String,
 }
 
+/// The result of evaluating a set of rules against a set of diff lines.
+///
+/// `Evaluation` contains all findings matched by the rules, along with
+/// aggregated statistics about the scan.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Evaluation {
+    /// All findings matched by the rules, sorted by file path, line, then column.
     pub findings: Vec<Finding>,
+    /// Aggregated counts of findings by severity level.
     pub counts: VerdictCounts,
+    /// Number of findings that were suppressed because `max_findings` was reached.
     pub truncated_findings: u32,
     /// Number of distinct files that were scanned.
     ///
@@ -26,19 +41,31 @@ pub struct Evaluation {
     /// The previous `u32` cast would silently truncate, producing incorrect
     /// (often zero) counts for very large codebases.
     pub files_scanned: u64,
+    /// Total number of lines scanned across all files.
     pub lines_scanned: u32,
     /// Aggregated per-rule hit counts (deterministically sorted by rule ID).
     pub rule_hits: Vec<RuleHitStat>,
 }
 
+/// Per-rule hit statistics for a single rule.
+///
+/// `RuleHitStat` tracks how many times a rule was matched, emitted,
+/// suppressed, and broken down by severity level.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuleHitStat {
+    /// The rule ID these stats apply to.
     pub rule_id: String,
+    /// Total number of times this rule was matched (before suppression checks).
     pub total: u32,
+    /// Number of findings actually emitted (not suppressed).
     pub emitted: u32,
+    /// Number of matches suppressed by inline suppression directives.
     pub suppressed: u32,
+    /// Number of emitted findings with `Severity::Info`.
     pub info: u32,
+    /// Number of emitted findings with `Severity::Warn`.
     pub warn: u32,
+    /// Number of emitted findings with `Severity::Error`.
     pub error: u32,
 }
 
@@ -56,6 +83,7 @@ struct PreparedLine {
 struct RawMatchEvent {
     anchor_file_pos: usize,
     match_start: Option<usize>,
+    match_end: Option<usize>,
     match_text: String,
 }
 
@@ -64,10 +92,25 @@ struct MatchEvent {
     rule_idx: usize,
     anchor_idx: usize,
     match_start: Option<usize>,
+    match_end: Option<usize>,
     match_text: String,
     severity: Severity,
 }
 
+/// Evaluate `lines` against `rules` and return all findings.
+///
+/// This is the simplest entry point for evaluating diff lines against rules.
+/// It uses default settings with no rule overrides or forced language detection.
+///
+/// # Arguments
+///
+/// * `lines` - Iterator of input lines to evaluate
+/// * `rules` - Compiled rules to match against
+/// * `max_findings` - Maximum number of findings to collect before truncating
+///
+/// # Returns
+///
+/// `Evaluation` containing all findings and aggregated statistics
 pub fn evaluate_lines(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -76,6 +119,10 @@ pub fn evaluate_lines(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, None, None)
 }
 
+/// Evaluate `lines` against `rules` with directory-based rule overrides.
+///
+/// This variant allows passing a `RuleOverrideMatcher` to modify rule behavior
+/// based on the directory containing the file being scanned.
 pub fn evaluate_lines_with_overrides(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -85,6 +132,19 @@ pub fn evaluate_lines_with_overrides(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, overrides, None)
 }
 
+/// Evaluate `lines` against `rules` with optional overrides and forced language.
+///
+/// This is the most general entry point for evaluating diff lines. It supports:
+/// - Directory-based rule overrides via `RuleOverrideMatcher`
+/// - Forced language detection for files with unknown extensions
+///
+/// # Arguments
+///
+/// * `lines` - Iterator of input lines to evaluate
+/// * `rules` - Compiled rules to match against
+/// * `max_findings` - Maximum number of findings to collect before truncating
+/// * `overrides` - Optional rule override matcher for directory-based configuration
+/// * `force_language` - Optional language to force for all files (overrides detection)
 pub fn evaluate_lines_with_overrides_and_language(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -204,6 +264,7 @@ pub fn evaluate_lines_with_overrides_and_language(
                         vec![RawMatchEvent {
                             anchor_file_pos: 0,
                             match_start: None,
+                            match_end: None,
                             match_text: "<absent>".to_string(),
                         }]
                     } else {
@@ -230,6 +291,7 @@ pub fn evaluate_lines_with_overrides_and_language(
                     rule_idx,
                     anchor_idx,
                     match_start: matched.match_start,
+                    match_end: matched.match_end,
                     match_text: matched.match_text,
                     severity,
                 });
@@ -296,6 +358,11 @@ pub fn evaluate_lines_with_overrides_and_language(
                 .match_start
                 .and_then(|start| byte_to_column(&prepared.line.content, start))
                 .and_then(|c| u32::try_from(c).ok());
+            // For absent mode, match_start/match_end are None; use full line as bounds
+            let (snippet_start, snippet_end) = match (event.match_start, event.match_end) {
+                (Some(start), Some(end)) => (start, end),
+                _ => (0, prepared.line.content.len()),
+            };
             findings.push(Finding {
                 rule_id: rule.id.clone(),
                 severity: event.severity,
@@ -304,7 +371,7 @@ pub fn evaluate_lines_with_overrides_and_language(
                 line: prepared.line.line,
                 column,
                 match_text: event.match_text,
-                snippet: trim_snippet(&prepared.line.content),
+                snippet: trim_snippet(&prepared.line.content, snippet_start, snippet_end),
             });
         } else {
             truncated_findings = truncated_findings.saturating_add(1);
@@ -324,6 +391,18 @@ pub fn evaluate_lines_with_overrides_and_language(
     }
 }
 
+/// Resolve which rules are active after applying dependency gating.
+///
+/// Rules that `depends_on` another rule are only active if that dependency
+/// also matched at least one line. This is a fixed-point iteration: we start
+/// with all rules that matched, then iteratively remove rules whose
+/// dependencies are not in the active set. The process converges when no
+/// more rules are removed in an iteration.
+///
+/// # Arguments
+///
+/// * `rules` - All compiled rules
+/// * `per_rule_events` - Match events for each rule (empty = no matches)
 fn resolve_dependency_gated_rule_ids(
     rules: &[CompiledRule],
     per_rule_events: &[Vec<MatchEvent>],
@@ -365,6 +444,11 @@ fn resolve_dependency_gated_rule_ids(
     active_rule_ids
 }
 
+/// Find all positive matches for a rule across a single file's lines.
+///
+/// Returns raw match events for all lines that match the rule's patterns.
+/// If the rule has context patterns, filters events to only those with
+/// required context nearby.
 fn find_positive_matches_for_rule(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -385,6 +469,10 @@ fn find_positive_matches_for_rule(
     events
 }
 
+/// Find all single-line matches for a rule.
+///
+/// Scans each line individually (no cross-line matching). For each line,
+/// extracts the matched text and its byte offsets within the original line.
 fn find_single_line_matches(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -398,6 +486,7 @@ fn find_single_line_matches(
             out.push(RawMatchEvent {
                 anchor_file_pos: file_pos,
                 match_start: Some(start),
+                match_end: Some(end),
                 match_text: safe_slice(&line.line.content, start, end),
             });
         }
@@ -405,6 +494,17 @@ fn find_single_line_matches(
     out
 }
 
+/// Find all multiline matches for a rule across consecutive lines.
+///
+/// For each starting position, joins `multiline_window` consecutive lines
+/// into a single candidate string and runs the pattern match on it.
+/// Uses offset tracking to convert the joined-string byte position back
+/// to the corresponding per-line byte position in the anchor line.
+///
+/// # Deduplication
+///
+/// Uses a BTreeSet of `(anchor_file_pos, start_in_line, match_text)` to
+/// avoid reporting the same match twice when different windows overlap.
 fn find_multiline_matches(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -456,6 +556,7 @@ fn find_multiline_matches(
                 .saturating_sub(1);
             let anchor_file_pos = start + rel;
             let start_in_line = m_start.saturating_sub(offsets[rel]);
+            let end_in_line = m_end.saturating_sub(offsets[rel]);
             let match_text = safe_slice(&joined_raw, m_start, m_end);
             let dedupe_key = (anchor_file_pos, start_in_line, match_text.clone());
 
@@ -463,6 +564,7 @@ fn find_multiline_matches(
                 out.push(RawMatchEvent {
                     anchor_file_pos,
                     match_start: Some(start_in_line),
+                    match_end: Some(end_in_line),
                     match_text,
                 });
             }
@@ -472,6 +574,11 @@ fn find_multiline_matches(
     out
 }
 
+/// Check if a match has the required context patterns nearby.
+///
+/// Looks for context patterns within `context_window` lines before and after
+/// the anchor line. Returns `true` if any context pattern matches (or if the
+/// rule has no context patterns). The anchor line itself is not checked.
 fn has_required_context(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -494,6 +601,11 @@ fn has_required_context(
     false
 }
 
+/// Potentially escalate the severity of a match based on context patterns.
+///
+/// If the rule has `escalate_patterns`, searches within `escalate_window` lines
+/// of the anchor for any escalate pattern. If found, escalates to either the
+/// rule's configured `escalate_to` severity or `Error` as default.
 fn maybe_escalate_severity(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -520,6 +632,11 @@ fn maybe_escalate_severity(
     max_severity(base, target)
 }
 
+/// Select the appropriate preprocessed line for rule matching.
+///
+/// Depending on the rule's `ignore_comments` and `ignore_strings` flags,
+/// returns either the original line content or one of the masked variants
+/// (comments masked, strings masked, or both masked).
 fn candidate_line_for_rule<'a>(rule: &CompiledRule, line: &'a PreparedLine) -> &'a str {
     match (rule.ignore_comments, rule.ignore_strings) {
         (true, true) => line.masked_both.as_str(),
@@ -529,6 +646,10 @@ fn candidate_line_for_rule<'a>(rule: &CompiledRule, line: &'a PreparedLine) -> &
     }
 }
 
+/// Return the higher of two severities.
+///
+/// Used when escalating severity: takes the maximum of the base severity
+/// and the escalation target. Error > Warn > Info.
 fn max_severity(a: Severity, b: Severity) -> Severity {
     fn rank(s: Severity) -> u8 {
         match s {
@@ -541,6 +662,10 @@ fn max_severity(a: Severity, b: Severity) -> Severity {
     if rank(a) >= rank(b) { a } else { b }
 }
 
+/// Find the first match of any pattern in a string.
+///
+/// Iterates through the patterns in order, returning the start and end
+/// byte positions of the first match found. Returns `None` if no pattern matches.
 fn first_match(patterns: &[regex::Regex], s: &str) -> Option<(usize, usize)> {
     for p in patterns {
         if let Some(m) = p.find(s) {
@@ -550,6 +675,9 @@ fn first_match(patterns: &[regex::Regex], s: &str) -> Option<(usize, usize)> {
     None
 }
 
+/// Increment the appropriate severity counter in `VerdictCounts`.
+///
+/// Adds 1 to the counter corresponding to the given severity level.
 fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
     match severity {
         Severity::Info => counts.info = counts.info.saturating_add(1),
@@ -558,9 +686,31 @@ fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
     }
 }
 
-fn trim_snippet(s: &str) -> String {
+/// Extract and truncate a snippet from a string using bounded match positions.
+///
+/// First extracts the bounded region `[start, end)` using `safe_slice`, then
+/// applies 240-character truncation with ellipsis if the bounded region exceeds
+/// that limit. This ensures the snippet represents the actual matched region,
+/// not just the first N characters of the line.
+///
+/// # Arguments
+///
+/// * `s` - The full line content
+/// * `start` - Byte offset where the match begins
+/// * `end` - Byte offset where the match ends
+///
+/// # Returns
+///
+/// The bounded match text, truncated to 240 chars with ellipsis if needed.
+/// If `start >= end`, returns an empty string.
+fn trim_snippet(s: &str, start: usize, end: usize) -> String {
     const MAX_CHARS: usize = 240;
-    let trimmed = s.trim_end();
+
+    // First, extract the bounded match region using safe_slice
+    let bounded = safe_slice(s, start, end);
+
+    // Then apply 240-char truncation with ellipsis to the bounded region
+    let trimmed = bounded.trim_end();
 
     // Avoid slicing by byte indices (which can panic on Unicode boundaries).
     let mut out = String::new();
@@ -574,12 +724,20 @@ fn trim_snippet(s: &str) -> String {
     out
 }
 
+/// Safely extract a substring slice with bounds checking.
+///
+/// Clamps `start` and `end` to valid string bounds and returns the substring.
+/// Never panics; returns an empty string if the bounds are invalid.
 fn safe_slice(s: &str, start: usize, end: usize) -> String {
     let end = end.min(s.len());
     let start = start.min(end);
     s.get(start..end).unwrap_or("").to_string()
 }
 
+/// Convert a byte index to a 1-based column number.
+///
+/// Counts the UTF-8 characters up to `byte_idx` and returns the column number.
+/// Returns `None` if `byte_idx` exceeds the string length.
 fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
     if byte_idx > s.len() {
         return None;
@@ -752,7 +910,9 @@ mod tests {
     #[test]
     fn trim_snippet_truncates_and_appends_ellipsis() {
         let long = "a".repeat(300);
-        let trimmed = super::trim_snippet(&long);
+        // Pass start=0, end=300 to extract the full 300-char string,
+        // which exceeds MAX_CHARS=240 and should be truncated with ellipsis
+        let trimmed = super::trim_snippet(&long, 0, 300);
 
         assert!(trimmed.ends_with('…'));
         assert_eq!(trimmed.chars().count(), 241);
@@ -1711,5 +1871,444 @@ mod tests {
         );
         assert_eq!(eval_with_eval.counts.warn, 1);
         assert_eq!(eval_with_eval.counts.error, 1);
+    }
+
+    // =========================================================================
+    // EDGE CASE TESTS: trim_snippet with bounded match region
+    // These tests verify edge cases not covered by red_tests_work_cb67ea3b.rs
+    // =========================================================================
+
+    /// Edge case: Empty line content should produce no findings when no match.
+    #[test]
+    fn trim_snippet_edge_case_empty_line() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec!["x"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: String::new(),
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(
+            eval.findings.is_empty(),
+            "Empty line with no match should produce no findings"
+        );
+    }
+
+    /// Edge case: Match at position 0 (start of line) should still be bounded correctly.
+    #[test]
+    fn trim_snippet_edge_case_match_at_start_of_line() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found START",
+            vec!["rust"],
+            vec!["START"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = format!("START{}", "x".repeat(300));
+        assert_eq!(line_content.len(), 305);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "START");
+        assert!(
+            !finding.snippet.ends_with('…'),
+            "Short match at start should not be truncated"
+        );
+    }
+
+    /// Edge case: Match exactly at MAX_CHARS (240) boundary should truncate correctly.
+    #[test]
+    fn trim_snippet_edge_case_exactly_at_max_chars() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec![".*"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "x".repeat(240);
+        assert_eq!(line_content.len(), 240);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet.chars().count(), 240);
+        assert!(
+            !finding.snippet.ends_with('…'),
+            "Exactly MAX_CHARS should not be truncated"
+        );
+    }
+
+    /// Edge case: Match exceeding MAX_CHARS (500 chars) should truncate with ellipsis.
+    #[test]
+    fn trim_snippet_edge_case_exceeds_max_chars_by_large_margin() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec![".*"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "x".repeat(500);
+        assert_eq!(line_content.len(), 500);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet.chars().count(), 241);
+        assert!(finding.snippet.ends_with('…'));
+    }
+
+    /// Edge case: Match at end of line (no trailing content).
+    #[test]
+    fn trim_snippet_edge_case_match_at_end_of_line() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found END",
+            vec!["rust"],
+            vec!["END"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = format!("{}{}", "x".repeat(250), "END");
+        assert_eq!(line_content.len(), 253);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "END");
+    }
+
+    /// Edge case: Match with trailing whitespace should have whitespace trimmed.
+    #[test]
+    fn trim_snippet_edge_case_trailing_whitespace_in_match() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found trailing",
+            vec!["rust"],
+            vec!["trailing  "],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "prefix trailing  more_content";
+        assert!(line_content.contains("trailing  "));
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content.to_string(),
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        if !eval.findings.is_empty() {
+            let finding = &eval.findings[0];
+            assert!(
+                !finding.snippet.ends_with(' '),
+                "Trailing whitespace should be trimmed"
+            );
+        }
+    }
+
+    /// Edge case: Match near MAX_CHARS boundary (239 chars) should not truncate.
+    #[test]
+    fn trim_snippet_edge_case_one_char_under_max() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec![".*"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "x".repeat(239);
+        assert_eq!(line_content.len(), 239);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet.chars().count(), 239);
+        assert!(!finding.snippet.ends_with('…'));
+    }
+
+    /// Edge case: Match just over MAX_CHARS (241 chars) should truncate.
+    #[test]
+    fn trim_snippet_edge_case_one_char_over_max() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec![".*"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "x".repeat(241);
+        assert_eq!(line_content.len(), 241);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet.chars().count(), 241);
+        assert!(finding.snippet.ends_with('…'));
+    }
+
+    /// Edge case: Whitespace-only line with no match.
+    #[test]
+    fn trim_snippet_edge_case_whitespace_only_line_no_match() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec!["NOMATCH"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: "      ".to_string(),
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(
+            eval.findings.is_empty(),
+            "Whitespace-only line with no match should produce no findings"
+        );
+    }
+
+    /// Edge case: Very long line (1000 chars) with short match in middle.
+    #[test]
+    fn trim_snippet_edge_case_very_long_line_short_match_in_middle() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found short",
+            vec!["rust"],
+            vec!["HIT"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = format!("{}{}{}", "A".repeat(500), "HIT", "B".repeat(500));
+        assert_eq!(line_content.len(), 1003);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "HIT");
+        assert!(
+            finding.snippet.len() < 240,
+            "Short match should not be truncated"
+        );
+    }
+
+    /// Edge case: Line containing only match (no surrounding content).
+    #[test]
+    fn trim_snippet_edge_case_line_is_only_match() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "exact match",
+            vec!["rust"],
+            vec!["ONLY"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: "ONLY".to_string(),
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "ONLY");
+        assert_eq!(finding.match_text, "ONLY");
+    }
+
+    /// Edge case: Unicode characters throughout the line.
+    #[test]
+    fn trim_snippet_edge_case_wide_unicode_line() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found emoji",
+            vec!["rust"],
+            vec!["🚀"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = format!("{}{}{}", "a".repeat(100), "🚀", "a".repeat(100));
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "🚀");
+    }
+
+    /// Edge case: Absent mode should use full line as bounded region.
+    #[test]
+    fn trim_snippet_edge_case_absent_mode_uses_full_line() {
+        let mut rule_config = test_rule(
+            "test.absent",
+            Severity::Error,
+            "should be absent",
+            vec!["rust"],
+            vec!["NEVER_MATCH_THIS"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        );
+        rule_config.match_mode = MatchMode::Absent;
+
+        let rules = compile_rules(&[rule_config]).unwrap();
+
+        let line_content = format!("{}{}", "x".repeat(250), "some content");
+        assert_eq!(line_content.len(), 262);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(
+            !eval.findings.is_empty(),
+            "Absent mode should produce finding when pattern is absent"
+        );
+        let finding = &eval.findings[0];
+
+        assert!(
+            finding.snippet.ends_with('…'),
+            "Absent mode with long line should truncate"
+        );
+        assert_eq!(finding.snippet.chars().count(), 241);
     }
 }
