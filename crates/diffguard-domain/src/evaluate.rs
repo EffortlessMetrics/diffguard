@@ -56,6 +56,7 @@ struct PreparedLine {
 struct RawMatchEvent {
     anchor_file_pos: usize,
     match_start: Option<usize>,
+    match_end: Option<usize>,
     match_text: String,
 }
 
@@ -64,6 +65,7 @@ struct MatchEvent {
     rule_idx: usize,
     anchor_idx: usize,
     match_start: Option<usize>,
+    match_end: Option<usize>,
     match_text: String,
     severity: Severity,
 }
@@ -204,6 +206,7 @@ pub fn evaluate_lines_with_overrides_and_language(
                         vec![RawMatchEvent {
                             anchor_file_pos: 0,
                             match_start: None,
+                            match_end: None,
                             match_text: "<absent>".to_string(),
                         }]
                     } else {
@@ -230,6 +233,7 @@ pub fn evaluate_lines_with_overrides_and_language(
                     rule_idx,
                     anchor_idx,
                     match_start: matched.match_start,
+                    match_end: matched.match_end,
                     match_text: matched.match_text,
                     severity,
                 });
@@ -296,6 +300,11 @@ pub fn evaluate_lines_with_overrides_and_language(
                 .match_start
                 .and_then(|start| byte_to_column(&prepared.line.content, start))
                 .and_then(|c| u32::try_from(c).ok());
+            // For absent mode, match_start/match_end are None; use full line as bounds
+            let (snippet_start, snippet_end) = match (event.match_start, event.match_end) {
+                (Some(start), Some(end)) => (start, end),
+                _ => (0, prepared.line.content.len()),
+            };
             findings.push(Finding {
                 rule_id: rule.id.clone(),
                 severity: event.severity,
@@ -304,7 +313,7 @@ pub fn evaluate_lines_with_overrides_and_language(
                 line: prepared.line.line,
                 column,
                 match_text: event.match_text,
-                snippet: trim_snippet(&prepared.line.content),
+                snippet: trim_snippet(&prepared.line.content, snippet_start, snippet_end),
             });
         } else {
             truncated_findings = truncated_findings.saturating_add(1);
@@ -398,6 +407,7 @@ fn find_single_line_matches(
             out.push(RawMatchEvent {
                 anchor_file_pos: file_pos,
                 match_start: Some(start),
+                match_end: Some(end),
                 match_text: safe_slice(&line.line.content, start, end),
             });
         }
@@ -456,6 +466,7 @@ fn find_multiline_matches(
                 .saturating_sub(1);
             let anchor_file_pos = start + rel;
             let start_in_line = m_start.saturating_sub(offsets[rel]);
+            let end_in_line = m_end.saturating_sub(offsets[rel]);
             let match_text = safe_slice(&joined_raw, m_start, m_end);
             let dedupe_key = (anchor_file_pos, start_in_line, match_text.clone());
 
@@ -463,6 +474,7 @@ fn find_multiline_matches(
                 out.push(RawMatchEvent {
                     anchor_file_pos,
                     match_start: Some(start_in_line),
+                    match_end: Some(end_in_line),
                     match_text,
                 });
             }
@@ -558,9 +570,14 @@ fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
     }
 }
 
-fn trim_snippet(s: &str) -> String {
+fn trim_snippet(s: &str, start: usize, end: usize) -> String {
     const MAX_CHARS: usize = 240;
-    let trimmed = s.trim_end();
+
+    // First, extract the bounded match region using safe_slice
+    let bounded = safe_slice(s, start, end);
+
+    // Then apply 240-char truncation with ellipsis to the bounded region
+    let trimmed = bounded.trim_end();
 
     // Avoid slicing by byte indices (which can panic on Unicode boundaries).
     let mut out = String::new();
@@ -752,7 +769,9 @@ mod tests {
     #[test]
     fn trim_snippet_truncates_and_appends_ellipsis() {
         let long = "a".repeat(300);
-        let trimmed = super::trim_snippet(&long);
+        // Pass start=0, end=300 to extract the full 300-char string,
+        // which exceeds MAX_CHARS=240 and should be truncated with ellipsis
+        let trimmed = super::trim_snippet(&long, 0, 300);
 
         assert!(trimmed.ends_with('…'));
         assert_eq!(trimmed.chars().count(), 241);
