@@ -1872,4 +1872,443 @@ mod tests {
         assert_eq!(eval_with_eval.counts.warn, 1);
         assert_eq!(eval_with_eval.counts.error, 1);
     }
+
+    // =========================================================================
+    // EDGE CASE TESTS: trim_snippet with bounded match region
+    // These tests verify edge cases not covered by red_tests_work_cb67ea3b.rs
+    // =========================================================================
+
+    /// Edge case: Empty line content should produce no findings when no match.
+    #[test]
+    fn trim_snippet_edge_case_empty_line() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec!["x"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: String::new(),
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(
+            eval.findings.is_empty(),
+            "Empty line with no match should produce no findings"
+        );
+    }
+
+    /// Edge case: Match at position 0 (start of line) should still be bounded correctly.
+    #[test]
+    fn trim_snippet_edge_case_match_at_start_of_line() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found START",
+            vec!["rust"],
+            vec!["START"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = format!("START{}", "x".repeat(300));
+        assert_eq!(line_content.len(), 305);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "START");
+        assert!(
+            !finding.snippet.ends_with('…'),
+            "Short match at start should not be truncated"
+        );
+    }
+
+    /// Edge case: Match exactly at MAX_CHARS (240) boundary should truncate correctly.
+    #[test]
+    fn trim_snippet_edge_case_exactly_at_max_chars() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec![".*"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "x".repeat(240);
+        assert_eq!(line_content.len(), 240);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet.chars().count(), 240);
+        assert!(
+            !finding.snippet.ends_with('…'),
+            "Exactly MAX_CHARS should not be truncated"
+        );
+    }
+
+    /// Edge case: Match exceeding MAX_CHARS (500 chars) should truncate with ellipsis.
+    #[test]
+    fn trim_snippet_edge_case_exceeds_max_chars_by_large_margin() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec![".*"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "x".repeat(500);
+        assert_eq!(line_content.len(), 500);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet.chars().count(), 241);
+        assert!(finding.snippet.ends_with('…'));
+    }
+
+    /// Edge case: Match at end of line (no trailing content).
+    #[test]
+    fn trim_snippet_edge_case_match_at_end_of_line() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found END",
+            vec!["rust"],
+            vec!["END"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = format!("{}{}", "x".repeat(250), "END");
+        assert_eq!(line_content.len(), 253);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "END");
+    }
+
+    /// Edge case: Match with trailing whitespace should have whitespace trimmed.
+    #[test]
+    fn trim_snippet_edge_case_trailing_whitespace_in_match() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found trailing",
+            vec!["rust"],
+            vec!["trailing  "],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "prefix trailing  more_content";
+        assert!(line_content.contains("trailing  "));
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content.to_string(),
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        if !eval.findings.is_empty() {
+            let finding = &eval.findings[0];
+            assert!(
+                !finding.snippet.ends_with(' '),
+                "Trailing whitespace should be trimmed"
+            );
+        }
+    }
+
+    /// Edge case: Match near MAX_CHARS boundary (239 chars) should not truncate.
+    #[test]
+    fn trim_snippet_edge_case_one_char_under_max() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec![".*"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "x".repeat(239);
+        assert_eq!(line_content.len(), 239);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet.chars().count(), 239);
+        assert!(!finding.snippet.ends_with('…'));
+    }
+
+    /// Edge case: Match just over MAX_CHARS (241 chars) should truncate.
+    #[test]
+    fn trim_snippet_edge_case_one_char_over_max() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec![".*"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = "x".repeat(241);
+        assert_eq!(line_content.len(), 241);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet.chars().count(), 241);
+        assert!(finding.snippet.ends_with('…'));
+    }
+
+    /// Edge case: Whitespace-only line with no match.
+    #[test]
+    fn trim_snippet_edge_case_whitespace_only_line_no_match() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "pattern",
+            vec!["rust"],
+            vec!["NOMATCH"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: "      ".to_string(),
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(
+            eval.findings.is_empty(),
+            "Whitespace-only line with no match should produce no findings"
+        );
+    }
+
+    /// Edge case: Very long line (1000 chars) with short match in middle.
+    #[test]
+    fn trim_snippet_edge_case_very_long_line_short_match_in_middle() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found short",
+            vec!["rust"],
+            vec!["HIT"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = format!("{}{}{}", "A".repeat(500), "HIT", "B".repeat(500));
+        assert_eq!(line_content.len(), 1003);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "HIT");
+        assert!(
+            finding.snippet.len() < 240,
+            "Short match should not be truncated"
+        );
+    }
+
+    /// Edge case: Line containing only match (no surrounding content).
+    #[test]
+    fn trim_snippet_edge_case_line_is_only_match() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "exact match",
+            vec!["rust"],
+            vec!["ONLY"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: "ONLY".to_string(),
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "ONLY");
+        assert_eq!(finding.match_text, "ONLY");
+    }
+
+    /// Edge case: Unicode characters throughout the line.
+    #[test]
+    fn trim_snippet_edge_case_wide_unicode_line() {
+        let rules = compile_rules(&[test_rule(
+            "test.rule",
+            Severity::Error,
+            "found emoji",
+            vec!["rust"],
+            vec!["🚀"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        )])
+        .unwrap();
+
+        let line_content = format!("{}{}{}", "a".repeat(100), "🚀", "a".repeat(100));
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(!eval.findings.is_empty());
+        let finding = &eval.findings[0];
+
+        assert_eq!(finding.snippet, "🚀");
+    }
+
+    /// Edge case: Absent mode should use full line as bounded region.
+    #[test]
+    fn trim_snippet_edge_case_absent_mode_uses_full_line() {
+        let mut rule_config = test_rule(
+            "test.absent",
+            Severity::Error,
+            "should be absent",
+            vec!["rust"],
+            vec!["NEVER_MATCH_THIS"],
+            vec!["*.rs"],
+            vec![],
+            false,
+            false,
+        );
+        rule_config.match_mode = MatchMode::Absent;
+
+        let rules = compile_rules(&[rule_config]).unwrap();
+
+        let line_content = format!("{}{}", "x".repeat(250), "some content");
+        assert_eq!(line_content.len(), 262);
+
+        let lines = vec![InputLine {
+            path: "test.rs".to_string(),
+            line: 1,
+            content: line_content,
+        }];
+
+        let eval = evaluate_lines(lines, &rules, 100);
+        assert!(
+            !eval.findings.is_empty(),
+            "Absent mode should produce finding when pattern is absent"
+        );
+        let finding = &eval.findings[0];
+
+        assert!(
+            finding.snippet.ends_with('…'),
+            "Absent mode with long line should truncate"
+        );
+        assert_eq!(finding.snippet.chars().count(), 241);
+    }
 }
