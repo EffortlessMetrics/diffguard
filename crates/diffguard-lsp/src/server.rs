@@ -160,6 +160,13 @@ impl ServerState {
     }
 }
 
+/// Runs the diffguard LSP server.
+///
+/// This is the main entry point for the LSP server. It takes a `Connection` from the
+/// LSP protocol handshake and then processes messages in a loop until the connection closes.
+///
+/// # Errors
+/// Returns an error if initialization fails or if message handling encounters an unrecoverable error.
 pub fn run_server(connection: Connection) -> Result<()> {
     // Use the lower-level initialize_start/initialize_finish methods
     // to send a custom InitializeResult with server_info.
