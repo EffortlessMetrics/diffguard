@@ -659,4 +659,309 @@ mod tests {
 
         assert!(err.to_string().contains("command failed"));
     }
+
+    // =============================================================================
+    // Property-based tests for schema() and write_pretty_json()
+    // =============================================================================
+
+    /// Property: write_pretty_json produces valid parseable JSON for various values.
+    #[test]
+    fn property_write_pretty_json_produces_valid_json() {
+        let test_cases = vec![
+            serde_json::json!({}),
+            serde_json::json!({"key": "value"}),
+            serde_json::json!([1, 2, 3]),
+            serde_json::json!({"nested": {"deep": {"value": 42}}}),
+            serde_json::json!({"array": [{"id": 1}, {"id": 2}]}),
+            serde_json::json!({"unicode": "日本語中文한국어", "emoji": "😀🎉"}),
+            serde_json::json!({"special_chars": "a\"b\\c\td\ne"}),
+            serde_json::json!({"numbers": [0, -1, 1.5, 3.14159, 1e10]}),
+            serde_json::json!({"booleans": [true, false, null]}),
+        ];
+
+        for value in test_cases {
+            let dir = TempDir::new().expect("temp");
+            let path = dir.path().join("test.json");
+
+            write_pretty_json(&path, &value).expect("write should succeed");
+
+            let content = std::fs::read_to_string(&path).expect("read should succeed");
+            let parsed: serde_json::Value =
+                serde_json::from_str(&content).expect("should be valid JSON");
+
+            assert_eq!(parsed, value, "roundtrip should preserve value");
+        }
+    }
+
+    /// Property: write_pretty_json is idempotent - writing same value twice
+    /// produces byte-identical output.
+    #[test]
+    fn property_write_pretty_json_idempotent() {
+        let test_cases = vec![
+            serde_json::json!({"test": "value"}),
+            serde_json::json!([1, 2, 3]),
+            serde_json::json!({"nested": {"deep": true}}),
+            serde_json::json!({"emoji": "😀🎉🏆"}),
+        ];
+
+        for value in test_cases {
+            let dir = TempDir::new().expect("temp");
+            let path = dir.path().join("idempotent.json");
+
+            write_pretty_json(&path, &value).expect("first write should succeed");
+            let first_content = std::fs::read(&path).expect("first read should succeed");
+
+            write_pretty_json(&path, &value).expect("second write should succeed");
+            let second_content = std::fs::read(&path).expect("second read should succeed");
+
+            assert_eq!(
+                first_content, second_content,
+                "writing twice should produce identical content"
+            );
+        }
+    }
+
+    /// Property: schema() works with paths containing Unicode characters.
+    #[test]
+    fn property_schema_handles_unicode_paths() {
+        let test_paths = vec![
+            PathBuf::from("テスト/スキーマ"),
+            PathBuf::from("测试/模式"),
+            PathBuf::from("테스트/스키마"),
+            PathBuf::from("test📁/schema📄"),
+            PathBuf::from("日本語/test/中文"),
+        ];
+
+        for subpath in test_paths {
+            let dir = TempDir::new().expect("temp");
+            let out_dir = dir.path().join(&subpath);
+
+            let result = schema(out_dir.as_path());
+            assert!(
+                result.is_ok(),
+                "schema() should succeed with Unicode path: {:?}",
+                subpath
+            );
+
+            assert!(
+                out_dir.join("diffguard.config.schema.json").exists(),
+                "config schema should exist for path: {:?}",
+                subpath
+            );
+        }
+    }
+
+    /// Property: schema() creates the output directory if it doesn't exist.
+    #[test]
+    fn property_schema_creates_output_directory() {
+        let dir = TempDir::new().expect("temp");
+        let out_dir = dir
+            .path()
+            .join("nonexistent")
+            .join("nested")
+            .join("directory");
+
+        assert!(
+            !out_dir.exists(),
+            "precondition: directory should not exist"
+        );
+
+        let result = schema(out_dir.as_path());
+        assert!(
+            result.is_ok(),
+            "schema() should succeed even when output dir doesn't exist"
+        );
+        assert!(out_dir.exists(), "schema() should create the output directory");
+    }
+
+    /// Property: schema() generates all 5 expected files regardless of output path.
+    #[test]
+    fn property_schema_generates_all_expected_files() {
+        use std::collections::HashSet;
+
+        let test_cases = vec![
+            PathBuf::from("schemas"),
+            PathBuf::from("output"),
+            PathBuf::from("test🌍"),
+            PathBuf::from("nested/deep/path"),
+        ];
+
+        let expected_files: HashSet<String> = [
+            "diffguard.config.schema.json".to_string(),
+            "diffguard.check.schema.json".to_string(),
+            "sensor.report.v1.schema.json".to_string(),
+            "diffguard.false-positive-baseline.v1.schema.json".to_string(),
+            "diffguard.trend-history.v1.schema.json".to_string(),
+        ]
+        .into_iter()
+        .collect();
+
+        for out_dir_name in test_cases {
+            let dir = TempDir::new().expect("temp");
+            let out_dir = dir.path().join(&out_dir_name);
+
+            schema(out_dir.as_path()).expect("schema should succeed");
+
+            let mut found_files = HashSet::new();
+            for entry in std::fs::read_dir(&out_dir).expect("should read dir") {
+                let entry = entry.expect("entry should exist");
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if name.ends_with(".json") {
+                    found_files.insert(name);
+                }
+            }
+
+            assert_eq!(
+                found_files, expected_files,
+                "schema() should generate exactly the 5 expected files for path: {:?}",
+                out_dir_name
+            );
+        }
+    }
+
+    /// Property: schema() produces valid JSON in all output files.
+    #[test]
+    fn property_schema_produces_valid_json_files() {
+        let dir = TempDir::new().expect("temp");
+
+        schema(dir.path()).expect("schema should succeed");
+
+        let schema_files = [
+            "diffguard.config.schema.json",
+            "diffguard.check.schema.json",
+            "sensor.report.v1.schema.json",
+            "diffguard.false-positive-baseline.v1.schema.json",
+            "diffguard.trend-history.v1.schema.json",
+        ];
+
+        for filename in schema_files {
+            let path = dir.path().join(filename);
+            let content = std::fs::read_to_string(&path).expect("should read file");
+            let _parsed: serde_json::Value =
+                serde_json::from_str(&content).expect("schema file should be valid JSON");
+        }
+    }
+
+    /// Property: schema() is deterministic - running twice produces same output.
+    #[test]
+    fn property_schema_deterministic() {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+
+        fn simple_hash(data: &[u8]) -> u64 {
+            let mut hasher = DefaultHasher::new();
+            data.hash(&mut hasher);
+            hasher.finish()
+        }
+
+        let dir = TempDir::new().expect("temp");
+
+        // First run
+        schema(dir.path()).expect("first schema should succeed");
+
+        let first_hashes: std::collections::HashSet<_> = std::fs::read_dir(dir.path())
+            .expect("should read dir")
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
+            .map(|e| {
+                let content = std::fs::read(e.path()).expect("should read file");
+                let hash = simple_hash(&content);
+                (e.file_name().to_string_lossy().into_owned(), hash)
+            })
+            .collect();
+
+        // Second run
+        schema(dir.path()).expect("second schema should succeed");
+
+        let second_hashes: std::collections::HashSet<_> = std::fs::read_dir(dir.path())
+            .expect("should read dir second time")
+            .filter_map(|e| e.ok())
+            .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
+            .map(|e| {
+                let content = std::fs::read(e.path()).expect("should read file");
+                let hash = simple_hash(&content);
+                (e.file_name().to_string_lossy().into_owned(), hash)
+            })
+            .collect();
+
+        assert_eq!(
+            first_hashes, second_hashes,
+            "schema() should produce deterministic output"
+        );
+    }
+
+    /// Property: schema() works with spaces in the output path.
+    #[test]
+    fn property_schema_handles_spaces_in_path() {
+        let dir = TempDir::new().expect("temp");
+        let out_dir = dir.path().join("path with spaces").join("nested path");
+
+        let result = schema(out_dir.as_path());
+        assert!(result.is_ok(), "schema() should succeed with spaces in path");
+
+        assert!(
+            out_dir.join("diffguard.config.schema.json").exists(),
+            "config schema should exist"
+        );
+    }
+
+    /// Property: schema() accepts &Path (borrowed) instead of PathBuf (owned).
+    /// This verifies the fix for needless_pass_by_value lint.
+    #[test]
+    fn property_schema_accepts_borrowed_path() {
+        let dir = TempDir::new().expect("temp");
+        let path_buf = dir.path().to_path_buf();
+
+        // Call schema with borrowed &Path - this is the key verification
+        // that the function signature was correctly changed from PathBuf to &Path
+        let borrowed_path: &Path = path_buf.as_path();
+        let result = schema(borrowed_path);
+        assert!(
+            result.is_ok(),
+            "schema() should accept &Path, not require PathBuf"
+        );
+    }
+
+    /// Property: schema() handles various path patterns.
+    #[test]
+    fn property_schema_handles_various_path_patterns() {
+        let patterns = vec![
+            "short",
+            "a",
+            "verylongdirname",
+            "with-dash",
+            "with_underscore",
+            "with.dots",
+            "UPPERCASE",
+            "MixedCase",
+            "日本語",
+            "中文",
+            "한국어",
+            "mixe🇰🇷d",
+            "spaces in dir",
+        ];
+
+        for pattern in patterns {
+            let dir = TempDir::new().expect("temp");
+            let out_dir = dir.path().join(pattern);
+
+            let result = schema(out_dir.as_path());
+            assert!(
+                result.is_ok(),
+                "schema() should handle path pattern: {:?}",
+                pattern
+            );
+
+            if result.is_ok() {
+                let count = std::fs::read_dir(&out_dir)
+                    .map(|entries| entries.filter(|e| e.is_ok()).count())
+                    .unwrap_or(0);
+                assert_eq!(
+                    count, 5,
+                    "should create 5 schema files for pattern: {:?}",
+                    pattern
+                );
+            }
+        }
+    }
 }
