@@ -9,9 +9,16 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+/// Schema identifier for false-positive baseline files, used for format versioning.
 pub const FALSE_POSITIVE_BASELINE_SCHEMA_V1: &str = "diffguard.false_positive_baseline.v1";
+
+/// Schema identifier for trend history files, used for format versioning.
 pub const TREND_HISTORY_SCHEMA_V1: &str = "diffguard.trend_history.v1";
 
+/// A set of false-positive entries used to suppress known-benign findings.
+///
+/// Baselines are persisted to disk and loaded across runs to remember which
+/// findings the user has explicitly approved to ignore.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveBaseline {
     pub schema: String,
@@ -28,6 +35,10 @@ impl Default for FalsePositiveBaseline {
     }
 }
 
+/// A single false-positive entry identifying one known-benign finding.
+///
+/// The entry is keyed by a fingerprint derived from the finding's content,
+/// so it remains stable across runs even if line numbers shift.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveEntry {
     pub fingerprint: String,
@@ -141,6 +152,7 @@ pub fn merge_false_positive_baselines(
 }
 
 /// Returns the baseline as a fingerprint set for fast lookup.
+///
 /// # Panics: Does not panic.
 #[must_use]
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
@@ -151,6 +163,10 @@ pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTree
         .collect()
 }
 
+/// A chronological record of diffguard check runs used for trend analysis.
+///
+/// Each run captures the diff meta, verdict, and findings at a point in time,
+/// allowing diffguard to report how metrics change over successive commits.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendHistory {
     pub schema: String,
@@ -167,6 +183,10 @@ impl Default for TrendHistory {
     }
 }
 
+/// A single diffguard check run, capturing the environment and outcome.
+///
+/// `TrendRun` is the atomic unit stored in [`TrendHistory`]. It records what
+/// was scanned (base, head, scope), how long it took, and what was found.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendRun {
     pub started_at: String,
@@ -186,6 +206,10 @@ pub struct TrendRun {
     pub findings: u32,
 }
 
+/// A statistical summary of a [`TrendHistory`].
+///
+/// `TrendSummary` aggregates runs into totals and computes the delta between
+/// the most recent two runs to show whether findings are increasing or decreasing.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendSummary {
     pub run_count: u32,
@@ -197,6 +221,11 @@ pub struct TrendSummary {
     pub delta_from_previous: Option<TrendDelta>,
 }
 
+/// The change in verdict counts between two consecutive [`TrendRun`]s.
+///
+/// Each field is the difference (current − previous). Positive means increased;
+/// negative means decreased. This is stored as signed integers to capture both
+/// directions of change accurately.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendDelta {
     pub findings: i64,
