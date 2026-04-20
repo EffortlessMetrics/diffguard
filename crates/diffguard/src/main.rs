@@ -29,7 +29,7 @@ use diffguard_types::{
     CHECK_SCHEMA_V1, CODE_TOOL_RUNTIME_ERROR, CapabilityStatus, CheckReceipt, ConfigFile, DiffMeta,
     DirectoryOverrideConfig, FailOn, Finding, MatchMode, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT,
     REASON_TOOL_ERROR, RuleConfig, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
-    VerdictStatus,
+    VerdictStatus, escape_md,
 };
 
 mod config_loader;
@@ -1696,20 +1696,6 @@ fn render_finding_row_with_baseline(f: &Finding, is_baseline: bool) -> String {
         msg = msg,
         snippet = snippet
     )
-}
-
-/// Escapes special markdown characters in a string.
-fn escape_md(s: &str) -> String {
-    s.replace('|', "\\|")
-        .replace('`', "\\`")
-        .replace('#', "\\#")
-        .replace('*', "\\*")
-        .replace('_', "\\_")
-        .replace('[', "\\[")
-        .replace(']', "\\]")
-        .replace('>', "\\>")
-        .replace('\r', "\\r")
-        .replace('\n', "\\n")
 }
 
 /// Renders markdown output with baseline/new annotations.

@@ -438,6 +438,29 @@ fn is_match_mode_any(mode: &MatchMode) -> bool {
     matches!(mode, MatchMode::Any)
 }
 
+/// Escapes special Markdown characters in table cell content.
+///
+/// Escapes pipe (`|`), backtick (`` ` ``), hash (`#`), asterisk (`*`),
+/// underscore (`_`), open bracket (`[`), close bracket (`]`), and greater-than
+/// (`>`) characters by prefixing with backslash. Also escapes CRLF (`\r\n`)
+/// and LF (`\n`) line endings to prevent breaking the markdown table structure.
+///
+/// This exists in `diffguard-types` to avoid duplicating the logic in both
+/// `diffguard-core` (render.rs) and `diffguard` (main.rs).
+pub fn escape_md(s: &str) -> String {
+    s.replace("|", "\\|")
+        .replace("`", "\\`")
+        .replace("#", "\\#")
+        .replace("*", "\\*")
+        .replace("_", "\\_")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
+        .replace(">", "\\>")
+        .replace("\r\n", "\\r\\n")
+        .replace("\r", "\\r")
+        .replace("\n", "\\n")
+}
+
 // ============================================================================
 // Per-directory override types
 // ============================================================================
