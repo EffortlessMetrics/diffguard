@@ -1449,9 +1449,19 @@ fn directory_depth(path: &Path) -> usize {
     path.components().count()
 }
 
+/// Filters for selecting lines based on git blame metadata.
+///
+/// `BlameFilters` is used to whitelist certain lines from being flagged,
+/// based on who last modified them (`author_patterns`) and how old those
+/// modifications are (`max_age_days`).
+///
+/// When a line's author matches one of the author patterns AND the line
+/// was last modified within the max age threshold, it is allowed (not flagged).
 #[derive(Debug, Clone)]
 struct BlameFilters {
+    /// Case-insensitive patterns to match against `author` and `author_mail`.
     author_patterns: Vec<String>,
+    /// Maximum age in days; lines older than this are not allowed.
     max_age_days: Option<u32>,
 }
 
@@ -1505,10 +1515,18 @@ impl BlameFilters {
     }
 }
 
+/// Metadata for a single line from `git blame --line-porcelain`.
+///
+/// Contains the author and timestamp of the commit that last modified
+/// a given line. Used by `BlameFilters` to determine if a line should
+/// be allowed based on author and age criteria.
 #[derive(Debug, Clone, Default)]
 struct BlameLineMeta {
+    /// Display name of the author (e.g., "Jane Doe").
     author: String,
+    /// Email address of the author (e.g., "jane@example.com").
     author_mail: String,
+    /// Unix timestamp of when the author made the commit.
     author_time: i64,
 }
 
@@ -1825,6 +1843,15 @@ fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
     out
 }
 
+/// Runs `git blame --line-porcelain` for a single file at a given ref.
+///
+/// Returns the raw porcelain output which is later parsed by `parse_blame_porcelain`.
+/// The `path` is passed after `--` to ensure git treats it as a file path,
+/// not a revision. This prevents ambiguous ref/branch names from being misread.
+///
+/// # Errors
+///
+/// Returns an error if git fails to run or if the file does not exist at `head_ref`.
 fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     let output = Command::new("git")
         .args(["blame", "--line-porcelain", head_ref, "--", path])
@@ -1955,6 +1982,28 @@ fn parse_diff_git_path_from_header(rest: &str) -> Option<String> {
     }
 }
 
+/// Collects lines that pass the blame filter.
+///
+/// For each file+line in the diff, runs `git blame` (via `git_blame_porcelain`)
+/// and checks whether the author/timestamp matches the `filters` criteria.
+/// Lines matching the filter are added to the allowed set and are not flagged
+/// by subsequent rule checking.
+///
+/// Deleted files are detected via `extract_deleted_paths` and skipped entirely:
+/// git blame on a deleted file would fail because the file does not exist at `head_ref`,
+/// so skipping them avoids spurious tool errors and wasted work.
+///
+/// # Arguments
+///
+/// * `diff_text` - Raw unified diff text from `git diff`
+/// * `scope` - Which lines to consider (e.g., `Added`, `Modified`, `Context`)
+/// * `head_ref` - Git ref (branch, tag, SHA) at which to run blame
+/// * `filters` - Author and age filters to apply
+///
+/// # Returns
+///
+/// A `BTreeSet` of `(path, line_number)` tuples for lines that pass the filter.
+/// These lines are considered "allowed" and will not trigger rule violations.
 fn collect_blame_allowed_lines(
     diff_text: &str,
     scope: Scope,
