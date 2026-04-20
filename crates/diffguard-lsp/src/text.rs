@@ -31,8 +31,7 @@ pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
 #[must_use]
 pub fn build_synthetic_diff(path: &str, text: &str, changed_lines: &BTreeSet<u32>) -> String {
     let mut diff = format!(
-        "diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n",
-        path = path
+        "diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n"
     );
     let lines = split_lines(text);
 
@@ -46,7 +45,7 @@ pub fn build_synthetic_diff(path: &str, text: &str, changed_lines: &BTreeSet<u32
             continue;
         }
 
-        diff.push_str(&format!("@@ -0,0 +{},1 @@\n", line_number));
+        diff.push_str(&format!("@@ -0,0 +{line_number},1 @@\n"));
         diff.push('+');
         diff.push_str(lines[index]);
         diff.push('\n');
@@ -78,7 +77,7 @@ pub fn apply_incremental_change(
     })?;
 
     if start > end {
-        bail!("invalid edit range: start {} is after end {}", start, end);
+        bail!("invalid edit range: start {start} is after end {end}");
     }
 
     text.replace_range(start..end, &change.text);

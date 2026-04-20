@@ -38,7 +38,7 @@ fn error_element(
     rule_id: &str,
 ) -> String {
     let column_attr = column
-        .map(|c| format!(" column=\"{}\"", c))
+        .map(|c| format!(" column=\"{c}\""))
         .unwrap_or_default();
     format!(
         "    <error line=\"{}\"{column_attr} severity=\"{}\" message=\"{}\" source=\"{}\"/>\n",
