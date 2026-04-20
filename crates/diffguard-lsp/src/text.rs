@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use lsp_types::{Position, TextDocumentContentChangeEvent};
 
 /// Splits text into lines, returning a vector of string slices.
