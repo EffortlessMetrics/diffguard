@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use lsp_types::{Position, TextDocumentContentChangeEvent};
 
 /// Splits text into lines, returning a vector of string slices.
@@ -296,5 +296,256 @@ mod tests {
 
         apply_incremental_change(&mut text, &change).expect("apply");
         assert_eq!(text, "alpha\ngamma\n");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // split_lines() edge cases
+    // ─────────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn split_lines_empty_string_returns_empty_vec() {
+        let lines = split_lines("");
+        assert!(lines.is_empty());
+    }
+
+    #[test]
+    fn split_lines_single_line_no_newline() {
+        let lines = split_lines("hello world");
+        assert_eq!(lines, vec!["hello world"]);
+    }
+
+    #[test]
+    fn split_lines_only_newline_returns_two_empty_strings() {
+        // "\n".split('\n') produces ["", ""] — empty string before and after the newline
+        let lines = split_lines("\n");
+        assert_eq!(lines, vec!["", ""]);
+    }
+
+    #[test]
+    fn split_lines_multiple_consecutive_newlines() {
+        let lines = split_lines("\n\n\n");
+        // Three newlines produce four empty strings
+        assert_eq!(lines, vec!["", "", "", ""]);
+    }
+
+    #[test]
+    fn split_lines_trailing_newline() {
+        // "a\nb\n" split gives ["a", "b", ""] — empty string after the last newline
+        let lines = split_lines("a\nb\n");
+        assert_eq!(lines, vec!["a", "b", ""]);
+    }
+
+    #[test]
+    fn split_lines_leading_newline() {
+        // "\na\nb" split gives ["", "a", "b"] — empty string before the first newline
+        let lines = split_lines("\na\nb");
+        assert_eq!(lines, vec!["", "a", "b"]);
+    }
+
+    #[test]
+    fn split_lines_windows_crlf_includes_cr_in_line() {
+        // Windows "\r\n" is two characters; split on '\n' only, so '\r' stays in the line
+        let lines = split_lines("line1\r\nline2\r\nline3");
+        assert_eq!(lines, vec!["line1\r", "line2\r", "line3"]);
+    }
+
+    #[test]
+    fn split_lines_unicode_emoji_handled_correctly() {
+        let text = "hello\nworld 🚀\n";
+        let lines = split_lines(text);
+        assert_eq!(lines, vec!["hello", "world 🚀", ""]);
+    }
+
+    #[test]
+    fn split_lines_mixed_whitespace() {
+        let text = "  spaced\n\ttabbed\n\nempty line";
+        let lines = split_lines(text);
+        assert_eq!(lines, vec!["  spaced", "\ttabbed", "", "empty line"]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // changed_lines_between() edge cases
+    // ─────────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn changed_lines_between_identical_texts_returns_empty() {
+        let text = "one\ntwo\nthree\n";
+        let changed = changed_lines_between(text, text);
+        assert!(changed.is_empty());
+    }
+
+    #[test]
+    fn changed_lines_between_empty_before_and_after() {
+        let changed = changed_lines_between("", "");
+        assert!(changed.is_empty());
+    }
+
+    #[test]
+    fn changed_lines_between_added_lines_at_end() {
+        // after has one more line than before
+        let before = "one\ntwo\n";
+        let after = "one\ntwo\nthree\n";
+        let changed = changed_lines_between(before, after);
+        // max_len = 4 (after has 4 elements: "one", "two", "three", "")
+        // At index 2: before_lines[2] = Some(""), after_lines[2] = Some("three") → insert 3
+        // At index 3: before_lines[3] = None, after_lines[3] = Some("") → insert 4
+        assert_eq!(changed, BTreeSet::from([3, 4]));
+    }
+
+    #[test]
+    fn changed_lines_between_removed_lines_after_shorter() {
+        // after is shorter — lines in before beyond after's length are not reported
+        let before = "one\ntwo\nthree\nfour\n";
+        let after = "one\ntwo\n";
+        let changed = changed_lines_between(before, after);
+        // max_len = 5 (before has 5 elements: "one", "two", "three", "four", "")
+        // At index 2: before_lines[2] = Some("three"), after_lines[2] = Some("") → insert 3
+        // At index 3: before_lines[3] = Some("four"), after_lines[3] = None → index 3 < 3 is FALSE → skip
+        assert_eq!(changed, BTreeSet::from([3]));
+    }
+
+    #[test]
+    fn changed_lines_between_multiple_changes() {
+        let before = "a\nb\nc\nd\ne\n";
+        let after = "a\nX\nc\nY\ne\n";
+        let changed = changed_lines_between(before, after);
+        assert_eq!(changed, BTreeSet::from([2, 4]));
+    }
+
+    #[test]
+    fn changed_lines_between_all_lines_changed() {
+        let before = "old\nold\nold\n";
+        let after = "new\nnew\nnew\n";
+        let changed = changed_lines_between(before, after);
+        assert_eq!(changed, BTreeSet::from([1, 2, 3]));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // build_synthetic_diff() edge cases
+    // ─────────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn build_synthetic_diff_empty_changed_lines() {
+        let diff = build_synthetic_diff("test.rs", "one\ntwo\nthree\n", &BTreeSet::new());
+        assert!(diff.contains("diff --git"));
+        // Should only have the header, no hunks
+        assert!(!diff.contains("@@"));
+    }
+
+    #[test]
+    fn build_synthetic_diff_line_number_exceeds_text_length() {
+        // Line 99 doesn't exist in a 3-line document — should be skipped silently
+        let changed = BTreeSet::from([99_u32]);
+        let diff = build_synthetic_diff("test.rs", "one\ntwo\nthree\n", &changed);
+        // Should not contain any hunk for line 99
+        assert!(!diff.contains("+99"));
+    }
+
+    #[test]
+    fn build_synthetic_diff_single_line_text() {
+        let changed = BTreeSet::from([1_u32]);
+        let diff = build_synthetic_diff("test.rs", "only one line\n", &changed);
+        assert!(diff.contains("+only one line"));
+    }
+
+    #[test]
+    fn build_synthetic_diff_zero_line_number_skipped() {
+        // Line 0 should be skipped per implementation
+        let changed = BTreeSet::from([0_u32, 1_u32, 2_u32]);
+        let diff = build_synthetic_diff("test.rs", "a\nb\n", &changed);
+        // Should contain lines 1 and 2 but not 0
+        assert!(diff.contains("+a"));
+        assert!(diff.contains("+b"));
+        // Should not contain hunk header for line 0
+        assert!(!diff.contains("@@ -0,0 +0,1 @@"));
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // byte_offset_at_position() edge cases
+    // ─────────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn byte_offset_at_position_start_of_line() {
+        let text = "hello\nworld";
+        // Position (0, 0) is the start of "hello"
+        let offset = byte_offset_at_position(text, Position::new(0, 0));
+        assert_eq!(offset, Some(0));
+    }
+
+    #[test]
+    fn byte_offset_at_position_end_of_line() {
+        let text = "hello\nworld";
+        // Position (0, 5) is after "hello" (at the \n)
+        let offset = byte_offset_at_position(text, Position::new(0, 5));
+        assert_eq!(offset, Some(5));
+    }
+
+    #[test]
+    fn byte_offset_at_position_past_end_of_text() {
+        let text = "hello";
+        // Position (0, 100) is past the end of "hello"
+        let offset = byte_offset_at_position(text, Position::new(0, 100));
+        assert_eq!(offset, None);
+    }
+
+    #[test]
+    fn byte_offset_at_position_nonexistent_line() {
+        let text = "hello\nworld";
+        // Line 99 doesn't exist
+        let offset = byte_offset_at_position(text, Position::new(99, 0));
+        assert_eq!(offset, None);
+    }
+
+    #[test]
+    fn byte_offset_at_position_emoji_two_utf16_units() {
+        // Emoji '🚀' is 1 Rust char but 2 UTF-16 code units
+        // In "a🚀b": 'a'=UTF16:0, emoji first unit=1, emoji second unit=2, 'b'=3
+        let text = "a🚀b";
+        // Position (0, 1) should be at byte 1 ('a' ends, emoji starts)
+        assert_eq!(byte_offset_at_position(text, Position::new(0, 1)), Some(1));
+        // Position (0, 3) should be at byte 5 ('b')
+        assert_eq!(byte_offset_at_position(text, Position::new(0, 3)), Some(5));
+        // Position (0, 2) is in the middle of emoji's surrogate pair — invalid UTF-16
+        assert_eq!(byte_offset_at_position(text, Position::new(0, 2)), None);
+    }
+
+    #[test]
+    fn byte_offset_at_position_last_line_without_newline() {
+        let text = "line1\nline2";
+        // Last line without trailing newline — position at end of "line2"
+        assert_eq!(byte_offset_at_position(text, Position::new(1, 5)), Some(11));
+        // Past the end
+        assert_eq!(byte_offset_at_position(text, Position::new(1, 100)), None);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // utf16_length() edge cases
+    // ─────────────────────────────────────────────────────────────────────────
+
+    #[test]
+    fn utf16_length_ascii_only() {
+        // ASCII chars are 1 UTF-16 code unit each
+        assert_eq!(utf16_length("hello"), 5);
+        assert_eq!(utf16_length(""), 0);
+        assert_eq!(utf16_length("a"), 1);
+    }
+
+    #[test]
+    fn utf16_length_emoji_counts_as_two() {
+        // Emoji '🚀' counts as 2 UTF-16 code units
+        assert_eq!(utf16_length("🚀"), 2);
+        assert_eq!(utf16_length("a🚀b"), 4); // a=1, 🚀=2, b=1
+    }
+
+    #[test]
+    fn utf16_length_mixed_text() {
+        // "hi 🚀" → 'h'=1, 'i'=1, ' '=1, '🚀'=2 = 5
+        assert_eq!(utf16_length("hi 🚀"), 5);
+    }
+
+    #[test]
+    fn utf16_length_cjk_characters() {
+        // CJK characters in BMP are 1 Rust char but 1 UTF-16 code unit
+        assert_eq!(utf16_length("中文"), 2);
     }
 }
