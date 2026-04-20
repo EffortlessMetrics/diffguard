@@ -21,11 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Windows target triple detection for MSYS/MINGW environments
   - Concurrency control on SARIF upload to prevent race conditions across workflow runs
   - Improved error handling with user-visible warning messages for fallback installation paths
+- **`parse_unified_diff` now requires explicit Result handling** — Added `#[must_use]` to `parse_unified_diff` so the compiler warns when callers ignore the `Result`. This prevents silent parse failures where malformed diffs are silently ignored. Callers must now explicitly handle the `Result` or use `let _ = ...` to indicate intentional ignore. Closes #329.
 
 ### Changed
 
 - **Full workspace tests in CI** — `cargo test --workspace` now runs all tests including xtask tests in the CI test job (previously excluded with `--exclude xtask`)
 - **xtask CI job enabled** — The `xtask ci` job (which runs fmt + clippy + test + conform) now executes in CI on pull requests and pushes to main (was previously disabled via `if: false`)
+- **`Suppression::suppresses()` now enforces result handling** — Added `#[must_use]` to `Suppression::suppresses()` so the compiler warns when callers discard the boolean result. This prevents silent suppression failures where writing `suppressor.suppresses(rule_id);` without assigning the result defaults to `false`, incorrectly reporting suppressed findings as active. Closes #476.
 
 ### Added
 
