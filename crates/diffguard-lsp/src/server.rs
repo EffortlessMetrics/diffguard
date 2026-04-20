@@ -161,6 +161,10 @@ impl ServerState {
     }
 }
 
+/// Entry point for the diffguard LSP server.
+///
+/// Takes ownership of a `Connection` (from the `lsp-server` crate) and runs the
+/// main LSP event loop, handling text document sync, diagnostics, and code actions.
 pub fn run_server(connection: Connection) -> Result<()> {
     // Use the lower-level initialize_start/initialize_finish methods
     // to send a custom InitializeResult with server_info.
@@ -909,6 +913,10 @@ fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<Strin
     Ok(combined)
 }
 
+/// Runs `git diff` for a single file with a 10-second timeout.
+///
+/// The timeout prevents the LSP from blocking indefinitely if git hangs.
+/// `staged` controls whether to diff staged changes or the working tree.
 fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Result<String> {
     // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
     const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);

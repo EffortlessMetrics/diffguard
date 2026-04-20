@@ -68,6 +68,10 @@ struct MatchEvent {
     severity: Severity,
 }
 
+/// Evaluates a batch of input lines against the given compiled rules.
+///
+/// This is a convenience wrapper around [`evaluate_lines_with_overrides_and_language`]
+/// that uses no rule overrides and auto-detects languages from file paths.
 pub fn evaluate_lines(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -76,6 +80,7 @@ pub fn evaluate_lines(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, None, None)
 }
 
+/// Evaluates a batch of input lines with rule overrides but auto-detected languages.
 pub fn evaluate_lines_with_overrides(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -85,6 +90,10 @@ pub fn evaluate_lines_with_overrides(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, overrides, None)
 }
 
+/// Evaluates a batch of input lines against compiled rules with full override and language control.
+///
+/// - `overrides`: Optional rule override matcher (e.g., for `diffguard: ignore` directives).
+/// - `force_language`: Override auto-detected language (None = auto-detect from file extension).
 pub fn evaluate_lines_with_overrides_and_language(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -558,11 +567,14 @@ fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
     }
 }
 
+/// Trims a code snippet to at most `MAX_CHARS` (240) characters, appending '…' if truncated.
+///
+/// Avoids slicing by byte indices (which can panic on Unicode boundaries) by iterating
+/// over characters instead.
 fn trim_snippet(s: &str) -> String {
     const MAX_CHARS: usize = 240;
     let trimmed = s.trim_end();
 
-    // Avoid slicing by byte indices (which can panic on Unicode boundaries).
     let mut out = String::new();
     for (i, ch) in trimmed.chars().enumerate() {
         if i >= MAX_CHARS {
