@@ -46,6 +46,10 @@ fn main() -> Result<()> {
     run_with_args(std::env::args_os())
 }
 
+/// Parses CLI arguments and dispatches to the appropriate command handler.
+///
+/// `args` is any iterator of OS string arguments (e.g., from `std::env::args_os()`).
+/// Returns an error if argument parsing fails or if the dispatched command fails.
 fn run_with_args<I, T>(args: I) -> Result<()>
 where
     I: IntoIterator<Item = T>,
@@ -61,6 +65,10 @@ where
     }
 }
 
+/// Runs the full local CI suite: fmt check, clippy with warnings-as-errors,
+/// workspace tests, and quick conformance tests.
+///
+/// Returns an error if any step in the suite fails.
 fn ci() -> Result<()> {
     run("cargo", &["fmt", "--check"])?;
     run(
@@ -79,6 +87,17 @@ fn ci() -> Result<()> {
     Ok(())
 }
 
+/// Generates JSON Schemas for all diffguard types into the specified output directory.
+///
+/// Schema files generated:
+/// - `diffguard.config.schema.json` — `ConfigFile` schema
+/// - `diffguard.check.schema.json` — `CheckReceipt` schema
+/// - `sensor.report.v1.schema.json` — `SensorReport` schema
+/// - `diffguard.false-positive-baseline.v1.schema.json` — `FalsePositiveBaseline` schema
+/// - `diffguard.trend-history.v1.schema.json` — `TrendHistory` schema
+///
+/// Creates the output directory if it does not exist.
+/// Returns an error if directory creation or schema serialization fails.
 fn schema(out_dir: &Path) -> Result<()> {
     std::fs::create_dir_all(out_dir).context("create schema output dir")?;
 
@@ -108,6 +127,11 @@ fn schema(out_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Returns the canonical list of all workspace crates that should be tested
+/// by cargo-mutants.
+///
+/// This list should be kept in sync with the actual workspace members in
+/// `Cargo.toml`. Used as the default when no specific packages are requested.
 fn default_mutants_packages() -> Vec<String> {
     vec![
         "diffguard-analytics".to_string(),
@@ -122,6 +146,11 @@ fn default_mutants_packages() -> Vec<String> {
     ]
 }
 
+/// Runs cargo-mutants across one or more workspace crates.
+///
+/// If `package` is empty, runs against all workspace crates listed in
+/// `default_mutants_packages()`. Otherwise runs only against the specified
+/// packages. Returns an error if any cargo-mutants invocation fails.
 fn mutants(package: Vec<String>) -> Result<()> {
     let packages = if package.is_empty() {
         default_mutants_packages()
@@ -137,12 +166,24 @@ fn mutants(package: Vec<String>) -> Result<()> {
     Ok(())
 }
 
+/// Serializes a value to JSON with pretty-print formatting and writes it to the given path.
+///
+/// Uses `serde_json::to_vec_pretty` to produce human-readable output.
+/// Returns an error if serialization or file write fails.
 fn write_pretty_json(path: &std::path::Path, value: &impl serde::Serialize) -> Result<()> {
     let bytes = serde_json::to_vec_pretty(value).context("serialize json")?;
     std::fs::write(path, bytes).with_context(|| format!("write {}", path.display()))?;
     Ok(())
 }
 
+/// Executes an external command and returns its success status.
+///
+/// `bin` is the name or path of the executable. `args` are the command-line
+/// arguments as string slices.
+///
+/// For `cargo` commands, checks the `DIFFGUARD_XTASK_CARGO` environment variable
+/// first, allowing tests to override the cargo binary path. Returns an error
+/// if the command exits with a non-zero status code.
 fn run(bin: &str, args: &[&str]) -> Result<()> {
     let resolved = if bin == "cargo" {
         std::env::var_os("DIFFGUARD_XTASK_CARGO").unwrap_or_else(|| bin.into())
