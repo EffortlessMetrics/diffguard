@@ -39,6 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `compile_rules`
   - `RuleOverrideMatcher::compile`
   - `run_check`
+  - `render_gitlab_quality_json`
 
 - **`bench` crate for performance benchmarking** — Criterion-based benchmark infrastructure:
   - Parsing benchmarks: measures `parse_unified_diff()` at 0, 100, 1K, 10K, 100K lines
