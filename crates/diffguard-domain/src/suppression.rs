@@ -83,7 +83,6 @@ pub fn parse_suppression(line: &str) -> Option<Suppression> {
 /// for the same line and language. The directive is accepted only if the
 /// directive prefix is fully masked (spaces) in `masked_comments`.
 #[must_use]
-#[allow(clippy::collapsible_if)]
 pub fn parse_suppression_in_comments(line: &str, masked_comments: &str) -> Option<Suppression> {
     if line.len() != masked_comments.len() {
         return None;
@@ -94,8 +93,7 @@ pub fn parse_suppression_in_comments(line: &str, masked_comments: &str) -> Optio
     let masked = masked_comments.as_bytes();
 
     for (idx, _) in lower.match_indices(DIRECTIVE_PREFIX) {
-        let in_comment = masked[idx..idx + needle.len()].iter().all(|b| *b == b' ');
-        if in_comment {
+        if masked[idx..idx + needle.len()].iter().all(|b| *b == b' ') {
             if let Some(suppression) = parse_suppression_at(line, idx) {
                 return Some(suppression);
             }
@@ -253,13 +251,10 @@ impl EffectiveSuppressions {
         let mut result = Self::default();
 
         for s in suppressions {
-            match s.rule_ids {
-                None => {
-                    result.suppress_all = true;
-                }
-                Some(ids) => {
-                    result.suppressed_rules.extend(ids);
-                }
+            if let Some(ids) = s.rule_ids {
+                result.suppressed_rules.extend(ids);
+            } else {
+                result.suppress_all = true;
             }
         }
 

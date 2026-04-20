@@ -1,0 +1,15 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 98
+expression: "lines.join(\"\\n\")"
+---
+# 0 line comment """
+# 1 line comment """
+# 2 line comment """
+# 3 line comment """
+# 4 line comment """
+# 5 line comment """
+# 6 line comment """
+# 7 line comment """
+# 8 line comment """
+# 9 line comment """

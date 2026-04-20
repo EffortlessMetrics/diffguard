@@ -10,11 +10,10 @@
 //! 4. Suppression::suppresses() return value consumption (#[must_use] verification)
 
 use diffguard_domain::{
-    suppression::{
-        parse_suppression, parse_suppression_in_comments, SuppressionKind,
-        SuppressionTracker,
-    },
     Language, PreprocessOptions, Preprocessor,
+    suppression::{
+        SuppressionKind, SuppressionTracker, parse_suppression, parse_suppression_in_comments,
+    },
 };
 
 /// Helper: get masked comments for a line in a given language.
@@ -153,7 +152,10 @@ fn test_suppression_tracker_multiple_consecutive_directives() {
     let line4 = "let c = z.unwrap();";
     let masked4 = masked_comments(line4, lang);
     let eff4 = tracker.process_line(line4, &masked4);
-    assert!(!eff4.is_suppressed("rust.no_unwrap"), "pending directive should be consumed");
+    assert!(
+        !eff4.is_suppressed("rust.no_unwrap"),
+        "pending directive should be consumed"
+    );
 }
 
 /// Test: Wildcard suppression with #[must_use] on suppresses()
@@ -216,7 +218,8 @@ fn test_case_insensitive_directive_with_suppresses() {
     ];
 
     for line in cases {
-        let suppression = parse_suppression(line).expect(&format!("should parse: {}", line));
+        let suppression =
+            parse_suppression(line).unwrap_or_else(|| panic!("should parse: {}", line));
         // The #[must_use] return value should be consumed correctly
         let suppressed = suppression.suppresses("rule1");
         assert!(
@@ -241,7 +244,8 @@ fn test_suppression_kind_variants() {
     let same_line = "// diffguard: ignore rust.no_unwrap";
     let suppression = parse_suppression(same_line).expect("should parse");
     assert_eq!(
-        suppression.kind, SuppressionKind::SameLine,
+        suppression.kind,
+        SuppressionKind::SameLine,
         "should be SameLine suppression"
     );
     assert!(suppression.suppresses("rust.no_unwrap"));
@@ -250,7 +254,8 @@ fn test_suppression_kind_variants() {
     let next_line = "// diffguard: ignore-next-line rust.no_unwrap";
     let suppression = parse_suppression(next_line).expect("should parse");
     assert_eq!(
-        suppression.kind, SuppressionKind::NextLine,
+        suppression.kind,
+        SuppressionKind::NextLine,
         "should be NextLine suppression"
     );
     assert!(suppression.suppresses("rust.no_unwrap"));

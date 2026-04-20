@@ -1,0 +1,6 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 30
+expression: result
+---
+

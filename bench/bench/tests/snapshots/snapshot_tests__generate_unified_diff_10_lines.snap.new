@@ -1,0 +1,20 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 42
+expression: result
+---
+diff --git a/src/lib.rs b/src/lib.rs
+index 1234567..abcdefg 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,10 +1,10 @@
++line 1 content here with some padding to simulate real code
++line 2 content here with some padding to simulate real code
++line 3 content here with some padding to simulate real code
++line 4 content here with some padding to simulate real code
++line 5 content here with some padding to simulate real code
++line 6 content here with some padding to simulate real code
++line 7 content here with some padding to simulate real code
++line 8 content here with some padding to simulate real code
++line 9 content here with some padding to simulate real code
++line 10 content here with some padding to simulate real code
