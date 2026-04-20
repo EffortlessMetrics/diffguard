@@ -169,7 +169,7 @@ fn rust_no_unwrap_has_positive_test_case() {
     let test_cases = extract_test_cases(&rule_block);
 
     // Find a positive test case (should_match = true and input contains .unwrap() or .expect())
-    let has_positive_case = test_cases.iter().any(|(desc, input, should_match)| {
+    let has_positive_case = test_cases.iter().any(|(_desc, input, should_match)| {
         *should_match && (input.contains(".unwrap()") || input.contains(".expect()"))
     });
 
@@ -202,7 +202,7 @@ fn rust_no_unwrap_has_negative_test_case() {
 
     // Find a negative test case (should_match = false and input does NOT contain .unwrap() or .expect())
     // CORRECTION: We check ONLY the negative test case's input, not the entire block!
-    let has_negative_case = test_cases.iter().any(|(desc, input, should_match)| {
+    let has_negative_case = test_cases.iter().any(|(_desc, input, should_match)| {
         !*should_match && !input.contains(".unwrap()") && !input.contains(".expect()")
     });
 
