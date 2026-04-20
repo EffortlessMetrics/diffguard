@@ -49,6 +49,27 @@ pub struct FalsePositiveEntry {
     pub note: Option<String>,
 }
 
+impl FalsePositiveEntry {
+    /// Fills empty fields from `other`, preferring `other`'s values for unset fields.
+    ///
+    /// This is used during baseline merging to preserve manually curated metadata
+    /// while filling in missing information from the new baseline.
+    fn fill_from(&mut self, other: &FalsePositiveEntry) {
+        if self.note.is_none() && other.note.is_some() {
+            self.note = other.note.clone();
+        }
+        if self.rule_id.is_empty() {
+            self.rule_id = other.rule_id.clone();
+        }
+        if self.path.is_empty() {
+            self.path = other.path.clone();
+        }
+        if self.line == 0 {
+            self.line = other.line;
+        }
+    }
+}
+
 /// Deterministically normalizes a false-positive baseline:
 /// - ensures schema id is set
 /// - sorts entries
@@ -132,19 +153,7 @@ pub fn merge_false_positive_baselines(
             .iter_mut()
             .find(|e| e.fingerprint == entry.fingerprint)
         {
-            // Preserve manually curated metadata from the existing baseline.
-            if existing.note.is_none() && entry.note.is_some() {
-                existing.note = entry.note.clone();
-            }
-            if existing.rule_id.is_empty() {
-                existing.rule_id = entry.rule_id.clone();
-            }
-            if existing.path.is_empty() {
-                existing.path = entry.path.clone();
-            }
-            if existing.line == 0 {
-                existing.line = entry.line;
-            }
+            existing.fill_from(entry);
         }
     }
 
