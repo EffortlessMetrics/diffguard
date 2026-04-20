@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use anyhow::{Context, Result, bail};
 use lsp_types::{Position, TextDocumentContentChangeEvent};
 
+#[must_use]
 pub fn split_lines(text: &str) -> Vec<&str> {
     if text.is_empty() {
         Vec::new()
