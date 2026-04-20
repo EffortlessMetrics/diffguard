@@ -123,7 +123,11 @@ fn rust_no_unwrap_rule_has_tags_safety() {
         rule_block.contains("tags = [\"safety\"]"),
         "diffguard.toml.example rust.no_unwrap rule is MISSING `tags = [\"safety\"]`.\n\n\
         Expected: The rust.no_unwrap rule block should contain `tags = [\"safety\"]`\n        to demonstrate the tags feature and be consistent with built_in.json (line 30).\n\n\
+<<<<<<< Updated upstream
         Actual: The rust.no_unwrap rule block does not contain `tags = [\"safety\"]`."
+=======
+        Actual: The rust.no_unwrap rule block does not contain `tags = [\"safety\"]`.",
+>>>>>>> Stashed changes
     );
 }
 
@@ -146,7 +150,11 @@ fn rust_no_unwrap_rule_has_test_cases_blocks() {
     assert!(
         rule_block.contains("[[rule.test_cases]]"),
         "diffguard.toml.example rust.no_unwrap rule is MISSING `[[rule.test_cases]]` blocks.\n\n\
+<<<<<<< Updated upstream
         Expected: The rust.no_unwrap rule should contain at least one `[[rule.test_cases]]`\n        block to demonstrate the test_cases feature for `diff test` command."
+=======
+        Expected: The rust.no_unwrap rule should contain at least one `[[rule.test_cases]]`\n        block to demonstrate the test_cases feature for `diff test` command.",
+>>>>>>> Stashed changes
     );
 }
 
