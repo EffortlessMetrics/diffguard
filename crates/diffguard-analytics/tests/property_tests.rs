@@ -11,16 +11,15 @@
 //! 5. Serialization round-trip: no data loss
 
 use diffguard_analytics::{
-    FalsePositiveBaseline, FalsePositiveEntry, TrendHistory, TrendRun,
-    append_trend_run, baseline_from_receipt, false_positive_fingerprint_set,
-    fingerprint_for_finding, merge_false_positive_baselines,
-    normalize_false_positive_baseline, normalize_trend_history,
-    summarize_trend_history, trend_run_from_receipt,
-    FALSE_POSITIVE_BASELINE_SCHEMA_V1, TREND_HISTORY_SCHEMA_V1,
+    FALSE_POSITIVE_BASELINE_SCHEMA_V1, FalsePositiveBaseline, FalsePositiveEntry,
+    TREND_HISTORY_SCHEMA_V1, TrendHistory, TrendRun, append_trend_run, baseline_from_receipt,
+    false_positive_fingerprint_set, fingerprint_for_finding, merge_false_positive_baselines,
+    normalize_false_positive_baseline, normalize_trend_history, summarize_trend_history,
+    trend_run_from_receipt,
 };
 use diffguard_types::{
-    CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
-    VerdictCounts, VerdictStatus, CHECK_SCHEMA_V1,
+    CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
+    VerdictCounts, VerdictStatus,
 };
 use proptest::prelude::*;
 
@@ -30,17 +29,30 @@ use proptest::prelude::*;
 
 /// Strategy for generating valid Severity values.
 fn arb_severity() -> impl Strategy<Value = Severity> {
-    prop_oneof![Just(Severity::Info), Just(Severity::Warn), Just(Severity::Error),]
+    prop_oneof![
+        Just(Severity::Info),
+        Just(Severity::Warn),
+        Just(Severity::Error),
+    ]
 }
 
 /// Strategy for generating valid Scope values.
 fn arb_scope() -> impl Strategy<Value = Scope> {
-    prop_oneof![Just(Scope::Added), Just(Scope::Changed), Just(Scope::Modified), Just(Scope::Deleted),]
+    prop_oneof![
+        Just(Scope::Added),
+        Just(Scope::Changed),
+        Just(Scope::Modified),
+        Just(Scope::Deleted),
+    ]
 }
 
 /// Strategy for generating valid VerdictStatus values.
 fn arb_verdict_status() -> impl Strategy<Value = VerdictStatus> {
-    prop_oneof![Just(VerdictStatus::Pass), Just(VerdictStatus::Warn), Just(VerdictStatus::Fail),]
+    prop_oneof![
+        Just(VerdictStatus::Pass),
+        Just(VerdictStatus::Warn),
+        Just(VerdictStatus::Fail),
+    ]
 }
 
 /// Strategy for generating non-empty strings (for required fields).
@@ -55,10 +67,8 @@ fn arb_string() -> impl Strategy<Value = String> {
 
 /// Strategy for generating valid ToolMeta.
 fn arb_tool_meta() -> impl Strategy<Value = ToolMeta> {
-    (arb_non_empty_string(), arb_non_empty_string()).prop_map(|(name, version)| ToolMeta {
-        name,
-        version,
-    })
+    (arb_non_empty_string(), arb_non_empty_string())
+        .prop_map(|(name, version)| ToolMeta { name, version })
 }
 
 /// Strategy for generating valid DiffMeta.
@@ -71,14 +81,16 @@ fn arb_diff_meta() -> impl Strategy<Value = DiffMeta> {
         0u64..1000,             // files_scanned
         0u32..10000,            // lines_scanned
     )
-        .prop_map(|(base, head, context_lines, scope, files_scanned, lines_scanned)| DiffMeta {
-            base,
-            head,
-            context_lines,
-            scope,
-            files_scanned,
-            lines_scanned,
-        })
+        .prop_map(
+            |(base, head, context_lines, scope, files_scanned, lines_scanned)| DiffMeta {
+                base,
+                head,
+                context_lines,
+                scope,
+                files_scanned,
+                lines_scanned,
+            },
+        )
 }
 
 /// Strategy for generating valid Finding.
@@ -154,19 +166,21 @@ fn arb_check_receipt() -> impl Strategy<Value = CheckReceipt> {
 /// Strategy for generating valid FalsePositiveEntry.
 fn arb_false_positive_entry() -> impl Strategy<Value = FalsePositiveEntry> {
     (
-        arb_string(),                 // fingerprint
-        arb_string(),                 // rule_id (can be empty per merge logic)
-        arb_string(),                 // path (can be empty per merge logic)
-        0u32..1000,                   // line (0 allowed per merge logic)
+        arb_string(),                   // fingerprint
+        arb_string(),                   // rule_id (can be empty per merge logic)
+        arb_string(),                   // path (can be empty per merge logic)
+        0u32..1000,                     // line (0 allowed per merge logic)
         prop::option::of(arb_string()), // note
     )
-        .prop_map(|(fingerprint, rule_id, path, line, note)| FalsePositiveEntry {
-            fingerprint,
-            rule_id,
-            path,
-            line,
-            note,
-        })
+        .prop_map(
+            |(fingerprint, rule_id, path, line, note)| FalsePositiveEntry {
+                fingerprint,
+                rule_id,
+                path,
+                line,
+                note,
+            },
+        )
 }
 
 /// Strategy for generating valid FalsePositiveBaseline.
@@ -182,20 +196,32 @@ fn arb_false_positive_baseline() -> impl Strategy<Value = FalsePositiveBaseline>
 /// Strategy for generating valid TrendRun.
 fn arb_trend_run() -> impl Strategy<Value = TrendRun> {
     (
-        arb_string(),      // started_at
-        arb_string(),      // ended_at
-        0u64..1_000_000,   // duration_ms
-        arb_string(),      // base
-        arb_string(),      // head
-        arb_scope(),       // scope
+        arb_string(),         // started_at
+        arb_string(),         // ended_at
+        0u64..1_000_000,      // duration_ms
+        arb_string(),         // base
+        arb_string(),         // head
+        arb_scope(),          // scope
         arb_verdict_status(), // status
         arb_verdict_counts(), // counts
-        0u64..1000,        // files_scanned
-        0u32..10000,      // lines_scanned
-        0u32..1000,       // findings
+        0u64..1000,           // files_scanned
+        0u32..10000,          // lines_scanned
+        0u32..1000,           // findings
     )
         .prop_map(
-            |(started_at, ended_at, duration_ms, base, head, scope, status, counts, files_scanned, lines_scanned, findings)| {
+            |(
+                started_at,
+                ended_at,
+                duration_ms,
+                base,
+                head,
+                scope,
+                status,
+                counts,
+                files_scanned,
+                lines_scanned,
+                findings,
+            )| {
                 TrendRun {
                     started_at,
                     ended_at,
@@ -284,7 +310,7 @@ proptest! {
         let fp2 = fingerprint_for_finding(&finding);
         let fp_len = fp1.len();
         prop_assert_eq!(
-            fp1, fp2,
+            fp1, fp2.clone(),
             "Same finding should produce same fingerprint"
         );
         prop_assert_eq!(
@@ -490,7 +516,7 @@ proptest! {
     fn summarize_totals_match_sum(history in arb_trend_history()) {
         let summary = summarize_trend_history(&history);
 
-        let expected_totals = VerdictCounts {
+        let _expected_totals = VerdictCounts {
             info: history.runs.iter().map(|r| r.counts.info).sum(),
             warn: history.runs.iter().map(|r| r.counts.warn).sum(),
             error: history.runs.iter().map(|r| r.counts.error).sum(),
@@ -533,7 +559,7 @@ proptest! {
     fn summarize_total_findings_matches_sum(history in arb_trend_history()) {
         let summary = summarize_trend_history(&history);
 
-        let expected_total_findings: u32 = history.runs.iter().map(|r| r.findings).sum();
+        let _expected_total_findings: u32 = history.runs.iter().map(|r| r.findings).sum();
 
         // Use saturating_add to match implementation behavior
         let actual_total_findings: u32 = history.runs.iter()
@@ -707,7 +733,7 @@ proptest! {
     #[test]
     fn normalize_baseline_preserves_unique_entries(baseline in arb_false_positive_baseline()) {
         // Count unique fingerprints before
-        let mut unique_fps: std::collections::BTreeSet<_> = baseline
+        let unique_fps: std::collections::BTreeSet<_> = baseline
             .entries
             .iter()
             .map(|e| e.fingerprint.clone())
@@ -921,9 +947,9 @@ fn test_summarize_two_runs_has_delta() {
     assert_eq!(summary.run_count, 2);
 
     let delta = summary.delta_from_previous.expect("Should have delta");
-    assert_eq!(delta.findings, 5);      // 10 - 5
-    assert_eq!(delta.info, 1);          // 2 - 1
-    assert_eq!(delta.warn, 1);          // 3 - 2
-    assert_eq!(delta.error, 2);         // 5 - 3
-    assert_eq!(delta.suppressed, 2);    // 6 - 4
+    assert_eq!(delta.findings, 5); // 10 - 5
+    assert_eq!(delta.info, 1); // 2 - 1
+    assert_eq!(delta.warn, 1); // 3 - 2
+    assert_eq!(delta.error, 2); // 5 - 3
+    assert_eq!(delta.suppressed, 2); // 6 - 4
 }
