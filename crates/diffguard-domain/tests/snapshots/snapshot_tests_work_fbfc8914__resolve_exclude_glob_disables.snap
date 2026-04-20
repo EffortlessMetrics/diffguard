@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_fbfc8914.rs
+expression: full_snapshot
+---
+excluded: ResolvedRuleOverride { enabled: false, severity: None }
+not_excluded: ResolvedRuleOverride { enabled: true, severity: None }

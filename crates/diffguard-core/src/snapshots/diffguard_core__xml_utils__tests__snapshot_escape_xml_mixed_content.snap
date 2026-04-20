@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-core/src/xml_utils.rs
+expression: result
+---
+&lt;tag attr=&quot;value&amp;more&quot;&gt;text&lt;/tag&gt;

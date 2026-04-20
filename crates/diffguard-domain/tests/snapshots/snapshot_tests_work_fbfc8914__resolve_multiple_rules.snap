@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_fbfc8914.rs
+expression: full_snapshot
+---
+rust_rule: ResolvedRuleOverride { enabled: false, severity: None }
+python_rule: ResolvedRuleOverride { enabled: false, severity: None }

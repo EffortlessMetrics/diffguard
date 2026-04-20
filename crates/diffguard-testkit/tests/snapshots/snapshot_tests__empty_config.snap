@@ -1,0 +1,15 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "defaults": {
+    "base": "origin/main",
+    "diff_context": 0,
+    "fail_on": "error",
+    "head": "HEAD",
+    "max_findings": 200,
+    "scope": "added"
+  },
+  "rule": []
+}

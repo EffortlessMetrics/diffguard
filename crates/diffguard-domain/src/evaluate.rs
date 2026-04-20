@@ -352,13 +352,12 @@ pub fn evaluate_lines_with_overrides_and_language(
         if findings.len() < max_findings {
             // Convert byte offset to 1-based column number.
             // byte_to_column returns char count (not byte count) for correct Unicode handling.
-            // The try_from+u32::MAX cast converts usize column to u32 for storage in Finding.
-            // NOTE: When byte_to_column returns a value > u32::MAX (requires >4GB line),
-            // this silently becomes None instead of clamping. See byte_to_column docs.
+            // Clamp usize column to u32::MAX to avoid silent truncation for extremely long lines
+            // (>4GB of text in a single line would exceed u32::MAX character count).
             let column = event
                 .match_start
                 .and_then(|start| byte_to_column(&prepared.line.content, start))
-                .and_then(|c| u32::try_from(c).ok());
+                .map(|c| c.min(u32::MAX as usize) as u32);
             findings.push(Finding {
                 rule_id: rule.id.clone(),
                 severity: event.severity,
