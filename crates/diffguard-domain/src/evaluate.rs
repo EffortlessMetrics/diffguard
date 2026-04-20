@@ -7,17 +7,32 @@ use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
 use crate::rules::{CompiledRule, detect_language};
 use crate::suppression::SuppressionTracker;
 
+/// A single line of input from a diff.
+///
+/// `InputLine` represents one line from the diff being scanned. It contains
+/// the file path, line number (1-indexed in the new version), and the
+/// raw line content.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InputLine {
+    /// Path to the file this line belongs to.
     pub path: String,
+    /// Line number in the new version of the file (1-indexed).
     pub line: u32,
+    /// Raw content of this line (excluding trailing newline).
     pub content: String,
 }
 
+/// The result of evaluating a set of rules against a set of diff lines.
+///
+/// `Evaluation` contains all findings matched by the rules, along with
+/// aggregated statistics about the scan.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Evaluation {
+    /// All findings matched by the rules, sorted by file path, line, then column.
     pub findings: Vec<Finding>,
+    /// Aggregated counts of findings by severity level.
     pub counts: VerdictCounts,
+    /// Number of findings that were suppressed because `max_findings` was reached.
     pub truncated_findings: u32,
     /// Number of distinct files that were scanned.
     ///
@@ -26,19 +41,31 @@ pub struct Evaluation {
     /// The previous `u32` cast would silently truncate, producing incorrect
     /// (often zero) counts for very large codebases.
     pub files_scanned: u64,
+    /// Total number of lines scanned across all files.
     pub lines_scanned: u32,
     /// Aggregated per-rule hit counts (deterministically sorted by rule ID).
     pub rule_hits: Vec<RuleHitStat>,
 }
 
+/// Per-rule hit statistics for a single rule.
+///
+/// `RuleHitStat` tracks how many times a rule was matched, emitted,
+/// suppressed, and broken down by severity level.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuleHitStat {
+    /// The rule ID these stats apply to.
     pub rule_id: String,
+    /// Total number of times this rule was matched (before suppression checks).
     pub total: u32,
+    /// Number of findings actually emitted (not suppressed).
     pub emitted: u32,
+    /// Number of matches suppressed by inline suppression directives.
     pub suppressed: u32,
+    /// Number of emitted findings with `Severity::Info`.
     pub info: u32,
+    /// Number of emitted findings with `Severity::Warn`.
     pub warn: u32,
+    /// Number of emitted findings with `Severity::Error`.
     pub error: u32,
 }
 
@@ -70,6 +97,20 @@ struct MatchEvent {
     severity: Severity,
 }
 
+/// Evaluate `lines` against `rules` and return all findings.
+///
+/// This is the simplest entry point for evaluating diff lines against rules.
+/// It uses default settings with no rule overrides or forced language detection.
+///
+/// # Arguments
+///
+/// * `lines` - Iterator of input lines to evaluate
+/// * `rules` - Compiled rules to match against
+/// * `max_findings` - Maximum number of findings to collect before truncating
+///
+/// # Returns
+///
+/// `Evaluation` containing all findings and aggregated statistics
 pub fn evaluate_lines(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -78,6 +119,10 @@ pub fn evaluate_lines(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, None, None)
 }
 
+/// Evaluate `lines` against `rules` with directory-based rule overrides.
+///
+/// This variant allows passing a `RuleOverrideMatcher` to modify rule behavior
+/// based on the directory containing the file being scanned.
 pub fn evaluate_lines_with_overrides(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -87,6 +132,19 @@ pub fn evaluate_lines_with_overrides(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, overrides, None)
 }
 
+/// Evaluate `lines` against `rules` with optional overrides and forced language.
+///
+/// This is the most general entry point for evaluating diff lines. It supports:
+/// - Directory-based rule overrides via `RuleOverrideMatcher`
+/// - Forced language detection for files with unknown extensions
+///
+/// # Arguments
+///
+/// * `lines` - Iterator of input lines to evaluate
+/// * `rules` - Compiled rules to match against
+/// * `max_findings` - Maximum number of findings to collect before truncating
+/// * `overrides` - Optional rule override matcher for directory-based configuration
+/// * `force_language` - Optional language to force for all files (overrides detection)
 pub fn evaluate_lines_with_overrides_and_language(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -333,6 +391,18 @@ pub fn evaluate_lines_with_overrides_and_language(
     }
 }
 
+/// Resolve which rules are active after applying dependency gating.
+///
+/// Rules that `depends_on` another rule are only active if that dependency
+/// also matched at least one line. This is a fixed-point iteration: we start
+/// with all rules that matched, then iteratively remove rules whose
+/// dependencies are not in the active set. The process converges when no
+/// more rules are removed in an iteration.
+///
+/// # Arguments
+///
+/// * `rules` - All compiled rules
+/// * `per_rule_events` - Match events for each rule (empty = no matches)
 fn resolve_dependency_gated_rule_ids(
     rules: &[CompiledRule],
     per_rule_events: &[Vec<MatchEvent>],
@@ -374,6 +444,11 @@ fn resolve_dependency_gated_rule_ids(
     active_rule_ids
 }
 
+/// Find all positive matches for a rule across a single file's lines.
+///
+/// Returns raw match events for all lines that match the rule's patterns.
+/// If the rule has context patterns, filters events to only those with
+/// required context nearby.
 fn find_positive_matches_for_rule(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -394,6 +469,10 @@ fn find_positive_matches_for_rule(
     events
 }
 
+/// Find all single-line matches for a rule.
+///
+/// Scans each line individually (no cross-line matching). For each line,
+/// extracts the matched text and its byte offsets within the original line.
 fn find_single_line_matches(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -415,6 +494,17 @@ fn find_single_line_matches(
     out
 }
 
+/// Find all multiline matches for a rule across consecutive lines.
+///
+/// For each starting position, joins `multiline_window` consecutive lines
+/// into a single candidate string and runs the pattern match on it.
+/// Uses offset tracking to convert the joined-string byte position back
+/// to the corresponding per-line byte position in the anchor line.
+///
+/// # Deduplication
+///
+/// Uses a BTreeSet of `(anchor_file_pos, start_in_line, match_text)` to
+/// avoid reporting the same match twice when different windows overlap.
 fn find_multiline_matches(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -484,6 +574,11 @@ fn find_multiline_matches(
     out
 }
 
+/// Check if a match has the required context patterns nearby.
+///
+/// Looks for context patterns within `context_window` lines before and after
+/// the anchor line. Returns `true` if any context pattern matches (or if the
+/// rule has no context patterns). The anchor line itself is not checked.
 fn has_required_context(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -506,6 +601,11 @@ fn has_required_context(
     false
 }
 
+/// Potentially escalate the severity of a match based on context patterns.
+///
+/// If the rule has `escalate_patterns`, searches within `escalate_window` lines
+/// of the anchor for any escalate pattern. If found, escalates to either the
+/// rule's configured `escalate_to` severity or `Error` as default.
 fn maybe_escalate_severity(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -532,6 +632,11 @@ fn maybe_escalate_severity(
     max_severity(base, target)
 }
 
+/// Select the appropriate preprocessed line for rule matching.
+///
+/// Depending on the rule's `ignore_comments` and `ignore_strings` flags,
+/// returns either the original line content or one of the masked variants
+/// (comments masked, strings masked, or both masked).
 fn candidate_line_for_rule<'a>(rule: &CompiledRule, line: &'a PreparedLine) -> &'a str {
     match (rule.ignore_comments, rule.ignore_strings) {
         (true, true) => line.masked_both.as_str(),
@@ -541,6 +646,10 @@ fn candidate_line_for_rule<'a>(rule: &CompiledRule, line: &'a PreparedLine) -> &
     }
 }
 
+/// Return the higher of two severities.
+///
+/// Used when escalating severity: takes the maximum of the base severity
+/// and the escalation target. Error > Warn > Info.
 fn max_severity(a: Severity, b: Severity) -> Severity {
     fn rank(s: Severity) -> u8 {
         match s {
@@ -553,6 +662,10 @@ fn max_severity(a: Severity, b: Severity) -> Severity {
     if rank(a) >= rank(b) { a } else { b }
 }
 
+/// Find the first match of any pattern in a string.
+///
+/// Iterates through the patterns in order, returning the start and end
+/// byte positions of the first match found. Returns `None` if no pattern matches.
 fn first_match(patterns: &[regex::Regex], s: &str) -> Option<(usize, usize)> {
     for p in patterns {
         if let Some(m) = p.find(s) {
@@ -562,6 +675,9 @@ fn first_match(patterns: &[regex::Regex], s: &str) -> Option<(usize, usize)> {
     None
 }
 
+/// Increment the appropriate severity counter in `VerdictCounts`.
+///
+/// Adds 1 to the counter corresponding to the given severity level.
 fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
     match severity {
         Severity::Info => counts.info = counts.info.saturating_add(1),
@@ -570,6 +686,23 @@ fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
     }
 }
 
+/// Extract and truncate a snippet from a string using bounded match positions.
+///
+/// First extracts the bounded region `[start, end)` using `safe_slice`, then
+/// applies 240-character truncation with ellipsis if the bounded region exceeds
+/// that limit. This ensures the snippet represents the actual matched region,
+/// not just the first N characters of the line.
+///
+/// # Arguments
+///
+/// * `s` - The full line content
+/// * `start` - Byte offset where the match begins
+/// * `end` - Byte offset where the match ends
+///
+/// # Returns
+///
+/// The bounded match text, truncated to 240 chars with ellipsis if needed.
+/// If `start >= end`, returns an empty string.
 fn trim_snippet(s: &str, start: usize, end: usize) -> String {
     const MAX_CHARS: usize = 240;
 
@@ -591,12 +724,20 @@ fn trim_snippet(s: &str, start: usize, end: usize) -> String {
     out
 }
 
+/// Safely extract a substring slice with bounds checking.
+///
+/// Clamps `start` and `end` to valid string bounds and returns the substring.
+/// Never panics; returns an empty string if the bounds are invalid.
 fn safe_slice(s: &str, start: usize, end: usize) -> String {
     let end = end.min(s.len());
     let start = start.min(end);
     s.get(start..end).unwrap_or("").to_string()
 }
 
+/// Convert a byte index to a 1-based column number.
+///
+/// Counts the UTF-8 characters up to `byte_idx` and returns the column number.
+/// Returns `None` if `byte_idx` exceeds the string length.
 fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
     if byte_idx > s.len() {
         return None;
