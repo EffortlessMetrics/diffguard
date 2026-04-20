@@ -28,3 +28,6 @@ mod multiple_file_types;
 
 #[path = "integration/directory_overrides.rs"]
 mod directory_overrides;
+
+#[path = "integration/markdown_escaping.rs"]
+mod markdown_escaping;

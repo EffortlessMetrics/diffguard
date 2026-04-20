@@ -76,10 +76,7 @@ impl DiffInput {
             out.push_str(&format!("diff --git a/{} b/{}\n", path, path));
 
             if file.is_binary {
-                out.push_str(&format!(
-                    "Binary files a/{} and b/{} differ\n",
-                    path, path
-                ));
+                out.push_str(&format!("Binary files a/{} and b/{} differ\n", path, path));
                 continue;
             }
 
