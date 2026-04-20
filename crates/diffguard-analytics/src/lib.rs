@@ -42,6 +42,7 @@ pub struct FalsePositiveEntry {
 /// - ensures schema id is set
 /// - sorts entries
 /// - deduplicates by fingerprint
+/// # Panics: Does not panic.
 #[must_use]
 pub fn normalize_false_positive_baseline(
     mut baseline: FalsePositiveBaseline,
@@ -65,6 +66,7 @@ pub fn normalize_false_positive_baseline(
 /// Computes the stable finding fingerprint used for baseline tracking.
 ///
 /// Format: SHA-256 of `rule_id:path:line:match_text`.
+/// # Panics: Does not panic.
 #[must_use]
 pub fn fingerprint_for_finding(finding: &Finding) -> String {
     let input = format!(
@@ -76,6 +78,7 @@ pub fn fingerprint_for_finding(finding: &Finding) -> String {
 }
 
 /// Builds a baseline from receipt findings.
+/// # Panics: Does not panic.
 #[must_use]
 pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
     let mut baseline = FalsePositiveBaseline {
@@ -97,6 +100,8 @@ pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
 }
 
 /// Merges two baselines (union by fingerprint), preferring existing entries in `base`.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn merge_false_positive_baselines(
     base: &FalsePositiveBaseline,
     incoming: &FalsePositiveBaseline,
@@ -136,6 +141,8 @@ pub fn merge_false_positive_baselines(
 }
 
 /// Returns the baseline as a fingerprint set for fast lookup.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
     baseline
         .entries
@@ -200,6 +207,8 @@ pub struct TrendDelta {
 }
 
 /// Deterministically normalizes trend history by setting schema id when missing.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn normalize_trend_history(mut history: TrendHistory) -> TrendHistory {
     if history.schema.is_empty() {
         history.schema = TREND_HISTORY_SCHEMA_V1.to_string();
@@ -208,6 +217,8 @@ pub fn normalize_trend_history(mut history: TrendHistory) -> TrendHistory {
 }
 
 /// Converts a check receipt into a trend run sample.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn trend_run_from_receipt(
     receipt: &CheckReceipt,
     started_at: &str,
@@ -230,6 +241,8 @@ pub fn trend_run_from_receipt(
 }
 
 /// Appends a run to history and optionally trims to `max_runs` newest entries.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn append_trend_run(
     mut history: TrendHistory,
     run: TrendRun,
@@ -250,6 +263,8 @@ pub fn append_trend_run(
 }
 
 /// Summarizes trend history totals and latest delta.
+/// # Panics: Does not panic.
+#[must_use]
 pub fn summarize_trend_history(history: &TrendHistory) -> TrendSummary {
     let mut totals = VerdictCounts::default();
     let mut total_findings = 0u32;
