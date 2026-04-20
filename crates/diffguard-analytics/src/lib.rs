@@ -225,7 +225,7 @@ pub fn trend_run_from_receipt(
         counts: receipt.verdict.counts.clone(),
         files_scanned: receipt.diff.files_scanned,
         lines_scanned: receipt.diff.lines_scanned,
-        findings: receipt.findings.len().min(u32::MAX as usize) as u32,
+        findings: receipt.findings.len() as u32,
     }
 }
 
@@ -278,7 +278,7 @@ pub fn summarize_trend_history(history: &TrendHistory) -> TrendSummary {
     };
 
     TrendSummary {
-        run_count: history.runs.len().min(u32::MAX as usize) as u32,
+        run_count: history.runs.len() as u32,
         totals,
         total_findings,
         latest,
