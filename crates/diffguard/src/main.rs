@@ -998,14 +998,14 @@ fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
         if p.exists() { Some(p) } else { None }
     });
 
-    all_pass &= validate_config_for_doctor(&config_path, args.config.is_some());
+    all_pass &= validate_config_for_doctor(config_path.as_ref(), args.config.is_some());
 
     if all_pass { Ok(0) } else { Ok(1) }
 }
 
 /// Validate config file for the doctor command.
 /// Returns true if the config check passes (or no config is expected).
-fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bool) -> bool {
+fn validate_config_for_doctor(config_path: Option<&PathBuf>, explicit_config: bool) -> bool {
     let Some(path) = config_path else {
         // Explicit --config pointing to missing file
         if explicit_config {
