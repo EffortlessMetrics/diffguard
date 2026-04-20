@@ -152,23 +152,39 @@ pub struct DirectoryRuleOverride {
     pub exclude_paths: Vec<String>,
 }
 
+/// Errors that can occur when compiling directory rule overrides.
 #[derive(Debug, thiserror::Error)]
 pub enum OverrideCompileError {
+    /// Returned when an exclude glob pattern is invalid.
     #[error("rule override '{rule_id}' in '{directory}' has invalid glob '{glob}': {source}")]
     InvalidGlob {
+        /// The rule ID that owns this glob.
         rule_id: String,
+        /// The directory where the override is applied.
         directory: String,
+        /// The invalid glob pattern.
         glob: String,
+        /// The underlying glob parsing error.
         source: globset::Error,
     },
 }
 
+/// A compiled representation of a directory rule override.
+///
+/// This is the internal form after parsing and compiling the glob patterns
+/// from `DirectoryRuleOverride`. The entries are sorted by depth so that
+/// overrides are applied from shallowest to deepest directory.
 #[derive(Debug, Clone)]
 struct CompiledDirectoryRuleOverride {
+    /// The directory path (repo-relative, normalized).
     directory: String,
+    /// The directory depth (number of path segments). Used for sorting.
     depth: usize,
+    /// Whether this override enables or disables the rule.
     enabled: Option<bool>,
+    /// Optional severity override for matching files.
     severity: Option<Severity>,
+    /// Compiled glob set for exclude patterns, scoped to this directory.
     exclude: Option<GlobSet>,
 }
 
@@ -244,28 +260,40 @@ impl RuleOverrideMatcher {
     }
 
     /// Resolve the effective override for a specific path and rule id.
+    ///
+    /// Uses an LRU cache to avoid re-computing results for the same `(path, rule_id)`
+    /// pair within a session. Cache hits return immediately; cache misses compute
+    /// the result and store it for future use.
+    ///
+    /// Override matching is depth-first: overrides are applied from shallowest
+    /// to deepest directory, allowing child directories to refine parent behavior.
     #[must_use]
     #[allow(clippy::collapsible_if)]
     pub fn resolve(&self, path: &str, rule_id: &str) -> ResolvedRuleOverride {
+        // Compose the cache key from path and rule_id strings.
+        // Using a tuple of owned Strings allows HashMap lookup.
         let cache_key = (path.to_string(), rule_id.to_string());
 
-        // Fast path: check cache first (RefCell provides interior mutability)
+        // Fast path: check cache first using interior mutability (RefCell).
+        // The `&&` let chain checks cache existence AND attempts lookup.
         if let Some(ref mut lru_cache) = *self.cache.borrow_mut()
             && let Some(cached) = lru_cache.get(&cache_key)
         {
             return *cached;
         }
 
-        // Slow path: compute the result
+        // Slow path: compute the result by walking matching entries.
         let result = self.compute_resolve(path, rule_id);
 
-        // Store in cache (initialize if needed)
+        // Store result in cache. Cache is lazily initialized on first miss
+        // because we want compile() to be const (no heap allocation).
         {
             let mut cache = self.cache.borrow_mut();
             if let Some(ref mut lru_cache) = *cache {
                 lru_cache.put(cache_key, result);
             } else {
-                // Lazily initialize cache with default capacity of 10,000
+                // First cache miss: allocate LRU cache with 10,000 entry capacity.
+                // This is a one-time heap allocation per RuleOverrideMatcher.
                 let mut new_cache = LruCache::new(10_000);
                 new_cache.put(cache_key, result);
                 *cache = Some(new_cache);
@@ -312,12 +340,20 @@ impl RuleOverrideMatcher {
     }
 }
 
+/// Normalize a file path for consistent comparison.
+///
+/// Converts backslashes to forward slashes, strips leading `./`,
+/// and removes leading slashes to produce a repo-relative path.
 fn normalize_path(path: &str) -> String {
     let replaced = path.replace('\\', "/");
     let without_dot = replaced.strip_prefix("./").unwrap_or(&replaced);
     without_dot.trim_start_matches('/').to_string()
 }
 
+/// Normalize a directory path for consistent storage and comparison.
+///
+/// Like `normalize_path`, but treats empty string and "." as equivalent
+/// (both become empty string for the repo root).
 fn normalize_directory(directory: &str) -> String {
     let normalized = normalize_path(directory);
     if normalized.is_empty() || normalized == "." {
@@ -326,6 +362,9 @@ fn normalize_directory(directory: &str) -> String {
     normalized.trim_end_matches('/').to_string()
 }
 
+/// Calculate the depth of a directory path (number of segments).
+///
+/// Empty directory has depth 0. "src" has depth 1. "src/lib" has depth 2.
 fn directory_depth(directory: &str) -> usize {
     if directory.is_empty() {
         0
@@ -334,6 +373,12 @@ fn directory_depth(directory: &str) -> usize {
     }
 }
 
+/// Check if a path is within a given directory.
+///
+/// Returns true if:
+/// - The directory is empty (root applies to all paths)
+/// - The path exactly equals the directory
+/// - The path starts with the directory followed by a `/`
 fn path_in_directory(path: &str, directory: &str) -> bool {
     if directory.is_empty() {
         return true;
@@ -344,6 +389,10 @@ fn path_in_directory(path: &str, directory: &str) -> bool {
     path.starts_with(directory) && path.as_bytes().get(directory.len()) == Some(&b'/')
 }
 
+/// Compile exclude glob patterns into a `GlobSet`, scoped to a directory.
+///
+/// Each glob is prefixed with the directory path to ensure it only matches
+/// files within that directory. Returns `None` if the globs list is empty.
 fn compile_exclude_globs(
     directory: &str,
     rule_id: &str,
@@ -368,6 +417,10 @@ fn compile_exclude_globs(
     Ok(Some(builder.build().expect("globset build should succeed")))
 }
 
+/// Prefix a glob pattern with a directory scope.
+///
+/// If the glob is already absolute (starts with `/`) or the directory
+/// is empty, just normalizes the glob. Otherwise, prepends the directory.
 fn scope_glob_to_directory(directory: &str, glob: &str) -> String {
     let replaced = glob.replace('\\', "/");
     let without_dot = replaced.strip_prefix("./").unwrap_or(&replaced);
