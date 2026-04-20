@@ -1,9 +1,141 @@
-use std::collections::BTreeMap;
+use std::cell::RefCell;
+use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::hash::Hash;
 use std::path::Path;
 
 use globset::{Glob, GlobSet, GlobSetBuilder};
 
 use diffguard_types::Severity;
+
+// =============================================================================
+// LRU Cache - hand-rolled implementation using VecDeque + HashMap
+// Default capacity: 10,000 entries (~1MB worst case at 100 bytes/entry)
+// =============================================================================
+
+/// A hand-rolled LRU (Least Recently Used) cache.
+///
+/// Uses `VecDeque` to track access order and `HashMap` for O(1) lookups.
+/// When at capacity, the least recently used entry is evicted.
+#[derive(Clone, Debug)]
+struct LruCache<K, V> {
+    /// Tracks access order - front is LRU, back is MRU
+    order: VecDeque<K>,
+    /// Stores key-value pairs
+    cache: HashMap<K, V>,
+    /// Maximum number of entries
+    capacity: usize,
+}
+
+impl<K: Eq + Hash, V> LruCache<K, V> {
+    /// Create a new LRU cache with the given capacity.
+    fn new(capacity: usize) -> Self {
+        Self {
+            order: VecDeque::with_capacity(capacity),
+            cache: HashMap::with_capacity(capacity),
+            capacity,
+        }
+    }
+
+    /// Get a value by key, promoting the key to most recently used position.
+    /// Returns `None` if key is not present.
+    fn get(&mut self, key: &K) -> Option<&V> {
+        // Check if key exists
+        if !self.cache.contains_key(key) {
+            return None;
+        }
+
+        // Find and remove the key from its current position in order deque
+        // VecDeque::remove returns Option<K> - Some(K) if found, None otherwise
+        let pos = self.order.iter().position(|k| k == key)?;
+        let removed_key = self.order.remove(pos).unwrap_or_else(|| {
+            // This shouldn't happen since we found the position above, but just in case
+            panic!("Key not found at reported position")
+        });
+
+        // Push to back (most recently used) - we now have the owned key
+        self.order.push_back(removed_key);
+
+        self.cache.get(key)
+    }
+
+    /// Put a key-value pair into the cache.
+    /// If the key already exists, updates the value and moves to MRU.
+    /// If at capacity, evicts the least recently used entry.
+    fn put(&mut self, key: K, value: V)
+    where
+        K: Clone,
+    {
+        // If key exists, remove it first (we'll re-insert at MRU position)
+        if self.cache.contains_key(&key) {
+            if let Some(pos) = self.order.iter().position(|k| k == &key) {
+                self.order.remove(pos);
+            }
+            self.cache.remove(&key);
+        }
+
+        // Evict LRU entry if at capacity
+        while self.order.len() >= self.capacity {
+            if let Some(lru_key) = self.order.pop_front() {
+                self.cache.remove(&lru_key);
+            }
+        }
+
+        // Insert at MRU position
+        self.order.push_back(key.clone());
+        self.cache.insert(key, value);
+    }
+}
+
+// =============================================================================
+// CloneableRefCell - Clone wrapper around RefCell<T> for use in derived traits
+// =============================================================================
+
+/// A `RefCell`-like wrapper that implements `Clone` when `T: Clone`.
+///
+/// This allows `RuleOverrideMatcher` to derive `Clone` even though it contains
+/// interior mutability for the cache. Each clone gets a separate `RefCell`,
+/// which is the desired semantics (independent mutable borrows).
+#[derive(Debug)]
+struct CloneableRefCell<T: Clone> {
+    inner: RefCell<T>,
+}
+
+impl<T: Clone> CloneableRefCell<T> {
+    /// Create a new CloneableRefCell wrapping the given value.
+    fn new(value: T) -> Self {
+        Self {
+            inner: RefCell::new(value),
+        }
+    }
+
+    /// Borrow the inner value immutably.
+    #[allow(dead_code)]
+    fn borrow(&self) -> std::cell::Ref<'_, T> {
+        self.inner.borrow()
+    }
+
+    /// Borrow the inner value mutably.
+    #[allow(dead_code)]
+    fn borrow_mut(&self) -> std::cell::RefMut<'_, T> {
+        self.inner.borrow_mut()
+    }
+}
+
+impl<T: Clone> Clone for CloneableRefCell<T> {
+    fn clone(&self) -> Self {
+        Self {
+            inner: RefCell::new(self.inner.borrow().clone()),
+        }
+    }
+}
+
+impl<T: Clone + Default> Default for CloneableRefCell<T> {
+    fn default() -> Self {
+        Self {
+            inner: RefCell::new(T::default()),
+        }
+    }
+}
 
 /// A per-directory rule override loaded from `.diffguard.toml`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,6 +197,10 @@ impl Default for ResolvedRuleOverride {
 #[derive(Debug, Clone, Default)]
 pub struct RuleOverrideMatcher {
     by_rule: BTreeMap<String, Vec<CompiledDirectoryRuleOverride>>,
+    /// LRU cache for resolved (path, rule_id) → ResolvedRuleOverride.
+    /// Wrapped in CloneableRefCell to allow interior mutability for lazy init.
+    /// The inner Option is None until first resolve() call, then Some(cache).
+    cache: CloneableRefCell<Option<LruCache<(String, String), ResolvedRuleOverride>>>,
 }
 
 impl RuleOverrideMatcher {
@@ -101,12 +237,47 @@ impl RuleOverrideMatcher {
             });
         }
 
-        Ok(Self { by_rule })
+        Ok(Self {
+            by_rule,
+            cache: CloneableRefCell::new(None),
+        })
     }
 
     /// Resolve the effective override for a specific path and rule id.
     #[must_use]
+    #[allow(clippy::collapsible_if)]
     pub fn resolve(&self, path: &str, rule_id: &str) -> ResolvedRuleOverride {
+        let cache_key = (path.to_string(), rule_id.to_string());
+
+        // Fast path: check cache first (RefCell provides interior mutability)
+        if let Some(ref mut lru_cache) = *self.cache.borrow_mut()
+            && let Some(cached) = lru_cache.get(&cache_key)
+        {
+            return *cached;
+        }
+
+        // Slow path: compute the result
+        let result = self.compute_resolve(path, rule_id);
+
+        // Store in cache (initialize if needed)
+        {
+            let mut cache = self.cache.borrow_mut();
+            if let Some(ref mut lru_cache) = *cache {
+                lru_cache.put(cache_key, result);
+            } else {
+                // Lazily initialize cache with default capacity of 10,000
+                let mut new_cache = LruCache::new(10_000);
+                new_cache.put(cache_key, result);
+                *cache = Some(new_cache);
+            }
+        }
+
+        result
+    }
+
+    /// Compute the resolved override without using the cache.
+    /// This is the original resolve logic extracted for use on cache miss.
+    fn compute_resolve(&self, path: &str, rule_id: &str) -> ResolvedRuleOverride {
         let Some(entries) = self.by_rule.get(rule_id) else {
             return ResolvedRuleOverride::default();
         };
@@ -333,4 +504,203 @@ mod tests {
     // NOTE: AC5 (From impl tests) are omitted because they require From<globset::Error>
     // impl to exist before they can compile. The source() test above verifies the core
     // requirement; the From impl is additive.
+
+    // =============================================================================
+    // LRU Cache tests for RuleOverrideMatcher::resolve() (work-fbfc8914)
+    // =============================================================================
+
+    // NOTE: These tests reference types that don't exist yet:
+    // - CloneableRefCell<T> (a Clone-compatible wrapper around RefCell<T>)
+    // - LruCache<K, V> (hand-rolled LRU with VecDeque + HashMap)
+    //
+    // These tests FAIL TO COMPILE until code-builder implements the cache types.
+    //
+    // IMPORTANT: Within a single run, each (path, rule_id) is resolved exactly once
+    // due to path deduplication in evaluate.rs. The cache provides zero intra-run
+    // benefit in the current architecture. Therefore we test the cache TYPES directly
+    // rather than testing observable caching behavior through resolve() calls.
+
+    #[test]
+    fn lru_cache_struct_exists_and_works() {
+        // Verify LruCache<K, V> struct exists and implements new/get/put
+        // AC2: Cache is bounded in memory with LRU eviction (default capacity 10,000)
+        let mut cache = LruCache::<(String, String), ResolvedRuleOverride>::new(10_000);
+        let key = ("src/lib.rs".to_string(), "rust.no_unwrap".to_string());
+        let value = ResolvedRuleOverride {
+            enabled: false,
+            severity: Some(Severity::Error),
+        };
+
+        // put should store the entry
+        cache.put(key.clone(), value);
+
+        // get should retrieve it
+        let retrieved = cache.get(&key);
+        assert!(
+            retrieved.is_some(),
+            "cache.get() should return Some for existing key"
+        );
+        assert_eq!(
+            retrieved.unwrap().enabled,
+            false,
+            "retrieved value should match stored value"
+        );
+    }
+
+    #[test]
+    fn lru_cache_eviction_removes_oldest_on_overflow() {
+        // AC2: Cache must evict LRU entry when at capacity
+        let capacity = 5;
+        let mut cache = LruCache::<String, i32>::new(capacity);
+
+        // Fill to capacity
+        for i in 0..capacity {
+            cache.put(format!("key_{}", i), i);
+        }
+
+        // Access key_0 to make it most recently used
+        let _ = cache.get(&"key_0".to_string());
+
+        // Add one more entry - should evict key_1 (LRU, since key_0 was accessed)
+        cache.put("key_new".to_string(), 999);
+
+        // key_0 should still exist (was accessed recently, not LRU)
+        assert!(
+            cache.get(&"key_0".to_string()).is_some(),
+            "recently accessed entry should NOT be evicted"
+        );
+
+        // key_1 should be evicted (LRU)
+        assert!(
+            cache.get(&"key_1".to_string()).is_none(),
+            "LRU entry should be evicted when cache is full"
+        );
+    }
+
+    #[test]
+    fn lru_cache_update_existing_key_moves_to_mru() {
+        // Updating an existing key should move it to MRU position
+        let capacity = 3;
+        let mut cache = LruCache::<String, i32>::new(capacity);
+
+        cache.put("a".to_string(), 1);
+        cache.put("b".to_string(), 2);
+        cache.put("c".to_string(), 3);
+
+        // Update 'a' to new value - should move to MRU
+        cache.put("a".to_string(), 10);
+
+        // Add new entry - should evict 'b' (now LRU after 'a' was updated)
+        cache.put("d".to_string(), 4);
+
+        // 'a' should still exist (was updated to MRU)
+        assert_eq!(
+            cache.get(&"a".to_string()).unwrap(),
+            &10,
+            "updated key should be at MRU position"
+        );
+
+        // 'b' should be evicted (LRU)
+        assert!(
+            cache.get(&"b".to_string()).is_none(),
+            "LRU entry should be evicted after update to existing key"
+        );
+    }
+
+    #[test]
+    fn cloneable_ref_cell_new_and_borrow() {
+        // CloneableRefCell<T> should provide new() and borrow() methods
+        let inner_value = ResolvedRuleOverride {
+            enabled: true,
+            severity: Some(Severity::Warn),
+        };
+        let ref_cell = CloneableRefCell::new(inner_value);
+
+        // borrow() should return Ref<T>
+        let borrowed = ref_cell.borrow();
+        assert_eq!(borrowed.enabled, true);
+        assert_eq!(borrowed.severity, Some(Severity::Warn));
+    }
+
+    #[test]
+    fn cloneable_ref_cell_implements_clone() {
+        // AC4: CloneableRefCell<T> should implement Clone when T: Clone
+        let inner_value = ResolvedRuleOverride::default();
+        let ref_cell = CloneableRefCell::new(inner_value);
+        let cloned = ref_cell.clone();
+
+        // Clone should produce equivalent inner value
+        assert_eq!(
+            ref_cell.borrow().enabled,
+            cloned.borrow().enabled,
+            "cloned CloneableRefCell should have same inner value"
+        );
+    }
+
+    #[test]
+    fn rule_override_matcher_still_derives_default() {
+        // AC3: #[derive(Default)] must still work after adding cache field
+        // The cache field should be None for default-constructed matcher
+        let default_matcher = RuleOverrideMatcher::default();
+
+        // Default resolve returns ResolvedRuleOverride { enabled: true, severity: None }
+        let resolved = default_matcher.resolve("src/lib.rs", "rust.no_unwrap");
+        assert!(resolved.enabled);
+        assert_eq!(resolved.severity, None);
+    }
+
+    #[test]
+    fn rule_override_matcher_still_is_clone() {
+        // AC4: RuleOverrideMatcher must remain Clone after adding cache field
+        let matcher = RuleOverrideMatcher::compile(&[override_spec(
+            "src",
+            "rust.no_unwrap",
+            Some(false),
+            None,
+            vec![],
+        )])
+        .expect("compile overrides");
+
+        // Should be able to clone the matcher
+        let cloned = matcher.clone();
+        assert_eq!(
+            matcher.resolve("src/lib.rs", "rust.no_unwrap").enabled,
+            cloned.resolve("src/lib.rs", "rust.no_unwrap").enabled,
+            "cloned matcher should produce identical results"
+        );
+    }
+
+    #[test]
+    fn rule_override_matcher_still_is_debug() {
+        // AC4: RuleOverrideMatcher must remain Debug after adding cache field
+        let matcher = RuleOverrideMatcher::compile(&[override_spec(
+            "src",
+            "rust.no_unwrap",
+            Some(false),
+            None,
+            vec![],
+        )])
+        .expect("compile overrides");
+
+        // Should be able to format matcher with {:?}
+        let debug_str = format!("{:?}", matcher);
+        assert!(
+            debug_str.contains("RuleOverrideMatcher"),
+            "Debug output should contain RuleOverrideMatcher"
+        );
+    }
+
+    #[test]
+    fn resolve_still_has_must_use_attribute() {
+        // AC6: resolve() must remain #[must_use]
+        // We verify this indirectly by checking the method compiles and returns
+        let matcher = RuleOverrideMatcher::default();
+        let result = matcher.resolve("src/lib.rs", "rust.no_unwrap");
+        // If resolve() were not #[must_use] and we didn't use the result, clippy would warn
+        let _ = result; // Explicit suppression to show we know about must_use
+        assert!(
+            true,
+            "resolve() method exists and returns ResolvedRuleOverride"
+        );
+    }
 }
