@@ -3,6 +3,22 @@ use std::collections::BTreeSet;
 use anyhow::{Context, Result, bail};
 use lsp_types::{Position, TextDocumentContentChangeEvent};
 
+/// Splits text into lines, returning a vector of string slices.
+///
+/// Splits on newline characters (`\n`) and preserves the order of lines.
+/// The newline characters themselves are not included in the result.
+///
+/// # Return Value
+///
+/// Returns an empty `Vec` when `text` is empty. Otherwise returns all
+/// lines in document order. Line indices in the returned vector are
+/// 0-based (line 1 of the document is at index 0).
+///
+/// # Why `#[must_use]`?
+///
+/// Callers that discard the return value silently lose all line-split
+/// information. The `#[must_use]` attribute ensures the compiler emits
+/// a warning if the result is not used.
 #[must_use]
 pub fn split_lines(text: &str) -> Vec<&str> {
     if text.is_empty() {
@@ -12,6 +28,28 @@ pub fn split_lines(text: &str) -> Vec<&str> {
     }
 }
 
+/// Compares two text documents line-by-line and returns the line numbers that differ.
+///
+/// Performs a line-by-line comparison between `before` and `after`.
+/// Line numbers are 1-based (matching LSP convention) and returned in a
+/// `BTreeSet` for deterministic ordering.
+///
+/// # Line Numbering
+///
+/// Line numbers are 1-based: the first line of the document is line 1.
+/// This matches LSP's `Position` line numbering.
+///
+/// # Added vs Modified Lines
+///
+/// Only lines present in `after` are reported as changed. If a line exists
+/// in `before` but not in `after` (i.e., `after` is shorter and differs at
+/// that position), it is not included in the changed set.
+///
+/// # Differences Detection
+///
+/// Two lines are considered different if their string contents differ.
+/// Trailing newline differences are handled naturally since `split_lines`
+/// does not include the newline character in the line content.
 pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
     let before_lines = split_lines(before);
     let after_lines = split_lines(after);
@@ -29,6 +67,30 @@ pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
     changed
 }
 
+/// Builds a synthetic unified diff that adds the specified changed lines.
+///
+/// This constructs a minimal "diff --git" format diff showing lines that were
+/// added or modified in a document. The diff is synthetic because it generates
+/// the diff from in-memory text rather than comparing two files on disk.
+///
+/// # Parameters
+///
+/// - `path`: The file path to use in the diff header (e.g., `"src/lib.rs"`).
+/// - `text`: The full document text (used to look up line content).
+/// - `changed_lines`: A set of 1-based line numbers that were changed.
+///
+/// # Diff Format
+///
+/// Each changed line produces a hunk header `@@ -0,0 +N,1 @@` followed by
+/// the line content prefixed with `+`. The hunk format indicates "no context
+/// before, one line of added content" which is appropriate for showing new
+/// or modified lines.
+///
+/// # Why Synthetic?
+///
+/// This is used to generate diffs for display or analysis when the actual
+/// on-disk files may not exist yet (e.g., for LSP diagnostics before save).
+/// It produces diff-like output for changed lines only.
 #[must_use]
 pub fn build_synthetic_diff(path: &str, text: &str, changed_lines: &BTreeSet<u32>) -> String {
     let mut diff = format!(
@@ -42,6 +104,9 @@ pub fn build_synthetic_diff(path: &str, text: &str, changed_lines: &BTreeSet<u32
             continue;
         }
 
+        // Convert from 1-based line numbers (LSP convention) to 0-based array indices.
+        // saturating_sub ensures that if line_number is somehow 0 (skipped above),
+        // we get 0 instead of underflowing.
         let index = (*line_number as usize).saturating_sub(1);
         if index >= lines.len() {
             continue;
@@ -56,6 +121,23 @@ pub fn build_synthetic_diff(path: &str, text: &str, changed_lines: &BTreeSet<u32
     diff
 }
 
+/// Applies an LSP incremental text document change to a string in-place.
+///
+/// Implements the LSP `TextDocumentContentChangeEvent` semantics:
+/// - If `change.range` is `None`, the entire document content is replaced.
+/// - If `range` is provided, only that byte range is replaced.
+///
+/// # Error Handling
+///
+/// Returns an error if the position translation fails (invalid UTF-16 offset)
+/// or if the range is invalid (start after end). The function uses
+/// `byte_offset_at_position` to translate LSP's UTF-16 based positions
+/// to byte offsets in the Rust `String`.
+///
+/// # Performance
+///
+/// Uses `String::replace_range` for O(n) replacement where n is the
+/// distance from start to end of the changed range.
 pub fn apply_incremental_change(
     text: &mut String,
     change: &TextDocumentContentChangeEvent,
@@ -86,6 +168,38 @@ pub fn apply_incremental_change(
     Ok(())
 }
 
+/// Translates an LSP `Position` (UTF-16 code unit offset) to a byte offset in a `&str`.
+///
+/// LSP specifies character positions as UTF-16 code units, but Rust strings are
+/// UTF-8 internally. This function bridges that gap by iterating through the
+/// text and counting UTF-16 code units until the target position is reached.
+///
+/// # Parameters
+///
+/// - `text`: The document text to search within.
+/// - `position`: The LSP `Position` containing a 0-based `line` and a
+///   `character` offset measured in UTF-16 code units.
+///
+/// # Return Value
+///
+/// Returns `Some(byte_offset)` where `byte_offset` is the byte index in `text`
+/// that corresponds to the given UTF-16 position. Returns `None` if:
+/// - The target line does not exist in the text
+/// - The target character offset is past the end of that line
+///
+/// # Why UTF-16?
+///
+/// The Language Server Protocol (LSP) uses UTF-16 code units for character
+/// positions because it was designed around languages where string indexing
+/// is O(1) (e.g., JavaScript, TypeScript). Many editors and IDEs that
+/// implement LSP also use UTF-16 internally.
+///
+/// # Edge Cases
+///
+/// - Position at end of line (character == line length): returns the byte
+///   offset of the newline character, or `text.len()` if it's the last line.
+/// - Position at start of line (character == 0): returns the byte offset
+///   of the first character in that line.
 pub fn byte_offset_at_position(text: &str, position: Position) -> Option<usize> {
     let mut current_line: u32 = 0;
     let mut current_character_utf16: u32 = 0;
@@ -96,6 +210,10 @@ pub fn byte_offset_at_position(text: &str, position: Position) -> Option<usize> 
         }
 
         if ch == '\n' {
+            // Check again after the newline: the position could be at the newline
+            // character itself (e.g., cursor at end of line before the newline).
+            // If we don't check here, we'd increment current_line and miss this
+            // position forever.
             if current_line == position.line && current_character_utf16 == position.character {
                 return Some(index);
             }
@@ -106,6 +224,8 @@ pub fn byte_offset_at_position(text: &str, position: Position) -> Option<usize> 
 
         if current_line == position.line {
             current_character_utf16 = current_character_utf16.saturating_add(ch.len_utf16() as u32);
+            // If we've overshot the target character, the position is invalid
+            // (character is between two characters on this line).
             if current_character_utf16 > position.character {
                 return None;
             }
@@ -119,6 +239,24 @@ pub fn byte_offset_at_position(text: &str, position: Position) -> Option<usize> 
     }
 }
 
+/// Returns the length of a string in UTF-16 code units.
+///
+/// LSP uses UTF-16 code units for character positions. This function computes
+/// the length a string would have in UTF-16 encoding, which is needed for
+/// translating between LSP character positions and Rust string indices.
+///
+/// # Why UTF-16 Length?
+///
+/// Most characters encode to a single UTF-16 code unit (2 bytes), but:
+/// - Characters outside the Basic Multilingual Plane (BMP) encode to 2 code
+///   units (4 bytes total) as a surrogate pair in UTF-16
+/// - In UTF-8, such characters encode to 4 bytes
+///
+/// For example, emoji like `🚀` count as 2 UTF-16 code units but 1 Rust `char`.
+///
+/// # Return Value
+///
+/// Returns the total count of UTF-16 code units in the string.
 #[must_use]
 pub fn utf16_length(text: &str) -> u32 {
     text.chars().map(|ch| ch.len_utf16() as u32).sum()
