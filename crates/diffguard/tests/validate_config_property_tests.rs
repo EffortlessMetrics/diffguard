@@ -15,8 +15,8 @@
 
 use assert_cmd::Command;
 use assert_cmd::cargo;
-use tempfile::TempDir;
 use std::path::Path;
+use tempfile::TempDir;
 
 /// Run diffguard doctor in the given directory and return (exit_code, stdout).
 fn run_doctor(dir: &Path, extra_args: &[&str]) -> (i32, String) {
@@ -166,7 +166,11 @@ fn property_explicit_config_missing_file_fails() {
         "Output should mention config: {}",
         stdout
     );
-    assert!(stdout.contains("FAIL"), "Output should show FAIL: {}", stdout);
+    assert!(
+        stdout.contains("FAIL"),
+        "Output should show FAIL: {}",
+        stdout
+    );
 }
 
 // ---- Property 3: explicit_config=false with no config → PASS (defaults) ----
@@ -257,11 +261,11 @@ fn property_invalid_regex_fails() {
     let invalid_patterns = vec![
         "[unclosed", // Unclosed bracket
         "(unclosed", // Unclosed paren
-        "*invalid", // Quantifier at start
-        "+invalid", // Quantifier at start
-        "???", // Multiple quantifiers
-        "[", // Just a bracket
-        "(", // Just a paren
+        "*invalid",  // Quantifier at start
+        "+invalid",  // Quantifier at start
+        "???",       // Multiple quantifiers
+        "[",         // Just a bracket
+        "(",         // Just a paren
     ];
 
     for pattern in invalid_patterns {
@@ -412,7 +416,9 @@ patterns = ["test"]
         assert!(
             code >= 0 && code <= 1,
             "Exit code should be 0 or 1, got {} for args {:?}: {}",
-            code, args, stdout
+            code,
+            args,
+            stdout
         );
     }
 }
