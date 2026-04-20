@@ -68,6 +68,10 @@ struct MatchEvent {
     severity: Severity,
 }
 
+/// Evaluates a batch of input lines against the given compiled rules.
+///
+/// This is a convenience wrapper around [`evaluate_lines_with_overrides_and_language`]
+/// that uses no rule overrides and auto-detects languages from file paths.
 pub fn evaluate_lines(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -76,6 +80,7 @@ pub fn evaluate_lines(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, None, None)
 }
 
+/// Evaluates a batch of input lines with rule overrides but auto-detected languages.
 pub fn evaluate_lines_with_overrides(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -85,6 +90,10 @@ pub fn evaluate_lines_with_overrides(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, overrides, None)
 }
 
+/// Evaluates a batch of input lines against compiled rules with full override and language control.
+///
+/// - `overrides`: Optional rule override matcher (e.g., for `diffguard: ignore` directives).
+/// - `force_language`: Override auto-detected language (None = auto-detect from file extension).
 pub fn evaluate_lines_with_overrides_and_language(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -558,11 +567,14 @@ fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
     }
 }
 
+/// Trims a code snippet to at most `MAX_CHARS` (240) characters, appending '…' if truncated.
+///
+/// Avoids slicing by byte indices (which can panic on Unicode boundaries) by iterating
+/// over characters instead.
 fn trim_snippet(s: &str) -> String {
     const MAX_CHARS: usize = 240;
     let trimmed = s.trim_end();
 
-    // Avoid slicing by byte indices (which can panic on Unicode boundaries).
     let mut out = String::new();
     for (i, ch) in trimmed.chars().enumerate() {
         if i >= MAX_CHARS {
@@ -574,12 +586,28 @@ fn trim_snippet(s: &str) -> String {
     out
 }
 
+/// Extracts a substring from `s` in the range `[start, end)`, with bounds clamping.
+///
+/// `end` is first clamped to `s.len()`, then `start` is clamped to the
+/// adjusted `end`. This guarantees `start <= end <= s.len()`, making the
+/// range always valid for direct indexing.
+///
+/// Returns the substring as a new `String`.
 fn safe_slice(s: &str, start: usize, end: usize) -> String {
+    // Clamp end first, then clamp start to the adjusted end.
+    // After these two lines: start <= end <= s.len(), so the range is always valid.
     let end = end.min(s.len());
     let start = start.min(end);
     s.get(start..end).unwrap_or("").to_string()
 }
 
+/// Converts a byte index to a 1-based column number (character count).
+///
+/// Returns `None` if `byte_idx` exceeds the string length, otherwise returns
+/// the number of characters in `s[..byte_idx]` plus one (to get 1-based column).
+///
+/// Uses direct slicing `s[..byte_idx]` because the guard on line 590 guarantees
+/// `byte_idx <= s.len()`, making the range always valid.
 fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
     if byte_idx > s.len() {
         return None;
