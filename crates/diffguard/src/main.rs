@@ -1834,6 +1834,11 @@ fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
     out
 }
 
+/// Run `git blame --line-porcelain` and return the raw output as a String.
+///
+/// Uses `into_owned()` on the `Cow<str>` from `from_utf8_lossy` to explicitly
+/// convert to an owned string, matching the pattern established in the domain layer.
+/// This is equivalent to `.to_string()` but makes the ownership transfer explicit.
 fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     let output = Command::new("git")
         .args(["blame", "--line-porcelain", head_ref, "--", path])
@@ -1849,7 +1854,7 @@ fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
         );
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 fn collect_blame_allowed_lines(
@@ -3121,6 +3126,16 @@ fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     built
 }
 
+/// Run `git diff` to compare two commits and return the unified diff output.
+///
+/// # Arguments
+/// * `base` - The base commit ref (e.g., "origin/main")
+/// * `head` - The head commit ref to compare against
+/// * `context_lines` - Number of context lines to include in unified diff
+///
+/// # Returns
+/// Raw git diff output as a `String`. Uses `into_owned()` on the `Cow<str>`
+/// from `from_utf8_lossy` to explicitly convert to an owned string.
 fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
     let range = format!("{base}...{head}");
     let unified = format!("--unified={context_lines}");
@@ -3138,9 +3153,17 @@ fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
         );
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+/// Run `git diff --cached` to get staged changes and return as a unified diff.
+///
+/// # Arguments
+/// * `context_lines` - Number of context lines to include in unified diff
+///
+/// # Returns
+/// Raw git diff output as a `String`. Uses `into_owned()` on the `Cow<str>`
+/// from `from_utf8_lossy` to explicitly convert to an owned string.
 fn git_staged_diff(context_lines: u32) -> Result<String> {
     let unified = format!("--unified={context_lines}");
 
@@ -3157,7 +3180,7 @@ fn git_staged_diff(context_lines: u32) -> Result<String> {
         );
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 fn write_json(path: &Path, value: &impl serde::Serialize) -> Result<()> {
