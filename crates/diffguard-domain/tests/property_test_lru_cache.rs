@@ -60,10 +60,6 @@ impl<K: Eq + std::hash::Hash + Clone, V: Clone> RefLruCache<K, V> {
         self.order.push(key.clone());
         self.cache.insert(key, value);
     }
-
-    fn contains(&self, key: &K) -> bool {
-        self.cache.contains_key(key)
-    }
 }
 
 // =============================================================================
@@ -215,15 +211,15 @@ proptest! {
         // Build override specs
         let override_specs: Vec<DirectoryRuleOverride> = specs
             .iter()
-            .filter_map(|(dir, rule, enabled)| {
+            .map(|(dir, rule, enabled)| {
                 let dir_str = if dir.is_empty() { String::new() } else { dir.clone() };
-                Some(DirectoryRuleOverride {
+                DirectoryRuleOverride {
                     directory: dir_str,
                     rule_id: rule.clone(),
                     enabled: *enabled,
                     severity: None,
                     exclude_paths: vec![],
-                })
+                }
             })
             .collect();
 
@@ -266,15 +262,15 @@ proptest! {
 
         let override_specs: Vec<DirectoryRuleOverride> = specs
             .iter()
-            .filter_map(|(dir, rule, enabled)| {
+            .map(|(dir, rule, enabled)| {
                 let dir_str = if dir.is_empty() { String::new() } else { dir.clone() };
-                Some(DirectoryRuleOverride {
+                DirectoryRuleOverride {
                     directory: dir_str,
                     rule_id: rule.clone(),
                     enabled: *enabled,
                     severity: None,
                     exclude_paths: vec![],
-                })
+                }
             })
             .collect();
 
@@ -433,15 +429,15 @@ proptest! {
         // Create matcher with some overrides
         let override_specs: Vec<DirectoryRuleOverride> = specs
             .iter()
-            .filter_map(|(dir, rule, enabled)| {
+            .map(|(dir, rule, enabled)| {
                 let dir_str = if dir.is_empty() { String::new() } else { dir.clone() };
-                Some(DirectoryRuleOverride {
+                DirectoryRuleOverride {
                     directory: dir_str,
                     rule_id: rule.clone(),
                     enabled: *enabled,
                     severity: None,
                     exclude_paths: vec![],
-                })
+                }
             })
             .collect();
 
@@ -486,15 +482,15 @@ proptest! {
 
         let override_specs: Vec<DirectoryRuleOverride> = specs
             .iter()
-            .filter_map(|(dir, rule, enabled)| {
+            .map(|(dir, rule, enabled)| {
                 let dir_str = if dir.is_empty() { String::new() } else { dir.clone() };
-                Some(DirectoryRuleOverride {
+                DirectoryRuleOverride {
                     directory: dir_str,
                     rule_id: rule.clone(),
                     enabled: *enabled,
                     severity: None,
                     exclude_paths: vec![],
-                })
+                }
             })
             .collect();
 

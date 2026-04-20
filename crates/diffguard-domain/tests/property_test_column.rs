@@ -292,14 +292,12 @@ proptest! {
         let eval = evaluate_lines([line], &rules, 100);
 
         for finding in &eval.findings {
-            if let Some(col) = finding.column {
-                if let Some(expected) = expected_col {
-                    prop_assert_eq!(
-                        col, expected,
-                        "UTF-8 column mismatch: expected {}, got {} for content={:?}",
-                        expected, col, content
-                    );
-                }
+            if let (Some(col), Some(expected)) = (finding.column, expected_col) {
+                prop_assert_eq!(
+                    col, expected,
+                    "UTF-8 column mismatch: expected {}, got {} for content={:?}",
+                    expected, col, content
+                );
             }
         }
     }
@@ -373,12 +371,9 @@ proptest! {
 
         for finding in &eval.findings {
             if let Some(col) = finding.column {
-                prop_assert!(
-                    col <= u32::MAX as u32,
-                    "Column {} exceeds u32::MAX for content len {}",
-                    col,
-                    content.len()
-                );
+                // Column values are clamped to u32::MAX by the byte_to_column fix
+                // so we just verify col is a valid u32 (always true by type)
+                prop_assert!(col >= 1, "Column should be at least 1, got {}", col);
             }
         }
     }

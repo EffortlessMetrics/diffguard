@@ -530,6 +530,5 @@ fn test_gitlab_quality_content_omitted_without_snippet() {
 #[test]
 fn test_integration_suite_summary() {
     // This test always passes and serves as a summary indicator
-    // that the integration test suite ran successfully.
-    assert!(true);
+    // (assertion removed - clippy warns assert!(true) is no-op)
 }

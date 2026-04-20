@@ -645,8 +645,8 @@ mod tests {
             Preset::PythonDebug,
         ] {
             let content = preset.generate();
-            let config: ConfigFile =
-                toml::from_str(&content).expect(&format!("{:?} should produce valid TOML", preset));
+            let config: ConfigFile = toml::from_str(&content)
+                .unwrap_or_else(|_| panic!("{:?} should produce valid TOML", preset));
             assert!(
                 !config.rule.is_empty(),
                 "{:?} should generate at least one rule",
