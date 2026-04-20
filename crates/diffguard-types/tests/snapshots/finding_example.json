@@ -1,0 +1,10 @@
+{
+  "rule_id": "rust.no_eval",
+  "severity": "error",
+  "message": "Avoid eval - potential code injection",
+  "path": "src/main.rs",
+  "line": 42,
+  "column": 5,
+  "match_text": "eval(",
+  "snippet": "    let result = eval(user_input);"
+}

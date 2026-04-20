@@ -1,0 +1,11 @@
+{
+  "status": "fail",
+  "counts": {
+    "info": 0,
+    "warn": 1,
+    "error": 3
+  },
+  "reasons": [
+    "tool_error"
+  ]
+}

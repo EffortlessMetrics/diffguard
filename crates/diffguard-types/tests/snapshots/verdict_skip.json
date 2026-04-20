@@ -1,0 +1,11 @@
+{
+  "status": "skip",
+  "counts": {
+    "info": 0,
+    "warn": 0,
+    "error": 0
+  },
+  "reasons": [
+    "missing_base"
+  ]
+}

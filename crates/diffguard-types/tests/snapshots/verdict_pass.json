@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "counts": {
+    "info": 5,
+    "warn": 2,
+    "error": 0
+  },
+  "reasons": []
+}

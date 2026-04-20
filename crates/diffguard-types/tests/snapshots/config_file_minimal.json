@@ -1,0 +1,33 @@
+{
+  "defaults": {
+    "base": "origin/main",
+    "head": "HEAD",
+    "scope": "added",
+    "fail_on": "error",
+    "max_findings": 200,
+    "diff_context": 0
+  },
+  "rule": [
+    {
+      "id": "rust.no_eval",
+      "severity": "error",
+      "message": "Avoid eval",
+      "languages": [
+        "rust"
+      ],
+      "patterns": [
+        "\\beval\\s*\\("
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "*.test.rs"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": false,
+      "tags": [
+        "security",
+        "injection"
+      ]
+    }
+  ]
+}
