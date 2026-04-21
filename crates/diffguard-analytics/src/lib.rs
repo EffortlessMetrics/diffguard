@@ -118,7 +118,7 @@ pub fn merge_false_positive_baselines(
         {
             // Preserve manually curated metadata from the existing baseline.
             if existing.note.is_none() && entry.note.is_some() {
-                existing.note = entry.note.clone();
+                existing.note.clone_from(&entry.note);
             }
             if existing.rule_id.is_empty() {
                 existing.rule_id.clone_from(&entry.rule_id);
