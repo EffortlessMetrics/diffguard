@@ -121,10 +121,10 @@ pub fn merge_false_positive_baselines(
                 existing.note = entry.note.clone();
             }
             if existing.rule_id.is_empty() {
-                existing.rule_id = entry.rule_id.clone();
+                existing.rule_id.clone_from(&entry.rule_id);
             }
             if existing.path.is_empty() {
-                existing.path = entry.path.clone();
+                existing.path.clone_from(&entry.path);
             }
             if existing.line == 0 {
                 existing.line = entry.line;
