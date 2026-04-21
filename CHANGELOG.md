@@ -72,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **`diffguard-domain`**: Added `#[must_use]` to `is_wildcard()` method in `suppression.rs` for consistency with sibling methods (`suppresses()`, `parse_suppression()`, `parse_suppression_in_comments()`). This ensures the compiler warns if the return value is accidentally discarded.
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
 ## [0.2.0] - 2026-04-06

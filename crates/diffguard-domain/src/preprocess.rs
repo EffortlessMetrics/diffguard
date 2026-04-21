@@ -892,7 +892,7 @@ fn mask_range(out: &mut [u8], start: usize, end: usize) {
 
 /// Detect a triple-quoted string start (Python): """...""" or '''...'''
 ///
-/// Returns (quote_char, end_index) where end_index is the position after the opening triple quote.
+/// Returns (`quote_char`, `end_index`) where `end_index` is the position after the opening triple quote.
 fn detect_triple_quote_start(bytes: &[u8], i: usize) -> Option<(u8, usize)> {
     let len = bytes.len();
     if i + 2 >= len {
@@ -909,7 +909,7 @@ fn detect_triple_quote_start(bytes: &[u8], i: usize) -> Option<(u8, usize)> {
 
 /// Detect a raw string start (Rust): r#"..."# or br#"..."#.
 ///
-/// Returns (start_index, quote_index, hash_count) where quote_index points to the opening `"`.
+/// Returns (`start_index`, `quote_index`, `hash_count`) where `quote_index` points to the opening `"`.
 fn detect_raw_string_start(bytes: &[u8], i: usize) -> Option<(usize, usize, usize)> {
     let len = bytes.len();
 
