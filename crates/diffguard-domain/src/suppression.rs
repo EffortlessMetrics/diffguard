@@ -52,6 +52,7 @@ impl Suppression {
     }
 
     /// Returns true if this is a wildcard suppression (suppresses all rules).
+    #[must_use]
     pub fn is_wildcard(&self) -> bool {
         self.rule_ids.is_none()
     }
