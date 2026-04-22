@@ -2060,8 +2060,7 @@ fn classify_cockpit_error(err: &anyhow::Error) -> Option<&'static str> {
 fn cockpit_error_detail(err: &anyhow::Error) -> String {
     err.chain()
         .find_map(|cause| cause.downcast_ref::<CockpitSkipError>())
-        .map(|e| e.source.to_string())
-        .unwrap_or_else(|| err.to_string())
+        .map_or_else(|| err.to_string(), |e| e.source.to_string())
 }
 
 fn render_base_refs(bases: &[String]) -> String {
