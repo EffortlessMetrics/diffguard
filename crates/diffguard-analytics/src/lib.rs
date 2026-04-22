@@ -2,7 +2,7 @@
 //!
 //! This crate is intentionally pure (no filesystem/process/env I/O).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use diffguard_types::{CheckReceipt, Finding, Scope, VerdictCounts, VerdictStatus};
 use schemars::JsonSchema;
@@ -117,21 +117,17 @@ pub fn merge_false_positive_baselines(
     incoming: &FalsePositiveBaseline,
 ) -> FalsePositiveBaseline {
     let mut merged = normalize_false_positive_baseline(incoming.clone());
-    let mut incoming_fingerprints = merged
+    let mut fingerprint_to_index: HashMap<String, usize> = merged
         .entries
         .iter()
-        .map(|e| e.fingerprint.clone())
-        .collect::<BTreeSet<_>>();
+        .enumerate()
+        .map(|(i, e)| (e.fingerprint.clone(), i))
+        .collect();
 
     for entry in &base.entries {
-        if incoming_fingerprints.insert(entry.fingerprint.clone()) {
-            merged.entries.push(entry.clone());
-        } else if let Some(existing) = merged
-            .entries
-            .iter_mut()
-            .find(|e| e.fingerprint == entry.fingerprint)
-        {
-            // Preserve manually curated metadata from the existing baseline.
+        if let Some(&idx) = fingerprint_to_index.get(&entry.fingerprint) {
+            // Fingerprint exists in incoming — fill in any empty fields from base entry.
+            let existing = &mut merged.entries[idx];
             if existing.note.is_none() && entry.note.is_some() {
                 existing.note = entry.note.clone();
             }
@@ -144,6 +140,10 @@ pub fn merge_false_positive_baselines(
             if existing.line == 0 {
                 existing.line = entry.line;
             }
+        } else {
+            // Fingerprint is new — add to merged.
+            fingerprint_to_index.insert(entry.fingerprint.clone(), merged.entries.len());
+            merged.entries.push(entry.clone());
         }
     }
 
