@@ -550,6 +550,7 @@ fn first_match(patterns: &[regex::Regex], s: &str) -> Option<(usize, usize)> {
     None
 }
 
+/// Increments the appropriate severity counter in `counts` using saturating addition.
 fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
     match severity {
         Severity::Info => counts.info = counts.info.saturating_add(1),
@@ -558,6 +559,10 @@ fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
     }
 }
 
+/// Truncates a line snippet to at most 240 characters, appending '…' if truncated.
+///
+/// Operates on character boundaries (not bytes) to handle Unicode correctly.
+/// Uses [`chars().enumerate()`] to count characters rather than slicing by byte index.
 fn trim_snippet(s: &str) -> String {
     const MAX_CHARS: usize = 240;
     let trimmed = s.trim_end();
@@ -574,12 +579,25 @@ fn trim_snippet(s: &str) -> String {
     out
 }
 
+/// Extracts a substring from `s` in the range `[start, end)`, with bounds clamping.
+///
+/// `end` is first clamped to `s.len()`, then `start` is clamped to the
+/// adjusted `end`. This guarantees `start <= end <= s.len()`, making the
+/// range always valid for direct indexing.
+///
+/// Returns the substring as a new `String`.
 fn safe_slice(s: &str, start: usize, end: usize) -> String {
+    // Clamp end first, then clamp start to the adjusted end.
+    // After these two lines: start <= end <= s.len(), so the range is always valid.
     let end = end.min(s.len());
     let start = start.min(end);
     s.get(start..end).unwrap_or("").to_string()
 }
 
+/// Converts a byte index to a 1-based column number (character count).
+///
+/// Returns `None` if `byte_idx` exceeds the string length, otherwise returns
+/// the number of characters in `s[..byte_idx]` plus one (to get 1-based column).
 fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
     if byte_idx > s.len() {
         return None;
