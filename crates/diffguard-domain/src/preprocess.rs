@@ -363,7 +363,7 @@ impl Preprocessor {
     fn handle_normal_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         mut i: usize,
         len: usize,
     ) -> Option<usize> {
@@ -641,7 +641,7 @@ impl Preprocessor {
     fn handle_line_comment_mode(
         &mut self,
         _bytes: &[u8],
-        _out: &mut Vec<u8>,
+        _out: &mut [u8],
         _i: usize,
         _len: usize,
     ) -> Option<usize> {
@@ -655,7 +655,7 @@ impl Preprocessor {
     fn handle_block_comment_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         i: usize,
         len: usize,
         depth: u32,
@@ -697,7 +697,7 @@ impl Preprocessor {
     fn handle_normal_string_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         i: usize,
         _len: usize,
         escaped: bool,
@@ -737,7 +737,7 @@ impl Preprocessor {
     fn handle_char_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         i: usize,
         _len: usize,
         escaped: bool,
@@ -769,7 +769,7 @@ impl Preprocessor {
     fn handle_raw_string_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         i: usize,
         len: usize,
         hashes: usize,
@@ -816,7 +816,7 @@ impl Preprocessor {
     fn handle_template_literal_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         i: usize,
         _len: usize,
         escaped: bool,
@@ -849,7 +849,7 @@ impl Preprocessor {
     fn handle_triple_quoted_string_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         i: usize,
         len: usize,
         escaped: bool,
@@ -896,7 +896,7 @@ impl Preprocessor {
     fn handle_shell_literal_string_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         i: usize,
         _len: usize,
     ) -> Option<usize> {
@@ -920,7 +920,7 @@ impl Preprocessor {
     fn handle_shell_ansi_c_string_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         i: usize,
         _len: usize,
         escaped: bool,
@@ -954,7 +954,7 @@ impl Preprocessor {
     fn handle_xml_comment_mode(
         &mut self,
         bytes: &[u8],
-        out: &mut Vec<u8>,
+        out: &mut [u8],
         i: usize,
         len: usize,
     ) -> Option<usize> {
