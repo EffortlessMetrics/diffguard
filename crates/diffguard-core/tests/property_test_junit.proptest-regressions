@@ -1,0 +1,9 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 530d156da6299eea7ec4ee30c95727af62a5ce3de82bf2fe6b67e2b1a77790f4 # shrinks to receipt = CheckReceipt { schema: "diffguard.check.v1", tool: ToolMeta { name: "diffguard", version: "0.2.0" }, diff: DiffMeta { base: "origin/main", head: "feat/test", context_lines: 3, scope: Added, files_scanned: 1, lines_scanned: 10 }, findings: [], verdict: Verdict { status: Pass, counts: VerdictCounts { info: 0, warn: 0, error: 0, suppressed: 0 }, reasons: [] }, timing: None }
+cc 960d42067d1d487699f951b1a6847ac22549076c2ccd8faf756bdf12801b4634 # shrinks to receipt = CheckReceipt { schema: "diffguard.check.v1", tool: ToolMeta { name: "diffguard", version: "0.2.0" }, diff: DiffMeta { base: "origin/main", head: "feat/test", context_lines: 3, scope: Added, files_scanned: 1, lines_scanned: 10 }, findings: [Finding { rule_id: "0", severity: Info, message: "¡", path: "-", line: 1, column: None, match_text: "¡", snippet: "" }], verdict: Verdict { status: Fail, counts: VerdictCounts { info: 1, warn: 0, error: 0, suppressed: 0 }, reasons: [] }, timing: None }
+cc 0426b25c5ecca59689d7676e11c0d6c1599d3964de418d706e25f66684f76f92 # shrinks to mut receipt = CheckReceipt { schema: "diffguard.check.v1", tool: ToolMeta { name: "diffguard", version: "0.2.0" }, diff: DiffMeta { base: "origin/main", head: "feat/test", context_lines: 3, scope: Added, files_scanned: 1, lines_scanned: 10 }, findings: [Finding { rule_id: "\u{1}", severity: Info, message: "\u{1}", path: "a", line: 1, column: None, match_text: "0", snippet: "" }], verdict: Verdict { status: Fail, counts: VerdictCounts { info: 1, warn: 0, error: 0, suppressed: 0 }, reasons: [] }, timing: None }

@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_test.rs
+expression: snapshot
+---
+{"abc123def456"}

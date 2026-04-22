@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_test.rs
+expression: summary
+---
+count=100, first=fp_00000000, last=fp_00000099, items=["fp_00000000", "fp_00000001", "fp_00000002", "fp_00000003", "fp_00000004"]
