@@ -136,6 +136,7 @@ pub fn merge_false_positive_baselines(
 }
 
 /// Returns the baseline as a fingerprint set for fast lookup.
+#[must_use]
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
     baseline
         .entries
