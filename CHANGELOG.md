@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`diffguard-analytics` `# Panics` documentation** — Added `# Panics` sections and `#[must_use]` attributes to all 9 public functions in `diffguard-analytics`: `normalize_false_positive_baseline`, `fingerprint_for_finding`, `baseline_from_receipt`, `merge_false_positive_baselines`, `false_positive_fingerprint_set`, `normalize_trend_history`, `trend_run_from_receipt`, `append_trend_run`, and `summarize_trend_history`. All state "Does not panic." per Rust API documentation guidelines.
+
 - **Full workspace tests in CI** — `cargo test --workspace` now runs all tests including xtask tests in the CI test job (previously excluded with `--exclude xtask`)
 - **xtask CI job enabled** — The `xtask ci` job (which runs fmt + clippy + test + conform) now executes in CI on pull requests and pushes to main (was previously disabled via `if: false`)
 
