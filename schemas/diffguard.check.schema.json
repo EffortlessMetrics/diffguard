@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "CheckReceipt",
+  "description": "The complete output of a single check run.\n\nEncapsulates the tool identity, diff metadata, all findings, and the final\nverdict. This is the primary output artifact of the diffguard pipeline.",
   "type": "object",
   "properties": {
     "diff": {
@@ -41,6 +42,7 @@
   ],
   "$defs": {
     "DiffMeta": {
+      "description": "Metadata describing the git diff that was scanned.\n\nCaptures the base/head refs, context configuration, scope, and\naggregate scan statistics for reproducibility and auditing.",
       "type": "object",
       "properties": {
         "base": {
@@ -52,6 +54,7 @@
           "minimum": 0
         },
         "files_scanned": {
+          "description": "Number of distinct files that were scanned.\n\nStored as `u64` to avoid silent truncation for very large repositories\n(those with more than 2^32 - 1 unique files).",
           "type": "integer",
           "format": "uint64",
           "minimum": 0
@@ -78,6 +81,7 @@
       ]
     },
     "Finding": {
+      "description": "A single rule match within a scoped file.\n\nRepresents one finding with location, matched text, and an optional snippet\nfor context. Multiple findings are aggregated into a `Verdict`.",
       "type": "object",
       "properties": {
         "column": {
@@ -172,6 +176,7 @@
       ]
     },
     "ToolMeta": {
+      "description": "Metadata describing the tool that produced a check receipt.\n\nIncludes the tool name and version for traceability in CI/CD pipelines.",
       "type": "object",
       "properties": {
         "name": {
@@ -187,6 +192,7 @@
       ]
     },
     "Verdict": {
+      "description": "The overall result of a check run.\n\n`status` is the top-level disposition, `counts` breaks down findings by\nseverity, and `reasons` provides human-readable tokens explaining any\nnon-pass outcome (e.g., `no_diff_input`, `truncated`).",
       "type": "object",
       "properties": {
         "counts": {
@@ -209,6 +215,7 @@
       ]
     },
     "VerdictCounts": {
+      "description": "Severity counts for a check run.\n\n`suppressed` tracks matches disabled by inline directives and is omitted\nfrom serialized output when zero to keep receipts clean.",
       "type": "object",
       "properties": {
         "error": {
@@ -240,6 +247,7 @@
       ]
     },
     "VerdictStatus": {
+      "description": "The overall disposition of a check run.\n\n`VerdictStatus` is the top-level pass/fail/skip result, while `counts`\nprovides a breakdown by severity and `reasons` explains any non-pass outcomes.",
       "oneOf": [
         {
           "type": "string",

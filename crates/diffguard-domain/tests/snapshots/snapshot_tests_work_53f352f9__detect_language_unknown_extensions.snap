@@ -1,0 +1,15 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_53f352f9.rs
+expression: snapshot
+---
+readme.md                      => None
+Makefile                       => None
+Dockerfile                     => None
+config                         => None
+.gitignore                     => None
+.env                           => None
+randomfile                     => None
+data.xml.bak                   => None
+document                       => None
+page.HTML                      => Some("xml")
+page.HTM                       => Some("xml")
