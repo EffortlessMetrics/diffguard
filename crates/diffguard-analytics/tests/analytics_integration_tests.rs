@@ -521,8 +521,8 @@ fn ci_pipeline_workflow_with_baseline_suppression() {
     // Create suppression set from the curated baseline
     let suppression_set = false_positive_fingerprint_set(&curated_baseline);
 
-    // Another PR comes with findings
-    let _pr_findings = vec![
+    // Another PR comes with findings (verified below that pr_change.rs is NOT suppressed)
+    let _ = &[
         make_finding("rust.no_unwrap", "legacy.rs", 100, ".unwrap()"), // Suppressed (in curated baseline)
         make_finding("rust.no_unwrap", "legacy.rs", 101, ".unwrap()"), // Suppressed (in curated baseline)
         make_finding("rust.no_unwrap", "pr_change.rs", 5, ".unwrap()"), // NEW! Real bug - NOT suppressed
