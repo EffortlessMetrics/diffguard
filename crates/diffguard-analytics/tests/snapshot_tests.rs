@@ -360,6 +360,41 @@ fn snapshot_merge_deduplication() {
     insta::assert_snapshot!("snapshot_merge_deduplication", merged.entries.len());
 }
 
+/// Snapshot test for baseline merge - note precedence when BOTH have Some notes.
+///
+/// Spec (AC3): "base.note wins when both are Some" because base is the curated
+/// baseline and incoming is ephemeral.
+///
+/// Current (buggy) behavior: incoming.note wins when both are Some.
+/// This test documents the CURRENT behavior. After the fix, this test's snapshot
+/// will need to be updated to expect `Some("base note")` instead of `Some("incoming note")`.
+#[test]
+fn snapshot_merge_note_precedence_both_some() {
+    let base = FalsePositiveBaseline {
+        schema: FALSE_POSITIVE_BASELINE_SCHEMA_V1.to_string(),
+        entries: vec![FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: "a.rule".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: Some("base note".to_string()),
+        }],
+    };
+    let incoming = FalsePositiveBaseline {
+        schema: FALSE_POSITIVE_BASELINE_SCHEMA_V1.to_string(),
+        entries: vec![FalsePositiveEntry {
+            fingerprint: "aaa".to_string(),
+            rule_id: "a.rule".to_string(),
+            path: "a.rs".to_string(),
+            line: 1,
+            note: Some("incoming note".to_string()),
+        }],
+    };
+    let merged = merge_false_positive_baselines(&base, &incoming);
+    let note_value = format!("{:?}", merged.entries[0].note.as_deref());
+    insta::assert_snapshot!("snapshot_merge_note_precedence_both_some", note_value);
+}
+
 // ============================================================================
 // Fingerprint Set Snapshot Tests
 // ============================================================================

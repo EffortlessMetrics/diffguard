@@ -1,0 +1,12 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_53f352f9.rs
+expression: snapshot
+---
+document.xml                   => Some("xml")
+document.xsl                   => Some("xml")
+document.xslt                  => Some("xml")
+document.xsd                   => Some("xml")
+image.svg                      => Some("xml")
+page.xhtml                     => Some("xml")
+page.html                      => Some("xml")
+page.htm                       => Some("xml")
