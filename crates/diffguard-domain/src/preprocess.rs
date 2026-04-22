@@ -374,9 +374,7 @@ impl Preprocessor {
         if self.opts.track_strings() {
             // Rust raw string start detection: r#"... "# or br#"... "#
             if string_syntax == StringSyntax::Rust {
-                if let Some((_, end_quote_i, hashes)) =
-                    detect_raw_string_start(bytes, i)
-                {
+                if let Some((_, end_quote_i, hashes)) = detect_raw_string_start(bytes, i) {
                     if self.opts.mask_strings {
                         mask_range(&mut *out, i, end_quote_i + 1);
                     }
@@ -399,23 +397,23 @@ impl Preprocessor {
 
             // Triple-quoted strings: """...""" or '''...''' (Python)
             // Swift/Scala only use """...""" (not single-quote triple)
-            if (string_syntax == StringSyntax::Python
-                || string_syntax == StringSyntax::SwiftScala)
-                && let Some((quote, end_i)) = detect_triple_quote_start(bytes, i) {
-                    // Swift/Scala only support double-quote triple strings
-                    if string_syntax == StringSyntax::SwiftScala && quote != b'"' {
-                        // Fall through to normal string handling
-                    } else {
-                        if self.opts.mask_strings {
-                            mask_range(&mut *out, i, end_i);
-                        }
-                        self.mode = Mode::TripleQuotedString {
-                            escaped: false,
-                            quote,
-                        };
-                        return Some(end_i);
+            if (string_syntax == StringSyntax::Python || string_syntax == StringSyntax::SwiftScala)
+                && let Some((quote, end_i)) = detect_triple_quote_start(bytes, i)
+            {
+                // Swift/Scala only support double-quote triple strings
+                if string_syntax == StringSyntax::SwiftScala && quote != b'"' {
+                    // Fall through to normal string handling
+                } else {
+                    if self.opts.mask_strings {
+                        mask_range(&mut *out, i, end_i);
                     }
+                    self.mode = Mode::TripleQuotedString {
+                        escaped: false,
+                        quote,
+                    };
+                    return Some(end_i);
                 }
+            }
 
             // JavaScript/TypeScript template literals: `...`
             if string_syntax == StringSyntax::JavaScript && bytes[i] == b'`' {
@@ -471,9 +469,7 @@ impl Preprocessor {
             }
 
             // XML/HTML attribute strings: both "..." and '...'
-            if string_syntax == StringSyntax::Xml
-                && (bytes[i] == b'"' || bytes[i] == b'\'')
-            {
+            if string_syntax == StringSyntax::Xml && (bytes[i] == b'"' || bytes[i] == b'\'') {
                 let quote = bytes[i];
                 if self.opts.mask_strings {
                     out[i] = b' ';
@@ -487,9 +483,7 @@ impl Preprocessor {
             }
 
             // PHP strings: '...' (literal, minimal escapes) and "..." (with escapes)
-            if string_syntax == StringSyntax::Php
-                && (bytes[i] == b'"' || bytes[i] == b'\'')
-            {
+            if string_syntax == StringSyntax::Php && (bytes[i] == b'"' || bytes[i] == b'\'') {
                 let quote = bytes[i];
                 if self.opts.mask_strings {
                     out[i] = b' ';
@@ -874,11 +868,7 @@ impl Preprocessor {
         }
 
         // Check for closing triple quote
-        if bytes[i] == quote
-            && i + 2 < len
-            && bytes[i + 1] == quote
-            && bytes[i + 2] == quote
-        {
+        if bytes[i] == quote && i + 2 < len && bytes[i + 1] == quote && bytes[i + 2] == quote {
             if self.opts.mask_strings {
                 mask_range(&mut *out, i, i + 3);
             }
@@ -963,11 +953,7 @@ impl Preprocessor {
         }
 
         // Check for closing -->
-        if bytes[i] == b'-'
-            && i + 2 < len
-            && bytes[i + 1] == b'-'
-            && bytes[i + 2] == b'>'
-        {
+        if bytes[i] == b'-' && i + 2 < len && bytes[i + 1] == b'-' && bytes[i + 2] == b'>' {
             if self.opts.mask_comments {
                 out[i + 1] = b' ';
                 out[i + 2] = b' ';

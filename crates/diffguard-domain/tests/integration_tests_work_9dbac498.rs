@@ -10,9 +10,7 @@
 //! 3. Length preservation: masked output matches input length
 //! 4. Language-specific handling across different language modes
 
-use diffguard_domain::{
-    Language, PreprocessOptions, Preprocessor,
-};
+use diffguard_domain::{Language, PreprocessOptions, Preprocessor};
 
 /// Integration: Preprocessor output length matches input for all languages
 ///
@@ -45,7 +43,8 @@ fn test_preprocessor_length_preservation_all_languages() {
 
     for lang in languages {
         for (i, input) in test_cases.iter().enumerate() {
-            let mut p = Preprocessor::with_language(PreprocessOptions::comments_and_strings(), lang);
+            let mut p =
+                Preprocessor::with_language(PreprocessOptions::comments_and_strings(), lang);
             let result = p.sanitize_line(input);
             assert_eq!(
                 result.len(),
@@ -70,7 +69,11 @@ fn test_preprocessor_comments_only_masks_comments() {
     let result = p.sanitize_line(input);
     assert_eq!(result.len(), input.len());
     // The comment portion should be spaces
-    assert!(result.contains("          "), "Comments should be masked: {}", result);
+    assert!(
+        result.contains("          "),
+        "Comments should be masked: {}",
+        result
+    );
 }
 
 /// Integration: Preprocessor masks strings only (strings_only mode)
@@ -83,7 +86,11 @@ fn test_preprocessor_strings_only_masks_strings() {
     let result = p.sanitize_line(input);
     assert_eq!(result.len(), input.len());
     // The string portion should be spaces (12 chars for "hello world")
-    assert!(result.contains("            "), "Strings should be masked: {}", result);
+    assert!(
+        result.contains("            "),
+        "Strings should be masked: {}",
+        result
+    );
 }
 
 /// Integration: Preprocessor masks both comments and strings
@@ -137,8 +144,7 @@ fn test_preprocessor_block_comment_multiline_state() {
 /// Verifies: TripleQuotedString mode persists across sanitize_line calls
 #[test]
 fn test_preprocessor_triple_quoted_string_multiline_state() {
-    let mut p =
-        Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Python);
+    let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Python);
 
     // Start of triple-quoted string
     let line1 = r#"x = """start of string"#;
@@ -174,7 +180,8 @@ fn test_preprocessor_triple_quoted_string_multiline_state() {
 /// Verifies: TemplateLiteral mode persists across sanitize_line calls
 #[test]
 fn test_preprocessor_template_literal_multiline_state() {
-    let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::JavaScript);
+    let mut p =
+        Preprocessor::with_language(PreprocessOptions::strings_only(), Language::JavaScript);
 
     // Start of template literal
     let line1 = r#"let x = `start of template"#;
@@ -254,8 +261,7 @@ fn test_preprocessor_shell_ansi_c_string() {
 #[test]
 fn test_preprocessor_xml_comment_multiline_state() {
     // Multi-line XML comment - this tests the state continuity
-    let mut p =
-        Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Xml);
+    let mut p = Preprocessor::with_language(PreprocessOptions::comments_only(), Language::Xml);
     let line1 = "<!-- start of";
     let result1 = p.sanitize_line(line1);
     assert_eq!(result1.len(), line1.len());
