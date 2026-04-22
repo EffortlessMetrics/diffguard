@@ -162,7 +162,9 @@ pub fn byte_offset_at_position(text: &str, position: Position) -> Option<usize> 
 /// handle text content when interfacing with LSP clients.
 #[must_use]
 pub fn utf16_length(text: &str) -> u32 {
-    text.chars().map(|ch| ch.len_utf16() as u32).sum()
+    text.chars()
+        .map(|ch| ch.len_utf16() as u32)
+        .fold(0u32, |acc, v| acc.saturating_add(v))
 }
 
 #[cfg(test)]
