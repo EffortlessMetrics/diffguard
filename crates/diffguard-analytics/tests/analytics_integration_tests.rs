@@ -11,11 +11,10 @@
 //! - Multi-component error propagation
 
 use diffguard_analytics::{
-    FalsePositiveBaseline, FalsePositiveEntry, TrendHistory,
-    FALSE_POSITIVE_BASELINE_SCHEMA_V1, TREND_HISTORY_SCHEMA_V1,
-    append_trend_run, baseline_from_receipt, false_positive_fingerprint_set,
-    fingerprint_for_finding, merge_false_positive_baselines, normalize_false_positive_baseline,
-    summarize_trend_history, trend_run_from_receipt,
+    FALSE_POSITIVE_BASELINE_SCHEMA_V1, FalsePositiveBaseline, FalsePositiveEntry,
+    TREND_HISTORY_SCHEMA_V1, TrendHistory, append_trend_run, baseline_from_receipt,
+    false_positive_fingerprint_set, fingerprint_for_finding, merge_false_positive_baselines,
+    normalize_false_positive_baseline, summarize_trend_history, trend_run_from_receipt,
 };
 use diffguard_types::{
     CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
@@ -223,12 +222,8 @@ fn trend_analytics_workflow_full_round_trip() {
 /// Tests that trend history trims oldest runs when max_runs is exceeded
 #[test]
 fn trend_analytics_workflow_trims_oldest_runs() {
-    let receipt = make_receipt_with_findings(vec![make_finding(
-        "rust.no_unwrap",
-        "a.rs",
-        1,
-        ".unwrap()",
-    )]);
+    let receipt =
+        make_receipt_with_findings(vec![make_finding("rust.no_unwrap", "a.rs", 1, ".unwrap()")]);
 
     let run = trend_run_from_receipt(
         &receipt,
@@ -409,12 +404,8 @@ fn serialization_round_trip_false_positive_baseline() {
 /// Tests that TrendHistory serializes and deserializes correctly
 #[test]
 fn serialization_round_trip_trend_history() {
-    let receipt = make_receipt_with_findings(vec![make_finding(
-        "rust.no_unwrap",
-        "a.rs",
-        1,
-        ".unwrap()",
-    )]);
+    let receipt =
+        make_receipt_with_findings(vec![make_finding("rust.no_unwrap", "a.rs", 1, ".unwrap()")]);
     let run = trend_run_from_receipt(
         &receipt,
         "2026-01-01T00:00:00Z",
@@ -442,7 +433,10 @@ fn serialization_round_trip_trend_history() {
     assert_eq!(deserialized.schema, history.schema);
     assert_eq!(deserialized.runs.len(), history.runs.len());
     assert_eq!(deserialized.runs[0].findings, history.runs[0].findings);
-    assert_eq!(deserialized.runs[0].duration_ms, history.runs[0].duration_ms);
+    assert_eq!(
+        deserialized.runs[0].duration_ms,
+        history.runs[0].duration_ms
+    );
 }
 
 /// Tests that TrendSummary serializes and deserializes correctly
@@ -629,12 +623,8 @@ fn ci_pipeline_workflow_trend_tracking() {
 #[test]
 fn workflow_with_empty_initial_baseline() {
     let empty_baseline = FalsePositiveBaseline::default();
-    let receipt = make_receipt_with_findings(vec![make_finding(
-        "rust.no_unwrap",
-        "a.rs",
-        1,
-        ".unwrap()",
-    )]);
+    let receipt =
+        make_receipt_with_findings(vec![make_finding("rust.no_unwrap", "a.rs", 1, ".unwrap()")]);
     let new_baseline = baseline_from_receipt(&receipt);
 
     // Merge empty with new - should just return new
@@ -658,12 +648,8 @@ fn workflow_with_empty_trend_history() {
 /// Tests trend history with single run (no delta possible)
 #[test]
 fn workflow_with_single_run_trend_history() {
-    let receipt = make_receipt_with_findings(vec![make_finding(
-        "rust.no_unwrap",
-        "a.rs",
-        1,
-        ".unwrap()",
-    )]);
+    let receipt =
+        make_receipt_with_findings(vec![make_finding("rust.no_unwrap", "a.rs", 1, ".unwrap()")]);
     let run = trend_run_from_receipt(
         &receipt,
         "2026-01-01T08:00:00Z",
