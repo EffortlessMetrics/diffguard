@@ -2063,6 +2063,11 @@ fn cockpit_error_detail(err: &anyhow::Error) -> String {
         .map_or_else(|| err.to_string(), |e| e.source.to_string())
 }
 
+/// Converts a list of base git refs into a human-readable display string.
+///
+/// - Empty list → `"origin/main"` (sensible default)
+/// - Single ref → just that ref (`"origin/main"`)
+/// - Multiple refs → comma-joined (`"origin/main,origin/release/1.0"`)
 fn render_base_refs(bases: &[String]) -> String {
     match bases {
         [] => "origin/main".to_string(),
