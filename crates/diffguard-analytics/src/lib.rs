@@ -90,7 +90,7 @@ pub fn fingerprint_for_finding(finding: &Finding) -> String {
 /// Does not panic.
 #[must_use]
 pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
-    let mut baseline = FalsePositiveBaseline {
+    normalize_false_positive_baseline(FalsePositiveBaseline {
         schema: FALSE_POSITIVE_BASELINE_SCHEMA_V1.to_string(),
         entries: receipt
             .findings
@@ -103,9 +103,7 @@ pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
                 note: None,
             })
             .collect(),
-    };
-    baseline = normalize_false_positive_baseline(baseline);
-    baseline
+    })
 }
 
 /// Merges two baselines (union by fingerprint), preferring existing entries in `base`.
