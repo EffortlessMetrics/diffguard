@@ -2,7 +2,7 @@
 //!
 //! This crate is intentionally pure (no filesystem/process/env I/O).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeSet, HashMap};
 
 use diffguard_types::{CheckReceipt, Finding, Scope, VerdictCounts, VerdictStatus};
 use schemars::JsonSchema;
@@ -42,6 +42,10 @@ pub struct FalsePositiveEntry {
 /// - ensures schema id is set
 /// - sorts entries
 /// - deduplicates by fingerprint
+///
+/// # Panics
+///
+/// Does not panic.
 #[must_use]
 pub fn normalize_false_positive_baseline(
     mut baseline: FalsePositiveBaseline,
@@ -65,6 +69,10 @@ pub fn normalize_false_positive_baseline(
 /// Computes the stable finding fingerprint used for baseline tracking.
 ///
 /// Format: SHA-256 of `rule_id:path:line:match_text`.
+///
+/// # Panics
+///
+/// Does not panic.
 #[must_use]
 pub fn fingerprint_for_finding(finding: &Finding) -> String {
     let input = format!(
@@ -76,9 +84,13 @@ pub fn fingerprint_for_finding(finding: &Finding) -> String {
 }
 
 /// Builds a baseline from receipt findings.
+///
+/// # Panics
+///
+/// Does not panic.
 #[must_use]
 pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
-    let mut baseline = FalsePositiveBaseline {
+    normalize_false_positive_baseline(FalsePositiveBaseline {
         schema: FALSE_POSITIVE_BASELINE_SCHEMA_V1.to_string(),
         entries: receipt
             .findings
@@ -91,32 +103,31 @@ pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
                 note: None,
             })
             .collect(),
-    };
-    baseline = normalize_false_positive_baseline(baseline);
-    baseline
+    })
 }
 
 /// Merges two baselines (union by fingerprint), preferring existing entries in `base`.
+///
+/// # Panics
+///
+/// Does not panic.
+#[must_use]
 pub fn merge_false_positive_baselines(
     base: &FalsePositiveBaseline,
     incoming: &FalsePositiveBaseline,
 ) -> FalsePositiveBaseline {
     let mut merged = normalize_false_positive_baseline(incoming.clone());
-    let mut seen = merged
+    let mut fingerprint_to_index: HashMap<String, usize> = merged
         .entries
         .iter()
-        .map(|e| e.fingerprint.clone())
-        .collect::<BTreeSet<_>>();
+        .enumerate()
+        .map(|(i, e)| (e.fingerprint.clone(), i))
+        .collect();
 
     for entry in &base.entries {
-        if seen.insert(entry.fingerprint.clone()) {
-            merged.entries.push(entry.clone());
-        } else if let Some(existing) = merged
-            .entries
-            .iter_mut()
-            .find(|e| e.fingerprint == entry.fingerprint)
-        {
-            // Preserve manually curated metadata from the existing baseline.
+        if let Some(&idx) = fingerprint_to_index.get(&entry.fingerprint) {
+            // Fingerprint exists in incoming — fill in any empty fields from base entry.
+            let existing = &mut merged.entries[idx];
             if existing.note.is_none() && entry.note.is_some() {
                 existing.note = entry.note.clone();
             }
@@ -129,6 +140,10 @@ pub fn merge_false_positive_baselines(
             if existing.line == 0 {
                 existing.line = entry.line;
             }
+        } else {
+            // Fingerprint is new — add to merged.
+            fingerprint_to_index.insert(entry.fingerprint.clone(), merged.entries.len());
+            merged.entries.push(entry.clone());
         }
     }
 
@@ -136,6 +151,11 @@ pub fn merge_false_positive_baselines(
 }
 
 /// Returns the baseline as a fingerprint set for fast lookup.
+///
+/// # Panics
+///
+/// Does not panic.
+#[must_use]
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
     baseline
         .entries
@@ -200,6 +220,11 @@ pub struct TrendDelta {
 }
 
 /// Deterministically normalizes trend history by setting schema id when missing.
+///
+/// # Panics
+///
+/// Does not panic.
+#[must_use]
 pub fn normalize_trend_history(mut history: TrendHistory) -> TrendHistory {
     if history.schema.is_empty() {
         history.schema = TREND_HISTORY_SCHEMA_V1.to_string();
@@ -208,6 +233,11 @@ pub fn normalize_trend_history(mut history: TrendHistory) -> TrendHistory {
 }
 
 /// Converts a check receipt into a trend run sample.
+///
+/// # Panics
+///
+/// Does not panic.
+#[must_use]
 pub fn trend_run_from_receipt(
     receipt: &CheckReceipt,
     started_at: &str,
@@ -230,6 +260,11 @@ pub fn trend_run_from_receipt(
 }
 
 /// Appends a run to history and optionally trims to `max_runs` newest entries.
+///
+/// # Panics
+///
+/// Does not panic.
+#[must_use]
 pub fn append_trend_run(
     mut history: TrendHistory,
     run: TrendRun,
@@ -250,6 +285,11 @@ pub fn append_trend_run(
 }
 
 /// Summarizes trend history totals and latest delta.
+///
+/// # Panics
+///
+/// Does not panic.
+#[must_use]
 pub fn summarize_trend_history(history: &TrendHistory) -> TrendSummary {
     let mut totals = VerdictCounts::default();
     let mut total_findings = 0u32;
