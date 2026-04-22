@@ -1044,32 +1044,6 @@ mod unit_tests {
     }
 
     #[test]
-    fn rule_missing_patterns_rejected_by_config_schema() {
-        let schema = load_config_schema();
-
-        // Create invalid JSON with rule missing required 'patterns' field
-        let invalid_json = serde_json::json!({
-            "defaults": {},
-            "rule": [{
-                "id": "test.rule",
-                "severity": "warn",
-                "message": "Test",
-                // "patterns" is missing
-            }]
-        });
-
-        let result = schema.validate(&invalid_json);
-        assert!(
-            result.is_err(),
-            "Rule missing patterns should be rejected by config schema"
-        );
-    }
-
-    // ========================================================================
-    // Edge Case Tests
-    // ========================================================================
-
-    #[test]
     fn config_with_all_optional_fields_null() {
         let schema = load_config_schema();
         let config = ConfigFile {

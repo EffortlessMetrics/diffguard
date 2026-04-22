@@ -10,7 +10,7 @@
 //!
 //! The fix merged the two match arms into one: "xml" | "xsl" | ... | "html" | "htm"
 
-use diffguard_domain::evaluate::{evaluate_lines, InputLine};
+use diffguard_domain::evaluate::{InputLine, evaluate_lines};
 use diffguard_domain::preprocess::Language;
 use diffguard_domain::rules::{compile_rules, detect_language};
 use diffguard_types::RuleConfig;
@@ -51,11 +51,7 @@ fn xml_rule(id: &str, patterns: Vec<&str>, paths: Vec<&str>) -> RuleConfig {
 /// Verifies the handoff: HTML/HTM files detect as "xml" → xml-language rule applies
 #[test]
 fn test_html_htm_files_match_xml_language_rules() {
-    let cfg = xml_rule(
-        "xml-pattern",
-        vec!["TODO"],
-        vec!["**/*"],
-    );
+    let cfg = xml_rule("xml-pattern", vec!["TODO"], vec!["**/*"]);
     let rules = compile_rules(&[cfg]).unwrap();
 
     // HTML files should match xml-language rules
@@ -93,11 +89,7 @@ fn test_html_htm_files_match_xml_language_rules() {
 /// and uses the "xml" language to set up preprocessing.
 #[test]
 fn test_evaluate_lines_uses_detect_language_for_html_files() {
-    let cfg = xml_rule(
-        "xml-pattern",
-        vec!["TODO"],
-        vec!["**/*"],
-    );
+    let cfg = xml_rule("xml-pattern", vec!["TODO"], vec!["**/*"]);
     let rules = compile_rules(&[cfg]).unwrap();
 
     let input_lines = vec![
@@ -135,11 +127,7 @@ fn test_evaluate_lines_uses_detect_language_for_html_files() {
 /// Verifies: file path → detect_language → rule applies → evaluation produces findings
 #[test]
 fn test_full_flow_html_htm_evaluation() {
-    let cfg = xml_rule(
-        "xml-pattern",
-        vec!["FIXME"],
-        vec!["**/*"],
-    );
+    let cfg = xml_rule("xml-pattern", vec!["FIXME"], vec!["**/*"]);
     let rules = compile_rules(&[cfg]).unwrap();
 
     let input_lines = vec![
@@ -187,19 +175,21 @@ fn test_full_flow_html_htm_evaluation() {
 
     // Should find FIXME in all three files
     assert_eq!(
-        evaluation.findings.len(), 3,
+        evaluation.findings.len(),
+        3,
         "Should find FIXME in all three files (html, htm, xhtml)"
     );
 
-    let paths: Vec<_> = evaluation.findings.iter().map(|f| f.path.as_str()).collect();
+    let paths: Vec<_> = evaluation
+        .findings
+        .iter()
+        .map(|f| f.path.as_str())
+        .collect();
     assert!(
         paths.contains(&"index.html"),
         "Should find FIXME in index.html"
     );
-    assert!(
-        paths.contains(&"old.htm"),
-        "Should find FIXME in old.htm"
-    );
+    assert!(paths.contains(&"old.htm"), "Should find FIXME in old.htm");
     assert!(
         paths.contains(&"doc.xhtml"),
         "Should find FIXME in doc.xhtml"
@@ -211,20 +201,14 @@ fn test_full_flow_html_htm_evaluation() {
 /// Verifies the negative case: when pattern doesn't match, no findings produced.
 #[test]
 fn test_no_findings_when_pattern_not_present() {
-    let cfg = xml_rule(
-        "xml-pattern",
-        vec!["UNIQUE_PATTERN_12345"],
-        vec!["**/*"],
-    );
+    let cfg = xml_rule("xml-pattern", vec!["UNIQUE_PATTERN_12345"], vec!["**/*"]);
     let rules = compile_rules(&[cfg]).unwrap();
 
-    let input_lines = vec![
-        InputLine {
-            path: "page.html".to_string(),
-            line: 1,
-            content: "<html><body>No special pattern here</body></html>".to_string(),
-        },
-    ];
+    let input_lines = vec![InputLine {
+        path: "page.html".to_string(),
+        line: 1,
+        content: "<html><body>No special pattern here</body></html>".to_string(),
+    }];
 
     let evaluation = evaluate_lines(input_lines, &rules, 100);
 
@@ -262,11 +246,7 @@ fn test_case_insensitive_language_detection_html_htm() {
 /// Verifies: .js, .py, .rs files should not match xml-language rules
 #[test]
 fn test_non_xml_files_do_not_match_xml_rules() {
-    let cfg = xml_rule(
-        "xml-pattern",
-        vec!["TODO"],
-        vec!["**/*"],
-    );
+    let cfg = xml_rule("xml-pattern", vec!["TODO"], vec!["**/*"]);
     let rules = compile_rules(&[cfg]).unwrap();
 
     // JavaScript file should NOT match xml-language rule (even though it has a pattern)
@@ -302,8 +282,7 @@ fn test_language_enum_xml_parsing() {
     );
 
     // HTML/HTM files map to Language::Xml via detect_language -> "xml" -> Language::Xml
-    let lang = detect_language(Path::new("page.html"))
-        .and_then(|s| s.parse::<Language>().ok());
+    let lang = detect_language(Path::new("page.html")).and_then(|s| s.parse::<Language>().ok());
     assert_eq!(
         lang,
         Some(Language::Xml),

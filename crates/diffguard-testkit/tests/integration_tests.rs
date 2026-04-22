@@ -164,6 +164,8 @@ fn integration_arb_rule_config_with_schema_validation() {
                 fail_on: Some(FailOn::Warn),
                 max_findings: Some(100),
                 diff_context: Some(3),
+                ignore_comments: None,
+                ignore_strings: None,
             },
             rule: vec![config.clone()],
         };
