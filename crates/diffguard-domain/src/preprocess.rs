@@ -364,7 +364,7 @@ impl Preprocessor {
         &mut self,
         bytes: &[u8],
         out: &mut [u8],
-        mut i: usize,
+        i: usize,
         len: usize,
     ) -> Option<usize> {
         let comment_syntax = self.lang.comment_syntax();
@@ -399,10 +399,9 @@ impl Preprocessor {
 
             // Triple-quoted strings: """...""" or '''...''' (Python)
             // Swift/Scala only use """...""" (not single-quote triple)
-            if string_syntax == StringSyntax::Python
-                || string_syntax == StringSyntax::SwiftScala
-            {
-                if let Some((quote, end_i)) = detect_triple_quote_start(bytes, i) {
+            if (string_syntax == StringSyntax::Python
+                || string_syntax == StringSyntax::SwiftScala)
+                && let Some((quote, end_i)) = detect_triple_quote_start(bytes, i) {
                     // Swift/Scala only support double-quote triple strings
                     if string_syntax == StringSyntax::SwiftScala && quote != b'"' {
                         // Fall through to normal string handling
@@ -417,7 +416,6 @@ impl Preprocessor {
                         return Some(end_i);
                     }
                 }
-            }
 
             // JavaScript/TypeScript template literals: `...`
             if string_syntax == StringSyntax::JavaScript && bytes[i] == b'`' {
