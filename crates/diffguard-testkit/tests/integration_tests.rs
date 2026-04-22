@@ -13,7 +13,7 @@ use diffguard_testkit::{
     fixtures::sample_configs,
     schema::validate_config_file,
 };
-use diffguard_types::{ConfigFile, Defaults, FailOn, RuleConfig, Scope, Severity};
+use diffguard_types::{ConfigFile, Defaults, FailOn, RuleConfig, Scope};
 use proptest::strategy::Strategy;
 use proptest::strategy::ValueTree;
 use proptest::test_runner::TestRunner;
@@ -218,7 +218,7 @@ fn integration_fixtures_with_arb_strategy_extension() {
     let base_rule = &minimal.rule[0];
     let extended_config = RuleConfig {
         id: format!("{}-extended", base_rule.id),
-        severity: base_rule.severity.clone(),
+        severity: base_rule.severity,
         message: base_rule.message.clone(),
         description: base_rule.description.clone(),
         languages: vec![lang.clone()], // Add arb-generated language
@@ -227,14 +227,14 @@ fn integration_fixtures_with_arb_strategy_extension() {
         exclude_paths: base_rule.exclude_paths.clone(),
         ignore_comments: base_rule.ignore_comments,
         ignore_strings: base_rule.ignore_strings,
-        match_mode: base_rule.match_mode.clone(),
+        match_mode: base_rule.match_mode,
         multiline: base_rule.multiline,
         multiline_window: base_rule.multiline_window,
         context_patterns: base_rule.context_patterns.clone(),
         context_window: base_rule.context_window,
         escalate_patterns: base_rule.escalate_patterns.clone(),
         escalate_window: base_rule.escalate_window,
-        escalate_to: base_rule.escalate_to.clone(),
+        escalate_to: base_rule.escalate_to,
         depends_on: base_rule.depends_on.clone(),
         help: base_rule.help.clone(),
         url: base_rule.url.clone(),
