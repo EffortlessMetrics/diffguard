@@ -37,7 +37,8 @@ pub fn render_junit_for_receipt(receipt: &CheckReceipt) -> String {
 
     // Root element
     out.push_str(&format!(
-        "<testsuites name=\"diffguard\" tests=\"{total_tests}\" failures=\"{total_failures}\" errors=\"0\">\n"
+        "<testsuites name=\"diffguard\" tests=\"{total_tests}\" failures=\"{total_failures}\" errors=\"0\">\\n",
+    ));
     ));
 
     // Emit a testsuite per rule_id
