@@ -119,14 +119,14 @@ pub fn merge_false_positive_baselines(
     incoming: &FalsePositiveBaseline,
 ) -> FalsePositiveBaseline {
     let mut merged = normalize_false_positive_baseline(incoming.clone());
-    let mut seen = merged
+    let mut incoming_fingerprints = merged
         .entries
         .iter()
         .map(|e| e.fingerprint.clone())
         .collect::<BTreeSet<_>>();
 
     for entry in &base.entries {
-        if seen.insert(entry.fingerprint.clone()) {
+        if incoming_fingerprints.insert(entry.fingerprint.clone()) {
             merged.entries.push(entry.clone());
         } else if let Some(existing) = merged
             .entries
