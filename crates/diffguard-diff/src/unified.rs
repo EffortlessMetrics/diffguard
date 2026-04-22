@@ -1660,4 +1660,234 @@ diff --git a/src/i18n.rs b/src/i18n.rs
         assert_eq!(lines[0].content, "let greeting = \"Привет\";");
         assert_eq!(lines[0].kind, ChangeKind::Changed);
     }
+
+    // ========================================================================
+    // Edge case tests for predicate functions (#[must_use] verification)
+    // ========================================================================
+
+    // is_binary_file edge cases
+    #[test]
+    fn is_binary_file_handles_unicode_in_paths() {
+        // Binary file with Unicode filename
+        assert!(is_binary_file(
+            "Binary files a/画像.png and b/画像.png differ"
+        ));
+        // Binary file with emoji in path
+        assert!(is_binary_file("Binary files a/🚀.png and b/🚀.png differ"));
+        // Binary file with mixed Unicode
+        assert!(is_binary_file(
+            "Binary files a/画像🚀.dat and b/画像🚀.png differ"
+        ));
+    }
+
+    #[test]
+    fn is_binary_file_contains_check_is_broad() {
+        // The implementation uses contains(" differ"), so any line starting with
+        // "Binary files " AND containing " differ" will match, even with extra text after.
+        // This is the correct behavior for git's binary file format.
+        assert!(is_binary_file(
+            "Binary files a/f.txt differ but something else"
+        ));
+        assert!(is_binary_file(
+            "Binary files /dev/null and b/f.txt differ (X bytes)"
+        ));
+    }
+
+    #[test]
+    fn is_binary_file_rejects_missing_differ() {
+        // Has "Binary files" but no " differ"
+        assert!(!is_binary_file("Binary files a/f.txt and b/f.txt no"));
+    }
+
+    // is_submodule edge cases
+    #[test]
+    fn is_submodule_handles_various_commit_lengths() {
+        // Short commit hash
+        assert!(is_submodule("Subproject commit abc"));
+        // Full 40-char hash
+        assert!(is_submodule(
+            "Subproject commit 0000000000000000000000000000000000000000"
+        ));
+        // Mixed case hex
+        assert!(is_submodule("Subproject commit ABCDEFabcdef1234567890"));
+    }
+
+    #[test]
+    fn is_submodule_rejects_similar_prefixes() {
+        // Superproject (not Subproject)
+        assert!(!is_submodule("Superproject commit abc123"));
+        // subproject lowercase
+        assert!(!is_submodule("subproject commit abc123"));
+        // SubProjects (plural)
+        assert!(!is_submodule("SubProjects commit abc123"));
+        // Subprojectcommit (no space)
+        assert!(!is_submodule("Subprojectcommit abc123"));
+    }
+
+    // is_deleted_file edge cases
+    #[test]
+    fn is_deleted_file_various_permissions() {
+        // All standard permissions
+        assert!(is_deleted_file("deleted file mode 100644"));
+        assert!(is_deleted_file("deleted file mode 100755"));
+        assert!(is_deleted_file("deleted file mode 120000")); // symlink
+        assert!(is_deleted_file("deleted file mode 100000"));
+        assert!(is_deleted_file("deleted file mode 000000"));
+    }
+
+    // is_new_file edge cases
+    #[test]
+    fn is_new_file_various_permissions() {
+        assert!(is_new_file("new file mode 100644"));
+        assert!(is_new_file("new file mode 100755"));
+        assert!(is_new_file("new file mode 120000")); // symlink
+        assert!(is_new_file("new file mode 100000"));
+        assert!(is_new_file("new file mode 000000"));
+    }
+
+    // is_mode_change_only edge cases
+    #[test]
+    fn is_mode_change_only_exact_prefix_matching() {
+        // Must be "old mode" or "new mode" exactly
+        assert!(is_mode_change_only("old mode 0755"));
+        assert!(is_mode_change_only("new mode 0644"));
+        // Reject other prefixes
+        assert!(!is_mode_change_only("oldmode 100644")); // no space
+        assert!(!is_mode_change_only("newmode 100755")); // no space
+        assert!(!is_mode_change_only("older mode 100644")); // extra chars
+        assert!(!is_mode_change_only("newer mode 100755")); // extra chars
+    }
+
+    // parse_rename_from edge cases
+    #[test]
+    fn parse_rename_from_no_leading_whitespace() {
+        // Leading whitespace is NOT trimmed - strip_prefix requires exact prefix
+        assert_eq!(parse_rename_from("  rename from src/old.rs"), None);
+    }
+
+    #[test]
+    fn parse_rename_from_handles_trailing_whitespace() {
+        // Trailing whitespace on the path is trimmed by parse_rename_path
+        assert_eq!(
+            parse_rename_from("rename from src/old.rs  "),
+            Some("src/old.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_rename_from_multiple_spaces_after_prefix() {
+        // Multiple spaces between prefix and path - the extra space is part of the path
+        // which gets trimmed by parse_rename_path, so it works
+        assert_eq!(
+            parse_rename_from("rename from  src/old.rs"),
+            Some("src/old.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_rename_from_handles_unicode_paths() {
+        // Japanese characters
+        assert_eq!(
+            parse_rename_from("rename from src/古いファイル.rs"),
+            Some("src/古いファイル.rs".to_string())
+        );
+        // Emoji in path
+        assert_eq!(
+            parse_rename_from("rename from src/🚀.rs"),
+            Some("src/🚀.rs".to_string())
+        );
+        // Mixed Unicode
+        assert_eq!(
+            parse_rename_from("rename from src/画像🚀.rs"),
+            Some("src/画像🚀.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_rename_from_rejects_wrong_prefix() {
+        // rename from with extra leading chars
+        assert_eq!(parse_rename_from("rename fromx src/old.rs"), None);
+        // rename from with missing space
+        assert_eq!(parse_rename_from("rename fromsrc/old.rs"), None);
+    }
+
+    // parse_rename_to edge cases
+    #[test]
+    fn parse_rename_to_no_leading_whitespace() {
+        // Leading whitespace is NOT trimmed - strip_prefix requires exact prefix
+        assert_eq!(parse_rename_to("  rename to src/new.rs"), None);
+    }
+
+    #[test]
+    fn parse_rename_to_handles_trailing_whitespace() {
+        // Trailing whitespace on the path is trimmed by parse_rename_path
+        assert_eq!(
+            parse_rename_to("rename to src/new.rs  "),
+            Some("src/new.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_rename_to_multiple_spaces_after_prefix() {
+        // Multiple spaces between prefix and path - the extra space is part of the path
+        // which gets trimmed by parse_rename_path, so it works
+        assert_eq!(
+            parse_rename_to("rename to  src/new.rs"),
+            Some("src/new.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_rename_to_handles_unicode_paths() {
+        // Japanese characters
+        assert_eq!(
+            parse_rename_to("rename to src/新しいファイル.rs"),
+            Some("src/新しいファイル.rs".to_string())
+        );
+        // Emoji in path
+        assert_eq!(
+            parse_rename_to("rename to src/🚀.rs"),
+            Some("src/🚀.rs".to_string())
+        );
+        // Mixed Unicode
+        assert_eq!(
+            parse_rename_to("rename to src/画像🚀.rs"),
+            Some("src/画像🚀.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_rename_to_rejects_wrong_prefix() {
+        // rename to with extra leading chars
+        assert_eq!(parse_rename_to("rename tox src/new.rs"), None);
+        // rename to with missing space
+        assert_eq!(parse_rename_to("rename tosrc/new.rs"), None);
+    }
+
+    // parse_rename_path edge cases (the private helper used by both)
+    #[test]
+    fn parse_rename_path_handles_special_characters() {
+        // Path with backslash (Windows-style)
+        assert_eq!(
+            parse_rename_path(r"src\old\file.rs"),
+            Some(r"src\old\file.rs".to_string())
+        );
+        // Path with dots only
+        assert_eq!(parse_rename_path("..."), Some("...".to_string()));
+        // Path starting with dot
+        assert_eq!(
+            parse_rename_path(".hidden/file.rs"),
+            Some(".hidden/file.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_rename_path_rejects_empty_after_trim() {
+        // Just spaces
+        assert_eq!(parse_rename_path("   "), None);
+        // Just tabs
+        assert_eq!(parse_rename_path("\t"), None);
+        // Mixed whitespace
+        assert_eq!(parse_rename_path(" \t "), None);
+    }
 }

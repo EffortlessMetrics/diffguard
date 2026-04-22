@@ -1,0 +1,12 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_76372a5b.rs
+expression: snapshot
+---
+Evaluation {
+  findings: 0 items
+  counts: VerdictCounts { info: 0, warn: 0, error: 0, suppressed: 0 }
+  truncated_findings: 0
+  files_scanned: 1
+  lines_scanned: 1
+  rule_hits: 0 items (sorted by rule_id)
+}
