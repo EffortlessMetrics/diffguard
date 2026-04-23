@@ -1,0 +1,8 @@
+---
+source: crates/diffguard-diff/tests/snapshot_tests.rs
+expression: snapshot
+---
+lines:
+DiffLine { path: "src/lib.rs", line: 2, content: "fn b() {}", kind: Added }
+stats:
+DiffStats { files: 1, lines: 1 }
