@@ -736,6 +736,7 @@ fn init_logging(verbose: bool, debug: bool, color: Option<&ColorChoice>) {
     debug!("Logging initialized at level: {}", level);
 }
 
+/// Prints the effective rules (built-in + config merge) in the requested format.
 fn cmd_rules(args: RulesArgs) -> Result<()> {
     let cfg = load_config(args.config, args.no_default_rules)?;
 
@@ -860,6 +861,8 @@ fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     errors
 }
 
+/// Validates a configuration file: regex patterns, globs, and rule integrity.
+/// Returns Ok(0) if valid, Ok(1) if errors found.
 fn cmd_validate(args: ValidateArgs) -> Result<i32> {
     info!("Validating configuration file");
 
@@ -1055,6 +1058,7 @@ fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bo
     }
 }
 
+/// Shows detailed information about a specific rule.
 fn cmd_explain(args: ExplainArgs) -> Result<()> {
     let cfg = load_config(args.config, args.no_default_rules)?;
 
@@ -2681,6 +2685,7 @@ fn cmd_check_inner(
     Ok(exit_code)
 }
 
+/// Converts a JSON receipt to SARIF format and writes to file or stdout.
 fn cmd_sarif(args: SarifArgs) -> Result<()> {
     let receipt_text = std::fs::read_to_string(&args.report)
         .with_context(|| format!("read report {}", args.report.display()))?;
@@ -2698,6 +2703,7 @@ fn cmd_sarif(args: SarifArgs) -> Result<()> {
     Ok(())
 }
 
+/// Converts a JSON receipt to JUnit XML format and writes to file or stdout.
 fn cmd_junit(args: JunitArgs) -> Result<()> {
     let receipt_text = std::fs::read_to_string(&args.report)
         .with_context(|| format!("read report {}", args.report.display()))?;
@@ -2715,6 +2721,7 @@ fn cmd_junit(args: JunitArgs) -> Result<()> {
     Ok(())
 }
 
+/// Converts a JSON receipt to CSV or TSV format and writes to file or stdout.
 fn cmd_csv(args: CsvArgs) -> Result<()> {
     let receipt_text = std::fs::read_to_string(&args.report)
         .with_context(|| format!("read report {}", args.report.display()))?;
@@ -2736,6 +2743,7 @@ fn cmd_csv(args: CsvArgs) -> Result<()> {
     Ok(())
 }
 
+/// Summarizes historical check trends from a trend history file.
 fn cmd_trend(args: TrendArgs) -> Result<()> {
     let history = load_trend_history(&args.history)?;
     let summary = summarize_trend_history(&history);
@@ -2778,6 +2786,8 @@ fn cmd_trend(args: TrendArgs) -> Result<()> {
     Ok(())
 }
 
+/// Prompts the user to confirm overwriting an existing file.
+/// Returns true if the user confirms with 'y' or 'yes'.
 fn confirm_overwrite<R: BufRead, W: Write>(
     input: &mut R,
     mut err: W,
@@ -2796,11 +2806,14 @@ fn confirm_overwrite<R: BufRead, W: Write>(
     Ok(input == "y" || input == "yes")
 }
 
+/// Creates a new diffguard.toml configuration file from a preset template.
 fn cmd_init(args: InitArgs) -> Result<()> {
     let mut input = io::stdin().lock();
     cmd_init_with_io(args, &mut input, io::stderr())
 }
 
+/// Creates a new diffguard.toml configuration file using the specified preset.
+/// Handles user interaction for confirming file overwrite.
 fn cmd_init_with_io<R: BufRead, W: Write>(args: InitArgs, input: &mut R, err: W) -> Result<()> {
     let output_path = &args.output;
 
@@ -2851,6 +2864,7 @@ fn cmd_init_with_io<R: BufRead, W: Write>(args: InitArgs, input: &mut R, err: W)
     Ok(())
 }
 
+/// Runs test cases defined in rule configurations and reports results.
 fn cmd_test(args: TestArgs) -> Result<i32> {
     info!("Running rule test cases");
 
@@ -2998,6 +3012,8 @@ fn cmd_test(args: TestArgs) -> Result<i32> {
     if failed > 0 { Ok(1) } else { Ok(0) }
 }
 
+/// Loads configuration from a file or returns built-in rules if no config exists.
+/// Merges with built-in rules unless `no_default_rules` is true.
 fn load_config(path: Option<PathBuf>, no_default_rules: bool) -> Result<ConfigFile> {
     let user_path = path.or_else(|| {
         let p = PathBuf::from("diffguard.toml");
@@ -3084,6 +3100,8 @@ fn expand_env_vars(content: &str) -> Result<String> {
     Ok(result)
 }
 
+/// Merges a user config with the built-in rules.
+/// User rules override built-in rules with the same ID.
 fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     let mut built = ConfigFile::built_in();
 
@@ -3103,6 +3121,7 @@ fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     built
 }
 
+/// Runs `git diff` to get a unified diff between base and head refs.
 fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
     let range = format!("{base}...{head}");
     let unified = format!("--unified={context_lines}");
@@ -3123,6 +3142,7 @@ fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Runs `git diff --cached` to get staged changes as a unified diff.
 fn git_staged_diff(context_lines: u32) -> Result<String> {
     let unified = format!("--unified={context_lines}");
 
@@ -3142,6 +3162,7 @@ fn git_staged_diff(context_lines: u32) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Serializes a value to JSON and writes it to a file, creating parent directories as needed.
 fn write_json(path: &Path, value: &impl serde::Serialize) -> Result<()> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
@@ -3155,6 +3176,7 @@ fn write_json(path: &Path, value: &impl serde::Serialize) -> Result<()> {
     Ok(())
 }
 
+/// Writes text content to a file, creating parent directories as needed.
 fn write_text(path: &Path, text: &str) -> Result<()> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
