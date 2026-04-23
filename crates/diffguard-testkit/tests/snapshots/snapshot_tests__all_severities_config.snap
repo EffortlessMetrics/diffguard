@@ -1,0 +1,55 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "defaults": {
+    "base": "origin/main",
+    "diff_context": 0,
+    "fail_on": "error",
+    "head": "HEAD",
+    "max_findings": 200,
+    "scope": "added"
+  },
+  "rule": [
+    {
+      "exclude_paths": [],
+      "id": "test.info",
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "languages": [],
+      "message": "Info level finding",
+      "paths": [],
+      "patterns": [
+        "INFO_PATTERN"
+      ],
+      "severity": "info"
+    },
+    {
+      "exclude_paths": [],
+      "id": "test.warn",
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "languages": [],
+      "message": "Warning level finding",
+      "paths": [],
+      "patterns": [
+        "WARN_PATTERN"
+      ],
+      "severity": "warn"
+    },
+    {
+      "exclude_paths": [],
+      "id": "test.error",
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "languages": [],
+      "message": "Error level finding",
+      "paths": [],
+      "patterns": [
+        "ERROR_PATTERN"
+      ],
+      "severity": "error"
+    }
+  ]
+}

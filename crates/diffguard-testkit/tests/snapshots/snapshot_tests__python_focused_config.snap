@@ -1,0 +1,55 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "defaults": {
+    "base": "origin/main",
+    "diff_context": 0,
+    "fail_on": "error",
+    "head": "HEAD",
+    "max_findings": 200,
+    "scope": "added"
+  },
+  "rule": [
+    {
+      "exclude_paths": [
+        "**/tests/**",
+        "**/test_*.py"
+      ],
+      "id": "python.no_print",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "python"
+      ],
+      "message": "Remove print statements before merging",
+      "paths": [
+        "**/*.py"
+      ],
+      "patterns": [
+        "\\bprint\\s*\\("
+      ],
+      "severity": "warn"
+    },
+    {
+      "exclude_paths": [],
+      "id": "python.no_pdb",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "python"
+      ],
+      "message": "Remove debugger statements",
+      "paths": [
+        "**/*.py"
+      ],
+      "patterns": [
+        "\\bimport\\s+pdb\\b",
+        "\\bpdb\\.set_trace\\s*\\(",
+        "\\bbreakpoint\\s*\\("
+      ],
+      "severity": "error"
+    }
+  ]
+}
