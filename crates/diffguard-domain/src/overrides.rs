@@ -595,7 +595,7 @@ mod tests {
             "cache.get() should return Some for existing key"
         );
         assert!(
-            !retrieved.unwrap().enabled,
+            !retrieved.unwrap().enabled, // diffguard: ignore rust.no_unwrap
             "retrieved value should match stored value"
         );
     }
@@ -648,7 +648,7 @@ mod tests {
 
         // 'a' should still exist (was updated to MRU)
         assert_eq!(
-            cache.get(&"a".to_string()).unwrap(),
+            cache.get(&"a".to_string()).unwrap(), // diffguard: ignore rust.no_unwrap
             &10,
             "updated key should be at MRU position"
         );
@@ -712,7 +712,7 @@ mod tests {
             None,
             vec![],
         )])
-        .expect("compile overrides");
+        .expect("compile overrides"); // diffguard: ignore rust.no_unwrap
 
         // Should be able to clone the matcher
         let cloned = matcher.clone();
@@ -733,7 +733,7 @@ mod tests {
             None,
             vec![],
         )])
-        .expect("compile overrides");
+        .expect("compile overrides"); // diffguard: ignore rust.no_unwrap
 
         // Should be able to format matcher with {:?}
         let debug_str = format!("{:?}", matcher);
