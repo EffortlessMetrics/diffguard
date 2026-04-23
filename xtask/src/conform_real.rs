@@ -701,6 +701,9 @@ fn canonicalize_json(value: &serde_json::Value) -> String {
 }
 
 /// Test that frozen vocabulary constants have the expected values.
+/// These are compile-time constants, so this function uses assert_eq! rather
+/// than ensure! to make it clear this is a static verification that cannot fail
+/// at runtime (mismatches would be compile-time errors).
 fn test_vocabulary_constants() {
     use diffguard_types::{
         CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_SKIPPED, CAP_STATUS_UNAVAILABLE,
@@ -734,9 +737,7 @@ fn test_vocabulary_constants() {
     assert_eq!(CAP_STATUS_AVAILABLE, "available");
     assert_eq!(CAP_STATUS_UNAVAILABLE, "unavailable");
     assert_eq!(CAP_STATUS_SKIPPED, "skipped");
-
 }
-
 /// Test that cockpit-mode tool errors produce the correct code field.
 fn test_tool_error_code() -> Result<()> {
     let temp_dir = TempDir::new().context("create temp dir")?;
