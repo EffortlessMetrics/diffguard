@@ -72,7 +72,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **`presets.rs`**: Replaced 4 `unwrap()` calls with `expect()` in inline test functions (`test_rust_quality_preset`, `test_secrets_preset`, `test_js_console_preset`, `test_python_debug_preset`). This removes the self-defeating pattern where the `rust.no_unwrap` rule's own tests used `unwrap()`, improving code credibility.
+
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+- **`diffguard-testkit`**: Replaced wildcard import `use super::*` with explicit named imports in `sample_receipts` module, making symbol provenance clear and compiler-verified. Resolves provenance issue mentioned in #335.
 
 ## [0.2.0] - 2026-04-06
 
