@@ -460,34 +460,35 @@ fn merge_configs(base: ConfigFile, other: ConfigFile) -> ConfigFile {
         diff_context: other.defaults.diff_context.or(base.defaults.diff_context),
     };
 
-    let mut rules = std::collections::BTreeMap::new();
-    for rule in base.rule {
-        rules.insert(rule.id.clone(), rule);
-    }
-    for rule in other.rule {
-        rules.insert(rule.id.clone(), rule);
-    }
+    let rules = merge_rule_maps(&base.rule, &other.rule);
 
     ConfigFile {
         includes: vec![],
         defaults,
-        rule: rules.into_values().collect(),
+        rule: rules,
     }
+}
+
+/// Merges two rule vectors, with `other` rules taking precedence over `base` rules.
+///
+/// Later rules with the same ID override earlier ones. Uses a BTreeMap for
+/// deterministic ordering by rule ID.
+fn merge_rule_maps(base_rules: &[RuleConfig], other_rules: &[RuleConfig]) -> Vec<RuleConfig> {
+    let mut rules = std::collections::BTreeMap::new();
+    for rule in base_rules {
+        rules.insert(rule.id.clone(), rule.clone());
+    }
+    for rule in other_rules {
+        rules.insert(rule.id.clone(), rule.clone());
+    }
+    rules.into_values().collect()
 }
 
 fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     let mut built_in = ConfigFile::built_in();
     built_in.defaults = user.defaults;
 
-    let mut rules = std::collections::BTreeMap::<String, RuleConfig>::new();
-    for rule in built_in.rule {
-        rules.insert(rule.id.clone(), rule);
-    }
-    for rule in user.rule {
-        rules.insert(rule.id.clone(), rule);
-    }
-
-    built_in.rule = rules.into_values().collect();
+    built_in.rule = merge_rule_maps(&built_in.rule, &user.rule);
     built_in
 }
 
