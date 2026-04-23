@@ -1780,13 +1780,2179 @@
           ]
         }
       ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:421:26: replace + with * in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 421,
+              "column": 26
+            },
+            "end": {
+              "line": 421,
+              "column": 27
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_421_col_26_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_421_col_26_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.423442054,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.253532627,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:422:38: replace < with == in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 422,
+              "column": 38
+            },
+            "end": {
+              "line": 422,
+              "column": 39
+            }
+          },
+          "replacement": "==",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_422_col_38.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_422_col_38.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.319332195,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.303551688,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:422:38: replace < with > in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 422,
+              "column": 38
+            },
+            "end": {
+              "line": 422,
+              "column": 39
+            }
+          },
+          "replacement": ">",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_422_col_38_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_422_col_38_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.279822781,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.508233529,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:422:38: replace < with <= in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 422,
+              "column": 38
+            },
+            "end": {
+              "line": 422,
+              "column": 39
+            }
+          },
+          "replacement": "<=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_422_col_38_002.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_422_col_38_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 8.472644211,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.504926815,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:446:24: replace < with == in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 446,
+              "column": 24
+            },
+            "end": {
+              "line": 446,
+              "column": 25
+            }
+          },
+          "replacement": "==",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_446_col_24.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_446_col_24.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 7.086515715,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.303442198,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:446:24: replace < with > in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 446,
+              "column": 24
+            },
+            "end": {
+              "line": 446,
+              "column": 25
+            }
+          },
+          "replacement": ">",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_446_col_24_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_446_col_24_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.621495059,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.354188564,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:446:24: replace < with <= in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 446,
+              "column": 24
+            },
+            "end": {
+              "line": 446,
+              "column": 25
+            }
+          },
+          "replacement": "<=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_446_col_24_002.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_446_col_24_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.28207186,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.408892344,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:446:20: replace + with - in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 446,
+              "column": 20
+            },
+            "end": {
+              "line": 446,
+              "column": 21
+            }
+          },
+          "replacement": "-",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_446_col_20.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_446_col_20.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 4.928550785,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.255007564,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:446:20: replace + with * in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 446,
+              "column": 20
+            },
+            "end": {
+              "line": 446,
+              "column": 21
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_446_col_20_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_446_col_20_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.525495135,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.508746251,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:455:51: replace <= with > in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 455,
+              "column": 51
+            },
+            "end": {
+              "line": 455,
+              "column": 53
+            }
+          },
+          "replacement": ">",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_455_col_51.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_455_col_51.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 6.37714882,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.305241332,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:457:41: replace + with - in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 457,
+              "column": 41
+            },
+            "end": {
+              "line": 457,
+              "column": 42
+            }
+          },
+          "replacement": "-",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_457_col_41.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_457_col_41.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.53601084,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.710380215,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:457:41: replace + with * in find_multiline_matches",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "find_multiline_matches",
+            "return_type": "-> Vec<RawMatchEvent>",
+            "span": {
+              "start": {
+                "line": 408,
+                "column": 1
+              },
+              "end": {
+                "line": 473,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 457,
+              "column": 41
+            },
+            "end": {
+              "line": 457,
+              "column": 42
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_457_col_41_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_457_col_41_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 6.380704328,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.609053191,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:481:5: replace has_required_context -> bool with true",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "has_required_context",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 475,
+                "column": 1
+              },
+              "end": {
+                "line": 495,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 481,
+              "column": 5
+            },
+            "end": {
+              "line": 494,
+              "column": 10
+            }
+          },
+          "replacement": "true",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_481_col_5.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_481_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 6.331822769,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.303583457,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:481:5: replace has_required_context -> bool with false",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "has_required_context",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 475,
+                "column": 1
+              },
+              "end": {
+                "line": 495,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 481,
+              "column": 5
+            },
+            "end": {
+              "line": 494,
+              "column": 10
+            }
+          },
+          "replacement": "false",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_481_col_5_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_481_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 8.044079666,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 2.13812734,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:486:54: replace + with - in has_required_context",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "has_required_context",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 475,
+                "column": 1
+              },
+              "end": {
+                "line": 495,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 486,
+              "column": 54
+            },
+            "end": {
+              "line": 486,
+              "column": 55
+            }
+          },
+          "replacement": "-",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_486_col_54.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_486_col_54.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 6.55403737,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.712963808,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:486:54: replace + with * in has_required_context",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "has_required_context",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 475,
+                "column": 1
+              },
+              "end": {
+                "line": 495,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 486,
+              "column": 54
+            },
+            "end": {
+              "line": 486,
+              "column": 55
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_486_col_54_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_486_col_54_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 6.446355089,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.7609528920000002,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:486:32: replace + with - in has_required_context",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "has_required_context",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 475,
+                "column": 1
+              },
+              "end": {
+                "line": 495,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 486,
+              "column": 32
+            },
+            "end": {
+              "line": 486,
+              "column": 33
+            }
+          },
+          "replacement": "-",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_486_col_32.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_486_col_32.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.780528666,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.302970452,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:486:32: replace + with * in has_required_context",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "has_required_context",
+            "return_type": "-> bool",
+            "span": {
+              "start": {
+                "line": 475,
+                "column": 1
+              },
+              "end": {
+                "line": 495,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 486,
+              "column": 32
+            },
+            "end": {
+              "line": 486,
+              "column": 33
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_486_col_32_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_486_col_32_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 6.235039663,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.8648679110000002,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:504:5: replace maybe_escalate_severity -> Severity with Default::default()",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "maybe_escalate_severity",
+            "return_type": "-> Severity",
+            "span": {
+              "start": {
+                "line": 497,
+                "column": 1
+              },
+              "end": {
+                "line": 521,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 504,
+              "column": 5
+            },
+            "end": {
+              "line": 520,
+              "column": 31
+            }
+          },
+          "replacement": "Default::default()",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_504_col_5.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_504_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.457372661,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:509:55: replace + with - in maybe_escalate_severity",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "maybe_escalate_severity",
+            "return_type": "-> Severity",
+            "span": {
+              "start": {
+                "line": 497,
+                "column": 1
+              },
+              "end": {
+                "line": 521,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 509,
+              "column": 55
+            },
+            "end": {
+              "line": 509,
+              "column": 56
+            }
+          },
+          "replacement": "-",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_509_col_55.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_509_col_55.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.676409197,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.254676735,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:509:55: replace + with * in maybe_escalate_severity",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "maybe_escalate_severity",
+            "return_type": "-> Severity",
+            "span": {
+              "start": {
+                "line": 497,
+                "column": 1
+              },
+              "end": {
+                "line": 521,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 509,
+              "column": 55
+            },
+            "end": {
+              "line": 509,
+              "column": 56
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_509_col_55_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_509_col_55_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.729524611,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.303830455,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:509:32: replace + with - in maybe_escalate_severity",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "maybe_escalate_severity",
+            "return_type": "-> Severity",
+            "span": {
+              "start": {
+                "line": 497,
+                "column": 1
+              },
+              "end": {
+                "line": 521,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 509,
+              "column": 32
+            },
+            "end": {
+              "line": 509,
+              "column": 33
+            }
+          },
+          "replacement": "-",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_509_col_32.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_509_col_32.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.624286178,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.559674952,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:509:32: replace + with * in maybe_escalate_severity",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "maybe_escalate_severity",
+            "return_type": "-> Severity",
+            "span": {
+              "start": {
+                "line": 497,
+                "column": 1
+              },
+              "end": {
+                "line": 521,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 509,
+              "column": 32
+            },
+            "end": {
+              "line": 509,
+              "column": 33
+            }
+          },
+          "replacement": "*",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_509_col_32_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_509_col_32_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.62217319,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 1.6080920010000002,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:515:8: delete ! in maybe_escalate_severity",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "maybe_escalate_severity",
+            "return_type": "-> Severity",
+            "span": {
+              "start": {
+                "line": 497,
+                "column": 1
+              },
+              "end": {
+                "line": 521,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 515,
+              "column": 8
+            },
+            "end": {
+              "line": 515,
+              "column": 9
+            }
+          },
+          "replacement": "",
+          "genre": "UnaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_515_col_8.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_515_col_8.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.823389394,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.304609078,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:524:5: replace candidate_line_for_rule -> &'a str with \"\"",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "candidate_line_for_rule",
+            "return_type": "-> &'a str",
+            "span": {
+              "start": {
+                "line": 523,
+                "column": 1
+              },
+              "end": {
+                "line": 530,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 524,
+              "column": 5
+            },
+            "end": {
+              "line": 529,
+              "column": 6
+            }
+          },
+          "replacement": "\"\"",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_524_col_5.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_524_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.123416816,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.253109081,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:524:5: replace candidate_line_for_rule -> &'a str with \"xyzzy\"",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "candidate_line_for_rule",
+            "return_type": "-> &'a str",
+            "span": {
+              "start": {
+                "line": 523,
+                "column": 1
+              },
+              "end": {
+                "line": 530,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 524,
+              "column": 5
+            },
+            "end": {
+              "line": 529,
+              "column": 6
+            }
+          },
+          "replacement": "\"xyzzy\"",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_524_col_5_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_524_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.622183477,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.255010097,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:533:5: replace max_severity -> Severity with Default::default()",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "max_severity",
+            "return_type": "-> Severity",
+            "span": {
+              "start": {
+                "line": 532,
+                "column": 1
+              },
+              "end": {
+                "line": 542,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 533,
+              "column": 5
+            },
+            "end": {
+              "line": 541,
+              "column": 43
+            }
+          },
+          "replacement": "Default::default()",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_533_col_5.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_533_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.407634641,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:534:9: replace max_severity::rank -> u8 with 0",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "max_severity::rank",
+            "return_type": "-> u8",
+            "span": {
+              "start": {
+                "line": 533,
+                "column": 5
+              },
+              "end": {
+                "line": 539,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 534,
+              "column": 9
+            },
+            "end": {
+              "line": 538,
+              "column": 10
+            }
+          },
+          "replacement": "0",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_534_col_9.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_534_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.32046279,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.253581354,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:534:9: replace max_severity::rank -> u8 with 1",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "max_severity::rank",
+            "return_type": "-> u8",
+            "span": {
+              "start": {
+                "line": 533,
+                "column": 5
+              },
+              "end": {
+                "line": 539,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 534,
+              "column": 9
+            },
+            "end": {
+              "line": 538,
+              "column": 10
+            }
+          },
+          "replacement": "1",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_534_col_9_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_534_col_9_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.528005866,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.253450337,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:541:16: replace >= with < in max_severity",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "max_severity",
+            "return_type": "-> Severity",
+            "span": {
+              "start": {
+                "line": 532,
+                "column": 1
+              },
+              "end": {
+                "line": 542,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 541,
+              "column": 16
+            },
+            "end": {
+              "line": 541,
+              "column": 18
+            }
+          },
+          "replacement": "<",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_541_col_16.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_541_col_16.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.470532636,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.253536881,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:545:5: replace first_match -> Option<(usize, usize)> with None",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "first_match",
+            "return_type": "-> Option<(usize, usize)>",
+            "span": {
+              "start": {
+                "line": 544,
+                "column": 1
+              },
+              "end": {
+                "line": 551,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 545,
+              "column": 5
+            },
+            "end": {
+              "line": 550,
+              "column": 9
+            }
+          },
+          "replacement": "None",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_545_col_5.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_545_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.279555761,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.253927589,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:545:5: replace first_match -> Option<(usize, usize)> with Some((0, 0))",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "first_match",
+            "return_type": "-> Option<(usize, usize)>",
+            "span": {
+              "start": {
+                "line": 544,
+                "column": 1
+              },
+              "end": {
+                "line": 551,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 545,
+              "column": 5
+            },
+            "end": {
+              "line": 550,
+              "column": 9
+            }
+          },
+          "replacement": "Some((0, 0))",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_545_col_5_001.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_545_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.5220361780000005,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.303998806,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:545:5: replace first_match -> Option<(usize, usize)> with Some((0, 1))",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "first_match",
+            "return_type": "-> Option<(usize, usize)>",
+            "span": {
+              "start": {
+                "line": 544,
+                "column": 1
+              },
+              "end": {
+                "line": 551,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 545,
+              "column": 5
+            },
+            "end": {
+              "line": 550,
+              "column": 9
+            }
+          },
+          "replacement": "Some((0, 1))",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_545_col_5_002.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_545_col_5_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.327184485,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.254024148,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "crates/diffguard-domain/src/evaluate.rs:545:5: replace first_match -> Option<(usize, usize)> with Some((1, 0))",
+          "package": "diffguard-domain",
+          "file": "crates/diffguard-domain/src/evaluate.rs",
+          "function": {
+            "function_name": "first_match",
+            "return_type": "-> Option<(usize, usize)>",
+            "span": {
+              "start": {
+                "line": 544,
+                "column": 1
+              },
+              "end": {
+                "line": 551,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 545,
+              "column": 5
+            },
+            "end": {
+              "line": 550,
+              "column": 9
+            }
+          },
+          "replacement": "Some((1, 0))",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/crates__diffguard-domain__src__evaluate.rs_line_545_col_5_003.log",
+      "diff_path": "diff/crates__diffguard-domain__src__evaluate.rs_line_545_col_5_003.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 5.575663643,
+          "process_status": "Success",
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.303403799,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/hermes/.rustup/toolchains/1.92.0-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diffguard-domain@0.2.0"
+          ]
+        }
+      ]
     }
   ],
-  "total_mutants": 28,
-  "missed": 1,
-  "caught": 20,
+  "total_mutants": 62,
+  "missed": 12,
+  "caught": 41,
   "timeout": 1,
-  "unviable": 6,
+  "unviable": 8,
   "success": 0,
   "start_time": "2026-04-23T18:48:57.164602515Z",
   "end_time": null,

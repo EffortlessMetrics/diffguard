@@ -65,15 +65,8 @@ mod helper_tests {
         // - NOT produce a DiffLine (inner None)
         // - Reset pending_removed to false
         // - Increment both old_line_no and new_line_no
-        let result = process_diff_line_content(
-            " context",
-            b' ',
-            "file.rs",
-            Scope::Added,
-            1,
-            1,
-            false,
-        );
+        let result =
+            process_diff_line_content(" context", b' ', "file.rs", Scope::Added, 1, 1, false);
         let (diff_line, pending, old_no, new_no) = result.unwrap();
         assert!(diff_line.is_none());
         assert!(!pending);
@@ -87,15 +80,8 @@ mod helper_tests {
         // - NOT produce a DiffLine (filtered by Added scope)
         // - Set pending_removed to true
         // - Increment old_line_no only
-        let result = process_diff_line_content(
-            "-removed",
-            b'-',
-            "file.rs",
-            Scope::Added,
-            1,
-            1,
-            false,
-        );
+        let result =
+            process_diff_line_content("-removed", b'-', "file.rs", Scope::Added, 1, 1, false);
         let (diff_line, pending, old_no, new_no) = result.unwrap();
         assert!(diff_line.is_none());
         assert!(pending);
@@ -139,15 +125,8 @@ mod helper_tests {
 
     #[test]
     fn test_added_scope_deleted_excludes() {
-        let result = process_diff_line_content(
-            "+added",
-            b'+',
-            "file.rs",
-            Scope::Deleted,
-            1,
-            1,
-            true,
-        );
+        let result =
+            process_diff_line_content("+added", b'+', "file.rs", Scope::Deleted, 1, 1, true);
         let (diff_line, pending, _, _) = result.unwrap();
         assert!(diff_line.is_none()); // Deleted scope excludes +
         assert!(!pending);

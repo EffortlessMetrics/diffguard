@@ -60,7 +60,13 @@ fn snapshot_merge_empty_base_with_single_entry() {
 /// Output: note preserved from base
 #[test]
 fn snapshot_merge_preserves_note_from_base() {
-    let base = baseline_with_entry("abc123", "RUST_NO_UNWRAP", "src/lib.rs", 42, Some("intentional suppression"));
+    let base = baseline_with_entry(
+        "abc123",
+        "RUST_NO_UNWRAP",
+        "src/lib.rs",
+        42,
+        Some("intentional suppression"),
+    );
     let incoming = baseline_with_entry("abc123", "RUST_NO_UNWRAP", "src/lib.rs", 42, None);
 
     let merged = merge_false_positive_baselines(&base, &incoming);
@@ -189,8 +195,20 @@ fn snapshot_merge_both_empty() {
 /// Output: base data preserved (incoming ignored for that fingerprint)
 #[test]
 fn snapshot_merge_duplicate_fingerprint_base_wins() {
-    let base = baseline_with_entry("shared_fp", "BASE_RULE", "base/path.rs", 100, Some("base note"));
-    let incoming = baseline_with_entry("shared_fp", "INCOMING_RULE", "incoming/path.rs", 200, Some("incoming note"));
+    let base = baseline_with_entry(
+        "shared_fp",
+        "BASE_RULE",
+        "base/path.rs",
+        100,
+        Some("base note"),
+    );
+    let incoming = baseline_with_entry(
+        "shared_fp",
+        "INCOMING_RULE",
+        "incoming/path.rs",
+        200,
+        Some("incoming note"),
+    );
 
     let merged = merge_false_positive_baselines(&base, &incoming);
     let json = baseline_json(&merged);
@@ -207,7 +225,13 @@ fn snapshot_merge_duplicate_fingerprint_base_wins() {
 /// Output: unicode preserved
 #[test]
 fn snapshot_merge_unicode_in_note() {
-    let base = baseline_with_entry("fp1", "RULE", "main.rs", 1, Some("笔记 - note with unicode"));
+    let base = baseline_with_entry(
+        "fp1",
+        "RULE",
+        "main.rs",
+        1,
+        Some("笔记 - note with unicode"),
+    );
     let incoming = baseline_with_entry("fp1", "RULE", "main.rs", 1, None);
 
     let merged = merge_false_positive_baselines(&base, &incoming);
@@ -221,7 +245,13 @@ fn snapshot_merge_unicode_in_note() {
 /// Output: emoji preserved
 #[test]
 fn snapshot_merge_emoji_in_note() {
-    let base = baseline_with_entry("fp1", "RULE", "main.rs", 1, Some("🚨 important: suppress this"));
+    let base = baseline_with_entry(
+        "fp1",
+        "RULE",
+        "main.rs",
+        1,
+        Some("🚨 important: suppress this"),
+    );
     let incoming = baseline_with_entry("fp1", "RULE", "main.rs", 1, None);
 
     let merged = merge_false_positive_baselines(&base, &incoming);
@@ -236,7 +266,8 @@ fn snapshot_merge_emoji_in_note() {
 #[test]
 fn snapshot_merge_long_strings() {
     let long_rule = "RUST_LONGLONGLONGLONG_RULE_ID_THAT_EXCEEDS_TYPICAL_LENGTH".to_string();
-    let long_path = "/very/long/path/to/some/deeply/nested/source/file/that/goes/on/for/a/while.rs".to_string();
+    let long_path =
+        "/very/long/path/to/some/deeply/nested/source/file/that/goes/on/for/a/while.rs".to_string();
     let long_note = "This is a very long note that contains many characters and should be preserved exactly as-is during the merge operation without any truncation or modification".to_string();
 
     let base = FalsePositiveBaseline {
