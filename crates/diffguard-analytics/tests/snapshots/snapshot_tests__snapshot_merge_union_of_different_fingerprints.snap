@@ -1,0 +1,21 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: baseline_to_json(&merged)
+---
+{
+  "schema": "diffguard.false_positive_baseline.v1",
+  "entries": [
+    {
+      "fingerprint": "aaa111",
+      "rule_id": "rule.a",
+      "path": "a.rs",
+      "line": 1
+    },
+    {
+      "fingerprint": "bbb222",
+      "rule_id": "rule.b",
+      "path": "b.rs",
+      "line": 2
+    }
+  ]
+}
