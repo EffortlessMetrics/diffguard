@@ -619,6 +619,7 @@ fn simple_edit_distance(left: &str, right: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use diffguard_types::Defaults;
     use tempfile::TempDir;
 
     #[test]
@@ -889,5 +890,353 @@ patterns = ["main"]
             Some("origin/main"),
             "base should be 'origin/main' from Defaults::default(), not 'origin/develop' from base"
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // Property-based tests for merge_configs field-wise Defaults merging
+    // These tests verify invariants using multiple deterministic test cases.
+    // While not using proptest, they exercise the same invariants across many
+    // different input combinations to catch edge cases.
+    // -------------------------------------------------------------------------
+
+    /// Helper to create a ConfigFile with given defaults
+    fn make_config(defaults: diffguard_types::Defaults) -> ConfigFile {
+        ConfigFile {
+            includes: vec![],
+            defaults,
+            rule: vec![],
+        }
+    }
+
+    /// Property-like test: Field-wise override - Some in other should override base.
+    /// Tests multiple deterministic combinations to verify the invariant.
+    #[test]
+    fn test_merge_configs_field_override_property() {
+        // Test 1: Both have Some, other's should win
+        let base = make_config(diffguard_types::Defaults {
+            base: Some("origin/main".to_string()),
+            head: Some("HEAD".to_string()),
+            scope: Some(diffguard_types::Scope::Added),
+            fail_on: Some(diffguard_types::FailOn::Error),
+            max_findings: Some(200),
+            diff_context: Some(0),
+        });
+        let other = make_config(diffguard_types::Defaults {
+            base: Some("origin/develop".to_string()),
+            head: Some("feature".to_string()),
+            scope: Some(diffguard_types::Scope::Changed),
+            fail_on: Some(diffguard_types::FailOn::Warn),
+            max_findings: Some(100),
+            diff_context: Some(5),
+        });
+        let merged = merge_configs(base.clone(), other.clone());
+        assert_eq!(merged.defaults.base.as_deref(), Some("origin/develop"));
+        assert_eq!(merged.defaults.head.as_deref(), Some("feature"));
+        assert_eq!(merged.defaults.scope, Some(diffguard_types::Scope::Changed));
+        assert_eq!(merged.defaults.fail_on, Some(diffguard_types::FailOn::Warn));
+        assert_eq!(merged.defaults.max_findings, Some(100));
+        assert_eq!(merged.defaults.diff_context, Some(5));
+
+        // Test 2: other has Some, base has None - other's should win
+        let base = make_config(diffguard_types::Defaults {
+            base: None,
+            head: None,
+            scope: None,
+            fail_on: None,
+            max_findings: None,
+            diff_context: None,
+        });
+        let other = make_config(diffguard_types::Defaults {
+            base: Some("origin/feature".to_string()),
+            head: Some("feature".to_string()),
+            scope: Some(diffguard_types::Scope::Changed),
+            fail_on: Some(diffguard_types::FailOn::Never),
+            max_findings: Some(50),
+            diff_context: Some(10),
+        });
+        let merged = merge_configs(base.clone(), other.clone());
+        assert_eq!(merged.defaults.base.as_deref(), Some("origin/feature"));
+        assert_eq!(merged.defaults.head.as_deref(), Some("feature"));
+        assert_eq!(merged.defaults.scope, Some(diffguard_types::Scope::Changed));
+        assert_eq!(
+            merged.defaults.fail_on,
+            Some(diffguard_types::FailOn::Never)
+        );
+        assert_eq!(merged.defaults.max_findings, Some(50));
+        assert_eq!(merged.defaults.diff_context, Some(10));
+
+        // Test 3: Partial override - only some fields set in other
+        let base = make_config(diffguard_types::Defaults {
+            base: Some("origin/main".to_string()),
+            head: Some("HEAD".to_string()),
+            scope: Some(diffguard_types::Scope::Added),
+            fail_on: Some(diffguard_types::FailOn::Error),
+            max_findings: Some(200),
+            diff_context: Some(0),
+        });
+        let other = make_config(diffguard_types::Defaults {
+            base: None,
+            head: None,
+            scope: None,
+            fail_on: Some(diffguard_types::FailOn::Warn),
+            max_findings: None,
+            diff_context: None,
+        });
+        let merged = merge_configs(base.clone(), other.clone());
+        // only fail_on is Some in other, so only that should come from other
+        assert_eq!(merged.defaults.fail_on, Some(diffguard_types::FailOn::Warn));
+        // others should inherit from base
+        assert_eq!(merged.defaults.base.as_deref(), Some("origin/main"));
+        assert_eq!(merged.defaults.head.as_deref(), Some("HEAD"));
+        assert_eq!(merged.defaults.scope, Some(diffguard_types::Scope::Added));
+        assert_eq!(merged.defaults.max_findings, Some(200));
+        assert_eq!(merged.defaults.diff_context, Some(0));
+    }
+
+    /// Property-like test: Field-wise inheritance - None in other should inherit from base.
+    #[test]
+    fn test_merge_configs_field_inheritance_property() {
+        // Test 1: All None in other, all Some in base - should inherit all
+        let base = make_config(diffguard_types::Defaults {
+            base: Some("origin/develop".to_string()),
+            head: Some("HEAD".to_string()),
+            scope: Some(diffguard_types::Scope::Added),
+            fail_on: Some(diffguard_types::FailOn::Error),
+            max_findings: Some(200),
+            diff_context: Some(0),
+        });
+        let other = make_config(diffguard_types::Defaults {
+            base: None,
+            head: None,
+            scope: None,
+            fail_on: None,
+            max_findings: None,
+            diff_context: None,
+        });
+        let merged = merge_configs(base.clone(), other.clone());
+        assert_eq!(merged.defaults.base.as_deref(), Some("origin/develop"));
+        assert_eq!(merged.defaults.head.as_deref(), Some("HEAD"));
+        assert_eq!(merged.defaults.scope, Some(diffguard_types::Scope::Added));
+        assert_eq!(
+            merged.defaults.fail_on,
+            Some(diffguard_types::FailOn::Error)
+        );
+        assert_eq!(merged.defaults.max_findings, Some(200));
+        assert_eq!(merged.defaults.diff_context, Some(0));
+
+        // Test 2: Some None in other, mixed in base - None should inherit
+        let base = make_config(diffguard_types::Defaults {
+            base: Some("origin/main".to_string()),
+            head: Some("HEAD".to_string()),
+            scope: Some(diffguard_types::Scope::Added),
+            fail_on: Some(diffguard_types::FailOn::Error),
+            max_findings: Some(200),
+            diff_context: Some(0),
+        });
+        let other = make_config(diffguard_types::Defaults {
+            base: None,
+            head: Some("feature".to_string()), // Only head is Some
+            scope: None,
+            fail_on: None,
+            max_findings: None,
+            diff_context: None,
+        });
+        let merged = merge_configs(base.clone(), other.clone());
+        // Only head should come from other (Some)
+        assert_eq!(merged.defaults.head.as_deref(), Some("feature"));
+        // Others should inherit from base
+        assert_eq!(merged.defaults.base.as_deref(), Some("origin/main"));
+        assert_eq!(merged.defaults.scope, Some(diffguard_types::Scope::Added));
+        assert_eq!(
+            merged.defaults.fail_on,
+            Some(diffguard_types::FailOn::Error)
+        );
+        assert_eq!(merged.defaults.max_findings, Some(200));
+        assert_eq!(merged.defaults.diff_context, Some(0));
+    }
+
+    /// Property-like test: Idempotent - merging a config with itself preserves defaults.
+    #[test]
+    fn test_merge_configs_idempotent_property() {
+        // Test 1: Config with all Some values
+        let config = make_config(diffguard_types::Defaults {
+            base: Some("origin/main".to_string()),
+            head: Some("HEAD".to_string()),
+            scope: Some(diffguard_types::Scope::Added),
+            fail_on: Some(diffguard_types::FailOn::Error),
+            max_findings: Some(200),
+            diff_context: Some(0),
+        });
+        let merged = merge_configs(config.clone(), config.clone());
+        assert_eq!(merged.defaults.base, config.defaults.base);
+        assert_eq!(merged.defaults.head, config.defaults.head);
+        assert_eq!(merged.defaults.scope, config.defaults.scope);
+        assert_eq!(merged.defaults.fail_on, config.defaults.fail_on);
+        assert_eq!(merged.defaults.max_findings, config.defaults.max_findings);
+        assert_eq!(merged.defaults.diff_context, config.defaults.diff_context);
+
+        // Test 2: Config with all None values
+        let config = make_config(diffguard_types::Defaults {
+            base: None,
+            head: None,
+            scope: None,
+            fail_on: None,
+            max_findings: None,
+            diff_context: None,
+        });
+        let merged = merge_configs(config.clone(), config.clone());
+        assert_eq!(merged.defaults.base, config.defaults.base);
+        assert_eq!(merged.defaults.head, config.defaults.head);
+        assert_eq!(merged.defaults.scope, config.defaults.scope);
+        assert_eq!(merged.defaults.fail_on, config.defaults.fail_on);
+        assert_eq!(merged.defaults.max_findings, config.defaults.max_findings);
+        assert_eq!(merged.defaults.diff_context, config.defaults.diff_context);
+
+        // Test 3: Config with mixed Some/None values
+        let config = make_config(diffguard_types::Defaults {
+            base: Some("origin/feature".to_string()),
+            head: None,
+            scope: Some(diffguard_types::Scope::Changed),
+            fail_on: None,
+            max_findings: Some(100),
+            diff_context: None,
+        });
+        let merged = merge_configs(config.clone(), config.clone());
+        assert_eq!(merged.defaults.base, config.defaults.base);
+        assert_eq!(merged.defaults.head, config.defaults.head);
+        assert_eq!(merged.defaults.scope, config.defaults.scope);
+        assert_eq!(merged.defaults.fail_on, config.defaults.fail_on);
+        assert_eq!(merged.defaults.max_findings, config.defaults.max_findings);
+        assert_eq!(merged.defaults.diff_context, config.defaults.diff_context);
+    }
+
+    /// Property-like test: All-None other inherits all values from base.
+    #[test]
+    fn test_merge_configs_all_none_other_inherits_all_property() {
+        let base = make_config(diffguard_types::Defaults {
+            base: Some("origin/develop".to_string()),
+            head: Some("HEAD".to_string()),
+            scope: Some(diffguard_types::Scope::Added),
+            fail_on: Some(diffguard_types::FailOn::Error),
+            max_findings: Some(200),
+            diff_context: Some(0),
+        });
+        let all_none_other = make_config(diffguard_types::Defaults {
+            base: None,
+            head: None,
+            scope: None,
+            fail_on: None,
+            max_findings: None,
+            diff_context: None,
+        });
+        let merged = merge_configs(base.clone(), all_none_other);
+        assert_eq!(merged.defaults.base, base.defaults.base);
+        assert_eq!(merged.defaults.head, base.defaults.head);
+        assert_eq!(merged.defaults.scope, base.defaults.scope);
+        assert_eq!(merged.defaults.fail_on, base.defaults.fail_on);
+        assert_eq!(merged.defaults.max_findings, base.defaults.max_findings);
+        assert_eq!(merged.defaults.diff_context, base.defaults.diff_context);
+    }
+
+    /// Property-like test: Partial defaults - only some fields set to Some in other.
+    #[test]
+    fn test_merge_configs_partial_override_property() {
+        // Test: First 3 fields None, last 3 Some in other
+        let base = make_config(diffguard_types::Defaults {
+            base: Some("origin/main".to_string()),
+            head: Some("HEAD".to_string()),
+            scope: Some(diffguard_types::Scope::Added),
+            fail_on: Some(diffguard_types::FailOn::Error),
+            max_findings: Some(200),
+            diff_context: Some(0),
+        });
+        let other = make_config(diffguard_types::Defaults {
+            base: None,
+            head: None,
+            scope: None,
+            fail_on: Some(diffguard_types::FailOn::Warn),
+            max_findings: Some(50),
+            diff_context: Some(10),
+        });
+        let merged = merge_configs(base.clone(), other.clone());
+
+        // Fields set to Some in other should override
+        assert_eq!(merged.defaults.fail_on, Some(diffguard_types::FailOn::Warn));
+        assert_eq!(merged.defaults.max_findings, Some(50));
+        assert_eq!(merged.defaults.diff_context, Some(10));
+
+        // Fields set to None in other should inherit from base
+        assert_eq!(merged.defaults.base.as_deref(), Some("origin/main"));
+        assert_eq!(merged.defaults.head.as_deref(), Some("HEAD"));
+        assert_eq!(merged.defaults.scope, Some(diffguard_types::Scope::Added));
+    }
+
+    /// Property-like test: All 6 fields explicitly set to Defaults::default() values.
+    /// This was the bug case - when other.defaults == Defaults::default(),
+    /// the buggy code would return base.defaults instead.
+    #[test]
+    fn test_merge_configs_explicit_defaults_default_values() {
+        let base = make_config(diffguard_types::Defaults {
+            base: Some("origin/develop".to_string()),
+            head: Some("HEAD".to_string()),
+            scope: Some(diffguard_types::Scope::Added),
+            fail_on: Some(diffguard_types::FailOn::Error),
+            max_findings: Some(200),
+            diff_context: Some(0),
+        });
+        // other.defaults exactly matches Defaults::default()
+        let other = make_config(diffguard_types::Defaults::default());
+        let merged = merge_configs(base.clone(), other.clone());
+
+        // With the fix, other's defaults should win (field-wise)
+        // Defaults::default() has base: Some("origin/main")
+        assert_eq!(
+            merged.defaults.base.as_deref(),
+            Some("origin/main"),
+            "base should be 'origin/main' from Defaults::default(), not 'origin/develop' from base"
+        );
+        // All fields should match Defaults::default()
+        assert_eq!(merged.defaults.base, Defaults::default().base);
+        assert_eq!(merged.defaults.head, Defaults::default().head);
+        assert_eq!(merged.defaults.scope, Defaults::default().scope);
+        assert_eq!(merged.defaults.fail_on, Defaults::default().fail_on);
+        assert_eq!(
+            merged.defaults.max_findings,
+            Defaults::default().max_findings
+        );
+        assert_eq!(
+            merged.defaults.diff_context,
+            Defaults::default().diff_context
+        );
+    }
+
+    /// Property-like test: All 6 fields None in other, base also has None.
+    /// Edge case where both are None.
+    #[test]
+    fn test_merge_configs_both_none_inherits_none() {
+        let base = make_config(diffguard_types::Defaults {
+            base: None,
+            head: None,
+            scope: None,
+            fail_on: None,
+            max_findings: None,
+            diff_context: None,
+        });
+        let other = make_config(diffguard_types::Defaults {
+            base: None,
+            head: None,
+            scope: None,
+            fail_on: None,
+            max_findings: None,
+            diff_context: None,
+        });
+        let merged = merge_configs(base.clone(), other.clone());
+        // All should be None (inheriting None from both)
+        assert_eq!(merged.defaults.base, None);
+        assert_eq!(merged.defaults.head, None);
+        assert_eq!(merged.defaults.scope, None);
+        assert_eq!(merged.defaults.fail_on, None);
+        assert_eq!(merged.defaults.max_findings, None);
+        assert_eq!(merged.defaults.diff_context, None);
     }
 }
