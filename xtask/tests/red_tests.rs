@@ -21,8 +21,8 @@ use std::fs;
 /// and PASS if the function signature is `fn test_vocabulary_constants() -> Result<()>`.
 #[test]
 fn test_vocabulary_constants_returns_result() {
-    let source = fs::read_to_string("../xtask/src/conform_real.rs")
-        .expect("Failed to read conform_real.rs");
+    let source =
+        fs::read_to_string("../xtask/src/conform_real.rs").expect("Failed to read conform_real.rs");
 
     // Find the test_vocabulary_constants function definition
     let fn_signature_range = source
@@ -53,8 +53,8 @@ fn test_vocabulary_constants_returns_result() {
 /// This test will FAIL if the function uses assert_eq! and PASS if it uses ensure!.
 #[test]
 fn test_vocabulary_constants_uses_ensure_not_assert_eq() {
-    let source = fs::read_to_string("../xtask/src/conform_real.rs")
-        .expect("Failed to read conform_real.rs");
+    let source =
+        fs::read_to_string("../xtask/src/conform_real.rs").expect("Failed to read conform_real.rs");
 
     // Find the test_vocabulary_constants function body
     let fn_start = source
@@ -102,14 +102,14 @@ fn test_vocabulary_constants_uses_ensure_not_assert_eq() {
 /// and PASS if the caller uses match { Ok(()), Err(e) } pattern.
 #[test]
 fn test_vocabulary_constants_caller_uses_match_pattern() {
-    let source = fs::read_to_string("../xtask/src/conform_real.rs")
-        .expect("Failed to read conform_real.rs");
+    let source =
+        fs::read_to_string("../xtask/src/conform_real.rs").expect("Failed to read conform_real.rs");
 
     // Find the call site - it should be near "Vocabulary constants" comment
-    // The call is: test_vocabulary_constants();
+    // The call is: match test_vocabulary_constants() {
     let call_site = source
-        .find("test_vocabulary_constants();")
-        .expect("Could not find test_vocabulary_constants() call");
+        .find("match test_vocabulary_constants() {")
+        .expect("Could not find match test_vocabulary_constants() call");
 
     // Look at the surrounding context (50 chars before and 200 chars after)
     let start = call_site.saturating_sub(100);
@@ -167,8 +167,8 @@ fn test_vocabulary_constants_caller_uses_match_pattern() {
 /// This test will FAIL if the function doesn't return Ok(()) at the end.
 #[test]
 fn test_vocabulary_constants_returns_ok_at_end() {
-    let source = fs::read_to_string("../xtask/src/conform_real.rs")
-        .expect("Failed to read conform_real.rs");
+    let source =
+        fs::read_to_string("../xtask/src/conform_real.rs").expect("Failed to read conform_real.rs");
 
     // Find the test_vocabulary_constants function body
     let fn_start = source
@@ -212,8 +212,8 @@ fn test_vocabulary_constants_returns_ok_at_end() {
 /// This test will FAIL if ensure is not imported and PASS after adding the import.
 #[test]
 fn test_ensure_imported_from_anyhow() {
-    let source = fs::read_to_string("../xtask/src/conform_real.rs")
-        .expect("Failed to read conform_real.rs");
+    let source =
+        fs::read_to_string("../xtask/src/conform_real.rs").expect("Failed to read conform_real.rs");
 
     // Find the anyhow import line
     let anyhow_import = source
