@@ -68,12 +68,12 @@ fn test_is_mode_change_only_returns_bool() {
     assert!(!is_mode_change_only("--- a/modified_file.txt"));
 }
 
-/// Test that is_module (if it exists) returns correct boolean values.
+/// Test that is_submodule (if it exists) returns correct boolean values.
 /// Note: This function may not exist in all versions.
 #[test]
 #[ignore]
-fn test_is_module_returns_bool_if_exists() {
-    // This test is ignored as is_module may not exist
+fn test_is_submodule_returns_bool_if_exists() {
+    // This test is ignored as is_submodule may not exist
     // If it exists, it should have #[must_use]
-    let _ = is_module(" submodule ");
+    let _ = is_submodule(" submodule ");
 }
