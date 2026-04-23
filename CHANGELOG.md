@@ -39,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `RuleOverrideMatcher::compile`
   - `run_check`
 
+- **`# Panics` section for `ConfigFile::built_in()`** — Added `# Panics` documentation to `ConfigFile::built_in()` to comply with Rust API Guidelines C409. The function has `#[must_use]` and can panic if the embedded `rules/built_in.json` is malformed.
+
 - **`bench` crate for performance benchmarking** — Criterion-based benchmark infrastructure:
   - Parsing benchmarks: measures `parse_unified_diff()` at 0, 100, 1K, 10K, 100K lines
   - Evaluation benchmarks: measures `evaluate_lines()` at 0, 1, 10, 100, 500 rules
