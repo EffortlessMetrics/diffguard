@@ -275,12 +275,13 @@ impl RuleOverrideMatcher {
         let cache_key = (path.to_string(), rule_id.to_string());
 
         // Fast path: check cache first using interior mutability (RefCell).
-        // The `&&` let chain checks cache existence AND attempts lookup.
-        if let Some(ref mut lru_cache) = *self.cache.borrow_mut()
-            && let Some(cached) = lru_cache.get(&cache_key)
-        {
-            return *cached;
+        let mut cache_ref = self.cache.borrow_mut();
+        if let Some(ref mut lru_cache) = *cache_ref {
+            if let Some(cached) = lru_cache.get(&cache_key) {
+                return *cached;
+            }
         }
+        drop(cache_ref);
 
         // Slow path: compute the result by walking matching entries.
         let result = self.compute_resolve(path, rule_id);
@@ -593,9 +594,8 @@ mod tests {
             retrieved.is_some(),
             "cache.get() should return Some for existing key"
         );
-        assert_eq!(
-            retrieved.unwrap().enabled,
-            false,
+        assert!(
+            !retrieved.unwrap().enabled,
             "retrieved value should match stored value"
         );
     }
@@ -608,7 +608,7 @@ mod tests {
 
         // Fill to capacity
         for i in 0..capacity {
-            cache.put(format!("key_{}", i), i);
+            cache.put(format!("key_{}", i), i as i32);
         }
 
         // Access key_0 to make it most recently used
@@ -671,7 +671,7 @@ mod tests {
 
         // borrow() should return Ref<T>
         let borrowed = ref_cell.borrow();
-        assert_eq!(borrowed.enabled, true);
+        assert!(borrowed.enabled);
         assert_eq!(borrowed.severity, Some(Severity::Warn));
     }
 
@@ -751,9 +751,8 @@ mod tests {
         let result = matcher.resolve("src/lib.rs", "rust.no_unwrap");
         // If resolve() were not #[must_use] and we didn't use the result, clippy would warn
         let _ = result; // Explicit suppression to show we know about must_use
-        assert!(
-            true,
-            "resolve() method exists and returns ResolvedRuleOverride"
-        );
+        // verify the result is the default
+        assert!(result.enabled);
+        assert_eq!(result.severity, None);
     }
 }
