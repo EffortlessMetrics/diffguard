@@ -300,577 +300,45 @@ impl Preprocessor {
     ///
     /// The output is the same length in bytes as the input.
     #[cfg_attr(mutants, mutants::skip)]
-    #[allow(clippy::collapsible_if)]
     pub fn sanitize_line(&mut self, line: &str) -> String {
         let mut out: Vec<u8> = line.as_bytes().to_vec();
         let bytes = line.as_bytes();
         let len = bytes.len();
 
-        let comment_syntax = self.lang.comment_syntax();
-        let string_syntax = self.lang.string_syntax();
-
         let mut i = 0;
 
         while i < len {
-            match self.mode {
-                Mode::Normal => {
-                    // String detection (language-specific)
-                    if self.opts.track_strings() {
-                        // Rust raw string start detection: r#"..."# or br#"..."#
-                        if string_syntax == StringSyntax::Rust {
-                            if let Some((_, end_quote_i, hashes)) =
-                                detect_raw_string_start(bytes, i)
-                            {
-                                if self.opts.mask_strings {
-                                    mask_range(&mut out, i, end_quote_i + 1);
-                                }
-                                self.mode = Mode::RawString { hashes };
-                                i = end_quote_i + 1;
-                                continue;
-                            }
-
-                            // Byte string: b"..."
-                            if bytes[i] == b'b' && i + 1 < len && bytes[i + 1] == b'"' {
-                                if self.opts.mask_strings {
-                                    mask_range(&mut out, i, i + 2);
-                                }
-                                self.mode = Mode::NormalString {
-                                    escaped: false,
-                                    quote: b'"',
-                                };
-                                i += 2;
-                                continue;
-                            }
-                        }
-
-                        // Triple-quoted strings: """...""" or '''...''' (Python)
-                        // Swift/Scala only use """...""" (not single-quote triple)
-                        if string_syntax == StringSyntax::Python
-                            || string_syntax == StringSyntax::SwiftScala
-                        {
-                            if let Some((quote, end_i)) = detect_triple_quote_start(bytes, i) {
-                                // Swift/Scala only support double-quote triple strings
-                                if string_syntax == StringSyntax::SwiftScala && quote != b'"' {
-                                    // Fall through to normal string handling
-                                } else {
-                                    if self.opts.mask_strings {
-                                        mask_range(&mut out, i, end_i);
-                                    }
-                                    self.mode = Mode::TripleQuotedString {
-                                        escaped: false,
-                                        quote,
-                                    };
-                                    i = end_i;
-                                    continue;
-                                }
-                            }
-                        }
-
-                        // JavaScript/TypeScript template literals: `...`
-                        if string_syntax == StringSyntax::JavaScript && bytes[i] == b'`' {
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            self.mode = Mode::TemplateLiteral { escaped: false };
-                            i += 1;
-                            continue;
-                        }
-
-                        // Go raw strings: `...`
-                        if string_syntax == StringSyntax::Go && bytes[i] == b'`' {
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            // Go raw strings don't support escapes, use RawString with 0 hashes
-                            self.mode = Mode::RawString { hashes: 0 };
-                            i += 1;
-                            continue;
-                        }
-
-                        // Shell ANSI-C quoting: $'...'
-                        if string_syntax == StringSyntax::Shell
-                            && bytes[i] == b'$'
-                            && i + 1 < len
-                            && bytes[i + 1] == b'\''
-                        {
-                            if self.opts.mask_strings {
-                                mask_range(&mut out, i, i + 2);
-                            }
-                            self.mode = Mode::ShellAnsiCString { escaped: false };
-                            i += 2;
-                            continue;
-                        }
-
-                        // Shell single-quoted literal strings: '...' (no escapes!)
-                        if string_syntax == StringSyntax::Shell && bytes[i] == b'\'' {
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            self.mode = Mode::ShellLiteralString;
-                            i += 1;
-                            continue;
-                        }
-
-                        // SQL strings: '...' (single quotes with '' escape)
-                        if string_syntax == StringSyntax::Sql && bytes[i] == b'\'' {
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            self.mode = Mode::NormalString {
-                                escaped: false,
-                                quote: b'\'',
-                            };
-                            i += 1;
-                            continue;
-                        }
-
-                        // XML/HTML attribute strings: both "..." and '...'
-                        if string_syntax == StringSyntax::Xml
-                            && (bytes[i] == b'"' || bytes[i] == b'\'')
-                        {
-                            let quote = bytes[i];
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            // XML strings don't have escape sequences
-                            self.mode = Mode::NormalString {
-                                escaped: false,
-                                quote,
-                            };
-                            i += 1;
-                            continue;
-                        }
-
-                        // PHP strings: '...' (literal, minimal escapes) and "..." (with escapes)
-                        if string_syntax == StringSyntax::Php
-                            && (bytes[i] == b'"' || bytes[i] == b'\'')
-                        {
-                            let quote = bytes[i];
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            self.mode = Mode::NormalString {
-                                escaped: false,
-                                quote,
-                            };
-                            i += 1;
-                            continue;
-                        }
-
-                        // Normal double-quoted string: "..."
-                        // Note: SQL only uses single quotes for strings, so skip this for SQL
-                        if bytes[i] == b'"' && string_syntax != StringSyntax::Sql {
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            self.mode = Mode::NormalString {
-                                escaped: false,
-                                quote: b'"',
-                            };
-                            i += 1;
-                            continue;
-                        }
-
-                        // Single-quoted strings for Python, JavaScript, Ruby
-                        if (string_syntax == StringSyntax::Python
-                            || string_syntax == StringSyntax::JavaScript
-                            || string_syntax == StringSyntax::CStyle)
-                            && bytes[i] == b'\''
-                        {
-                            // For C-style languages, single quote is a char literal
-                            if string_syntax == StringSyntax::CStyle {
-                                if self.opts.mask_strings {
-                                    out[i] = b' ';
-                                }
-                                self.mode = Mode::Char { escaped: false };
-                                i += 1;
-                                continue;
-                            }
-                            // For Python/JavaScript, single quote is a string
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            self.mode = Mode::NormalString {
-                                escaped: false,
-                                quote: b'\'',
-                            };
-                            i += 1;
-                            continue;
-                        }
-
-                        // Rust char literal: '...'
-                        if string_syntax == StringSyntax::Rust && bytes[i] == b'\'' {
-                            if self.opts.mask_strings {
-                                out[i] = b' ';
-                            }
-                            self.mode = Mode::Char { escaped: false };
-                            i += 1;
-                            continue;
-                        }
-                    }
-
-                    // Comment detection (language-specific)
-                    if self.opts.mask_comments {
-                        // Hash comments for Python/Ruby/Shell
-                        if comment_syntax == CommentSyntax::Hash && bytes[i] == b'#' {
-                            mask_range(&mut out, i, len);
-                            self.mode = Mode::LineComment;
-                            break;
-                        }
-
-                        // PHP comments: // and # for line comments, /* */ for block
-                        if comment_syntax == CommentSyntax::Php {
-                            if bytes[i] == b'#' {
-                                mask_range(&mut out, i, len);
-                                self.mode = Mode::LineComment;
-                                break;
-                            }
-                            if bytes[i] == b'/' && i + 1 < len {
-                                let n = bytes[i + 1];
-                                if n == b'/' {
-                                    mask_range(&mut out, i, len);
-                                    self.mode = Mode::LineComment;
-                                    break;
-                                }
-                                if n == b'*' {
-                                    mask_range(&mut out, i, i + 2);
-                                    self.mode = Mode::BlockComment { depth: 1 };
-                                    i += 2;
-                                    continue;
-                                }
-                            }
-                        }
-
-                        // SQL comments: -- for line comments, /* */ for block
-                        if comment_syntax == CommentSyntax::Sql {
-                            // -- line comment
-                            if bytes[i] == b'-' && i + 1 < len && bytes[i + 1] == b'-' {
-                                mask_range(&mut out, i, len);
-                                self.mode = Mode::LineComment;
-                                break;
-                            }
-                            // /* */ block comment
-                            if bytes[i] == b'/' && i + 1 < len && bytes[i + 1] == b'*' {
-                                mask_range(&mut out, i, i + 2);
-                                self.mode = Mode::BlockComment { depth: 1 };
-                                i += 2;
-                                continue;
-                            }
-                        }
-
-                        // XML/HTML comments: <!-- -->
-                        if comment_syntax == CommentSyntax::Xml
-                            && bytes[i] == b'<'
-                            && i + 3 < len
-                            && bytes[i + 1] == b'!'
-                            && bytes[i + 2] == b'-'
-                            && bytes[i + 3] == b'-'
-                        {
-                            mask_range(&mut out, i, i + 4);
-                            self.mode = Mode::XmlComment;
-                            i += 4;
-                            continue;
-                        }
-
-                        // C-style comments: // and /* */
-                        if (comment_syntax == CommentSyntax::CStyle
-                            || comment_syntax == CommentSyntax::CStyleNested)
-                            && bytes[i] == b'/'
-                            && i + 1 < len
-                        {
-                            let n = bytes[i + 1];
-                            if n == b'/' {
-                                // line comment until EOL
-                                mask_range(&mut out, i, len);
-                                self.mode = Mode::LineComment;
-                                break;
-                            }
-                            if n == b'*' {
-                                // block comment
-                                mask_range(&mut out, i, i + 2);
-                                self.mode = Mode::BlockComment { depth: 1 };
-                                i += 2;
-                                continue;
-                            }
-                        }
-                    }
-
-                    i += 1;
-                }
-
-                Mode::LineComment => {
-                    // End-of-line resets line comments.
-                    self.mode = Mode::Normal;
-                    break;
-                }
-
+            let next_i = match self.mode {
+                Mode::Normal => self.handle_normal_mode(bytes, &mut out, i, len),
+                Mode::LineComment => self.handle_line_comment_mode(bytes, &mut out, i, len),
                 Mode::BlockComment { depth } => {
-                    // Everything is masked in a block comment.
-                    if self.opts.mask_comments {
-                        out[i] = b' ';
-                    }
-
-                    // Nested block comments are possible in Rust.
-                    let supports_nesting = comment_syntax == CommentSyntax::CStyleNested;
-                    if supports_nesting && bytes[i] == b'/' && i + 1 < len && bytes[i + 1] == b'*' {
-                        if self.opts.mask_comments {
-                            out[i + 1] = b' ';
-                        }
-                        self.mode = Mode::BlockComment { depth: depth + 1 };
-                        i += 2;
-                        continue;
-                    }
-
-                    if bytes[i] == b'*' && i + 1 < len && bytes[i + 1] == b'/' {
-                        if self.opts.mask_comments {
-                            out[i + 1] = b' ';
-                        }
-                        if depth == 1 {
-                            self.mode = Mode::Normal;
-                        } else {
-                            self.mode = Mode::BlockComment { depth: depth - 1 };
-                        }
-                        i += 2;
-                        continue;
-                    }
-
-                    i += 1;
+                    self.handle_block_comment_mode(bytes, &mut out, i, len, depth)
                 }
-
                 Mode::NormalString { escaped, quote } => {
-                    if self.opts.mask_strings {
-                        out[i] = b' ';
-                    }
-
-                    if escaped {
-                        self.mode = Mode::NormalString {
-                            escaped: false,
-                            quote,
-                        };
-                        i += 1;
-                        continue;
-                    }
-
-                    if bytes[i] == b'\\' {
-                        self.mode = Mode::NormalString {
-                            escaped: true,
-                            quote,
-                        };
-                        i += 1;
-                        continue;
-                    }
-
-                    if bytes[i] == quote {
-                        // End of string
-                        self.mode = Mode::Normal;
-                        i += 1;
-                        continue;
-                    }
-
-                    i += 1;
+                    self.handle_normal_string_mode(bytes, &mut out, i, len, escaped, quote)
                 }
-
-                Mode::Char { escaped } => {
-                    if self.opts.mask_strings {
-                        out[i] = b' ';
-                    }
-
-                    if escaped {
-                        self.mode = Mode::Char { escaped: false };
-                        i += 1;
-                        continue;
-                    }
-
-                    if bytes[i] == b'\\' {
-                        self.mode = Mode::Char { escaped: true };
-                        i += 1;
-                        continue;
-                    }
-
-                    if bytes[i] == b'\'' {
-                        self.mode = Mode::Normal;
-                        i += 1;
-                        continue;
-                    }
-
-                    i += 1;
-                }
-
+                Mode::Char { escaped } => self.handle_char_mode(bytes, &mut out, i, len, escaped),
                 Mode::RawString { hashes } => {
-                    if self.opts.mask_strings {
-                        out[i] = b' ';
-                    }
-
-                    // For Go raw strings (hashes == 0), look for closing backtick
-                    if hashes == 0 && string_syntax == StringSyntax::Go {
-                        if bytes[i] == b'`' {
-                            self.mode = Mode::Normal;
-                            i += 1;
-                            continue;
-                        }
-                        i += 1;
-                        continue;
-                    }
-
-                    // For Rust raw strings, look for end delimiter: "###
-                    if bytes[i] == b'"' {
-                        let mut ok = true;
-                        for j in 0..hashes {
-                            if i + 1 + j >= len || bytes[i + 1 + j] != b'#' {
-                                ok = false;
-                                break;
-                            }
-                        }
-
-                        if ok {
-                            if self.opts.mask_strings {
-                                mask_range(&mut out, i, (i + 1 + hashes).min(len));
-                            }
-                            self.mode = Mode::Normal;
-                            i = (i + 1 + hashes).min(len);
-                            continue;
-                        }
-                    }
-
-                    i += 1;
+                    self.handle_raw_string_mode(bytes, &mut out, i, len, hashes)
                 }
-
                 Mode::TemplateLiteral { escaped } => {
-                    if self.opts.mask_strings {
-                        out[i] = b' ';
-                    }
-
-                    if escaped {
-                        self.mode = Mode::TemplateLiteral { escaped: false };
-                        i += 1;
-                        continue;
-                    }
-
-                    if bytes[i] == b'\\' {
-                        self.mode = Mode::TemplateLiteral { escaped: true };
-                        i += 1;
-                        continue;
-                    }
-
-                    if bytes[i] == b'`' {
-                        // End of template literal
-                        self.mode = Mode::Normal;
-                        i += 1;
-                        continue;
-                    }
-
-                    i += 1;
+                    self.handle_template_literal_mode(bytes, &mut out, i, len, escaped)
                 }
-
                 Mode::TripleQuotedString { escaped, quote } => {
-                    if self.opts.mask_strings {
-                        out[i] = b' ';
-                    }
-
-                    if escaped {
-                        self.mode = Mode::TripleQuotedString {
-                            escaped: false,
-                            quote,
-                        };
-                        i += 1;
-                        continue;
-                    }
-
-                    if bytes[i] == b'\\' {
-                        self.mode = Mode::TripleQuotedString {
-                            escaped: true,
-                            quote,
-                        };
-                        i += 1;
-                        continue;
-                    }
-
-                    // Check for closing triple quote
-                    if bytes[i] == quote
-                        && i + 2 < len
-                        && bytes[i + 1] == quote
-                        && bytes[i + 2] == quote
-                    {
-                        if self.opts.mask_strings {
-                            mask_range(&mut out, i, i + 3);
-                        }
-                        self.mode = Mode::Normal;
-                        i += 3;
-                        continue;
-                    }
-
-                    i += 1;
+                    self.handle_triple_quoted_string_mode(bytes, &mut out, i, len, escaped, quote)
                 }
-
                 Mode::ShellLiteralString => {
-                    // Shell single-quoted strings: NO escapes at all!
-                    // The only way out is a closing single quote.
-                    if self.opts.mask_strings {
-                        out[i] = b' ';
-                    }
-
-                    if bytes[i] == b'\'' {
-                        // End of literal string
-                        self.mode = Mode::Normal;
-                        i += 1;
-                        continue;
-                    }
-
-                    i += 1;
+                    self.handle_shell_literal_string_mode(bytes, &mut out, i, len)
                 }
-
                 Mode::ShellAnsiCString { escaped } => {
-                    // Shell ANSI-C strings: $'...' with escape sequences
-                    if self.opts.mask_strings {
-                        out[i] = b' ';
-                    }
-
-                    if escaped {
-                        self.mode = Mode::ShellAnsiCString { escaped: false };
-                        i += 1;
-                        continue;
-                    }
-
-                    if bytes[i] == b'\\' {
-                        self.mode = Mode::ShellAnsiCString { escaped: true };
-                        i += 1;
-                        continue;
-                    }
-
-                    if bytes[i] == b'\'' {
-                        // End of ANSI-C string
-                        self.mode = Mode::Normal;
-                        i += 1;
-                        continue;
-                    }
-
-                    i += 1;
+                    self.handle_shell_ansi_c_string_mode(bytes, &mut out, i, len, escaped)
                 }
+                Mode::XmlComment => self.handle_xml_comment_mode(bytes, &mut out, i, len),
+            };
 
-                Mode::XmlComment => {
-                    // XML/HTML comments: <!-- ... -->
-                    // Everything inside is masked until we see -->
-                    if self.opts.mask_comments {
-                        out[i] = b' ';
-                    }
-
-                    // Check for closing -->
-                    if bytes[i] == b'-'
-                        && i + 2 < len
-                        && bytes[i + 1] == b'-'
-                        && bytes[i + 2] == b'>'
-                    {
-                        if self.opts.mask_comments {
-                            out[i + 1] = b' ';
-                            out[i + 2] = b' ';
-                        }
-                        self.mode = Mode::Normal;
-                        i += 3;
-                        continue;
-                    }
-
-                    i += 1;
-                }
+            match next_i {
+                Some(next_i) => i = next_i,
+                None => break,
             }
         }
 
@@ -881,8 +349,622 @@ impl Preprocessor {
 
         String::from_utf8_lossy(&out).into_owned()
     }
-}
 
+    // =====================================================================
+    // Mode Handlers
+    //
+    // Each handler processes one byte and returns:
+    //   - Some(i) to continue the outer loop with index i
+    //   - None to break out of the outer loop
+    // =====================================================================
+
+    /// Handle Normal mode: detect string/comment starts, otherwise advance.
+    #[inline(always)]
+    fn handle_normal_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        len: usize,
+    ) -> Option<usize> {
+        let comment_syntax = self.lang.comment_syntax();
+        let string_syntax = self.lang.string_syntax();
+
+        // String detection (language-specific)
+        if self.opts.track_strings() {
+            // Rust raw string start detection: r#"... "# or br#"... "#
+            if string_syntax == StringSyntax::Rust {
+                if let Some((_, end_quote_i, hashes)) = detect_raw_string_start(bytes, i) {
+                    if self.opts.mask_strings {
+                        mask_range(&mut *out, i, end_quote_i + 1);
+                    }
+                    self.mode = Mode::RawString { hashes };
+                    return Some(end_quote_i + 1);
+                }
+
+                // Byte string: b"..."
+                if bytes[i] == b'b' && i + 1 < len && bytes[i + 1] == b'"' {
+                    if self.opts.mask_strings {
+                        mask_range(&mut *out, i, i + 2);
+                    }
+                    self.mode = Mode::NormalString {
+                        escaped: false,
+                        quote: b'"',
+                    };
+                    return Some(i + 2);
+                }
+            }
+
+            // Triple-quoted strings: """...""" or '''...''' (Python)
+            // Swift/Scala only use """...""" (not single-quote triple)
+            if (string_syntax == StringSyntax::Python || string_syntax == StringSyntax::SwiftScala)
+                && let Some((quote, end_i)) = detect_triple_quote_start(bytes, i)
+            {
+                // Swift/Scala only support double-quote triple strings
+                if string_syntax == StringSyntax::SwiftScala && quote != b'"' {
+                    // Fall through to normal string handling
+                } else {
+                    if self.opts.mask_strings {
+                        mask_range(&mut *out, i, end_i);
+                    }
+                    self.mode = Mode::TripleQuotedString {
+                        escaped: false,
+                        quote,
+                    };
+                    return Some(end_i);
+                }
+            }
+
+            // JavaScript/TypeScript template literals: `...`
+            if string_syntax == StringSyntax::JavaScript && bytes[i] == b'`' {
+                if self.opts.mask_strings {
+                    out[i] = b' ';
+                }
+                self.mode = Mode::TemplateLiteral { escaped: false };
+                return Some(i + 1);
+            }
+
+            // Go raw strings: `...`
+            if string_syntax == StringSyntax::Go && bytes[i] == b'`' {
+                if self.opts.mask_strings {
+                    out[i] = b' ';
+                }
+                // Go raw strings don't support escapes, use RawString with 0 hashes
+                self.mode = Mode::RawString { hashes: 0 };
+                return Some(i + 1);
+            }
+
+            // Shell ANSI-C quoting: $'...'
+            if string_syntax == StringSyntax::Shell
+                && bytes[i] == b'$'
+                && i + 1 < len
+                && bytes[i + 1] == b'\''
+            {
+                if self.opts.mask_strings {
+                    mask_range(&mut *out, i, i + 2);
+                }
+                self.mode = Mode::ShellAnsiCString { escaped: false };
+                return Some(i + 2);
+            }
+
+            // Shell single-quoted literal strings: '...' (no escapes!)
+            if string_syntax == StringSyntax::Shell && bytes[i] == b'\'' {
+                if self.opts.mask_strings {
+                    out[i] = b' ';
+                }
+                self.mode = Mode::ShellLiteralString;
+                return Some(i + 1);
+            }
+
+            // SQL strings: '...' (single quotes with '' escape)
+            if string_syntax == StringSyntax::Sql && bytes[i] == b'\'' {
+                if self.opts.mask_strings {
+                    out[i] = b' ';
+                }
+                self.mode = Mode::NormalString {
+                    escaped: false,
+                    quote: b'\'',
+                };
+                return Some(i + 1);
+            }
+
+            // XML/HTML attribute strings: both "..." and '...'
+            if string_syntax == StringSyntax::Xml && (bytes[i] == b'"' || bytes[i] == b'\'') {
+                let quote = bytes[i];
+                if self.opts.mask_strings {
+                    out[i] = b' ';
+                }
+                // XML strings don't have escape sequences
+                self.mode = Mode::NormalString {
+                    escaped: false,
+                    quote,
+                };
+                return Some(i + 1);
+            }
+
+            // PHP strings: '...' (literal, minimal escapes) and "..." (with escapes)
+            if string_syntax == StringSyntax::Php && (bytes[i] == b'"' || bytes[i] == b'\'') {
+                let quote = bytes[i];
+                if self.opts.mask_strings {
+                    out[i] = b' ';
+                }
+                self.mode = Mode::NormalString {
+                    escaped: false,
+                    quote,
+                };
+                return Some(i + 1);
+            }
+
+            // Normal double-quoted string: "..."
+            // Note: SQL only uses single quotes for strings, so skip this for SQL
+            if bytes[i] == b'"' && string_syntax != StringSyntax::Sql {
+                if self.opts.mask_strings {
+                    out[i] = b' ';
+                }
+                self.mode = Mode::NormalString {
+                    escaped: false,
+                    quote: b'"',
+                };
+                return Some(i + 1);
+            }
+
+            // Single-quoted strings for Python, JavaScript, Ruby
+            if (string_syntax == StringSyntax::Python
+                || string_syntax == StringSyntax::JavaScript
+                || string_syntax == StringSyntax::CStyle)
+                && bytes[i] == b'\''
+            {
+                // For C-style languages, single quote is a char literal
+                if string_syntax == StringSyntax::CStyle {
+                    if self.opts.mask_strings {
+                        out[i] = b' ';
+                    }
+                    self.mode = Mode::Char { escaped: false };
+                    return Some(i + 1);
+                }
+                // For Python/JavaScript, single quote is a string
+                if self.opts.mask_strings {
+                    out[i] = b' ';
+                }
+                self.mode = Mode::NormalString {
+                    escaped: false,
+                    quote: b'\'',
+                };
+                return Some(i + 1);
+            }
+
+            // Rust char literal: '...'
+            if string_syntax == StringSyntax::Rust && bytes[i] == b'\'' {
+                if self.opts.mask_strings {
+                    out[i] = b' ';
+                }
+                self.mode = Mode::Char { escaped: false };
+                return Some(i + 1);
+            }
+        }
+
+        // Comment detection (language-specific)
+        if self.opts.mask_comments {
+            // Hash comments for Python/Ruby/Shell
+            if comment_syntax == CommentSyntax::Hash && bytes[i] == b'#' {
+                mask_range(&mut *out, i, len);
+                self.mode = Mode::LineComment;
+                return None;
+            }
+
+            // PHP comments: // and # for line comments, /* */ for block
+            if comment_syntax == CommentSyntax::Php {
+                if bytes[i] == b'#' {
+                    mask_range(&mut *out, i, len);
+                    self.mode = Mode::LineComment;
+                    return None;
+                }
+                if bytes[i] == b'/' && i + 1 < len {
+                    let n = bytes[i + 1];
+                    if n == b'/' {
+                        mask_range(&mut *out, i, len);
+                        self.mode = Mode::LineComment;
+                        return None;
+                    }
+                    if n == b'*' {
+                        mask_range(&mut *out, i, i + 2);
+                        self.mode = Mode::BlockComment { depth: 1 };
+                        return Some(i + 2);
+                    }
+                }
+            }
+
+            // SQL comments: -- for line comments, /* */ for block
+            if comment_syntax == CommentSyntax::Sql {
+                // -- line comment
+                if bytes[i] == b'-' && i + 1 < len && bytes[i + 1] == b'-' {
+                    mask_range(&mut *out, i, len);
+                    self.mode = Mode::LineComment;
+                    return None;
+                }
+                // /* */ block comment
+                if bytes[i] == b'/' && i + 1 < len && bytes[i + 1] == b'*' {
+                    mask_range(&mut *out, i, i + 2);
+                    self.mode = Mode::BlockComment { depth: 1 };
+                    return Some(i + 2);
+                }
+            }
+
+            // XML/HTML comments: <!-- -->
+            if comment_syntax == CommentSyntax::Xml
+                && bytes[i] == b'<'
+                && i + 3 < len
+                && bytes[i + 1] == b'!'
+                && bytes[i + 2] == b'-'
+                && bytes[i + 3] == b'-'
+            {
+                mask_range(&mut *out, i, i + 4);
+                self.mode = Mode::XmlComment;
+                return Some(i + 4);
+            }
+
+            // C-style comments: // and /* */
+            if (comment_syntax == CommentSyntax::CStyle
+                || comment_syntax == CommentSyntax::CStyleNested)
+                && bytes[i] == b'/'
+                && i + 1 < len
+            {
+                let n = bytes[i + 1];
+                if n == b'/' {
+                    // line comment until EOL
+                    mask_range(&mut *out, i, len);
+                    self.mode = Mode::LineComment;
+                    return None;
+                }
+                if n == b'*' {
+                    // block comment
+                    mask_range(&mut *out, i, i + 2);
+                    self.mode = Mode::BlockComment { depth: 1 };
+                    return Some(i + 2);
+                }
+            }
+        }
+
+        Some(i + 1)
+    }
+
+    /// Handle LineComment mode: any character ends the line comment.
+    #[inline(always)]
+    fn handle_line_comment_mode(
+        &mut self,
+        _bytes: &[u8],
+        _out: &mut [u8],
+        _i: usize,
+        _len: usize,
+    ) -> Option<usize> {
+        // End-of-line resets line comments.
+        self.mode = Mode::Normal;
+        None
+    }
+
+    /// Handle BlockComment mode: track nesting depth for languages that support it.
+    #[inline]
+    fn handle_block_comment_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        len: usize,
+        depth: u32,
+    ) -> Option<usize> {
+        let comment_syntax = self.lang.comment_syntax();
+
+        // Everything is masked in a block comment.
+        if self.opts.mask_comments {
+            out[i] = b' ';
+        }
+
+        // Nested block comments are possible in Rust.
+        let supports_nesting = comment_syntax == CommentSyntax::CStyleNested;
+        if supports_nesting && bytes[i] == b'/' && i + 1 < len && bytes[i + 1] == b'*' {
+            if self.opts.mask_comments {
+                out[i + 1] = b' ';
+            }
+            self.mode = Mode::BlockComment { depth: depth + 1 };
+            return Some(i + 2);
+        }
+
+        if bytes[i] == b'*' && i + 1 < len && bytes[i + 1] == b'/' {
+            if self.opts.mask_comments {
+                out[i + 1] = b' ';
+            }
+            if depth == 1 {
+                self.mode = Mode::Normal;
+            } else {
+                self.mode = Mode::BlockComment { depth: depth - 1 };
+            }
+            return Some(i + 2);
+        }
+
+        Some(i + 1)
+    }
+
+    /// Handle NormalString mode: track backslash escapes.
+    #[inline]
+    fn handle_normal_string_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        _len: usize,
+        escaped: bool,
+        quote: u8,
+    ) -> Option<usize> {
+        if self.opts.mask_strings {
+            out[i] = b' ';
+        }
+
+        if escaped {
+            self.mode = Mode::NormalString {
+                escaped: false,
+                quote,
+            };
+            return Some(i + 1);
+        }
+
+        if bytes[i] == b'\\' {
+            self.mode = Mode::NormalString {
+                escaped: true,
+                quote,
+            };
+            return Some(i + 1);
+        }
+
+        if bytes[i] == quote {
+            // End of string
+            self.mode = Mode::Normal;
+            return Some(i + 1);
+        }
+
+        Some(i + 1)
+    }
+
+    /// Handle Char mode: C-style char literals with backslash escapes.
+    #[inline]
+    fn handle_char_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        _len: usize,
+        escaped: bool,
+    ) -> Option<usize> {
+        if self.opts.mask_strings {
+            out[i] = b' ';
+        }
+
+        if escaped {
+            self.mode = Mode::Char { escaped: false };
+            return Some(i + 1);
+        }
+
+        if bytes[i] == b'\\' {
+            self.mode = Mode::Char { escaped: true };
+            return Some(i + 1);
+        }
+
+        if bytes[i] == b'\'' {
+            self.mode = Mode::Normal;
+            return Some(i + 1);
+        }
+
+        Some(i + 1)
+    }
+
+    /// Handle RawString mode: Rust raw strings and Go raw strings.
+    #[inline]
+    fn handle_raw_string_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        len: usize,
+        hashes: usize,
+    ) -> Option<usize> {
+        let string_syntax = self.lang.string_syntax();
+
+        if self.opts.mask_strings {
+            out[i] = b' ';
+        }
+
+        // For Go raw strings (hashes == 0), look for closing backtick
+        if hashes == 0 && string_syntax == StringSyntax::Go {
+            if bytes[i] == b'`' {
+                self.mode = Mode::Normal;
+                return Some(i + 1);
+            }
+            return Some(i + 1);
+        }
+
+        // For Rust raw strings, look for end delimiter: "###
+        if bytes[i] == b'"' {
+            let mut ok = true;
+            for j in 0..hashes {
+                if i + 1 + j >= len || bytes[i + 1 + j] != b'#' {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if ok {
+                if self.opts.mask_strings {
+                    mask_range(&mut *out, i, (i + 1 + hashes).min(len));
+                }
+                self.mode = Mode::Normal;
+                return Some((i + 1 + hashes).min(len));
+            }
+        }
+
+        Some(i + 1)
+    }
+
+    /// Handle TemplateLiteral mode: JavaScript template literals with escapes.
+    #[inline]
+    fn handle_template_literal_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        _len: usize,
+        escaped: bool,
+    ) -> Option<usize> {
+        if self.opts.mask_strings {
+            out[i] = b' ';
+        }
+
+        if escaped {
+            self.mode = Mode::TemplateLiteral { escaped: false };
+            return Some(i + 1);
+        }
+
+        if bytes[i] == b'\\' {
+            self.mode = Mode::TemplateLiteral { escaped: true };
+            return Some(i + 1);
+        }
+
+        if bytes[i] == b'`' {
+            // End of template literal
+            self.mode = Mode::Normal;
+            return Some(i + 1);
+        }
+
+        Some(i + 1)
+    }
+
+    /// Handle TripleQuotedString mode: Python/Swift/Scala triple-quoted strings.
+    #[inline]
+    fn handle_triple_quoted_string_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        len: usize,
+        escaped: bool,
+        quote: u8,
+    ) -> Option<usize> {
+        if self.opts.mask_strings {
+            out[i] = b' ';
+        }
+
+        if escaped {
+            self.mode = Mode::TripleQuotedString {
+                escaped: false,
+                quote,
+            };
+            return Some(i + 1);
+        }
+
+        if bytes[i] == b'\\' {
+            self.mode = Mode::TripleQuotedString {
+                escaped: true,
+                quote,
+            };
+            return Some(i + 1);
+        }
+
+        // Check for closing triple quote
+        if bytes[i] == quote && i + 2 < len && bytes[i + 1] == quote && bytes[i + 2] == quote {
+            if self.opts.mask_strings {
+                mask_range(&mut *out, i, i + 3);
+            }
+            self.mode = Mode::Normal;
+            return Some(i + 3);
+        }
+
+        Some(i + 1)
+    }
+
+    /// Handle ShellLiteralString mode: Shell single-quoted strings with NO escapes.
+    #[inline(always)]
+    fn handle_shell_literal_string_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        _len: usize,
+    ) -> Option<usize> {
+        // Shell single-quoted strings: NO escapes at all!
+        // The only way out is a closing single quote.
+        if self.opts.mask_strings {
+            out[i] = b' ';
+        }
+
+        if bytes[i] == b'\'' {
+            // End of literal string
+            self.mode = Mode::Normal;
+            return Some(i + 1);
+        }
+
+        Some(i + 1)
+    }
+
+    /// Handle ShellAnsiCString mode: Shell ANSI-C strings with escape sequences.
+    #[inline]
+    fn handle_shell_ansi_c_string_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        _len: usize,
+        escaped: bool,
+    ) -> Option<usize> {
+        // Shell ANSI-C strings: $'...' with escape sequences
+        if self.opts.mask_strings {
+            out[i] = b' ';
+        }
+
+        if escaped {
+            self.mode = Mode::ShellAnsiCString { escaped: false };
+            return Some(i + 1);
+        }
+
+        if bytes[i] == b'\\' {
+            self.mode = Mode::ShellAnsiCString { escaped: true };
+            return Some(i + 1);
+        }
+
+        if bytes[i] == b'\'' {
+            // End of ANSI-C string
+            self.mode = Mode::Normal;
+            return Some(i + 1);
+        }
+
+        Some(i + 1)
+    }
+
+    /// Handle XmlComment mode: XML/HTML comments <!-- ... -->.
+    #[inline]
+    fn handle_xml_comment_mode(
+        &mut self,
+        bytes: &[u8],
+        out: &mut [u8],
+        i: usize,
+        len: usize,
+    ) -> Option<usize> {
+        // XML/HTML comments: <!-- ... -->
+        // Everything inside is masked until we see -->
+        if self.opts.mask_comments {
+            out[i] = b' ';
+        }
+
+        // Check for closing -->
+        if bytes[i] == b'-' && i + 2 < len && bytes[i + 1] == b'-' && bytes[i + 2] == b'>' {
+            if self.opts.mask_comments {
+                out[i + 1] = b' ';
+                out[i + 2] = b' ';
+            }
+            self.mode = Mode::Normal;
+            return Some(i + 3);
+        }
+
+        Some(i + 1)
+    }
+}
 fn mask_range(out: &mut [u8], start: usize, end: usize) {
     let end = end.min(out.len());
     for b in &mut out[start..end] {
