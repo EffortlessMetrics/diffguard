@@ -678,6 +678,138 @@ mod tests {
         assert!(explanation.contains("URL: https://example.com/rules/no_unwrap"));
     }
 
+    /// Snapshot test: format_rule_explanation with a simple rule (basic fields only).
+    #[test]
+    fn snapshot_format_rule_explanation_simple() {
+        let rule = RuleConfig {
+            id: "test.simple".to_string(),
+            description: "A simple test rule".to_string(),
+            severity: Severity::Warn,
+            message: "Simple message".to_string(),
+            languages: vec!["rust".to_string()],
+            patterns: vec!["pattern1".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            match_mode: MatchMode::Any,
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
+            help: None,
+            url: None,
+            tags: vec![],
+            test_cases: vec![],
+        };
+
+        let explanation = format_rule_explanation(&rule);
+        insta::assert_snapshot!("format_rule_explanation_simple", explanation);
+    }
+
+    /// Snapshot test: format_rule_explanation with a complex rule (all fields populated).
+    #[test]
+    fn snapshot_format_rule_explanation_complex() {
+        let rule = RuleConfig {
+            id: "rust.no_unwrap".to_string(),
+            description: "Avoid unwrap in production".to_string(),
+            severity: Severity::Error,
+            message: "Avoid unwrap/expect in production code.".to_string(),
+            languages: vec!["rust".to_string(), "cpp".to_string()],
+            patterns: vec![r"\.unwrap\(\)".to_string(), r"\.expect\(.*\)".to_string()],
+            paths: vec!["**/*.rs".to_string(), "**/*.cpp".to_string()],
+            exclude_paths: vec!["**/tests/**".to_string(), "**/test_*".to_string()],
+            ignore_comments: true,
+            ignore_strings: true,
+            match_mode: MatchMode::Any,
+            multiline: true,
+            multiline_window: Some(5),
+            context_patterns: vec!["TODO".to_string(), "FIXME".to_string()],
+            context_window: Some(3),
+            escalate_patterns: vec!["panic!".to_string(), "assert!(false)".to_string()],
+            escalate_window: Some(2),
+            escalate_to: Some(Severity::Error),
+            depends_on: vec!["rust.no_dbg".to_string()],
+            help: Some("Use pattern matching or unwrap_or_else instead.".to_string()),
+            url: Some("https://example.com/rules/no_unwrap".to_string()),
+            tags: vec!["safety".to_string(), "reliability".to_string()],
+            test_cases: vec![],
+        };
+
+        let explanation = format_rule_explanation(&rule);
+        insta::assert_snapshot!("format_rule_explanation_complex", explanation);
+    }
+
+    /// Snapshot test: format_rule_explanation with a rule using Absent match mode.
+    #[test]
+    fn snapshot_format_rule_explanation_absent_mode() {
+        let rule = RuleConfig {
+            id: "rust.no_panic".to_string(),
+            description: "Ensure panic is not present".to_string(),
+            severity: Severity::Error,
+            message: "panic! macro should not be used".to_string(),
+            languages: vec!["rust".to_string()],
+            patterns: vec!["panic!".to_string()],
+            paths: vec!["src/**/*.rs".to_string()],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            match_mode: MatchMode::Absent,
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
+            help: None,
+            url: None,
+            tags: vec![],
+            test_cases: vec![],
+        };
+
+        let explanation = format_rule_explanation(&rule);
+        insta::assert_snapshot!("format_rule_explanation_absent_mode", explanation);
+    }
+
+    /// Snapshot test: format_rule_explanation with minimal rule (edge case).
+    #[test]
+    fn snapshot_format_rule_explanation_minimal() {
+        let rule = RuleConfig {
+            id: "minimal".to_string(),
+            description: String::new(),
+            severity: Severity::Info,
+            message: String::new(),
+            languages: vec![],
+            patterns: vec![],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            match_mode: MatchMode::Any,
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
+            help: None,
+            url: None,
+            tags: vec![],
+            test_cases: vec![],
+        };
+
+        let explanation = format_rule_explanation(&rule);
+        insta::assert_snapshot!("format_rule_explanation_minimal", explanation);
+    }
+
     #[test]
     fn find_similar_rules_prefers_close_matches() {
         let rules = vec![

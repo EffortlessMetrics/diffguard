@@ -1,0 +1,16 @@
+---
+source: crates/diffguard-lsp/src/config.rs
+expression: explanation
+---
+Rule: rust.no_panic
+Severity: error
+Message: panic! macro should not be used
+Patterns:
+- panic!
+Semantics:
+- Match mode: absent
+- Multiline: no
+Languages: rust
+Paths: src/**/*.rs
+Ignore comments: no
+Ignore strings: no

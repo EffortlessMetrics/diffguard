@@ -1,0 +1,24 @@
+---
+source: crates/diffguard-lsp/src/config.rs
+expression: explanation
+---
+Rule: rust.no_unwrap
+Severity: error
+Message: Avoid unwrap/expect in production code.
+Patterns:
+- \.unwrap\(\)
+- \.expect\(.*\)
+Semantics:
+- Match mode: any
+- Multiline: yes (window=5)
+- Context patterns (window=3): TODO, FIXME
+- Escalate to error (window=2): panic!, assert!(false)
+- Depends on: rust.no_dbg
+Languages: rust, cpp
+Paths: **/*.rs, **/*.cpp
+Excludes: **/tests/**, **/test_*
+Ignore comments: yes
+Ignore strings: yes
+Help:
+Use pattern matching or unwrap_or_else instead.
+URL: https://example.com/rules/no_unwrap

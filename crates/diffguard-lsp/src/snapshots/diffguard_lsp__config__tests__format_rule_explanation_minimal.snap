@@ -1,0 +1,13 @@
+---
+source: crates/diffguard-lsp/src/config.rs
+expression: explanation
+---
+Rule: minimal
+Severity: info
+Message: 
+Patterns:
+Semantics:
+- Match mode: any
+- Multiline: no
+Ignore comments: no
+Ignore strings: no
