@@ -75,6 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
+- **`RuleOverrideMatcher::resolve()` LRU cache** — Added a hand-rolled LRU cache (`VecDeque` + `HashMap`) to `RuleOverrideMatcher` in `diffguard-domain` for caching resolved `(path, rule_id)` override results. Default capacity: 10,000 entries (~1MB worst-case). The cache is lazily initialized on first `resolve()` call and uses interior mutability (`RefCell`) to preserve `#[derive(Default)]` and `#[derive(Clone)]` on `RuleOverrideMatcher`. **Note**: In the current architecture, paths are deduplicated per `run_check()` call, so the cache provides zero intra-run benefit — this is defensive infrastructure for future reuse scenarios.
+
 ## [0.2.0] - 2026-04-06
 
 ### Added
