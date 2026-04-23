@@ -4,7 +4,7 @@
 //! baseline and incoming is ephemeral.
 
 use diffguard_analytics::{
-    FalsePositiveBaseline, FalsePositiveEntry, FALSE_POSITIVE_BASELINE_SCHEMA_V1,
+    FALSE_POSITIVE_BASELINE_SCHEMA_V1, FalsePositiveBaseline, FalsePositiveEntry,
     merge_false_positive_baselines,
 };
 
