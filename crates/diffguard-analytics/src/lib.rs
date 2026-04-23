@@ -139,6 +139,12 @@ pub fn merge_false_positive_baselines(
     base: &FalsePositiveBaseline,
     incoming: &FalsePositiveBaseline,
 ) -> FalsePositiveBaseline {
+    // Early return when base is empty avoids eager cloning of incoming and
+    // building the seen set entirely — we just need to normalize and return.
+    if base.entries.is_empty() {
+        return normalize_false_positive_baseline(incoming.clone());
+    }
+
     let mut merged = normalize_false_positive_baseline(incoming.clone());
     let mut seen = merged
         .entries
