@@ -310,10 +310,14 @@ fn load_config_recursive(
 }
 
 fn merge_configs(base: ConfigFile, other: ConfigFile) -> ConfigFile {
-    let defaults = if other.defaults != diffguard_types::Defaults::default() {
-        other.defaults
-    } else {
-        base.defaults
+    // Defaults: field-wise merge (None means "inherit from parent")
+    let defaults = diffguard_types::Defaults {
+        base: other.defaults.base.or(base.defaults.base),
+        head: other.defaults.head.or(base.defaults.head),
+        scope: other.defaults.scope.or(base.defaults.scope),
+        fail_on: other.defaults.fail_on.or(base.defaults.fail_on),
+        max_findings: other.defaults.max_findings.or(base.defaults.max_findings),
+        diff_context: other.defaults.diff_context.or(base.defaults.diff_context),
     };
 
     let mut rules = std::collections::BTreeMap::new();
@@ -605,5 +609,123 @@ patterns = ["main"]
         let ids: BTreeSet<String> = loaded.rule.into_iter().map(|rule| rule.id).collect();
         assert!(ids.contains("base.rule"));
         assert!(ids.contains("main.rule"));
+    }
+
+    // -------------------------------------------------------------------------
+    // Tests for merge_configs field-wise Defaults merging
+    // These tests verify the correct field-wise merge semantics for Defaults:
+    //   - Some in other → override base
+    //   - None in other → inherit from base
+    //
+    // The buggy implementation used:
+    //   if other.defaults != Defaults::default() { other.defaults } else { base.defaults }
+    //
+    // This causes two failure modes:
+    //   1. When other has partial None fields: returns other directly (loses base values)
+    //   2. When other == Defaults::default(): returns base (ignores other's explicit values)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn test_merge_configs_partial_defaults_inherit() {
+        // When other.defaults has some None fields (simulating partial TOML config),
+        // those None fields should inherit from base.defaults (field-wise merge).
+        //
+        // Bug: other.defaults != Defaults::default() is true (because None != Some),
+        // so other.defaults is returned directly with None fields preserved.
+        // Result: base.defaults values are lost for unspecified fields.
+        //
+        // Fix: field-wise merge with .or() - None.or(base_value) returns base_value.
+
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                base: Some("origin/develop".to_string()),
+                head: Some("HEAD".to_string()),
+                scope: Some(diffguard_types::Scope::Added),
+                fail_on: Some(diffguard_types::FailOn::Error),
+                max_findings: Some(200),
+                diff_context: Some(0),
+            },
+            rule: vec![],
+        };
+
+        // other has only fail_on set; base/scope/head/max_findings/diff_context are None
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                base: None,
+                head: None,
+                scope: None,
+                fail_on: Some(diffguard_types::FailOn::Warn),
+                max_findings: None,
+                diff_context: None,
+            },
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+
+        // These should pass with the fix (field-wise merge):
+        // - fail_on from other (Some(Warn))
+        // - other None fields inherit from base
+        assert_eq!(
+            merged.defaults.fail_on,
+            Some(diffguard_types::FailOn::Warn),
+            "fail_on should be overridden by other (Some(Warn))"
+        );
+        assert_eq!(
+            merged.defaults.base.as_deref(),
+            Some("origin/develop"),
+            "base=None in other should inherit from base.defaults.base=Some('origin/develop')"
+        );
+        assert_eq!(
+            merged.defaults.scope,
+            Some(diffguard_types::Scope::Added),
+            "scope=None in other should inherit from base.defaults.scope"
+        );
+    }
+
+    #[test]
+    fn test_merge_configs_explicit_defaults_respected() {
+        // When other.defaults exactly equals Defaults::default() (user explicitly set
+        // all defaults to match the built-in defaults), the merged result should use
+        // other's defaults, NOT fall back to base.defaults.
+        //
+        // Bug: other.defaults == Defaults::default(), so condition is false,
+        // and base.defaults is returned instead of other.defaults.
+        //
+        // Fix: field-wise merge uses other's Some values (which happen to match
+        // Defaults::default()) to override base.
+
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                base: Some("origin/develop".to_string()), // differs from default
+                head: Some("HEAD".to_string()),
+                scope: Some(diffguard_types::Scope::Added),
+                fail_on: Some(diffguard_types::FailOn::Error),
+                max_findings: Some(200),
+                diff_context: Some(0),
+            },
+            rule: vec![],
+        };
+
+        // other.defaults exactly matches Defaults::default()
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults::default(),
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+
+        // With field-wise merge: other's base="origin/main" (from Defaults::default())
+        // should override base.defaults.base="origin/develop"
+        // With bug: base.defaults is returned unchanged, so base="origin/develop"
+        assert_eq!(
+            merged.defaults.base.as_deref(),
+            Some("origin/main"),
+            "base should be 'origin/main' from Defaults::default(), not 'origin/develop' from base"
+        );
     }
 }
