@@ -2,7 +2,7 @@
 //!
 //! This crate is intentionally pure (no filesystem/process/env I/O).
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use diffguard_types::{CheckReceipt, Finding, Scope, VerdictCounts, VerdictStatus};
 use schemars::JsonSchema;
@@ -123,25 +123,21 @@ pub fn merge_false_positive_baselines(
     incoming: &FalsePositiveBaseline,
 ) -> FalsePositiveBaseline {
     let mut merged = normalize_false_positive_baseline(incoming.clone());
-    let mut seen = merged
-        .entries
-        .iter()
-        .map(|e| e.fingerprint.clone())
-        .collect::<BTreeSet<_>>();
+    let mut seen: BTreeMap<String, usize> = BTreeMap::new();
+
+    // Populate index map for O(1) lookup instead of O(n) linear search
+    for (idx, entry) in merged.entries.iter().enumerate() {
+        seen.insert(entry.fingerprint.clone(), idx);
+    }
 
     for entry in &base.entries {
-        if seen.insert(entry.fingerprint.clone()) {
-            merged.entries.push(entry.clone());
-        } else if let Some(existing) = merged
-            .entries
-            .iter_mut()
-            .find(|e| e.fingerprint == entry.fingerprint)
-        {
+        if let Some(&idx) = seen.get(&entry.fingerprint) {
             // Merge semantics: the `base` baseline holds the canonical record for each
             // fingerprint. For fields that are empty/missing in `merged` (the normalized
             // incoming), copy the corresponding value from `base` — this transfers
             // manually curated metadata (notes, rule IDs, paths) into the merged result
             // without disturbing entries that already have those fields populated.
+            let existing = &mut merged.entries[idx];
             if existing.note.is_none() && entry.note.is_some() {
                 existing.note.clone_from(&entry.note);
             }
@@ -154,6 +150,10 @@ pub fn merge_false_positive_baselines(
             if existing.line == 0 {
                 existing.line = entry.line;
             }
+        } else {
+            let new_idx = merged.entries.len();
+            seen.insert(entry.fingerprint.clone(), new_idx);
+            merged.entries.push(entry.clone());
         }
     }
 
