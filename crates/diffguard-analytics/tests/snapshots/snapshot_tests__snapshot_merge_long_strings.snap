@@ -1,0 +1,16 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "schema": "diffguard.false_positive_baseline.v1",
+  "entries": [
+    {
+      "fingerprint": "fp_long",
+      "rule_id": "RUST_LONGLONGLONGLONG_RULE_ID_THAT_EXCEEDS_TYPICAL_LENGTH",
+      "path": "/very/long/path/to/some/deeply/nested/source/file/that/goes/on/for/a/while.rs",
+      "line": 9999,
+      "note": "This is a very long note that contains many characters and should be preserved exactly as-is during the merge operation without any truncation or modification"
+    }
+  ]
+}

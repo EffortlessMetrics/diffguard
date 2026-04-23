@@ -1,0 +1,16 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "schema": "diffguard.false_positive_baseline.v1",
+  "entries": [
+    {
+      "fingerprint": "abc123",
+      "rule_id": "RUST_NO_UNWRAP",
+      "path": "src/lib.rs",
+      "line": 42,
+      "note": "note"
+    }
+  ]
+}
