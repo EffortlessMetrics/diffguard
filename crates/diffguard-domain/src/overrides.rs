@@ -8,8 +8,18 @@ use globset::{Glob, GlobSet, GlobSetBuilder};
 use diffguard_types::Severity;
 
 // =============================================================================
+// Constants
+// =============================================================================
+
+/// Default LRU cache capacity for `RuleOverrideMatcher::resolve()`.
+///
+/// 10,000 entries ≈ ~1MB worst case at 100 bytes/(path, rule_id) pair.
+/// This provides adequate caching for typical repository sizes while
+/// bounding memory usage.
+const DEFAULT_CACHE_CAPACITY: usize = 10_000;
+
+// =============================================================================
 // LRU Cache - hand-rolled implementation using VecDeque + HashMap
-// Default capacity: 10,000 entries (~1MB worst case at 100 bytes/entry)
 // =============================================================================
 
 /// A hand-rolled LRU (Least Recently Used) cache.
@@ -18,11 +28,11 @@ use diffguard_types::Severity;
 /// When at capacity, the least recently used entry is evicted.
 #[derive(Clone, Debug)]
 struct LruCache<K, V> {
-    /// Tracks access order - front is LRU, back is MRU
+    /// Front is LRU (evicted first), back is MRU (most recently used).
     order: VecDeque<K>,
-    /// Stores key-value pairs
+    /// Stores key-value pairs for O(1) lookup.
     cache: HashMap<K, V>,
-    /// Maximum number of entries
+    /// Maximum number of entries before LRU eviction occurs.
     capacity: usize,
 }
 
@@ -293,9 +303,9 @@ impl RuleOverrideMatcher {
             if let Some(ref mut lru_cache) = *cache {
                 lru_cache.put(cache_key, result);
             } else {
-                // First cache miss: allocate LRU cache with 10,000 entry capacity.
+                // First cache miss: allocate LRU cache.
                 // This is a one-time heap allocation per RuleOverrideMatcher.
-                let mut new_cache = LruCache::new(10_000);
+                let mut new_cache = LruCache::new(DEFAULT_CACHE_CAPACITY);
                 new_cache.put(cache_key, result);
                 *cache = Some(new_cache);
             }
