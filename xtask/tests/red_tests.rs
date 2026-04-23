@@ -134,10 +134,11 @@ fn test_vocabulary_constants_caller_uses_match_pattern() {
     // Second, check that we DON'T have the unconditional PASS pattern
     // (i.e., the function call is NOT immediately followed by println!("PASS"))
     let has_unconditional_pass = context.contains("println!(\"PASS\")")
-        && context.find("test_vocabulary_constants();").is_some()
-        && context.find("println!(\"PASS\");").is_some()
+        && context.contains("test_vocabulary_constants();")
+        && context.contains("println!(\"PASS\");")
         // Check that the PASS comes before any match for this function
-        && context.find("match test_vocabulary_constants()")
+        && context
+            .find("match test_vocabulary_constants()")
             .map(|m| context.find("println!(\"PASS\");").map(|p| p < m).unwrap_or(false))
             .unwrap_or(false);
 
