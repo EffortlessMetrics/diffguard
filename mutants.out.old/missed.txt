@@ -1,0 +1,3 @@
+crates/diffguard-core/src/check.rs:276:13: replace && with || in filter_rule_by_tags
+crates/diffguard-core/src/sensor_api.rs:62:9: delete field truncated_count from struct SensorReportContext expression in run_sensor
+crates/diffguard-core/src/sensor_api.rs:63:9: delete field rules_total from struct SensorReportContext expression in run_sensor
