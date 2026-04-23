@@ -123,7 +123,7 @@ fn render_finding_row(f: &Finding) -> String {
 ///
 /// These escapes are needed to prevent breaking the markdown table structure
 /// and prevent unintended markdown formatting.
-fn escape_md(s: &str) -> String {
+pub fn escape_md(s: &str) -> String {
     s.replace('|', "\\|")
         .replace('`', "\\`")
         .replace('#', "\\#")

@@ -605,7 +605,10 @@ index 0000000..1111111 100644
 
 /// Collection of sample check receipts for testing.
 pub mod sample_receipts {
-    use super::*;
+    use super::{
+        CHECK_SCHEMA_V1, CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
+        VerdictCounts, VerdictStatus,
+    };
 
     /// A passing check receipt with no findings.
     pub fn pass() -> CheckReceipt {

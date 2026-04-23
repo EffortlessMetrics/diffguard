@@ -364,6 +364,98 @@ mod tests {
         assert!(err.iter().any(|name| name == "camelCase"));
     }
 
+    #[test]
+    fn verify_snake_case_empty_object_passes() {
+        // Empty object has no fields, so it trivially passes
+        let json = serde_json::json!({});
+        assert!(
+            verify_snake_case_fields(&json).is_ok(),
+            "Empty object should have no field names to violate snake_case"
+        );
+    }
+
+    #[test]
+    fn verify_snake_case_deeply_nested_reports_all_errors() {
+        // Field names from all nesting levels should be collected
+        let json = serde_json::json!({
+            "top_level": {
+                "middle_level": {
+                    "camelCaseField": "deep"
+                }
+            }
+        });
+        let err = verify_snake_case_fields(&json).expect_err("expected snake_case failure");
+        assert!(
+            err.iter().any(|name| name == "camelCaseField"),
+            "Should catch camelCaseField from deeply nested object"
+        );
+    }
+
+    #[test]
+    fn verify_snake_case_array_elements_collected() {
+        // Field names should be collected from objects inside arrays
+        let json = serde_json::json!({
+            "items": [
+                { "itemName": "first" },
+                { "itemName": "second" }
+            ]
+        });
+        let err = verify_snake_case_fields(&json).expect_err("expected snake_case failure");
+        assert!(
+            err.iter().any(|name| name == "itemName"),
+            "Should catch itemName from array element objects"
+        );
+    }
+
+    #[test]
+    fn verify_snake_case_multiple_errors_all_reported() {
+        // All non-snake_case field names should be in the error vector
+        let json = serde_json::json!({
+            "camelCase1": 1,
+            "camelCase2": 2,
+            "alsoCamel": 3
+        });
+        let err = verify_snake_case_fields(&json).expect_err("expected snake_case failure");
+        assert_eq!(err.len(), 3, "Should report all 3 non-snake_case fields");
+        assert!(err.contains(&"camelCase1".to_string()));
+        assert!(err.contains(&"camelCase2".to_string()));
+        assert!(err.contains(&"alsoCamel".to_string()));
+    }
+
+    #[test]
+    fn verify_snake_case_numbers_only_field_passes() {
+        // Numbers-only field names are valid snake_case
+        let json = serde_json::json!({ "123": "value" });
+        assert!(
+            verify_snake_case_fields(&json).is_ok(),
+            "Numbers-only field name should be valid snake_case"
+        );
+    }
+
+    #[test]
+    fn verify_snake_case_field_with_embedded_numbers_passes() {
+        // Fields with embedded numbers are valid snake_case
+        let json = serde_json::json!({
+            "field_1": 1,
+            "rule_2_name": "test"
+        });
+        assert!(
+            verify_snake_case_fields(&json).is_ok(),
+            "Fields with embedded numbers should be valid snake_case"
+        );
+    }
+
+    #[test]
+    fn verify_snake_case_starts_with_digit_passes() {
+        // Fields starting with a digit are valid snake_case
+        // (is_snake_case only checks for lowercase/digit/underscore)
+        let json = serde_json::json!({ "1_field": "value" });
+        assert!(
+            verify_snake_case_fields(&json).is_ok(),
+            "Field starting with digit should be valid snake_case"
+        );
+    }
+
     // =============================================================================
     // Error source() chain propagation tests (AC4)
     // =============================================================================
