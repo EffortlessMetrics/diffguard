@@ -15,8 +15,8 @@
 //! 8. Normalization after merge (sorted, deduplicated)
 
 use diffguard_analytics::{
-    merge_false_positive_baselines, normalize_false_positive_baseline, FalsePositiveBaseline,
-    FalsePositiveEntry, FALSE_POSITIVE_BASELINE_SCHEMA_V1,
+    FALSE_POSITIVE_BASELINE_SCHEMA_V1, FalsePositiveBaseline, FalsePositiveEntry,
+    merge_false_positive_baselines, normalize_false_positive_baseline,
 };
 
 // ============================================================================
@@ -71,7 +71,10 @@ fn snapshot_merge_only_base_has_entries() {
     let base = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, None)]);
     let incoming = make_baseline(vec![]);
     let merged = merge_false_positive_baselines(&base, &incoming);
-    insta::assert_snapshot!("snapshot_merge_only_base_has_entries", baseline_to_json(&merged));
+    insta::assert_snapshot!(
+        "snapshot_merge_only_base_has_entries",
+        baseline_to_json(&merged)
+    );
 }
 
 /// Snapshot test: only incoming has entries
@@ -80,7 +83,10 @@ fn snapshot_merge_only_incoming_has_entries() {
     let base = make_baseline(vec![]);
     let incoming = make_baseline(vec![make_entry("bbb222", "rule.b", "b.rs", 2, None)]);
     let merged = merge_false_positive_baselines(&base, &incoming);
-    insta::assert_snapshot!("snapshot_merge_only_incoming_has_entries", baseline_to_json(&merged));
+    insta::assert_snapshot!(
+        "snapshot_merge_only_incoming_has_entries",
+        baseline_to_json(&merged)
+    );
 }
 
 /// Snapshot test: both have disjoint entries (union)
@@ -89,16 +95,28 @@ fn snapshot_merge_union_of_different_fingerprints() {
     let base = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, None)]);
     let incoming = make_baseline(vec![make_entry("bbb222", "rule.b", "b.rs", 2, None)]);
     let merged = merge_false_positive_baselines(&base, &incoming);
-    insta::assert_snapshot!("snapshot_merge_union_of_different_fingerprints", baseline_to_json(&merged));
+    insta::assert_snapshot!(
+        "snapshot_merge_union_of_different_fingerprints",
+        baseline_to_json(&merged)
+    );
 }
 
 /// Snapshot test: same fingerprint, different note - base note preserved
 #[test]
 fn snapshot_merge_preserves_note_from_base() {
-    let base = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, Some("curated note"))]);
+    let base = make_baseline(vec![make_entry(
+        "aaa111",
+        "rule.a",
+        "a.rs",
+        1,
+        Some("curated note"),
+    )]);
     let incoming = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, None)]);
     let merged = merge_false_positive_baselines(&base, &incoming);
-    insta::assert_snapshot!("snapshot_merge_preserves_note_from_base", baseline_to_json(&merged));
+    insta::assert_snapshot!(
+        "snapshot_merge_preserves_note_from_base",
+        baseline_to_json(&merged)
+    );
 }
 
 /// Snapshot test: incoming has empty rule_id, filled from base
@@ -107,7 +125,10 @@ fn snapshot_merge_fills_rule_id_from_incoming() {
     let base = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, None)]);
     let incoming = make_baseline(vec![make_entry("aaa111", "", "a.rs", 1, None)]);
     let merged = merge_false_positive_baselines(&base, &incoming);
-    insta::assert_snapshot!("snapshot_merge_fills_rule_id_from_incoming", baseline_to_json(&merged));
+    insta::assert_snapshot!(
+        "snapshot_merge_fills_rule_id_from_incoming",
+        baseline_to_json(&merged)
+    );
 }
 
 /// Snapshot test: incoming has empty path, filled from base
@@ -116,7 +137,10 @@ fn snapshot_merge_fills_path_from_incoming() {
     let base = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, None)]);
     let incoming = make_baseline(vec![make_entry("aaa111", "rule.a", "", 1, None)]);
     let merged = merge_false_positive_baselines(&base, &incoming);
-    insta::assert_snapshot!("snapshot_merge_fills_path_from_incoming", baseline_to_json(&merged));
+    insta::assert_snapshot!(
+        "snapshot_merge_fills_path_from_incoming",
+        baseline_to_json(&merged)
+    );
 }
 
 /// Snapshot test: incoming has line=0, filled from base
@@ -134,10 +158,25 @@ fn snapshot_merge_fills_line_from_incoming_when_base_zero() {
 /// Snapshot test: deduplication - same fingerprint in both
 #[test]
 fn snapshot_merge_duplicate_fingerprint_base_wins() {
-    let base = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, Some("base"))]);
-    let incoming = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, Some("incoming"))]);
+    let base = make_baseline(vec![make_entry(
+        "aaa111",
+        "rule.a",
+        "a.rs",
+        1,
+        Some("base"),
+    )]);
+    let incoming = make_baseline(vec![make_entry(
+        "aaa111",
+        "rule.a",
+        "a.rs",
+        1,
+        Some("incoming"),
+    )]);
     let merged = merge_false_positive_baselines(&base, &incoming);
-    insta::assert_snapshot!("snapshot_merge_duplicate_fingerprint_base_wins", baseline_to_json(&merged));
+    insta::assert_snapshot!(
+        "snapshot_merge_duplicate_fingerprint_base_wins",
+        baseline_to_json(&merged)
+    );
 }
 
 /// Snapshot test: empty base with single incoming entry
@@ -146,7 +185,10 @@ fn snapshot_merge_empty_base_with_single_entry() {
     let base = make_baseline(vec![]);
     let incoming = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, None)]);
     let merged = merge_false_positive_baselines(&base, &incoming);
-    insta::assert_snapshot!("snapshot_merge_empty_base_with_single_entry", baseline_to_json(&merged));
+    insta::assert_snapshot!(
+        "snapshot_merge_empty_base_with_single_entry",
+        baseline_to_json(&merged)
+    );
 }
 
 /// Snapshot test: unicode in note
@@ -202,5 +244,8 @@ fn snapshot_merge_with_empty_incoming() {
     let base = make_baseline(vec![make_entry("aaa111", "rule.a", "a.rs", 1, None)]);
     let incoming = make_baseline(vec![]);
     let merged = merge_false_positive_baselines(&base, &incoming);
-    insta::assert_snapshot!("snapshot_merge_with_empty_incoming", baseline_to_json(&merged));
+    insta::assert_snapshot!(
+        "snapshot_merge_with_empty_incoming",
+        baseline_to_json(&merged)
+    );
 }
