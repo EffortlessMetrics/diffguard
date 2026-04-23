@@ -72,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **`diffguard-lsp`**: Added `#[must_use]` to `find_similar_rules()` to prevent callers from silently discarding similarity suggestions. When a user types an unknown rule ID, the LSP server now always provides "Did you mean X?" quick-fixes — previously, dropping this result would cause silent failures with no user feedback. Follows the pattern established in issue #519 for `find_rule()`. Closes #550.
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
 ## [0.2.0] - 2026-04-06
