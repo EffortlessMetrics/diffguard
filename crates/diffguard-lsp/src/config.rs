@@ -10,6 +10,20 @@ use regex::Regex;
 const DIRECTORY_OVERRIDE_NAME: &str = ".diffguard.toml";
 const MAX_INCLUDE_DEPTH: usize = 10;
 
+/// Loads the effective configuration for diffguard.
+///
+/// If `path` is `None`, returns the built-in configuration. Otherwise, parses
+/// the config file at the given path (including any files it includes), then
+/// merges with the built-in rules unless `no_default_rules` is `true`.
+///
+/// # Arguments
+///
+/// * `path` - Optional path to a `.diffguard.toml` config file
+/// * `no_default_rules` - If `true`, skip merging with built-in rules
+///
+/// # Returns
+///
+/// The merged `ConfigFile` with all includes resolved
 pub fn load_effective_config(path: Option<&Path>, no_default_rules: bool) -> Result<ConfigFile> {
     let Some(path) = path else {
         return Ok(ConfigFile::built_in());
@@ -23,6 +37,23 @@ pub fn load_effective_config(path: Option<&Path>, no_default_rules: bool) -> Res
     }
 }
 
+/// Resolves the path to a config file based on workspace root and optional override.
+///
+/// Resolution order:
+/// 1. If `override_path` is absolute, use it directly
+/// 2. If `override_path` is relative, join it with `workspace_root` (if provided)
+/// 3. If no override, look for `default_name` in `workspace_root`
+/// 4. If no workspace root, look for `default_name` in current directory
+///
+/// # Arguments
+///
+/// * `workspace_root` - The root directory of the workspace (typically `.git` parent)
+/// * `override_path` - Optional explicit path to config file
+/// * `default_name` - Default config filename to search for (e.g., `.diffguard.toml`)
+///
+/// # Returns
+///
+/// The resolved path to the config file, or `None` if not found
 pub fn resolve_config_path(
     workspace_root: Option<&Path>,
     override_path: Option<String>,
@@ -56,6 +87,19 @@ pub fn resolve_config_path(
     }
 }
 
+/// Checks if two paths refer to the same file on disk.
+///
+/// Uses canonicalization when available (follows symlinks, resolves `..`).
+/// Falls back to string comparison of normalized paths if canonicalization fails.
+///
+/// # Arguments
+///
+/// * `left` - First path to compare
+/// * `right` - Second path to compare
+///
+/// # Returns
+///
+/// `true` if both paths resolve to the same file, `false` otherwise
 pub fn paths_match(left: &Path, right: &Path) -> bool {
     let left_canonical = left.canonicalize().ok();
     let right_canonical = right.canonicalize().ok();
@@ -65,10 +109,35 @@ pub fn paths_match(left: &Path, right: &Path) -> bool {
     normalize_path(left) == normalize_path(right)
 }
 
+/// Normalizes a path to use forward slashes and strip trailing separators.
+///
+/// Primarily used for consistent string comparison of paths across platforms.
+/// Windows paths with backslashes are converted to forward slashes.
+///
+/// # Arguments
+///
+/// * `path` - The path to normalize
+///
+/// # Returns
+///
+/// A string representation of the path with forward slashes
 pub fn normalize_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
+/// Converts an absolute file path to a workspace-relative path string.
+///
+/// If `workspace_root` is provided, strips the prefix from `file_path`.
+/// The result is normalized (forward slashes) and has `./` prefix stripped.
+///
+/// # Arguments
+///
+/// * `workspace_root` - The root directory to strip from the path
+/// * `file_path` - The absolute path to convert
+///
+/// # Returns
+///
+/// A relative path string suitable for display or matching
 pub fn to_workspace_relative_path(workspace_root: Option<&Path>, file_path: &Path) -> String {
     let normalized = if let Some(root) = workspace_root {
         if let Ok(stripped) = file_path.strip_prefix(root) {
@@ -83,6 +152,19 @@ pub fn to_workspace_relative_path(workspace_root: Option<&Path>, file_path: &Pat
     normalized.trim_start_matches("./").to_string()
 }
 
+/// Extracts the rule ID from an LSP diagnostic.
+///
+/// Tries two sources in order:
+/// 1. The `code` field if it's a string (e.g., `"rust.no_unwrap"`)
+/// 2. The `data.ruleId` JSON field if present
+///
+/// # Arguments
+///
+/// * `diagnostic` - The LSP diagnostic to extract from
+///
+/// # Returns
+///
+/// The rule ID string, or `None` if not found
 pub fn extract_rule_id(diagnostic: &Diagnostic) -> Option<String> {
     if let Some(NumberOrString::String(rule_id)) = diagnostic.code.as_ref() {
         return Some(rule_id.clone());
@@ -96,10 +178,33 @@ pub fn extract_rule_id(diagnostic: &Diagnostic) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+/// Finds a rule in a config file by its ID.
+///
+/// # Arguments
+///
+/// * `config` - The config file to search
+/// * `rule_id` - The rule ID to find
+///
+/// # Returns
+///
+/// A reference to the matching `RuleConfig`, or `None` if not found
 pub fn find_rule<'a>(config: &'a ConfigFile, rule_id: &str) -> Option<&'a RuleConfig> {
     config.rule.iter().find(|rule| rule.id == rule_id)
 }
 
+/// Formats a rule into a human-readable explanation string.
+///
+/// Produces a multi-line output describing the rule's ID, severity, message,
+/// patterns, semantics, and other configuration. Used for displaying detailed
+/// rule information to users.
+///
+/// # Arguments
+///
+/// * `rule` - The rule configuration to format
+///
+/// # Returns
+///
+/// A string containing the formatted rule explanation
 pub fn format_rule_explanation(rule: &RuleConfig) -> String {
     let mut output = String::new();
     output.push_str(&format!("Rule: {}\n", rule.id));
@@ -169,6 +274,23 @@ pub fn format_rule_explanation(rule: &RuleConfig) -> String {
     output
 }
 
+/// Finds rules with IDs similar to the given rule ID for typo suggestions.
+///
+/// Uses multiple strategies to find similar IDs:
+/// - Exact prefix match (score 0)
+/// - Substring match (score 1)
+/// - Levenshtein distance ≤ 3 (score = distance + 2)
+///
+/// Results are sorted by score and truncated to 5.
+///
+/// # Arguments
+///
+/// * `rule_id` - The rule ID to find similar matches for
+/// * `rules` - Slice of rule configurations to search
+///
+/// # Returns
+///
+/// A vector of up to 5 rule IDs sorted by similarity
 pub fn find_similar_rules(rule_id: &str, rules: &[RuleConfig]) -> Vec<String> {
     let rule_id_lower = rule_id.to_lowercase();
     let mut candidates: Vec<(String, usize)> = Vec::new();
@@ -194,6 +316,24 @@ pub fn find_similar_rules(rule_id: &str, rules: &[RuleConfig]) -> Vec<String> {
     candidates.into_iter().map(|(id, _)| id).collect()
 }
 
+/// Loads directory-level rule overrides for a given file path.
+///
+/// Searches for `.diffguard.toml` files in the directory hierarchy from the
+/// file's directory up to the workspace root. Overrides are collected from all
+/// matching files, sorted by depth (shallowest first), then merged.
+///
+/// # Arguments
+///
+/// * `workspace_root` - The root directory of the workspace
+/// * `relative_file_path` - The file path relative to the workspace root
+///
+/// # Returns
+///
+/// A merged vector of `DirectoryRuleOverride` from all applicable override files
+///
+/// # Errors
+///
+/// Returns an error if an override file exists but cannot be read or parsed
 pub fn load_directory_overrides_for_file(
     workspace_root: &Path,
     relative_file_path: &str,
@@ -351,6 +491,14 @@ fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     built_in
 }
 
+/// Expands environment variable references in config content.
+///
+/// Supports `${VAR}` and `${VAR:-default}` syntax. If a variable is not set
+/// and no default is provided, returns an error.
+///
+/// The regex pattern `${[A-Za-z_][A-Za-z0-9_]*:-?}` matches:
+/// - Variable names: alphanumeric with underscore, starting with letter or underscore
+/// - Optional default value after `:-`
 fn expand_env_vars(content: &str) -> Result<String> {
     let regex = Regex::new(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
         .expect("env var regex must compile");
@@ -426,6 +574,20 @@ fn directory_depth(path: &Path) -> usize {
     path.components().count()
 }
 
+/// Computes the Levenshtein edit distance between two strings.
+///
+/// Used by `find_similar_rules` to suggest rule IDs when a user types an invalid one.
+/// Returns the minimum number of single-character edits (insertions, deletions,
+/// or substitutions) needed to transform `left` into `right`.
+///
+/// # Arguments
+///
+/// * `left` - First string
+/// * `right` - Second string
+///
+/// # Returns
+///
+/// The edit distance (0 means identical strings)
 fn simple_edit_distance(left: &str, right: &str) -> usize {
     let left_chars: Vec<char> = left.chars().collect();
     let right_chars: Vec<char> = right.chars().collect();
