@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+- **`diffguard-testkit`**: Replaced wildcard import `use super::*` with explicit named imports in `sample_receipts` module, making symbol provenance clear and compiler-verified. Resolves provenance issue mentioned in #335.
 
 ## [0.2.0] - 2026-04-06
 
