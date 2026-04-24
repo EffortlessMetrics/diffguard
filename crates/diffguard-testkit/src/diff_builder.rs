@@ -61,6 +61,10 @@ impl DiffBuilder {
     }
 
     /// Add a pre-built file to the diff.
+    ///
+    /// # Panics
+    ///
+    /// Panics if MAX_FILES would be exceeded.
     pub fn add_file(mut self, file: FileBuilder) -> Self {
         assert!(
             self.files.len() < MAX_FILES,
@@ -75,7 +79,7 @@ impl DiffBuilder {
     pub fn build(self) -> String {
         self.files
             .iter()
-            .map(|f| f.build())
+            .map(FileBuilder::build)
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -140,6 +144,10 @@ impl FileBuilderInProgress {
     }
 
     /// Finish this file and return to the diff builder.
+    ///
+    /// # Panics
+    ///
+    /// Panics if MAX_FILES would be exceeded.
     pub fn done(mut self) -> DiffBuilder {
         self.diff_builder.files.push(self.file_builder);
         self.diff_builder
@@ -174,6 +182,10 @@ impl HunkBuilderInProgress {
     }
 
     /// Finish this hunk and return to the file builder.
+    ///
+    /// # Panics
+    ///
+    /// Panics if MAX_HUNKS_PER_FILE would be exceeded.
     pub fn done(mut self) -> FileBuilderInProgress {
         self.file_in_progress.file_builder = self
             .file_in_progress
@@ -332,6 +344,12 @@ pub struct HunkBuilder {
     lines: Vec<HunkLine>,
 }
 
+/// Represents a single line within a hunk's diff output.
+///
+/// Each variant corresponds to a line type in unified diff format:
+/// - `Context`: Unchanged line (prefixed with single space in diff output)
+/// - `Add`: Added line (prefixed with `+` in diff output)
+/// - `Remove`: Removed line (prefixed with `-` in diff output)
 #[derive(Debug, Clone)]
 enum HunkLine {
     Context(String),
@@ -446,7 +464,11 @@ impl HunkBuilder {
 pub struct GeneratedDiff {
     /// The full diff text.
     pub text: String,
-    /// Expected number of files.
+    /// Number of files with extractable content (hunks or lines).
+    ///
+    /// Note: For binary and deleted files, this is 0 even though
+    /// `file_paths` may contain the file path. Use `file_paths.len()`
+    /// if you need the actual number of files in the diff.
     pub expected_files: usize,
     /// Expected number of added lines (when using Scope::Added).
     pub expected_added_lines: usize,
@@ -462,7 +484,7 @@ impl GeneratedDiff {
         let diff = DiffBuilder::new()
             .file(path)
             .hunk(0, 0, 1, lines.len() as u32)
-            .add_lines_from_slice(lines)
+            .add_lines(lines)
             .done()
             .done()
             .build();
@@ -507,7 +529,7 @@ impl GeneratedDiff {
 
         Self {
             text: diff,
-            expected_files: 0,
+            expected_files: 0, // Binary files have no extractable content
             expected_added_lines: 0,
             expected_changed_lines: 0,
             file_paths: vec![path.to_string()],
@@ -537,7 +559,7 @@ impl GeneratedDiff {
     pub fn renamed(old_path: &str, new_path: &str, added_lines: &[&str]) -> Self {
         let hunk = HunkBuilder::new(1, 1, 1, added_lines.len() as u32 + 1)
             .context("fn existing() {}")
-            .add_lines_from_slice(added_lines);
+            .add_lines(added_lines);
 
         let file = FileBuilder::new(new_path)
             .rename_from(old_path)
@@ -557,17 +579,7 @@ impl GeneratedDiff {
 // Extension trait to add helper methods
 impl HunkBuilderInProgress {
     /// Add multiple lines at once.
-    pub fn add_lines_from_slice(mut self, lines: &[&str]) -> Self {
-        for line in lines {
-            self = self.add_line(line);
-        }
-        self
-    }
-}
-
-impl HunkBuilder {
-    /// Add multiple lines at once.
-    pub fn add_lines_from_slice(mut self, lines: &[&str]) -> Self {
+    pub fn add_lines(mut self, lines: &[&str]) -> Self {
         for line in lines {
             self = self.add_line(line);
         }
@@ -577,6 +589,10 @@ impl HunkBuilder {
 
 impl FileBuilderInProgress {
     /// Add a pre-built hunk directly.
+    ///
+    /// # Panics
+    ///
+    /// Panics if MAX_HUNKS_PER_FILE would be exceeded.
     pub fn add_hunk_directly(mut self, hunk: HunkBuilder) -> Self {
         self.file_builder = self.file_builder.add_hunk(hunk);
         self
@@ -810,8 +826,8 @@ mod tests {
     }
 
     #[test]
-    fn hunk_builder_add_lines_from_slice() {
-        let hunk = HunkBuilder::new(1, 0, 1, 2).add_lines_from_slice(&["a", "b"]);
+    fn hunk_builder_add_lines() {
+        let hunk = HunkBuilder::new(1, 0, 1, 2).add_lines(&["a", "b"]);
         let output = hunk.build();
         assert!(output.contains("+a"));
         assert!(output.contains("+b"));
