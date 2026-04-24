@@ -73,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **`diffguard-analytics`**: Added `#[must_use]` to `merge_false_positive_baselines()` to prevent silent data loss. If callers discard the return value (e.g., expression-bodied call), the compiler now emits a warning instead of silently skipping the baseline merge. Consistent with existing `#[must_use]` on `normalize_false_positive_baseline`, `fingerprint_for_finding`, and `baseline_from_receipt` in the same crate.
+
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
 ## [0.2.0] - 2026-04-06
