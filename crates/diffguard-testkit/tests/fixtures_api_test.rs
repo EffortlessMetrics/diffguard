@@ -14,9 +14,7 @@
 //! clippy's wildcard_imports lint IS enabled, no warnings are produced.
 
 use diffguard_testkit::fixtures::{sample_configs, sample_receipts};
-use diffguard_types::{
-    CheckReceipt, ConfigFile, Defaults, FailOn, RuleConfig, Scope, Severity, VerdictStatus,
-};
+use diffguard_types::{CheckReceipt, ConfigFile, Defaults, FailOn, Scope, Severity, VerdictStatus};
 
 // =============================================================================
 // sample_configs tests
