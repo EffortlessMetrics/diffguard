@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+- **`validate_config_for_doctor`**: Refactored parameter type from `&Option<PathBuf>` to `Option<&PathBuf>` for idiomatic Rust API design — no behavior change
 
 ## [0.2.0] - 2026-04-06
 
