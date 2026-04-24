@@ -26,9 +26,7 @@ pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
             if line_number as usize != index + 1 {
                 // index + 1 overflowed u32 — cap at u32::MAX and warn
                 changed.insert(u32::MAX);
-                eprintln!(
-                    "changed_lines_between: line number overflow, capping at u32::MAX"
-                );
+                eprintln!("changed_lines_between: line number overflow, capping at u32::MAX");
             } else {
                 changed.insert(line_number);
             }
