@@ -93,25 +93,8 @@ pub fn evaluate_lines_with_overrides_and_language(
     force_language: Option<&str>,
 ) -> Evaluation {
     let input_lines: Vec<InputLine> = lines.into_iter().collect();
-    let mut findings: Vec<Finding> = Vec::new();
-    let mut counts = VerdictCounts::default();
-    let mut truncated_findings: u32 = 0;
-    let mut per_rule_hits = BTreeMap::<String, RuleHitStat>::new();
-
-    let files_seen = input_lines
-        .iter()
-        .map(|line| line.path.clone())
-        .collect::<BTreeSet<_>>();
+    let counts = VerdictCounts::default();
     let lines_scanned = u32::try_from(input_lines.len()).unwrap_or(u32::MAX);
-
-    let mut current_file: Option<String> = None;
-    let mut current_lang = Language::Unknown;
-    let mut p_comments =
-        Preprocessor::with_language(PreprocessOptions::comments_only(), current_lang);
-    let mut p_strings =
-        Preprocessor::with_language(PreprocessOptions::strings_only(), current_lang);
-    let mut p_both =
-        Preprocessor::with_language(PreprocessOptions::comments_and_strings(), current_lang);
 
     let forced_language_name = force_language.map(str::to_ascii_lowercase);
     let forced_language_enum =
@@ -122,9 +105,53 @@ pub fn evaluate_lines_with_overrides_and_language(
                 Err(infallible) => match infallible {},
             });
 
-    let mut suppression_tracker = SuppressionTracker::new();
+    let (prepared_lines, files_seen_count) = prepare_lines(
+        input_lines,
+        forced_language_name.clone(),
+        forced_language_enum,
+    );
+
+    let events = generate_match_events(&prepared_lines, rules, overrides);
+
+    let (findings, counts, truncated_findings, per_rule_hits) =
+        collect_findings(events, rules, &prepared_lines, max_findings, counts);
+
+    Evaluation {
+        findings,
+        counts,
+        truncated_findings,
+        files_scanned: files_seen_count as u64,
+        lines_scanned,
+        rule_hits: per_rule_hits.into_values().collect(),
+    }
+}
+
+// Phase 1: Prepare input lines for evaluation.
+//
+// Handles language detection, preprocessor setup, and masking of comments/strings.
+// Returns the prepared lines and the count of distinct files encountered.
+fn prepare_lines(
+    input_lines: Vec<InputLine>,
+    forced_language_name: Option<String>,
+    forced_language_enum: Option<Language>,
+) -> (Vec<PreparedLine>, usize) {
     let mut prepared_lines: Vec<PreparedLine> = Vec::with_capacity(input_lines.len());
+    let mut files_seen: BTreeSet<String> = BTreeSet::new();
+    let mut current_file: Option<String> = None;
+    let mut current_lang = Language::Unknown;
+
+    let mut p_comments =
+        Preprocessor::with_language(PreprocessOptions::comments_only(), current_lang);
+    let mut p_strings =
+        Preprocessor::with_language(PreprocessOptions::strings_only(), current_lang);
+    let mut p_both =
+        Preprocessor::with_language(PreprocessOptions::comments_and_strings(), current_lang);
+
+    let mut suppression_tracker = SuppressionTracker::new();
+
     for input in input_lines {
+        files_seen.insert(input.path.clone());
+
         if current_file.as_deref() != Some(&input.path) {
             current_file = Some(input.path.clone());
             current_lang = if let Some(forced_lang) = forced_language_enum {
@@ -163,6 +190,18 @@ pub fn evaluate_lines_with_overrides_and_language(
         });
     }
 
+    (prepared_lines, files_seen.len())
+}
+
+// Phase 2: Generate match events by evaluating rules against prepared lines.
+//
+// Groups lines by file, iterates through rules, and produces match events
+// with severity escalation and dependency gating applied.
+fn generate_match_events(
+    prepared_lines: &[PreparedLine],
+    rules: &[CompiledRule],
+    overrides: Option<&RuleOverrideMatcher>,
+) -> Vec<MatchEvent> {
     let mut by_file = BTreeMap::<String, Vec<usize>>::new();
     for (idx, line) in prepared_lines.iter().enumerate() {
         by_file.entry(line.line.path.clone()).or_default().push(idx);
@@ -195,11 +234,11 @@ pub fn evaluate_lines_with_overrides_and_language(
 
             let rule_matches = match rule.match_mode {
                 MatchMode::Any => {
-                    find_positive_matches_for_rule(rule, file_indices, &prepared_lines)
+                    find_positive_matches_for_rule(rule, file_indices, prepared_lines)
                 }
                 MatchMode::Absent => {
                     let positive =
-                        find_positive_matches_for_rule(rule, file_indices, &prepared_lines);
+                        find_positive_matches_for_rule(rule, file_indices, prepared_lines);
                     if positive.is_empty() {
                         vec![RawMatchEvent {
                             anchor_file_pos: 0,
@@ -223,7 +262,7 @@ pub fn evaluate_lines_with_overrides_and_language(
                     rule,
                     file_indices,
                     matched.anchor_file_pos,
-                    &prepared_lines,
+                    prepared_lines,
                     base_severity,
                 );
                 converted.push(MatchEvent {
@@ -260,6 +299,31 @@ pub fn evaluate_lines_with_overrides_and_language(
                     .cmp(&b.match_start.unwrap_or(usize::MAX))
             })
     });
+
+    events
+}
+
+// Phase 3: Collect findings from match events.
+//
+// Takes sorted events and produces structured findings, tracking per-rule
+// statistics and respecting the max_findings limit.
+#[allow(clippy::too_many_arguments)]
+fn collect_findings(
+    events: Vec<MatchEvent>,
+    rules: &[CompiledRule],
+    prepared_lines: &[PreparedLine],
+    max_findings: usize,
+    counts: VerdictCounts,
+) -> (
+    Vec<Finding>,
+    VerdictCounts,
+    u32,
+    BTreeMap<String, RuleHitStat>,
+) {
+    let mut findings: Vec<Finding> = Vec::new();
+    let mut truncated_findings: u32 = 0;
+    let mut per_rule_hits = BTreeMap::<String, RuleHitStat>::new();
+    let mut counts = counts;
 
     for event in events {
         let rule = &rules[event.rule_idx];
@@ -311,17 +375,7 @@ pub fn evaluate_lines_with_overrides_and_language(
         }
     }
 
-    Evaluation {
-        findings,
-        counts,
-        truncated_findings,
-        // Use u64 to avoid overflow when scanning repos with >4B files.
-        // Prior to the u64 migration, `files_seen.len() as u32` would silently
-        // truncate for extremely large codebases, producing incorrect counts.
-        files_scanned: files_seen.len() as u64,
-        lines_scanned,
-        rule_hits: per_rule_hits.into_values().collect(),
-    }
+    (findings, counts, truncated_findings, per_rule_hits)
 }
 
 fn resolve_dependency_gated_rule_ids(
