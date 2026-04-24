@@ -72,6 +72,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **`diffguard-lsp`**: Added comprehensive docstrings to all 6 public functions in `text.rs` (`split_lines`, `changed_lines_between`, `build_synthetic_diff`, `apply_incremental_change`, `byte_offset_at_position`, `utf16_length`) and 16 unit/property-based tests for UTF-16 length calculation correctness, reinforcing the `#[must_use]` contract on `utf16_length()`.
+
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
 ## [0.2.0] - 2026-04-06
