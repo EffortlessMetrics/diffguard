@@ -3,9 +3,9 @@
 //! These tests verify invariants about the function across many generated inputs.
 //! Feature: diffguard-lsp, Property: changed_lines_between invariants
 
-use std::collections::BTreeSet;
 use diffguard_lsp::text::{changed_lines_between, split_lines};
 use proptest::prelude::*;
+use std::collections::BTreeSet;
 
 // ============================================================================
 // Helper functions
@@ -253,7 +253,10 @@ proptest! {
 #[test]
 fn property_empty_strings_produce_empty() {
     let changed = changed_lines_between("", "");
-    assert!(changed.is_empty(), "Empty strings should produce empty changed set");
+    assert!(
+        changed.is_empty(),
+        "Empty strings should produce empty changed set"
+    );
 }
 
 // ============================================================================
@@ -375,8 +378,8 @@ fn regression_removal_not_detected_when_before_longer() {
     // but differ from `before`. If a line was removed from `before` entirely,
     // there is no corresponding line in `after` to compare and report.
 
-    let before = "a\nb\nc";  // No trailing newline - 3 lines
-    let after = "a\nb";       // No trailing newline - 2 lines
+    let before = "a\nb\nc"; // No trailing newline - 3 lines
+    let after = "a\nb"; // No trailing newline - 2 lines
 
     let changed = changed_lines_between(before, after);
 

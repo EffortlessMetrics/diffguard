@@ -288,10 +288,14 @@ mod tests {
     fn build_synthetic_diff_emits_hunks_for_changed_lines() {
         let changed = BTreeSet::from([2_u32, 3_u32]);
         let diff = build_synthetic_diff("src/lib.rs", "one\ntwo\nthree\n", &changed);
-        assert!(diff.contains("@@ -0,0 +2,1 @@
-"));
-        assert!(diff.contains("@@ -0,0 +3,1 @@
-"));
+        assert!(diff.contains(
+            "@@ -0,0 +2,1 @@
+"
+        ));
+        assert!(diff.contains(
+            "@@ -0,0 +3,1 @@
+"
+        ));
         assert!(diff.contains("+two"));
         assert!(diff.contains("+three"));
     }
