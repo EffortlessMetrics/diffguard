@@ -285,8 +285,12 @@ pub fn load_directory_overrides_for_diff(
             None => continue,
         };
 
-        let parsed: DirectoryOverrideConfig = toml::from_str(text)
-            .with_context(|| format!("parse directory override config {}", override_path.display()))?;
+        let parsed: DirectoryOverrideConfig = toml::from_str(text).with_context(|| {
+            format!(
+                "parse directory override config {}",
+                override_path.display()
+            )
+        })?;
 
         let directory =
             normalize_override_directory(override_path.parent().unwrap_or_else(|| Path::new("")));
