@@ -47,9 +47,7 @@ pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
 /// the diagnostic information.
 #[must_use]
 pub fn build_synthetic_diff(path: &str, text: &str, changed_lines: &BTreeSet<u32>) -> String {
-    let mut diff = format!(
-        "diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n"
-    );
+    let mut diff = format!("diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n");
     let lines = split_lines(text);
 
     for line_number in changed_lines {

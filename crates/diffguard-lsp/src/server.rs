@@ -129,20 +129,22 @@ impl ServerState {
         let max_findings = options.max_findings.unwrap_or(DEFAULT_MAX_FINDINGS).max(1);
         let force_language = normalize_option_string(options.force_language);
 
-        let (config, warning) =
-            match load_effective_config(config_path.as_deref(), options.no_default_rules) {
-                Ok(config) => (config, None),
-                Err(err) => {
-                    let config_label = config_path
-                        .as_ref()
-                        .map(|p| p.display().to_string())
-                        .unwrap_or_else(|| "<built-in>".to_string());
-                    let warning = format!(
-                        "diffguard-lsp: failed to load config from {config_label} (using built-in rules): {err}"
-                    );
-                    (ConfigFile::built_in(), Some(warning))
-                }
-            };
+        let (config, warning) = match load_effective_config(
+            config_path.as_deref(),
+            options.no_default_rules,
+        ) {
+            Ok(config) => (config, None),
+            Err(err) => {
+                let config_label = config_path
+                    .as_ref()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| "<built-in>".to_string());
+                let warning = format!(
+                    "diffguard-lsp: failed to load config from {config_label} (using built-in rules): {err}"
+                );
+                (ConfigFile::built_in(), Some(warning))
+            }
+        };
 
         (
             Self {
@@ -436,11 +438,7 @@ fn handle_execute_command_request(
             } else {
                 format!("diffguard rule {rule_id}")
             };
-            show_message(
-                connection,
-                MessageType::INFO,
-                &format!("{label}: {url}"),
-            )?;
+            show_message(connection, MessageType::INFO, &format!("{label}: {url}"))?;
 
             send_ok_response(
                 connection,
@@ -635,16 +633,12 @@ fn reload_config(state: &mut ServerState) -> Result<String> {
         Ok(config) => {
             let rules = config.rule.len();
             state.config = config;
-            Ok(format!(
-                "diffguard-lsp: config reloaded ({rules} rule(s))."
-            ))
+            Ok(format!("diffguard-lsp: config reloaded ({rules} rule(s))."))
         }
         Err(err) => {
             state.config = ConfigFile::built_in();
             state.git_support = GitSupport::Unknown;
-            bail!(
-                "diffguard-lsp: failed to reload config (using built-in rules): {err}"
-            )
+            bail!("diffguard-lsp: failed to reload config (using built-in rules): {err}")
         }
     }
 }
