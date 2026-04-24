@@ -4,11 +4,13 @@
 //! false-positive baselines through the public API.
 
 use diffguard_analytics::{
-    baseline_from_receipt, false_positive_fingerprint_set, merge_false_positive_baselines,
-    normalize_false_positive_baseline, FalsePositiveBaseline, FalsePositiveEntry,
+    FalsePositiveBaseline, FalsePositiveEntry, baseline_from_receipt,
+    false_positive_fingerprint_set, merge_false_positive_baselines,
+    normalize_false_positive_baseline,
 };
-use diffguard_types::{CheckReceipt, DiffMeta, Finding, Severity, ToolMeta, Verdict,
-                       VerdictCounts, VerdictStatus};
+use diffguard_types::{
+    CheckReceipt, DiffMeta, Finding, Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+};
 use std::collections::BTreeSet;
 
 /// Creates a minimal CheckReceipt for testing.
@@ -315,12 +317,20 @@ fn integration_normalize_sorts_and_deduplicates() {
     normalize_false_positive_baseline(&mut baseline);
 
     // Then: Entries are sorted by fingerprint
-    let fps: Vec<_> = baseline.entries.iter().map(|e| &e.fingerprint[..]).collect();
+    let fps: Vec<_> = baseline
+        .entries
+        .iter()
+        .map(|e| &e.fingerprint[..])
+        .collect();
     assert!(fps.windows(2).all(|w| w[0] <= w[1]));
 
     // And: Duplicates are removed
     assert_eq!(baseline.entries.len(), 2);
-    let fps: BTreeSet<_> = baseline.entries.iter().map(|e| &e.fingerprint[..]).collect();
+    let fps: BTreeSet<_> = baseline
+        .entries
+        .iter()
+        .map(|e| &e.fingerprint[..])
+        .collect();
     assert_eq!(fps.len(), 2);
 }
 
@@ -371,7 +381,11 @@ fn integration_normalize_idempotent_across_calls() {
     assert_eq!(first_result.schema, "diffguard.false_positive_baseline.v1");
 
     // And: Entries are sorted
-    let fps: Vec<_> = first_result.entries.iter().map(|e| &e.fingerprint[..]).collect();
+    let fps: Vec<_> = first_result
+        .entries
+        .iter()
+        .map(|e| &e.fingerprint[..])
+        .collect();
     assert!(fps.windows(2).all(|w| w[0] <= w[1]));
 }
 

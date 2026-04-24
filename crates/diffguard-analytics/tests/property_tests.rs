@@ -3,8 +3,8 @@
 //! These tests verify invariants that should hold for ALL inputs, not just specific examples.
 
 use diffguard_analytics::{
-    false_positive_fingerprint_set, merge_false_positive_baselines,
-    normalize_false_positive_baseline, FalsePositiveBaseline, FALSE_POSITIVE_BASELINE_SCHEMA_V1,
+    FALSE_POSITIVE_BASELINE_SCHEMA_V1, FalsePositiveBaseline, false_positive_fingerprint_set,
+    merge_false_positive_baselines, normalize_false_positive_baseline,
 };
 use proptest::prelude::*;
 

@@ -8,13 +8,15 @@
 //! not that it's wrong. The reviewer must decide if the change is intentional.
 
 use diffguard_analytics::{
-    append_trend_run, baseline_from_receipt, false_positive_fingerprint_set,
-    fingerprint_for_finding, merge_false_positive_baselines, normalize_false_positive_baseline,
-    summarize_trend_history, trend_run_from_receipt, FalsePositiveBaseline, FalsePositiveEntry,
-    TrendHistory, FALSE_POSITIVE_BASELINE_SCHEMA_V1, TREND_HISTORY_SCHEMA_V1,
+    FALSE_POSITIVE_BASELINE_SCHEMA_V1, FalsePositiveBaseline, FalsePositiveEntry,
+    TREND_HISTORY_SCHEMA_V1, TrendHistory, append_trend_run, baseline_from_receipt,
+    false_positive_fingerprint_set, fingerprint_for_finding, merge_false_positive_baselines,
+    normalize_false_positive_baseline, summarize_trend_history, trend_run_from_receipt,
 };
-use diffguard_types::{CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict,
-                       VerdictCounts, VerdictStatus};
+use diffguard_types::{
+    CheckReceipt, DiffMeta, Finding, Scope, Severity, ToolMeta, Verdict, VerdictCounts,
+    VerdictStatus,
+};
 use insta::{assert_json_snapshot, assert_snapshot};
 
 // ---------------------------------------------------------------------------
@@ -230,9 +232,9 @@ fn snapshot_merge_base_fills_empty_fields() {
         schema: FALSE_POSITIVE_BASELINE_SCHEMA_V1.to_string(),
         entries: vec![FalsePositiveEntry {
             fingerprint: "dup_fp".to_string(),
-            rule_id: "".to_string(), // empty — should be filled
-            path: "".to_string(),    // empty — should be filled
-            line: 0,                 // zero — should be filled
+            rule_id: "".to_string(),             // empty — should be filled
+            path: "".to_string(),                // empty — should be filled
+            line: 0,                             // zero — should be filled
             note: Some("base note".to_string()), // base note preserved
         }],
     };
