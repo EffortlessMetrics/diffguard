@@ -72,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **`diffguard-diff`**: Replaced `as u32` casts with `u32::from()` in `unescape_git_path` for lossless widening conversions, satisfying `clippy::cast_lossless` lint
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
 ## [0.2.0] - 2026-04-06
