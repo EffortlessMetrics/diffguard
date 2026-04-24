@@ -464,7 +464,11 @@ impl HunkBuilder {
 pub struct GeneratedDiff {
     /// The full diff text.
     pub text: String,
-    /// Expected number of files.
+    /// Number of files with extractable content (hunks or lines).
+    ///
+    /// Note: For binary and deleted files, this is 0 even though
+    /// `file_paths` may contain the file path. Use `file_paths.len()`
+    /// if you need the actual number of files in the diff.
     pub expected_files: usize,
     /// Expected number of added lines (when using Scope::Added).
     pub expected_added_lines: usize,
@@ -525,7 +529,7 @@ impl GeneratedDiff {
 
         Self {
             text: diff,
-            expected_files: 0,
+            expected_files: 0, // Binary files have no extractable content
             expected_added_lines: 0,
             expected_changed_lines: 0,
             file_paths: vec![path.to_string()],
