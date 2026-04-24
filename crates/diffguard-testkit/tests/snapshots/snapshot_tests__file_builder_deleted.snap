@@ -1,0 +1,11 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: file
+---
+diff --git a/src/old.rs b/src/old.rs
+deleted file mode 100644
+index 1111111..0000000
+--- a/src/old.rs
++++ /dev/null
+@@ -1,1 +0,0 @@
+-fn old() {}

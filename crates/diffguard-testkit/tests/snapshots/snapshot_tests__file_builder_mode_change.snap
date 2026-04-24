@@ -1,0 +1,7 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: file
+---
+diff --git a/script.sh b/script.sh
+old mode 100644
+new mode 100755

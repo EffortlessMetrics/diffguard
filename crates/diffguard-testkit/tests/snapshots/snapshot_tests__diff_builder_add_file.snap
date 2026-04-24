@@ -1,0 +1,22 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: diff
+---
+diff --git a/src/first.rs b/src/first.rs
+index 0000000..1111111 100644
+--- a/src/first.rs
++++ b/src/first.rs
+@@ -1,0 +1,1 @@
++first
+diff --git a/src/second.rs b/src/second.rs
+index 0000000..1111111 100644
+--- a/src/second.rs
++++ b/src/second.rs
+@@ -1,0 +1,1 @@
++second
+diff --git a/src/third.rs b/src/third.rs
+index 0000000..1111111 100644
+--- a/src/third.rs
++++ b/src/third.rs
+@@ -1,0 +1,1 @@
++third

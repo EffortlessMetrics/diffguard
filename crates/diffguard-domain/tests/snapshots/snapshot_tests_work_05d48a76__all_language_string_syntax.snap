@@ -1,0 +1,25 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_05d48a76.rs
+expression: snapshot
+---
+Rust: Rust
+Python: Python
+JavaScript: JavaScript
+TypeScript: JavaScript
+Go: Go
+Ruby: JavaScript
+C: CStyle
+Cpp: CStyle
+CSharp: CStyle
+Java: CStyle
+Kotlin: CStyle
+Shell: Shell
+Swift: SwiftScala
+Scala: SwiftScala
+Sql: Sql
+Xml: Xml
+Php: Php
+Yaml: CStyle
+Toml: CStyle
+Json: CStyle
+Unknown: CStyle
