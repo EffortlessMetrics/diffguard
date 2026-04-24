@@ -29,7 +29,6 @@ proptest! {
         let changed = changed_lines_between(&before, &after);
         for line_number in &changed {
             prop_assert!(*line_number >= 1, "Line number {} is less than 1 (0-indexed?)", line_number);
-            prop_assert!(*line_number <= u32::MAX, "Line number {} exceeds u32::MAX", line_number);
         }
     }
 }
