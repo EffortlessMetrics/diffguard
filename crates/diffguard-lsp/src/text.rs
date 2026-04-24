@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{bail, Context, Result};
 use lsp_types::{Position, TextDocumentContentChangeEvent};
 
 /// Splits text into lines by newline characters, preserving the lines themselves.
