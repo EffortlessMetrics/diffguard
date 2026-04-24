@@ -75,6 +75,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
+### Fixed
+
+- **Markdown output escaping** — `escape_md` function now properly escapes all special markdown characters (`` ` ``, `#`, `*`, `_`, `[`, `]`, `>`, carriage return, newline) to prevent breaking markdown table formatting in diffguard output. Previously only `|` and backticks were escaped. Closes #490.
+
 - **Fixed `clippy::doc_markdown` warning in `diffguard-types`** — Wrapped bare identifiers `missing_base` and `tool_error` in backticks in doc comment for `CapabilityStatus::reason` field to satisfy clippy's `doc_markdown` lint. No user-facing behavior change.
 
 ## [0.2.0] - 2026-04-06
