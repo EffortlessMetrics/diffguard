@@ -129,21 +129,22 @@ impl ServerState {
         let max_findings = options.max_findings.unwrap_or(DEFAULT_MAX_FINDINGS).max(1);
         let force_language = normalize_option_string(options.force_language);
 
-        let (config, warning) =
-            match load_effective_config(config_path.as_deref(), options.no_default_rules) {
-                Ok(config) => (config, None),
-                Err(err) => {
-                    let config_label = config_path
-                        .as_ref()
-                        .map(|p| p.display().to_string())
-                        .unwrap_or_else(|| "<built-in>".to_string());
-                    let warning = format!(
-                        "diffguard-lsp: failed to load config from {} (using built-in rules): {}",
-                        config_label, err
-                    );
-                    (ConfigFile::built_in(), Some(warning))
-                }
-            };
+        let (config, warning) = match load_effective_config(
+            config_path.as_deref(),
+            options.no_default_rules,
+        ) {
+            Ok(config) => (config, None),
+            Err(err) => {
+                let config_label = config_path
+                    .as_ref()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| "<built-in>".to_string());
+                let warning = format!(
+                    "diffguard-lsp: failed to load config from {config_label} (using built-in rules): {err}"
+                );
+                (ConfigFile::built_in(), Some(warning))
+            }
+        };
 
         (
             Self {
@@ -296,7 +297,7 @@ fn handle_code_action_request(
                 connection,
                 request.id,
                 INVALID_PARAMS,
-                format!("invalid CodeActionParams: {}", err),
+                format!("invalid CodeActionParams: {err}"),
             );
         }
     };
@@ -317,13 +318,13 @@ fn build_code_actions(config: &ConfigFile, params: &CodeActionParams) -> Vec<Cod
 
         if seen_explain.insert(rule_id.clone()) {
             let command = LspCommand {
-                title: format!("Explain {}", rule_id),
+                title: format!("Explain {rule_id}"),
                 command: CMD_EXPLAIN_RULE.to_string(),
                 arguments: Some(vec![json!(rule_id.clone())]),
             };
 
             actions.push(CodeActionOrCommand::CodeAction(CodeAction {
-                title: format!("diffguard: Explain {}", rule_id),
+                title: format!("diffguard: Explain {rule_id}"),
                 kind: Some(CodeActionKind::QUICKFIX),
                 command: Some(command),
                 data: Some(json!({ "ruleId": rule_id })),
@@ -365,7 +366,7 @@ fn handle_execute_command_request(
                 connection,
                 request.id,
                 INVALID_PARAMS,
-                format!("invalid ExecuteCommandParams: {}", err),
+                format!("invalid ExecuteCommandParams: {err}"),
             );
         }
     };
@@ -435,13 +436,9 @@ fn handle_execute_command_request(
             let label = if rule_id.is_empty() {
                 "diffguard documentation".to_string()
             } else {
-                format!("diffguard rule {}", rule_id)
+                format!("diffguard rule {rule_id}")
             };
-            show_message(
-                connection,
-                MessageType::INFO,
-                &format!("{}: {}", label, url),
-            )?;
+            show_message(connection, MessageType::INFO, &format!("{label}: {url}"))?;
 
             send_ok_response(
                 connection,
@@ -467,11 +464,11 @@ fn explain_rule_message(config: &ConfigFile, rule_id: &str) -> (String, bool) {
     }
 
     let suggestions = find_similar_rules(rule_id, &config.rule);
-    let mut message = format!("Rule '{}' not found.", rule_id);
+    let mut message = format!("Rule '{rule_id}' not found.");
     if !suggestions.is_empty() {
         message.push_str("\nDid you mean:");
         for suggestion in suggestions {
-            message.push_str(&format!("\n- {}", suggestion));
+            message.push_str(&format!("\n- {suggestion}"));
         }
     }
     (message, false)
@@ -491,7 +488,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didOpen params: {}", err),
+                            &format!("invalid didOpen params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -516,7 +513,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didChange params: {}", err),
+                            &format!("invalid didChange params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -543,7 +540,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didSave params: {}", err),
+                            &format!("invalid didSave params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -578,7 +575,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didClose params: {}", err),
+                            &format!("invalid didClose params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -596,7 +593,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didChangeConfiguration params: {}", err),
+                            &format!("invalid didChangeConfiguration params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -636,18 +633,12 @@ fn reload_config(state: &mut ServerState) -> Result<String> {
         Ok(config) => {
             let rules = config.rule.len();
             state.config = config;
-            Ok(format!(
-                "diffguard-lsp: config reloaded ({} rule(s)).",
-                rules
-            ))
+            Ok(format!("diffguard-lsp: config reloaded ({rules} rule(s))."))
         }
         Err(err) => {
             state.config = ConfigFile::built_in();
             state.git_support = GitSupport::Unknown;
-            bail!(
-                "diffguard-lsp: failed to reload config (using built-in rules): {}",
-                err
-            )
+            bail!("diffguard-lsp: failed to reload config (using built-in rules): {err}")
         }
     }
 }
@@ -700,8 +691,7 @@ fn refresh_document_diagnostics(
                         connection,
                         MessageType::WARNING,
                         &format!(
-                            "diffguard-lsp: git diff unavailable (falling back to in-memory changes only): {}",
-                            err
+                            "diffguard-lsp: git diff unavailable (falling back to in-memory changes only): {err}"
                         ),
                     )?;
                 }
@@ -725,7 +715,7 @@ fn refresh_document_diagnostics(
                 show_message(
                     connection,
                     MessageType::WARNING,
-                    &format!("diffguard-lsp: failed to load directory overrides: {}", err),
+                    &format!("diffguard-lsp: failed to load directory overrides: {err}"),
                 )?;
                 Vec::new()
             }
@@ -757,7 +747,7 @@ fn refresh_document_diagnostics(
             show_message(
                 connection,
                 MessageType::ERROR,
-                &format!("diffguard-lsp: check failed for {}: {}", relative_path, err),
+                &format!("diffguard-lsp: check failed for {relative_path}: {err}"),
             )?;
             publish_diagnostics(connection, uri.clone(), Some(document.version), Vec::new())?;
             return Ok(());

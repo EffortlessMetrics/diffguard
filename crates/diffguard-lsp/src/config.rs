@@ -108,19 +108,19 @@ pub fn format_rule_explanation(rule: &RuleConfig) -> String {
     output.push_str(&format!("Message: {}\n", rule.message));
     output.push_str("Patterns:\n");
     for pattern in &rule.patterns {
-        output.push_str(&format!("- {}\n", pattern));
+        output.push_str(&format!("- {pattern}\n"));
     }
     output.push_str("Semantics:\n");
     let match_mode = match rule.match_mode {
         MatchMode::Any => "any",
         MatchMode::Absent => "absent",
     };
-    output.push_str(&format!("- Match mode: {}\n", match_mode));
+    output.push_str(&format!("- Match mode: {match_mode}\n"));
     output.push_str(&format!(
         "- Multiline: {}{}\n",
         if rule.multiline { "yes" } else { "no" },
         rule.multiline_window
-            .map(|window| format!(" (window={})", window))
+            .map(|window| format!(" (window={window})"))
             .unwrap_or_default()
     ));
     if !rule.context_patterns.is_empty() {
@@ -161,11 +161,11 @@ pub fn format_rule_explanation(rule: &RuleConfig) -> String {
     if let Some(help) = &rule.help {
         output.push_str("Help:\n");
         for line in help.lines() {
-            output.push_str(&format!("{}\n", line));
+            output.push_str(&format!("{line}\n"));
         }
     }
     if let Some(url) = &rule.url {
-        output.push_str(&format!("URL: {}\n", url));
+        output.push_str(&format!("URL: {url}\n"));
     }
     output
 }
@@ -372,8 +372,7 @@ fn expand_env_vars(content: &str) -> Result<String> {
                     result.push_str(default);
                 } else {
                     bail!(
-                        "environment variable '{}' is not set and no default was provided",
-                        variable
+                        "environment variable '{variable}' is not set and no default was provided"
                     );
                 }
             }

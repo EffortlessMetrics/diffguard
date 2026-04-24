@@ -10,6 +10,12 @@ use std::collections::BTreeMap;
 use super::xml_utils::escape_xml;
 use diffguard_types::{CheckReceipt, Finding, Severity};
 
+/// XML 1.0 declaration with UTF-8 encoding.
+const XML_DECLARATION: &str = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+
+/// Checkstyle root element — version 5.0 is the widely-supported canonical version.
+const CHECKSTYLE_ROOT: &str = "<checkstyle version=\"5.0\">\n";
+
 /// Renders a CheckReceipt as a Checkstyle XML report.
 ///
 /// The Checkstyle format groups findings by file path:
@@ -27,9 +33,9 @@ use diffguard_types::{CheckReceipt, Finding, Severity};
 /// - `Warn`  → "warning"
 /// - `Info`  → "info"
 ///
-/// Formats a `<error>` element for a finding.
+/// Formats a single `<error>` element for a Checkstyle XML report.
 ///
-/// Column is optional in Checkstyle — only included when present.
+/// The column attribute is only included when a column number is provided.
 fn error_element(
     line: u32,
     column: Option<u32>,
@@ -38,7 +44,7 @@ fn error_element(
     rule_id: &str,
 ) -> String {
     let column_attr = column
-        .map(|c| format!(" column=\"{}\"", c))
+        .map(|c| format!(" column=\"{c}\""))
         .unwrap_or_default();
     format!(
         "    <error line=\"{}\"{column_attr} severity=\"{}\" message=\"{}\" source=\"{}\"/>\n",
@@ -53,10 +59,10 @@ pub fn render_checkstyle_for_receipt(receipt: &CheckReceipt) -> String {
     let mut out = String::new();
 
     // XML declaration
-    out.push_str("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    out.push_str(XML_DECLARATION);
 
     // Root element — Checkstyle version 5.0 is the widely-supported canonical version
-    out.push_str("<checkstyle version=\"5.0\">\n");
+    out.push_str(CHECKSTYLE_ROOT);
 
     // Group findings by file path using BTreeMap for deterministic output
     let mut files: BTreeMap<String, Vec<&Finding>> = BTreeMap::new();
