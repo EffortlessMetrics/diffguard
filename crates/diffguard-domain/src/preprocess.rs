@@ -103,8 +103,8 @@ impl Language {
             Language::Xml => StringSyntax::Xml,
             // PHP uses both single and double quotes
             Language::Php => StringSyntax::Php,
-            // YAML/TOML/JSON strings are C-style-like in this best-effort model
-            Language::Yaml | Language::Toml | Language::Json => StringSyntax::CStyle,
+            // YAML/TOML strings are C-style-like in this best-effort model
+            Language::Yaml | Language::Toml => StringSyntax::CStyle,
             // All other languages (C, C++, Java, etc.) use C-style strings
             _ => StringSyntax::CStyle,
         }
@@ -269,6 +269,9 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
+    /// Create a new preprocessor with no language set (defaults to `Language::Unknown`).
+    ///
+    /// Use `with_language()` or `set_language()` to configure language-specific syntax.
     pub fn new(opts: PreprocessOptions) -> Self {
         Self {
             opts,
@@ -292,6 +295,10 @@ impl Preprocessor {
         self.reset();
     }
 
+    /// Reset the preprocessor state, clearing any in-progress comment or string mode.
+    ///
+    /// This does not change the language or options, only the internal mode tracking.
+    /// Call this when starting to process a new file.
     pub fn reset(&mut self) {
         self.mode = Mode::Normal;
     }
