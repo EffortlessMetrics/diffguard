@@ -694,7 +694,7 @@ where
             cmd_trend(args)?;
             Ok(0)
         }
-        Commands::Doctor(args) => cmd_doctor(args),
+        Commands::Doctor(args) => Ok(cmd_doctor(args)),
     }
 }
 
@@ -768,8 +768,17 @@ fn compile_rules_checked(
     compile_rules(rules)
 }
 
-/// Validate rules in a parsed config file and return a list of error messages.
-/// Shared between cmd_validate and cmd_doctor.
+/// Validate rule configurations for correctness.
+///
+/// Checks for:
+/// - Duplicate rule IDs
+/// - Empty pattern lists
+/// - Invalid regex patterns in patterns, context_patterns, and escalate_patterns
+/// - Invalid multiline_window values
+/// - Unknown rule dependencies
+/// - Invalid path globs
+///
+/// Returns a list of error messages. Empty list means validation passed.
 fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     let mut errors: Vec<String> = Vec::new();
     let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
@@ -953,7 +962,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
 
 /// Validate the environment for running diffguard.
 /// Returns 0 if all checks pass, 1 if any check fails.
-fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
+fn cmd_doctor(args: DoctorArgs) -> i32 {
     let mut all_pass = true;
 
     // Check 1: Git availability
@@ -1000,7 +1009,7 @@ fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
 
     all_pass &= validate_config_for_doctor(&config_path, args.config.is_some());
 
-    if all_pass { Ok(0) } else { Ok(1) }
+    if all_pass { 0 } else { 1 }
 }
 
 /// Validate config file for the doctor command.
@@ -1825,6 +1834,11 @@ fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
     out
 }
 
+/// Run `git blame --line-porcelain` and return the raw output as a String.
+///
+/// Uses `into_owned()` on the `Cow<str>` from `from_utf8_lossy` to explicitly
+/// convert to an owned string, matching the pattern established in the domain layer.
+/// This is equivalent to `.to_string()` but makes the ownership transfer explicit.
 fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     let output = Command::new("git")
         .args(["blame", "--line-porcelain", head_ref, "--", path])
@@ -1840,7 +1854,7 @@ fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
         );
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 fn collect_blame_allowed_lines(
@@ -3112,6 +3126,16 @@ fn merge_with_built_in(user: ConfigFile) -> ConfigFile {
     built
 }
 
+/// Run `git diff` to compare two commits and return the unified diff output.
+///
+/// # Arguments
+/// * `base` - The base commit ref (e.g., "origin/main")
+/// * `head` - The head commit ref to compare against
+/// * `context_lines` - Number of context lines to include in unified diff
+///
+/// # Returns
+/// Raw git diff output as a `String`. Uses `into_owned()` on the `Cow<str>`
+/// from `from_utf8_lossy` to explicitly convert to an owned string.
 fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
     let range = format!("{base}...{head}");
     let unified = format!("--unified={context_lines}");
@@ -3129,9 +3153,17 @@ fn git_diff(base: &str, head: &str, context_lines: u32) -> Result<String> {
         );
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+/// Run `git diff --cached` to get staged changes and return as a unified diff.
+///
+/// # Arguments
+/// * `context_lines` - Number of context lines to include in unified diff
+///
+/// # Returns
+/// Raw git diff output as a `String`. Uses `into_owned()` on the `Cow<str>`
+/// from `from_utf8_lossy` to explicitly convert to an owned string.
 fn git_staged_diff(context_lines: u32) -> Result<String> {
     let unified = format!("--unified={context_lines}");
 
@@ -3148,7 +3180,7 @@ fn git_staged_diff(context_lines: u32) -> Result<String> {
         );
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 fn write_json(path: &Path, value: &impl serde::Serialize) -> Result<()> {
