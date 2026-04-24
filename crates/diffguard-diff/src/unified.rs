@@ -543,11 +543,11 @@ fn unescape_git_path(s: &str) -> String {
             b'r' => out.push(b'\r'),
             b' ' => out.push(b' '),
             b'0'..=b'7' => {
-                let mut val = (next - b'0') as u32;
+                let mut val = u32::from(next - b'0');
                 for _ in 0..2 {
                     match iter.peek().copied() {
                         Some(d) if (b'0'..=b'7').contains(&d) => {
-                            val = val * 8 + (d - b'0') as u32;
+                            val = val * 8 + u32::from(d - b'0');
                             iter.next();
                         }
                         _ => break,
@@ -1018,6 +1018,49 @@ diff --git a/only
         assert_eq!(unescape_git_path(r#"\1234"#), "S4");
         assert_eq!(unescape_git_path(r#"a\rb"#).as_bytes(), b"a\rb");
         assert_eq!(unescape_git_path(r#"\12x"#).as_bytes(), b"\nx");
+    }
+
+    /// Edge case tests for `unescape_git_path` octal escape parsing.
+    /// These verify boundary conditions and the u8→u32 widening cast via `From`.
+    #[test]
+    fn unescape_git_path_octal_edge_cases() {
+        // Empty string returns empty string
+        assert_eq!(unescape_git_path(""), "");
+
+        // All single-digit octal escapes: \0 through \7 (ASCII range 0-7)
+        assert_eq!(unescape_git_path(r#"\0"#).as_bytes(), &[0]);
+        assert_eq!(unescape_git_path(r#"\1"#).as_bytes(), &[1]);
+        assert_eq!(unescape_git_path(r#"\2"#).as_bytes(), &[2]);
+        assert_eq!(unescape_git_path(r#"\3"#).as_bytes(), &[3]);
+        assert_eq!(unescape_git_path(r#"\4"#).as_bytes(), &[4]);
+        assert_eq!(unescape_git_path(r#"\5"#).as_bytes(), &[5]);
+        assert_eq!(unescape_git_path(r#"\6"#).as_bytes(), &[6]);
+        assert_eq!(unescape_git_path(r#"\7"#).as_bytes(), &[7]);
+
+        // Two-digit octal escapes in ASCII range
+        assert_eq!(unescape_git_path(r#"\00"#).as_bytes(), &[0]);
+        assert_eq!(unescape_git_path(r#"\07"#).as_bytes(), &[7]);
+        assert_eq!(unescape_git_path(r#"\10"#).as_bytes(), &[8]); // backspace
+        assert_eq!(unescape_git_path(r#"\12"#).as_bytes(), &[10]); // newline
+        assert_eq!(unescape_git_path(r#"\15"#).as_bytes(), &[13]); // carriage return
+        assert_eq!(unescape_git_path(r#"\77"#).as_bytes(), &[63]); // '?'
+
+        // Three-digit octal escapes within ASCII range (< 128)
+        assert_eq!(unescape_git_path(r#"\000"#).as_bytes(), &[0]);
+        assert_eq!(unescape_git_path(r#"\177"#).as_bytes(), &[127]); // DEL
+
+        // Digits 8 and 9 are NOT octal — should pass through as literal escape
+        assert_eq!(unescape_git_path(r#"\8"#), r#"\8"#);
+        assert_eq!(unescape_git_path(r#"\9"#), r#"\9"#);
+
+        // Unknown escape \q followed by digit should not treat digit as octal
+        assert_eq!(unescape_git_path(r#"\q1"#), r#"\q1"#);
+
+        // Multiple consecutive octal escapes
+        assert_eq!(unescape_git_path(r#"\001\002\003"#).as_bytes(), &[1, 2, 3]);
+
+        // Mixed content with octal escapes
+        assert_eq!(unescape_git_path(r#"hello\041world"#), "hello!world");
     }
 
     // ========================================================================

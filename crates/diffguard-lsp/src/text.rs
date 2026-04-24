@@ -11,6 +11,7 @@ pub fn split_lines(text: &str) -> Vec<&str> {
     }
 }
 
+#[must_use]
 pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
     let before_lines = split_lines(before);
     let after_lines = split_lines(after);
@@ -21,7 +22,15 @@ pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
         let before_line = before_lines.get(index);
         let after_line = after_lines.get(index);
         if before_line != after_line && index < after_lines.len() {
-            changed.insert((index + 1) as u32);
+            // Check for u32 overflow (files with >~4.29B lines) using inverse cast
+            let line_number = (index + 1) as u32;
+            if line_number as usize != index + 1 {
+                // index + 1 overflowed u32 — cap at u32::MAX and warn
+                changed.insert(u32::MAX);
+                eprintln!("changed_lines_between: line number overflow, capping at u32::MAX");
+            } else {
+                changed.insert(line_number);
+            }
         }
     }
 
