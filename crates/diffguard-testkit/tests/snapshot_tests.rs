@@ -87,7 +87,7 @@ fn snapshot_diff_builder_max_files() {
 /// Snapshot: DiffBuilder::build() with add_file (pre-built FileBuilder)
 #[test]
 fn snapshot_diff_builder_add_file() {
-    let prebuilt = FileBuilder::new("src/prebuilt.rs")
+    let _prebuilt = FileBuilder::new("src/prebuilt.rs")
         .add_hunk(HunkBuilder::new(1, 0, 1, 1).add_line("prebuilt"))
         .build();
 
