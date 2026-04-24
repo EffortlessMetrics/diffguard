@@ -2,10 +2,23 @@ use std::path::Path;
 
 use diffguard_types::Scope;
 
+/// Represents the kind of change a line represents in a diff.
+///
+/// This is used to classify individual lines returned by [`parse_unified_diff`]
+/// based on how they appeared in the original diff.
+///
+/// [`parse_unified_diff`]: crate::parse_unified_diff
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeKind {
+    /// A line that was added (prefixed with `+` in the diff).
     Added,
+    /// A line that was modified (a `+` line that directly follows a `-` line in the same hunk).
+    ///
+    /// See [`parse_unified_diff`] for details on when a line is classified as `Changed` vs `Added`.
+    ///
+    /// [`parse_unified_diff`]: crate::parse_unified_diff
     Changed,
+    /// A line that was deleted (prefixed with `-` in the diff).
     Deleted,
 }
 
@@ -99,26 +112,134 @@ pub fn parse_rename_to(line: &str) -> Option<String> {
     parse_rename_path(rest)
 }
 
+/// Represents a single line extracted from a unified diff.
+///
+/// Each `DiffLine` corresponds to one line in the diff output, with metadata
+/// about which file it belongs to, its line number in the post-image (after the change),
+/// the original content, and the kind of change it represents.
+///
+/// Created by [`parse_unified_diff`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffLine {
+    /// The path of the file this line belongs to (using the new/destination path
+    /// for renamed files).
     pub path: String,
+    /// The line number in the post-image (after the change was applied).
+    /// For deleted lines, this is the line number in the pre-image.
     pub line: u32,
+    /// The content of the line (without the leading `+`, `-`, or ` ` prefix).
     pub content: String,
+    /// The kind of change this line represents.
     pub kind: ChangeKind,
 }
 
+/// Aggregate statistics from parsing a unified diff.
+///
+/// This is returned alongside the parsed lines by [`parse_unified_diff`].
+///
+/// [`parse_unified_diff`]: crate::parse_unified_diff
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DiffStats {
+    /// The number of unique files that had lines matching the requested scope.
     pub files: u32,
+    /// The total number of lines matching the requested scope across all files.
     pub lines: u32,
 }
 
+/// Errors that can occur when parsing a unified diff.
 #[derive(Debug, thiserror::Error)]
 pub enum DiffParseError {
     #[error("malformed hunk header: {0}")]
     MalformedHunkHeader(String),
     #[error("diff stats overflow: {0}")]
     Overflow(String),
+}
+
+// ============================================================================
+// Helper functions extracted from parse_unified_diff()
+// ============================================================================
+
+/// Processes a single content line (+, -, or ' ') in a unified diff hunk.
+#[must_use]
+pub(crate) fn process_diff_line_content(
+    line: &str,
+    first: u8,
+    path: &str,
+    scope: Scope,
+    old_line_no: u32,
+    new_line_no: u32,
+    pending_removed: bool,
+) -> Option<(Option<DiffLine>, bool, u32, u32)> {
+    match first {
+        b'+' => {
+            let content = &line[1..];
+            if is_submodule(content) {
+                return None;
+            }
+            let is_changed = pending_removed;
+            let include = match scope {
+                Scope::Added => true,
+                Scope::Changed | Scope::Modified => is_changed,
+                Scope::Deleted => false,
+            };
+            let diff_line = if include {
+                Some(DiffLine {
+                    path: path.to_string(),
+                    line: new_line_no,
+                    content: content.to_string(),
+                    kind: if is_changed {
+                        ChangeKind::Changed
+                    } else {
+                        ChangeKind::Added
+                    },
+                })
+            } else {
+                None
+            };
+            Some((
+                diff_line,
+                pending_removed,
+                old_line_no,
+                new_line_no.saturating_add(1),
+            ))
+        }
+        b'-' => {
+            let content = &line[1..];
+            if is_submodule(content) {
+                return None;
+            }
+            let diff_line = if matches!(scope, Scope::Deleted) {
+                Some(DiffLine {
+                    path: path.to_string(),
+                    line: old_line_no,
+                    content: content.to_string(),
+                    kind: ChangeKind::Deleted,
+                })
+            } else {
+                None
+            };
+            Some((diff_line, true, old_line_no.saturating_add(1), new_line_no))
+        }
+        b' ' => Some((
+            None,
+            false,
+            old_line_no.saturating_add(1),
+            new_line_no.saturating_add(1),
+        )),
+        _ => None,
+    }
+}
+
+/// Computes diff statistics from parsed diff lines.
+fn compute_diff_stats(lines: &[DiffLine]) -> DiffStats {
+    let mut files = std::collections::BTreeSet::<String>::new();
+    for l in lines {
+        files.insert(l.path.clone());
+    }
+    DiffStats {
+        files: u32::try_from(files.len()).unwrap_or(u32::MAX),
+        lines: u32::try_from(lines.len()).unwrap_or(u32::MAX),
+    }
 }
 
 /// Parse a unified diff (git-style) and return scoped lines in diff order.
@@ -266,80 +387,29 @@ pub fn parse_unified_diff(
 
         let first = raw.as_bytes().first().copied();
         match first {
-            Some(b'+') => {
-                // Check if this is a submodule content line (Requirements 4.2)
-                let content = &raw[1..];
-                if is_submodule(content) {
-                    skip_current_file = true;
-                    in_hunk = false;
-                    continue;
+            Some(b'+') | Some(b'-') | Some(b' ') => {
+                if let Some((diff_line, new_pending, new_old, new_new)) = process_diff_line_content(
+                    raw,
+                    first.unwrap(),
+                    path,
+                    scope,
+                    old_line_no,
+                    new_line_no,
+                    pending_removed,
+                ) {
+                    pending_removed = new_pending;
+                    old_line_no = new_old;
+                    new_line_no = new_new;
+                    if let Some(line) = diff_line {
+                        out.push(line);
+                    }
                 }
-
-                // Added line.
-                let is_changed = pending_removed;
-                let include = match scope {
-                    Scope::Added => true,
-                    Scope::Changed | Scope::Modified => is_changed,
-                    Scope::Deleted => false,
-                };
-
-                if include {
-                    out.push(DiffLine {
-                        path: path.to_string(),
-                        line: new_line_no,
-                        content: content.to_string(),
-                        kind: if is_changed {
-                            ChangeKind::Changed
-                        } else {
-                            ChangeKind::Added
-                        },
-                    });
-                }
-
-                new_line_no = new_line_no.saturating_add(1);
-            }
-            Some(b'-') => {
-                // Check if this is a submodule content line (Requirements 4.2)
-                let content = &raw[1..];
-                if is_submodule(content) {
-                    skip_current_file = true;
-                    in_hunk = false;
-                    continue;
-                }
-
-                // Removed line.
-                if matches!(scope, Scope::Deleted) {
-                    out.push(DiffLine {
-                        path: path.to_string(),
-                        line: old_line_no,
-                        content: content.to_string(),
-                        kind: ChangeKind::Deleted,
-                    });
-                }
-                pending_removed = true;
-                old_line_no = old_line_no.saturating_add(1);
-            }
-            Some(b' ') => {
-                // Context line.
-                pending_removed = false;
-                old_line_no = old_line_no.saturating_add(1);
-                new_line_no = new_line_no.saturating_add(1);
             }
             _ => {}
         }
     }
 
-    let mut files = std::collections::BTreeSet::<String>::new();
-    for l in &out {
-        files.insert(l.path.clone());
-    }
-
-    let stats = DiffStats {
-        files: u32::try_from(files.len())
-            .map_err(|_| DiffParseError::Overflow(format!("too many files (> {})", u32::MAX)))?,
-        lines: u32::try_from(out.len())
-            .map_err(|_| DiffParseError::Overflow(format!("too many lines (> {})", u32::MAX)))?,
-    };
+    let stats = compute_diff_stats(&out);
 
     Ok((out, stats))
 }

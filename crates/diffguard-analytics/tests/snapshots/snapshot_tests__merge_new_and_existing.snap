@@ -1,0 +1,22 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: merged
+---
+{
+  "schema": "diffguard.false_positive_baseline.v1",
+  "entries": [
+    {
+      "fingerprint": "existing_fp",
+      "rule_id": "rust.no_unwrap",
+      "path": "src/lib.rs",
+      "line": 1,
+      "note": "intentional: allowed here"
+    },
+    {
+      "fingerprint": "incoming_only",
+      "rule_id": "go.no_error_panic",
+      "path": "handler.go",
+      "line": 20
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: baseline
+---
+{
+  "schema": "diffguard.false_positive_baseline.v1",
+  "entries": [
+    {
+      "fingerprint": "fp1",
+      "rule_id": "rust.no_unwrap",
+      "path": "x.rs",
+      "line": 1
+    }
+  ]
+}
