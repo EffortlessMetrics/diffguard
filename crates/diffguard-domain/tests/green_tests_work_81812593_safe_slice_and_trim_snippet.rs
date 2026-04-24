@@ -2,7 +2,7 @@
 // Edge case tests for safe_slice() and trim_snippet().
 // These verify the implementation handles edge cases correctly.
 
-use diffguard_domain::{compile_rules, evaluate_lines, InputLine};
+use diffguard_domain::{InputLine, compile_rules, evaluate_lines};
 use diffguard_types::{MatchMode, RuleConfig, Severity};
 
 fn make_test_rule(id: &str, pattern: &str) -> RuleConfig {
@@ -46,7 +46,10 @@ fn test_trim_snippet_short_string_not_truncated() {
     let eval = evaluate_lines(lines, &rules, 1000);
     assert!(!eval.findings.is_empty(), "Expected finding");
     let finding = eval.findings.first().unwrap();
-    assert!(!finding.snippet.ends_with('…'), "Short snippet should NOT be truncated");
+    assert!(
+        !finding.snippet.ends_with('…'),
+        "Short snippet should NOT be truncated"
+    );
 }
 
 /// Edge case: very long line should be truncated with ellipsis.
@@ -62,7 +65,10 @@ fn test_trim_snippet_very_long_line_truncates() {
     let eval = evaluate_lines(lines, &rules, 1000);
     assert!(!eval.findings.is_empty(), "Expected finding");
     let finding = eval.findings.first().unwrap();
-    assert!(finding.snippet.ends_with('…'), "Very long line should be truncated");
+    assert!(
+        finding.snippet.ends_with('…'),
+        "Very long line should be truncated"
+    );
 }
 
 /// Edge case: Unicode short string should NOT truncate.
@@ -78,7 +84,10 @@ fn test_trim_snippet_unicode_short_not_truncated() {
     let eval = evaluate_lines(lines, &rules, 1000);
     assert!(!eval.findings.is_empty(), "Expected finding");
     let finding = eval.findings.first().unwrap();
-    assert!(!finding.snippet.ends_with('…'), "64 Unicode chars should not be truncated");
+    assert!(
+        !finding.snippet.ends_with('…'),
+        "64 Unicode chars should not be truncated"
+    );
 }
 
 /// Edge case: very long Unicode line should truncate.
@@ -94,7 +103,10 @@ fn test_trim_snippet_unicode_long_truncates() {
     let eval = evaluate_lines(lines, &rules, 1000);
     assert!(!eval.findings.is_empty(), "Expected finding");
     let finding = eval.findings.first().unwrap();
-    assert!(finding.snippet.ends_with('…'), "254 Unicode chars should be truncated");
+    assert!(
+        finding.snippet.ends_with('…'),
+        "254 Unicode chars should be truncated"
+    );
 }
 
 /// Edge case: empty string should not panic.
@@ -121,7 +133,10 @@ fn test_safe_slice_match_at_start() {
     let eval = evaluate_lines(lines, &rules, 1000);
     assert!(!eval.findings.is_empty(), "Expected finding");
     let finding = eval.findings.first().unwrap();
-    assert!(finding.match_text.contains("test"), "Should find 'test' at start");
+    assert!(
+        finding.match_text.contains("test"),
+        "Should find 'test' at start"
+    );
 }
 
 /// Edge case: match at the very end of a string.
@@ -136,7 +151,10 @@ fn test_safe_slice_match_at_end() {
     let eval = evaluate_lines(lines, &rules, 1000);
     assert!(!eval.findings.is_empty(), "Expected finding");
     let finding = eval.findings.first().unwrap();
-    assert!(finding.match_text.contains("test"), "Should find 'test' at end");
+    assert!(
+        finding.match_text.contains("test"),
+        "Should find 'test' at end"
+    );
 }
 
 /// Edge case: single character match.
@@ -181,7 +199,10 @@ fn test_safe_slice_unicode_in_match() {
     let eval = evaluate_lines(lines, &rules, 1000);
     assert!(!eval.findings.is_empty(), "Expected finding");
     let finding = eval.findings.first().unwrap();
-    assert!(finding.match_text.contains("test"), "Should find 'test' in Unicode string");
+    assert!(
+        finding.match_text.contains("test"),
+        "Should find 'test' in Unicode string"
+    );
 }
 
 /// Edge case: CRLF line endings.
@@ -196,7 +217,10 @@ fn test_safe_slice_crlf_line_endings() {
     let eval = evaluate_lines(lines, &rules, 1000);
     assert!(!eval.findings.is_empty(), "Expected finding");
     let finding = eval.findings.first().unwrap();
-    assert!(finding.match_text.contains("test"), "Should handle CRLF line endings");
+    assert!(
+        finding.match_text.contains("test"),
+        "Should handle CRLF line endings"
+    );
 }
 
 /// Edge case: empty content should not panic.
@@ -224,6 +248,12 @@ fn test_safe_slice_long_unicode_line() {
     let eval = evaluate_lines(lines, &rules, 1000);
     assert!(!eval.findings.is_empty(), "Expected finding");
     let finding = eval.findings.first().unwrap();
-    assert!(finding.match_text.contains("test"), "Should find 'test' in long Unicode line");
-    assert!(finding.snippet.ends_with('…'), "Long Unicode line should be truncated");
+    assert!(
+        finding.match_text.contains("test"),
+        "Should find 'test' in long Unicode line"
+    );
+    assert!(
+        finding.snippet.ends_with('…'),
+        "Long Unicode line should be truncated"
+    );
 }

@@ -8,12 +8,12 @@
 
 use std::collections::HashMap;
 
-use proptest::prelude::*;
-use diffguard_core::{render_sensor_json, render_sensor_report, RuleMetadata, SensorReportContext};
+use diffguard_core::{RuleMetadata, SensorReportContext, render_sensor_json, render_sensor_report};
 use diffguard_types::{
-    Artifact, CapabilityStatus, CheckReceipt, DiffMeta, Finding, Scope, Severity, SENSOR_REPORT_SCHEMA_V1,
-    ToolMeta, Verdict, VerdictCounts, VerdictStatus,
+    Artifact, CapabilityStatus, CheckReceipt, DiffMeta, Finding, SENSOR_REPORT_SCHEMA_V1, Scope,
+    Severity, ToolMeta, Verdict, VerdictCounts, VerdictStatus,
 };
+use proptest::prelude::*;
 
 // ============================================================================
 // Proptest Strategies
@@ -793,16 +793,22 @@ fn property_tags_matched_aggregated() {
     let receipt = build_receipt(findings, VerdictStatus::Fail, 0, 1, 100);
 
     let mut rule_metadata = HashMap::new();
-    rule_metadata.insert("rule1".to_string(), RuleMetadata {
-        help: None,
-        url: None,
-        tags: vec!["tag1".to_string()],
-    });
-    rule_metadata.insert("rule2".to_string(), RuleMetadata {
-        help: None,
-        url: None,
-        tags: vec!["tag1".to_string(), "tag2".to_string()],
-    });
+    rule_metadata.insert(
+        "rule1".to_string(),
+        RuleMetadata {
+            help: None,
+            url: None,
+            tags: vec!["tag1".to_string()],
+        },
+    );
+    rule_metadata.insert(
+        "rule2".to_string(),
+        RuleMetadata {
+            help: None,
+            url: None,
+            tags: vec!["tag1".to_string(), "tag2".to_string()],
+        },
+    );
 
     let ctx = build_context(HashMap::new(), vec![], rule_metadata, 0, 2);
     let report = render_sensor_report(&receipt, &ctx);
