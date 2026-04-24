@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-diff/tests/snapshot_tests.rs
+assertion_line: 406
+expression: "format!(\"{:?}\", err)"
+---
+Overflow("too many lines (> 4294967295)")
