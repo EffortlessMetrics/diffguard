@@ -1,0 +1,7 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_05d48a76.rs
+expression: snapshot
+---
+Json: CStyle
+Unknown: CStyle
+Identical: true
