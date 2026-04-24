@@ -42,8 +42,7 @@ fn can_add_exactly_max_hunks_per_file() {
         let mut file = FileBuilder::new("test.rs");
         for i in 0..5 {
             // Use a fixed short line to avoid exceeding MAX_LINE_LENGTH
-            let hunk =
-                HunkBuilder::new(i as u32 + 1, 1, i as u32 + 1, 1).context("line");
+            let hunk = HunkBuilder::new(i as u32 + 1, 1, i as u32 + 1, 1).context("line");
             file = file.add_hunk(hunk);
         }
         let result = file.build();
@@ -122,8 +121,7 @@ fn hunk_headers_are_valid_unified_format() {
             .add_line("test")
             .build();
 
-        let expected_header =
-            format!("@@ -{old_start},{old_count} +{new_start},{new_count} @@");
+        let expected_header = format!("@@ -{old_start},{old_count} +{new_start},{new_count} @@");
         assert!(hunk.contains(&expected_header));
     }
 }
@@ -240,11 +238,7 @@ fn binary_file_contains_binary_indicator() {
 
     for _ in 0..100 {
         let path = arb_file_path().new_tree(&mut runner).unwrap().current();
-        let diff = DiffBuilder::new()
-            .file(&path)
-            .binary()
-            .done()
-            .build();
+        let diff = DiffBuilder::new().file(&path).binary().done().build();
 
         assert!(diff.contains("Binary files"));
         assert!(diff.contains("differ"));
@@ -316,7 +310,7 @@ fn rename_contains_rename_markers() {
 
 #[test]
 fn mode_change_contains_modes() {
-    let modes = vec!["100644", "100755", "100600"];
+    let modes = ["100644", "100755", "100600"];
     let mut runner = TestRunner::default();
 
     for _ in 0..100 {
@@ -353,8 +347,7 @@ fn generated_diff_additions_line_count() {
             .new_tree(&mut runner)
             .unwrap()
             .current();
-        let lines_refs: Vec<&str> =
-            lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        let lines_refs: Vec<&str> = lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
         let diff = GeneratedDiff::with_additions(&path, &lines_refs);
         assert_eq!(diff.expected_added_lines, lines.len());
@@ -377,10 +370,8 @@ fn generated_diff_changes_line_count() {
             .unwrap()
             .current();
 
-        let removed_refs: Vec<&str> =
-            removed.iter().map(|s| s.as_str()).collect::<Vec<_>>();
-        let added_refs: Vec<&str> =
-            added.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        let removed_refs: Vec<&str> = removed.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        let added_refs: Vec<&str> = added.iter().map(|s| s.as_str()).collect::<Vec<_>>();
         let diff = GeneratedDiff::with_changes(&path, &removed_refs, &added_refs);
 
         assert_eq!(diff.expected_added_lines, added.len());
@@ -398,8 +389,7 @@ fn generated_diff_additions_contains_content() {
             .new_tree(&mut runner)
             .unwrap()
             .current();
-        let lines_refs: Vec<&str> =
-            lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+        let lines_refs: Vec<&str> = lines.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
         let diff = GeneratedDiff::with_additions(&path, &lines_refs);
         for line in &lines {
