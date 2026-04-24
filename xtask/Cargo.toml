@@ -25,3 +25,4 @@ jsonschema = "0.18"
 
 diffguard-types = { path = "../crates/diffguard-types" }
 diffguard-analytics = { path = "../crates/diffguard-analytics" }
+# dummy comment to invalidate cache
