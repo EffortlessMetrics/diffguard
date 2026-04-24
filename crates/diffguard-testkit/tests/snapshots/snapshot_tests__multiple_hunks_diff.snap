@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: diff
+---
+"diff --git a/src/lib.rs b/src/lib.rs\nindex 0000000..1111111 100644\n--- a/src/lib.rs\n+++ b/src/lib.rs\n@@ -1,2 +1,3 @@\n fn first() {}\n+fn after_first() {}\n fn second() {}\n@@ -10,2 +11,3 @@\n fn tenth() {}\n+fn after_tenth() {}\n fn eleventh() {}\n"

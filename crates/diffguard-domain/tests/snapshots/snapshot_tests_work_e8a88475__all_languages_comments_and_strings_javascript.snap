@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_e8a88475.rs
+assertion_line: 263
+expression: result
+---
+let x =         ;
