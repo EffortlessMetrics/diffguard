@@ -480,7 +480,7 @@ impl GeneratedDiff {
         let diff = DiffBuilder::new()
             .file(path)
             .hunk(0, 0, 1, lines.len() as u32)
-            .add_lines_from_slice(lines)
+            .add_lines(lines)
             .done()
             .done()
             .build();
@@ -555,7 +555,7 @@ impl GeneratedDiff {
     pub fn renamed(old_path: &str, new_path: &str, added_lines: &[&str]) -> Self {
         let hunk = HunkBuilder::new(1, 1, 1, added_lines.len() as u32 + 1)
             .context("fn existing() {}")
-            .add_lines_from_slice(added_lines);
+            .add_lines(added_lines);
 
         let file = FileBuilder::new(new_path)
             .rename_from(old_path)
@@ -575,17 +575,7 @@ impl GeneratedDiff {
 // Extension trait to add helper methods
 impl HunkBuilderInProgress {
     /// Add multiple lines at once.
-    pub fn add_lines_from_slice(mut self, lines: &[&str]) -> Self {
-        for line in lines {
-            self = self.add_line(line);
-        }
-        self
-    }
-}
-
-impl HunkBuilder {
-    /// Add multiple lines at once.
-    pub fn add_lines_from_slice(mut self, lines: &[&str]) -> Self {
+    pub fn add_lines(mut self, lines: &[&str]) -> Self {
         for line in lines {
             self = self.add_line(line);
         }
@@ -832,8 +822,8 @@ mod tests {
     }
 
     #[test]
-    fn hunk_builder_add_lines_from_slice() {
-        let hunk = HunkBuilder::new(1, 0, 1, 2).add_lines_from_slice(&["a", "b"]);
+    fn hunk_builder_add_lines() {
+        let hunk = HunkBuilder::new(1, 0, 1, 2).add_lines(&["a", "b"]);
         let output = hunk.build();
         assert!(output.contains("+a"));
         assert!(output.contains("+b"));
