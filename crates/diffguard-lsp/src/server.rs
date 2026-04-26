@@ -48,16 +48,30 @@ enum GitSupport {
     Unavailable,
 }
 
+/// Represents the state of an open text document in the LSP server.
+///
+/// Each open document has a path, version number, current text content,
+/// and a set of lines that have been changed since it was last saved.
+/// The `baseline_text` is used to compute diffs against the saved version.
 #[derive(Debug, Clone)]
 struct DocumentState {
+    /// Absolute path to the document file on disk.
     path: PathBuf,
+    /// LSP document version number (incremented on each change).
     version: i32,
+    /// Text content at the time the document was last saved (baseline for diffs).
     baseline_text: String,
+    /// Current text content of the document.
     text: String,
+    /// Set of 1-indexed line numbers changed since `baseline_text`.
     changed_lines: BTreeSet<u32>,
 }
 
 impl DocumentState {
+    /// Creates a new document state for a newly opened document.
+    ///
+    /// The text is used for both the current content and the baseline,
+    /// since a newly opened document is trivially "saved" already.
     fn new(path: PathBuf, version: i32, text: String) -> Self {
         Self {
             path,
@@ -68,6 +82,19 @@ impl DocumentState {
         }
     }
 
+    /// Applies a batch of content changes to the document.
+    ///
+    /// The LSP sends multiple changes in a batch (from `didChange` notification).
+    /// If any change in the batch is a full-document replacement (range is None),
+    /// only that change is applied and others are ignored. Otherwise, each change
+    /// is applied incrementally in order.
+    ///
+    /// After applying changes, `changed_lines` is recomputed by diffing against
+    /// the baseline (the text as of the last save).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any incremental change has an invalid range.
     fn apply_changes(&mut self, changes: &[TextDocumentContentChangeEvent]) -> Result<()> {
         if changes.is_empty() {
             return Ok(());
@@ -87,6 +114,14 @@ impl DocumentState {
         Ok(())
     }
 
+    /// Marks the document as saved with optional new text content.
+    ///
+    /// Called in response to `didSave` notifications. If the editor provides
+    /// the saved text (via `params.text`), updates `self.text` to that content.
+    /// The baseline is then reset to the current text, and `changed_lines` is cleared.
+    ///
+    /// This separates the "working copy" (`text`) from the "saved copy" (`baseline_text`),
+    /// allowing diffs to be computed between them.
     fn mark_saved(&mut self, new_text: Option<String>) {
         if let Some(text) = new_text {
             self.text = text;
@@ -105,15 +140,28 @@ struct InitOptions {
     force_language: Option<String>,
 }
 
+/// Global state for the LSP server.
+///
+/// Holds the workspace configuration, all open documents, and the current
+/// git support status. Created once during initialization and updated
+/// in response to LSP notifications.
 #[derive(Debug)]
 struct ServerState {
+    /// Root path of the workspace (from initialize params).
     workspace_root: Option<PathBuf>,
+    /// Path to the diffguard configuration file.
     config_path: Option<PathBuf>,
+    /// If true, don't load built-in rules.
     no_default_rules: bool,
+    /// Maximum number of findings to report per document.
     max_findings: usize,
+    /// Force a specific language for all files (overrides auto-detection).
     force_language: Option<String>,
+    /// The loaded diffguard configuration (rules, defaults, etc.).
     config: ConfigFile,
+    /// All open text documents, keyed by their document URI.
     documents: HashMap<Uri, DocumentState>,
+    /// Whether `git diff` is available in the workspace.
     git_support: GitSupport,
 }
 
@@ -161,6 +209,16 @@ impl ServerState {
     }
 }
 
+/// Runs the diffguard LSP server on the given connection.
+///
+/// This is the main entry point for the LSP server. It handles the
+/// initialization handshake, then processes incoming messages in a loop:
+/// - `Request` messages are handled via `handle_request`
+/// - `Notification` messages are handled via `handle_notification`
+/// - `Response` messages are ignored (we don't send requests)
+///
+/// The loop exits when the client sends an `Exit` notification (indicating
+/// normal shutdown) or when the connection is closed.
 pub fn run_server(connection: Connection) -> Result<()> {
     // Use the lower-level initialize_start/initialize_finish methods
     // to send a custom InitializeResult with server_info.
@@ -909,6 +967,17 @@ fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<Strin
     Ok(combined)
 }
 
+/// Runs a git diff command with a 10-second timeout.
+///
+/// The timeout prevents the LSP server from blocking indefinitely if git
+/// hangs or the repository is in a bad state. If the timeout is exceeded,
+/// the process is killed and an error is returned.
+///
+/// # Arguments
+///
+/// * `workspace_root` - The root directory to run git in
+/// * `relative_path` - The file path (relative to workspace_root) to diff
+/// * `staged` - If true, diff against the staging area; if false, diff against working tree
 fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Result<String> {
     // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
     const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);
