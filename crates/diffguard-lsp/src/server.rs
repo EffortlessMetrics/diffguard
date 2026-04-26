@@ -482,8 +482,6 @@ fn handle_notification(
     state: &mut ServerState,
     notification: Notification,
 ) -> Result<bool> {
-    let span = tracing::trace_span!("handle_notification", method = %notification.method);
-    let _guard = span.enter();
 
     match notification.method.as_str() {
         method if method == DidOpenTextDocument::METHOD => {
