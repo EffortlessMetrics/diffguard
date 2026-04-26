@@ -84,6 +84,9 @@ pub fn parse_suppression(line: &str) -> Option<Suppression> {
 /// directive prefix is fully masked (spaces) in `masked_comments`.
 #[must_use]
 #[allow(clippy::collapsible_if)]
+// The nested `if in_comment { if let Some(...) }` cannot be collapsed because
+// `parse_suppression_at` is fallible and we only want to return when it succeeds.
+// Collapsing would require restructuring the logic in a less readable way.
 pub fn parse_suppression_in_comments(line: &str, masked_comments: &str) -> Option<Suppression> {
     if line.len() != masked_comments.len() {
         return None;
@@ -153,7 +156,10 @@ fn strip_prefix_ci<'a>(s: &'a str, prefix: &str) -> Option<&'a str> {
 ///
 /// Returns None for wildcard (*), or Some(HashSet) of rule IDs.
 fn parse_rule_ids(rest: &str) -> Option<HashSet<String>> {
-    // Strip any trailing block comment closer (*/)
+    // Strip trailing block comment closer (*/).
+    // This handles cases like `diffguard: ignore rust.no_unwrap */` where the
+    // directive appears at the end of a block comment. The */ would otherwise
+    // be parsed as part of the rule ID list.
     let rest = rest.trim();
     let rest = rest.strip_suffix("*/").unwrap_or(rest).trim();
 
