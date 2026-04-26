@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_suppression_ec9e1665.rs
+expression: normalize_effective_suppressions(&effective)
+---
+EffectiveSuppressions { suppress_all: true, suppressed_rules: [] }
