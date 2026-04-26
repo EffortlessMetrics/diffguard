@@ -118,33 +118,25 @@ fn doctor_reports_git_repo_fail_outside_repo() {
     );
 }
 
-// ---- FR3 / FR4: Config file detection and validation ----
+// ---- Edge case: doctor --config with stdin/pipe behavior ----
 
 #[test]
-fn doctor_with_valid_config_passes() {
+fn doctor_with_config_flag_and_nonexistent_path() {
     let td = init_git_repo();
-    let dir = td.path();
 
-    let config_content = r#"
-[defaults]
-severity = "warn"
-
-[[rules]]
-id = "test.no_todo"
-description = "No TODOs"
-severity = "error"
-match = "TODO"
-"#;
-    write_config(dir, config_content);
-
-    let (code, stdout) = run_doctor(dir, &[]);
-    assert_eq!(code, 0);
+    let (code, stdout) = run_doctor(td.path(), &["--config", "/tmp/this/path/does/not/exist.toml"]);
+    assert_eq!(code, 1, "should fail with nonexistent config path, got:\n{}", stdout);
     assert!(
         stdout.contains("config"),
-        "should report config, got:\n{}",
+        "should report config check, got:\n{}",
         stdout
     );
     assert!(
+        stdout.contains("FAIL"),
+        "config should FAIL, got:\n{}",
+        stdout
+    );
+}
         stdout.contains("PASS"),
         "config should PASS, got:\n{}",
         stdout
