@@ -32,6 +32,11 @@ pub enum RuleCompileError {
     UnknownDependency { rule_id: String, dependency: String },
 }
 
+/// A compiled rule ready for evaluation against source code.
+///
+/// `CompiledRule` is produced by [`compile_rules()`] from a [`RuleConfig`].
+/// It contains pre-compiled regex patterns, compiled glob sets for path
+/// matching, and all metadata needed to evaluate whether a line matches.
 #[derive(Debug, Clone)]
 pub struct CompiledRule {
     pub id: String,
@@ -55,6 +60,12 @@ pub struct CompiledRule {
 }
 
 impl CompiledRule {
+    /// Returns `true` if this rule applies to the given file path and language.
+    ///
+    /// A rule applies if ALL of the following are true:
+    /// - The path matches the rule's `include` glob (if specified)
+    /// - The path does NOT match the rule's `exclude` glob (if specified)
+    /// - The language is in the rule's `languages` set (if specified)
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
         if self
             .include
