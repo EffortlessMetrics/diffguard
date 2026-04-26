@@ -202,6 +202,7 @@ fn compile_globs(globs: &[String], rule_id: &str) -> Result<Option<GlobSet>, Rul
 
 /// Detects programming language from file extension.
 /// Returns lowercase language identifier or None for unknown extensions.
+#[must_use]
 pub fn detect_language(path: &Path) -> Option<&'static str> {
     let ext = path.extension()?.to_str()?;
     match ext.to_ascii_lowercase().as_str() {
