@@ -1931,6 +1931,8 @@ fn cmd_check(mut args: CheckArgs) -> Result<i32> {
 
     // End timing
     let ended_at = Utc::now();
+    // u128 millis represents ~584M years; a CLI command cannot approach this
+    #[allow(clippy::cast_possible_truncation)]
     let duration_ms = start_time.elapsed().as_millis() as u64;
 
     match mode {
