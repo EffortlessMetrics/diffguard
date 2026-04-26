@@ -93,7 +93,7 @@ pub fn extract_rule_id(diagnostic: &Diagnostic) -> Option<String> {
         .as_ref()
         .and_then(|value| value.get("ruleId"))
         .and_then(|value| value.as_str())
-        .map(|s| s.to_string())
+        .map(ToString::to_string)
 }
 
 #[must_use]
