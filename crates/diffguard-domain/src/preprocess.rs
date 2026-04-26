@@ -166,6 +166,9 @@ pub struct PreprocessOptions {
 }
 
 impl PreprocessOptions {
+    /// Create options that mask nothing.
+    ///
+    /// Both `mask_comments` and `mask_strings` are `false`.
     pub fn none() -> Self {
         Self {
             mask_comments: false,
@@ -173,6 +176,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask only comments.
+    ///
+    /// `mask_comments` is `true`, `mask_strings` is `false`.
     pub fn comments_only() -> Self {
         Self {
             mask_comments: true,
@@ -180,6 +186,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask only strings.
+    ///
+    /// `mask_comments` is `false`, `mask_strings` is `true`.
     pub fn strings_only() -> Self {
         Self {
             mask_comments: false,
@@ -187,6 +196,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask both comments and strings.
+    ///
+    /// Both `mask_comments` and `mask_strings` are `true`.
     pub fn comments_and_strings() -> Self {
         Self {
             mask_comments: true,
@@ -269,6 +281,9 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
+    /// Create a new preprocessor with default `Language::Unknown`.
+    ///
+    /// Use `with_language()` to specify a language upfront, or `set_language()` later.
     pub fn new(opts: PreprocessOptions) -> Self {
         Self {
             opts,
@@ -292,6 +307,10 @@ impl Preprocessor {
         self.reset();
     }
 
+    /// Reset the preprocessor state to `Normal` mode.
+    ///
+    /// This terminates any in-progress comment or string being processed.
+    /// Does not change the language or options.
     pub fn reset(&mut self) {
         self.mode = Mode::Normal;
     }
