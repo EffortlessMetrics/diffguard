@@ -12,9 +12,16 @@ use sha2::{Digest, Sha256};
 pub const FALSE_POSITIVE_BASELINE_SCHEMA_V1: &str = "diffguard.false_positive_baseline.v1";
 pub const TREND_HISTORY_SCHEMA_V1: &str = "diffguard.trend_history.v1";
 
+/// A collection of false-positive entries used to suppress known/acceptable findings.
+///
+/// The baseline tracks findings across multiple CI runs, allowing diffguard to
+/// distinguish between new findings and pre-existing false positives that were
+/// manually reviewed and accepted.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveBaseline {
+    /// Schema version identifier for forward compatibility.
     pub schema: String,
+    /// Individual false-positive entries, deduplicated by fingerprint.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub entries: Vec<FalsePositiveEntry>,
 }
@@ -28,12 +35,22 @@ impl Default for FalsePositiveBaseline {
     }
 }
 
+/// A single false-positive finding entry within a baseline.
+///
+/// Each entry represents a finding that was manually reviewed and determined to be
+/// a false positive. The `fingerprint` uniquely identifies the finding; other fields
+/// store the original finding metadata and any notes added during review.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveEntry {
+    /// SHA-256 fingerprint of the finding, computed from rule_id:path:line:match_text.
     pub fingerprint: String,
+    /// The rule that triggered this finding (e.g., "rust.no_unwrap").
     pub rule_id: String,
+    /// Path to the file containing the finding.
     pub path: String,
+    /// Line number where the finding was detected.
     pub line: u32,
+    /// Optional human-written note explaining why this is a false positive.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
 }
@@ -75,7 +92,11 @@ pub fn fingerprint_for_finding(finding: &Finding) -> String {
     hex::encode(hash)
 }
 
-/// Builds a baseline from receipt findings.
+/// Builds a baseline from a `CheckReceipt`'s findings.
+///
+/// Each finding is fingerprinted and converted to a `FalsePositiveEntry` with no
+/// note (`note: None`). The resulting entries are normalized (sorted, deduplicated).
+/// Callers should add notes separately via `merge_false_positive_baselines` if needed.
 #[must_use]
 pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
     let mut baseline = FalsePositiveBaseline {
@@ -96,7 +117,18 @@ pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
     baseline
 }
 
-/// Merges two baselines (union by fingerprint), preferring existing entries in `base`.
+/// Merges two baselines using a union-by-fingerprint strategy.
+///
+/// The `incoming` baseline provides all entries; entries from `base` are added only
+/// if their fingerprint does not already exist in `incoming`. When a fingerprint
+/// collision occurs (same finding in both baselines), fields from `base` fill in
+/// only if the corresponding field in `incoming` is empty/missing — preserving
+/// manually curated data like reviewer notes while accepting new metadata like
+/// rule_id or path if the incoming entry lacks it.
+///
+/// This is the inverse of a typical "prefer incoming" merge: the base baseline's
+/// manually reviewed metadata survives even when newer scan data would otherwise
+/// overwrite it.
 pub fn merge_false_positive_baselines(
     base: &FalsePositiveBaseline,
     incoming: &FalsePositiveBaseline,
@@ -110,21 +142,23 @@ pub fn merge_false_positive_baselines(
 
     for entry in &base.entries {
         if seen.insert(entry.fingerprint.clone()) {
+            // Fingerprint is new to incoming — add the entire entry.
             merged.entries.push(entry.clone());
         } else if let Some(existing) = merged
             .entries
             .iter_mut()
             .find(|e| e.fingerprint == entry.fingerprint)
         {
-            // Preserve manually curated metadata from the existing baseline.
+            // Fingerprint collision: inherit from base only when incoming field is empty.
+            // This preserves manually curated notes and fills in missing metadata.
             if existing.note.is_none() && entry.note.is_some() {
-                existing.note = entry.note.clone();
+                existing.note.clone_from(&entry.note);
             }
             if existing.rule_id.is_empty() {
-                existing.rule_id = entry.rule_id.clone();
+                existing.rule_id.clone_from(&entry.rule_id);
             }
             if existing.path.is_empty() {
-                existing.path = entry.path.clone();
+                existing.path.clone_from(&entry.path);
             }
             if existing.line == 0 {
                 existing.line = entry.line;
@@ -135,7 +169,10 @@ pub fn merge_false_positive_baselines(
     normalize_false_positive_baseline(merged)
 }
 
-/// Returns the baseline as a fingerprint set for fast lookup.
+/// Extracts all fingerprints from a baseline into a `BTreeSet` for O(log n) lookup.
+///
+/// The returned set allows efficient membership tests when checking whether a given
+/// finding matches any entry in the baseline.
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
     baseline
         .entries
@@ -144,9 +181,16 @@ pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTree
         .collect()
 }
 
+/// A chronological sequence of CI check runs, used for trend analysis.
+///
+/// Each `TrendRun` represents a single diffguard execution. The runs are stored
+/// in chronological order (oldest first) and are normalized to include a schema
+/// version identifier.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendHistory {
+    /// Schema version for forward compatibility.
     pub schema: String,
+    /// Ordered list of trend runs (oldest first).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub runs: Vec<TrendRun>,
 }
@@ -160,42 +204,76 @@ impl Default for TrendHistory {
     }
 }
 
+/// A single diffguard CI check run, capturing inputs and outcome.
+///
+/// `TrendRun` is a snapshot of one diffguard execution: what was scanned,
+/// what the verdict was, and how many findings were observed. Multiple runs
+/// form a `TrendHistory` for longitudinal analysis.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendRun {
+    /// RFC 3339 timestamp when the run started.
     pub started_at: String,
+    /// RFC 3339 timestamp when the run finished.
     pub ended_at: String,
+    /// Elapsed time in milliseconds.
     pub duration_ms: u64,
+    /// Git ref of the base commit (e.g., "origin/main").
     pub base: String,
+    /// Git ref of the head commit (e.g., "HEAD").
     pub head: String,
+    /// Which files were considered (Added, Removed, or All).
     pub scope: Scope,
+    /// Overall pass/fail verdict.
     pub status: VerdictStatus,
+    /// Breakdown of findings by severity.
     pub counts: VerdictCounts,
     /// Number of distinct files that were scanned.
     ///
     /// Stored as `u64` to avoid silent truncation for very large repositories
     /// (those with more than 2^32 - 1 unique files).
     pub files_scanned: u64,
+    /// Total lines scanned across all files.
     pub lines_scanned: u32,
+    /// Total findings reported (before suppression).
     pub findings: u32,
 }
 
+/// Aggregated summary of a `TrendHistory` — totals, latest run, and period-over-period delta.
+///
+/// `TrendSummary` condenses a full run history into a single view: how many runs
+/// were executed, cumulative findings across all runs, the most recent run, and
+/// the change in findings between the last two runs.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendSummary {
+    /// Total number of runs in the history.
     pub run_count: u32,
+    /// Cumulative counts across all runs.
     pub totals: VerdictCounts,
+    /// Total findings across all runs (before suppression).
     pub total_findings: u32,
+    /// The most recent run, if any.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latest: Option<TrendRun>,
+    /// Change in counts between the second-most-recent and most-recent run.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub delta_from_previous: Option<TrendDelta>,
 }
 
+/// Period-over-period change in finding counts between two consecutive `TrendRun`s.
+///
+/// Each field is the difference (`current - previous`) for that severity level.
+/// Positive values indicate an increase in findings; negative values indicate a decrease.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendDelta {
+    /// Change in total findings (all severities combined).
     pub findings: i64,
+    /// Change in info-level findings.
     pub info: i64,
+    /// Change in warning-level findings.
     pub warn: i64,
+    /// Change in error-level findings.
     pub error: i64,
+    /// Change in suppressed findings.
     pub suppressed: i64,
 }
 
