@@ -3,6 +3,7 @@ use std::collections::BTreeSet;
 use anyhow::{Context, Result, bail};
 use lsp_types::{Position, TextDocumentContentChangeEvent};
 
+#[must_use]
 pub fn split_lines(text: &str) -> Vec<&str> {
     if text.is_empty() {
         Vec::new()
@@ -11,6 +12,7 @@ pub fn split_lines(text: &str) -> Vec<&str> {
     }
 }
 
+#[must_use]
 pub fn changed_lines_between(before: &str, after: &str) -> BTreeSet<u32> {
     let before_lines = split_lines(before);
     let after_lines = split_lines(after);

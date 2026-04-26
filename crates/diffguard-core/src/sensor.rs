@@ -41,6 +41,7 @@ pub struct RuleMetadata {
 }
 
 /// Renders a CheckReceipt as a SensorReport.
+#[must_use]
 pub fn render_sensor_report(receipt: &CheckReceipt, ctx: &SensorReportContext) -> SensorReport {
     let findings = receipt
         .findings
