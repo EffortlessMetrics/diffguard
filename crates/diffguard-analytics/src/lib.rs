@@ -28,12 +28,22 @@ impl Default for FalsePositiveBaseline {
     }
 }
 
+/// A single false-positive finding entry within a baseline.
+///
+/// Each entry represents a finding that was manually reviewed and determined to be
+/// a false positive. The `fingerprint` uniquely identifies the finding; other fields
+/// store the original finding metadata and any notes added during review.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveEntry {
+    /// SHA-256 fingerprint of the finding, computed from rule_id:path:line:match_text.
     pub fingerprint: String,
+    /// The rule that triggered this finding (e.g., "rust.no_unwrap").
     pub rule_id: String,
+    /// Path to the file containing the finding.
     pub path: String,
+    /// Line number where the finding was detected.
     pub line: u32,
+    /// Optional human-written note explaining why this is a false positive.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub note: Option<String>,
 }
@@ -75,7 +85,11 @@ pub fn fingerprint_for_finding(finding: &Finding) -> String {
     hex::encode(hash)
 }
 
-/// Builds a baseline from receipt findings.
+/// Builds a baseline from a `CheckReceipt`'s findings.
+///
+/// Each finding is fingerprinted and converted to a `FalsePositiveEntry` with no
+/// note (`note: None`). The resulting entries are normalized (sorted, deduplicated).
+/// Callers should add notes separately via `merge_false_positive_baselines` if needed.
 #[must_use]
 pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
     let mut baseline = FalsePositiveBaseline {
@@ -135,7 +149,10 @@ pub fn merge_false_positive_baselines(
     normalize_false_positive_baseline(merged)
 }
 
-/// Returns the baseline as a fingerprint set for fast lookup.
+/// Extracts all fingerprints from a baseline into a `BTreeSet` for O(log n) lookup.
+///
+/// The returned set allows efficient membership tests when checking whether a given
+/// finding matches any entry in the baseline.
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
     baseline
         .entries
