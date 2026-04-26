@@ -482,7 +482,6 @@ fn handle_notification(
     state: &mut ServerState,
     notification: Notification,
 ) -> Result<bool> {
-
     match notification.method.as_str() {
         method if method == DidOpenTextDocument::METHOD => {
             let params: lsp_types::DidOpenTextDocumentParams =
