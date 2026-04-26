@@ -22,6 +22,7 @@ use lsp_types::{
 };
 use serde::Deserialize;
 use serde_json::json;
+use tracing;
 
 use crate::config::{
     extract_rule_id, find_rule, find_similar_rules, format_rule_explanation,
@@ -268,6 +269,9 @@ fn handle_request(
     state: &mut ServerState,
     request: Request,
 ) -> Result<()> {
+    let span = tracing::trace_span!("handle_request", method = %request.method);
+    let _guard = span.enter();
+
     match request.method.as_str() {
         method if method == CodeActionRequest::METHOD => {
             handle_code_action_request(connection, state, request)
@@ -482,6 +486,9 @@ fn handle_notification(
     state: &mut ServerState,
     notification: Notification,
 ) -> Result<bool> {
+    let span = tracing::trace_span!("handle_notification", method = %notification.method);
+    let _guard = span.enter();
+
     match notification.method.as_str() {
         method if method == DidOpenTextDocument::METHOD => {
             let params: lsp_types::DidOpenTextDocumentParams =
