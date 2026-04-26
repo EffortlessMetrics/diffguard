@@ -7,10 +7,18 @@ use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
 use crate::rules::{CompiledRule, detect_language};
 use crate::suppression::SuppressionTracker;
 
+/// A single line of input to be evaluated against compiled rules.
+///
+/// `InputLine` represents a line from a file that will be checked against
+/// all applicable rules. The `path` determines which rules apply based on
+/// their path glob patterns and language filters.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InputLine {
+    /// Path to the file this line came from (used for path glob matching).
     pub path: String,
+    /// 1-indexed line number within the file.
     pub line: u32,
+    /// The raw content of the line.
     pub content: String,
 }
 
@@ -68,6 +76,9 @@ struct MatchEvent {
     severity: Severity,
 }
 
+/// Evaluate a collection of input lines against compiled rules.
+///
+/// This is the main entry point for the diffguard rule evaluation engine.
 pub fn evaluate_lines(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -76,6 +87,10 @@ pub fn evaluate_lines(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, None, None)
 }
 
+/// Evaluate lines with directory-based rule overrides applied.
+///
+/// Directory overrides allow rules to be selectively disabled or have their
+/// severity changed based on the directory containing the file being scanned.
 pub fn evaluate_lines_with_overrides(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -85,6 +100,11 @@ pub fn evaluate_lines_with_overrides(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, overrides, None)
 }
 
+/// Evaluate lines with full control over overrides and language detection.
+///
+/// - `overrides`: Directory-based rule override matcher. When `None`, no overrides apply.
+/// - `force_language`: Force a specific language for all lines. When `None`, language
+///   is inferred from file extension. This is useful for files with non-standard extensions.
 pub fn evaluate_lines_with_overrides_and_language(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -324,6 +344,16 @@ pub fn evaluate_lines_with_overrides_and_language(
     }
 }
 
+/// Resolves which rules are active after applying dependency gates.
+///
+/// Rules can declare dependencies on other rules via `depends_on`. A rule is
+/// only considered "active" if:
+/// 1. It produced at least one match (its events list is non-empty), AND
+/// 2. All of its dependencies are also active
+///
+/// This is a fixed-point iteration: we repeatedly remove rules whose dependencies
+/// aren't satisfied, until no more rules are removed. This handles transitive
+/// dependencies (A depends on B, B depends on C).
 fn resolve_dependency_gated_rule_ids(
     rules: &[CompiledRule],
     per_rule_events: &[Vec<MatchEvent>],
@@ -405,6 +435,17 @@ fn find_single_line_matches(
     out
 }
 
+/// Finds matches that span multiple consecutive lines.
+///
+/// Uses a sliding window approach: for each starting position, joins
+/// `multiline_window` consecutive lines with newlines and tests the combined
+/// pattern against them. The `offsets` array tracks where each line starts
+/// in the joined string, allowing us to map a byte offset in the joined string
+/// back to a specific line and column.
+///
+/// Deduplication: a `seen` BTreeSet tracks (anchor_file_pos, start_in_line, match_text)
+/// triples to avoid emitting duplicate matches when the same match could be found
+/// from multiple window positions.
 fn find_multiline_matches(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -472,6 +513,12 @@ fn find_multiline_matches(
     out
 }
 
+/// Checks whether a match has the required context patterns nearby.
+///
+/// For rules that specify `context_patterns`, this function returns true only if
+/// at least one of those patterns is found within `context_window` lines of the
+/// anchor position. This is used to suppress findings when the triggering pattern
+/// appears in isolation (e.g., DELETE without WHERE nearby).
 fn has_required_context(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -494,6 +541,12 @@ fn has_required_context(
     false
 }
 
+/// Escalates the severity of a finding if escape patterns are found nearby.
+///
+/// When `escalate_patterns` is configured, this function checks whether any of those
+/// patterns appear within `escalate_window` lines of the match. If so, the severity
+/// is raised to `escalate_to` (or `Error` if not specified). Uses `max_severity`
+/// to ensure we only escalate, never de-escalate.
 fn maybe_escalate_severity(
     rule: &CompiledRule,
     file_indices: &[usize],
@@ -520,6 +573,15 @@ fn maybe_escalate_severity(
     max_severity(base, target)
 }
 
+/// Selects which version of a line to use for pattern matching.
+///
+/// Rules can specify `ignore_comments` and `ignore_strings` to exclude those
+/// syntactic elements from matching. This function returns the appropriate
+/// masked version based on the rule's configuration:
+/// - Both true → `masked_both` (comments and strings replaced)
+/// - Only comments → `masked_comments`
+/// - Only strings → `masked_strings`
+/// - Neither → raw content
 fn candidate_line_for_rule<'a>(rule: &CompiledRule, line: &'a PreparedLine) -> &'a str {
     match (rule.ignore_comments, rule.ignore_strings) {
         (true, true) => line.masked_both.as_str(),
