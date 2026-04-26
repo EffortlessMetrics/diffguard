@@ -92,7 +92,11 @@ pub fn fingerprint_for_finding(finding: &Finding) -> String {
     hex::encode(hash)
 }
 
-/// Builds a baseline from receipt findings.
+/// Builds a baseline from a `CheckReceipt`'s findings.
+///
+/// Each finding is fingerprinted and converted to a `FalsePositiveEntry` with no
+/// note (`note: None`). The resulting entries are normalized (sorted, deduplicated).
+/// Callers should add notes separately via `merge_false_positive_baselines` if needed.
 #[must_use]
 pub fn baseline_from_receipt(receipt: &CheckReceipt) -> FalsePositiveBaseline {
     let mut baseline = FalsePositiveBaseline {
@@ -165,7 +169,10 @@ pub fn merge_false_positive_baselines(
     normalize_false_positive_baseline(merged)
 }
 
-/// Returns the baseline as a fingerprint set for fast lookup.
+/// Extracts all fingerprints from a baseline into a `BTreeSet` for O(log n) lookup.
+///
+/// The returned set allows efficient membership tests when checking whether a given
+/// finding matches any entry in the baseline.
 pub fn false_positive_fingerprint_set(baseline: &FalsePositiveBaseline) -> BTreeSet<String> {
     baseline
         .entries
