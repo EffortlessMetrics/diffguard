@@ -249,6 +249,10 @@ fn server_capabilities() -> ServerCapabilities {
     }
 }
 
+/// Builds the JSON payload for the LSP initialize response.
+///
+/// Includes server capabilities and server_info (name and version).
+/// The lsp-server library's initialize_finish expects this specific format.
 fn initialize_payload() -> Result<serde_json::Value> {
     // When using initialize_finish(), we send the full InitializeResult
     // including server_info. The lsp-server library doesn't wrap this
@@ -263,6 +267,7 @@ fn initialize_payload() -> Result<serde_json::Value> {
     Ok(serde_json::to_value(result)?)
 }
 
+/// Dispatches an LSP request to the appropriate handler.
 fn handle_request(
     connection: &Connection,
     state: &mut ServerState,
@@ -284,6 +289,7 @@ fn handle_request(
     }
 }
 
+/// Handles a codeAction request from the LSP client.
 fn handle_code_action_request(
     connection: &Connection,
     state: &ServerState,
@@ -296,7 +302,7 @@ fn handle_code_action_request(
                 connection,
                 request.id,
                 INVALID_PARAMS,
-                format!("invalid CodeActionParams: {}", err),
+                format!("invalid CodeActionParams: {err}"),
             );
         }
     };
@@ -305,6 +311,10 @@ fn handle_code_action_request(
     send_ok_response(connection, request.id, serde_json::to_value(actions)?)
 }
 
+/// Builds code actions for the given code action parameters.
+///
+/// For each diagnostic, generates "Explain" and "Open docs" quick-fix actions.
+/// Uses BTreeSet to deduplicate actions by rule ID and URL.
 fn build_code_actions(config: &ConfigFile, params: &CodeActionParams) -> Vec<CodeActionOrCommand> {
     let mut actions = Vec::new();
     let mut seen_explain = BTreeSet::new();
@@ -317,13 +327,13 @@ fn build_code_actions(config: &ConfigFile, params: &CodeActionParams) -> Vec<Cod
 
         if seen_explain.insert(rule_id.clone()) {
             let command = LspCommand {
-                title: format!("Explain {}", rule_id),
+                title: format!("Explain {rule_id}"),
                 command: CMD_EXPLAIN_RULE.to_string(),
                 arguments: Some(vec![json!(rule_id.clone())]),
             };
 
             actions.push(CodeActionOrCommand::CodeAction(CodeAction {
-                title: format!("diffguard: Explain {}", rule_id),
+                title: format!("diffguard: Explain {rule_id}"),
                 kind: Some(CodeActionKind::QUICKFIX),
                 command: Some(command),
                 data: Some(json!({ "ruleId": rule_id })),
@@ -353,6 +363,9 @@ fn build_code_actions(config: &ConfigFile, params: &CodeActionParams) -> Vec<Cod
     actions
 }
 
+/// Handles an executeCommand request from the LSP client.
+///
+/// Supports three commands: CMD_EXPLAIN_RULE, CMD_RELOAD_CONFIG, and CMD_SHOW_RULE_URL.
 fn handle_execute_command_request(
     connection: &Connection,
     state: &mut ServerState,
@@ -365,7 +378,7 @@ fn handle_execute_command_request(
                 connection,
                 request.id,
                 INVALID_PARAMS,
-                format!("invalid ExecuteCommandParams: {}", err),
+                format!("invalid ExecuteCommandParams: {err}"),
             );
         }
     };
@@ -435,7 +448,7 @@ fn handle_execute_command_request(
             let label = if rule_id.is_empty() {
                 "diffguard documentation".to_string()
             } else {
-                format!("diffguard rule {}", rule_id)
+                format!("diffguard rule {rule_id}")
             };
             show_message(
                 connection,
@@ -461,6 +474,10 @@ fn handle_execute_command_request(
     }
 }
 
+/// Generates an explanation message for a rule ID.
+///
+/// Returns (message, found) where found indicates if the rule was located.
+/// If not found, includes similar rule suggestions in the message.
 fn explain_rule_message(config: &ConfigFile, rule_id: &str) -> (String, bool) {
     if let Some(rule) = find_rule(config, rule_id) {
         return (format_rule_explanation(rule), true);
@@ -477,6 +494,9 @@ fn explain_rule_message(config: &ConfigFile, rule_id: &str) -> (String, bool) {
     (message, false)
 }
 
+/// Handles an LSP notification (one-way message from client).
+///
+/// Returns Ok(true) if the notification was Exit (signaling shutdown).
 fn handle_notification(
     connection: &Connection,
     state: &mut ServerState,
@@ -491,7 +511,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didOpen params: {}", err),
+                            &format!("invalid didOpen params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -621,6 +641,7 @@ fn handle_notification(
     Ok(false)
 }
 
+/// Checks if a URI refers to the diffguard config file.
 fn is_config_uri(state: &ServerState, uri: &Uri) -> bool {
     let Some(config_path) = state.config_path.as_deref() else {
         return false;
@@ -631,6 +652,10 @@ fn is_config_uri(state: &ServerState, uri: &Uri) -> bool {
     paths_match(&uri_path, config_path)
 }
 
+/// Reloads the configuration from disk.
+///
+/// On success, updates state.config and returns a message with rule count.
+/// On failure, falls back to built-in rules and returns an error.
 fn reload_config(state: &mut ServerState) -> Result<String> {
     match load_effective_config(state.config_path.as_deref(), state.no_default_rules) {
         Ok(config) => {
@@ -652,6 +677,7 @@ fn reload_config(state: &mut ServerState) -> Result<String> {
     }
 }
 
+/// Triggers diagnostic refresh for all open documents.
 fn refresh_all_documents(connection: &Connection, state: &mut ServerState) -> Result<()> {
     let mut uris: Vec<Uri> = state.documents.keys().cloned().collect();
     uris.sort();
@@ -661,6 +687,10 @@ fn refresh_all_documents(connection: &Connection, state: &mut ServerState) -> Re
     Ok(())
 }
 
+/// Refreshes and publishes diagnostics for a single document.
+///
+/// Generates a diff (either from changed lines or git), runs the check,
+/// and publishes the resulting diagnostics to the client.
 fn refresh_document_diagnostics(
     connection: &Connection,
     state: &mut ServerState,
@@ -768,6 +798,10 @@ fn refresh_document_diagnostics(
     publish_diagnostics(connection, uri.clone(), Some(document.version), diagnostics)
 }
 
+/// Converts diffguard findings to LSP diagnostics.
+///
+/// Maps severity levels, computes ranges from line/column positions,
+/// and sorts diagnostics by location for consistent ordering.
 fn findings_to_diagnostics(findings: &[Finding]) -> Vec<Diagnostic> {
     let mut diagnostics: Vec<Diagnostic> = findings
         .iter()
@@ -812,6 +846,7 @@ fn findings_to_diagnostics(findings: &[Finding]) -> Vec<Diagnostic> {
     diagnostics
 }
 
+/// Extracts a string argument from a JSON array by index.
 fn nth_string_arg(arguments: &[serde_json::Value], index: usize) -> Option<String> {
     arguments
         .get(index)
@@ -819,6 +854,7 @@ fn nth_string_arg(arguments: &[serde_json::Value], index: usize) -> Option<Strin
         .map(|value| value.to_string())
 }
 
+/// Sends a successful LSP response with the given result value.
 fn send_ok_response(
     connection: &Connection,
     id: RequestId,
@@ -832,6 +868,7 @@ fn send_ok_response(
     send_response(connection, response)
 }
 
+/// Sends an error LSP response with the given error code and message.
 fn send_error_response(
     connection: &Connection,
     id: RequestId,
@@ -850,6 +887,7 @@ fn send_error_response(
     send_response(connection, response)
 }
 
+/// Low-level helper to send an LSP Response message.
 fn send_response(connection: &Connection, response: Response) -> Result<()> {
     connection
         .sender
@@ -858,6 +896,7 @@ fn send_response(connection: &Connection, response: Response) -> Result<()> {
     Ok(())
 }
 
+/// Sends a window/showMessage notification to the LSP client.
 fn show_message(connection: &Connection, typ: MessageType, message: &str) -> Result<()> {
     let params = lsp_types::ShowMessageParams {
         typ,
@@ -871,6 +910,7 @@ fn show_message(connection: &Connection, typ: MessageType, message: &str) -> Res
     Ok(())
 }
 
+/// Publishes diagnostics to the client for a specific document.
 fn publish_diagnostics(
     connection: &Connection,
     uri: Uri,
@@ -890,6 +930,9 @@ fn publish_diagnostics(
     Ok(())
 }
 
+/// Gets the combined git diff for a file (both staged and unstaged).
+///
+/// If both unstaged and staged diffs exist, concatenates them.
 fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<String> {
     let unstaged = run_git_diff(workspace_root, relative_path, false)?;
     let staged = run_git_diff(workspace_root, relative_path, true)?;
@@ -909,6 +952,10 @@ fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<Strin
     Ok(combined)
 }
 
+/// Runs git diff for a specific file with a 10-second timeout.
+///
+/// The timeout prevents blocking the LSP if git becomes unresponsive.
+/// Uses try_wait in a loop to check process status without blocking.
 fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Result<String> {
     // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
     const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);
@@ -951,6 +998,7 @@ fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Res
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Converts a file URI to a local filesystem path.
 fn uri_to_file_path(uri: &Uri) -> Option<PathBuf> {
     let parsed = url::Url::parse(uri.as_str()).ok()?;
     parsed.to_file_path().ok()
