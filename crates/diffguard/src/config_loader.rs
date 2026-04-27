@@ -165,6 +165,14 @@ fn merge_configs(base: ConfigFile, other: ConfigFile) -> ConfigFile {
         fail_on: other.defaults.fail_on.or(base.defaults.fail_on),
         max_findings: other.defaults.max_findings.or(base.defaults.max_findings),
         diff_context: other.defaults.diff_context.or(base.defaults.diff_context),
+        ignore_comments: other
+            .defaults
+            .ignore_comments
+            .or(base.defaults.ignore_comments),
+        ignore_strings: other
+            .defaults
+            .ignore_strings
+            .or(base.defaults.ignore_strings),
     };
 
     // Rules: merge by ID, other overrides base
@@ -529,6 +537,8 @@ patterns = ["test"]
                 fail_on: Some(diffguard_types::FailOn::Error),
                 max_findings: Some(200),
                 diff_context: Some(0),
+                ignore_comments: None,
+                ignore_strings: None,
             },
             rule: vec![],
         };
@@ -561,6 +571,8 @@ patterns = ["test"]
                 fail_on: Some(diffguard_types::FailOn::Error),
                 max_findings: Some(200),
                 diff_context: Some(0),
+                ignore_comments: None,
+                ignore_strings: None,
             },
             rule: vec![],
         };
@@ -576,6 +588,8 @@ patterns = ["test"]
                 fail_on: Some(diffguard_types::FailOn::Warn),
                 max_findings: None,
                 diff_context: None,
+                ignore_comments: None,
+                ignore_strings: None,
             },
             rule: vec![],
         };
@@ -735,5 +749,117 @@ patterns = ["b"]
         let result = load_config_with_includes(&temp.path().join("main.toml"), no_expand);
         assert!(result.is_err(), "real cycles should still be detected");
         assert!(result.unwrap_err().to_string().contains("Circular include"));
+    }
+
+    #[test]
+    fn test_merge_configs_ignore_comments_other_takes_precedence() {
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                ignore_comments: Some(false),
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                ignore_comments: Some(true),
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+        assert_eq!(
+            merged.defaults.ignore_comments,
+            Some(true),
+            "other.defaults.ignore_comments should take precedence over base"
+        );
+    }
+
+    #[test]
+    fn test_merge_configs_ignore_strings_other_takes_precedence() {
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                ignore_strings: Some(false),
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                ignore_strings: Some(true),
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+        assert_eq!(
+            merged.defaults.ignore_strings,
+            Some(true),
+            "other.defaults.ignore_strings should take precedence over base"
+        );
+    }
+
+    #[test]
+    fn test_merge_configs_ignore_comments_inherits_from_base_when_other_is_none() {
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                ignore_comments: Some(true),
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                ignore_comments: None,
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+        assert_eq!(
+            merged.defaults.ignore_comments,
+            Some(true),
+            "base.defaults.ignore_comments should be inherited when other is None"
+        );
+    }
+
+    #[test]
+    fn test_merge_configs_ignore_strings_inherits_from_base_when_other_is_none() {
+        let base = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                ignore_strings: Some(true),
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let other = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults {
+                ignore_strings: None,
+                ..diffguard_types::Defaults::default()
+            },
+            rule: vec![],
+        };
+
+        let merged = merge_configs(base, other);
+        assert_eq!(
+            merged.defaults.ignore_strings,
+            Some(true),
+            "base.defaults.ignore_strings should be inherited when other is None"
+        );
     }
 }

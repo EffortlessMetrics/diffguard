@@ -639,11 +639,27 @@ impl LanguageArg {
     }
 }
 
+/// Program entry point — parses CLI args, runs the requested command, and maps
+/// the verdict code to a process exit status.
+///
+/// Exit codes:
+///   0 = pass (no violations found)
+///   1 = tool/runtime error
+///   2 = policy violations found
+///   3 = warnings only (when `fail_on` includes warn)
+///
+/// The verdict code is always in the range 0..=3, but we use `TryFrom` to
+/// convert from `i32` to avoid the `clippy::cast_possible_truncation` warning.
+/// On any conversion failure (which should never happen for valid codes),
+/// we fall back to exit code 1 (tool error) rather than panicking.
 #[cfg(not(test))]
 fn main() -> std::process::ExitCode {
     match run_with_args(std::env::args_os()) {
         Ok(code) => {
-            std::process::ExitCode::from(code.clamp(i32::from(u8::MIN), i32::from(u8::MAX)) as u8)
+            // Use TryFrom instead of `as u8` to avoid clippy::cast_possible_truncation.
+            // All valid verdict codes (0, 1, 2, 3) are well within u8 range,
+            // so unwrap_or(1) is purely defensive — it handles impossible cases.
+            std::process::ExitCode::from(u8::try_from(code).unwrap_or(1))
         }
         Err(err) => {
             eprintln!("{err:?}");
@@ -694,7 +710,7 @@ where
             cmd_trend(args)?;
             Ok(0)
         }
-        Commands::Doctor(args) => cmd_doctor(args),
+        Commands::Doctor(args) => Ok(cmd_doctor(args)),
     }
 }
 
@@ -768,8 +784,17 @@ fn compile_rules_checked(
     compile_rules(rules)
 }
 
-/// Validate rules in a parsed config file and return a list of error messages.
-/// Shared between cmd_validate and cmd_doctor.
+/// Validate rule configurations for correctness.
+///
+/// Checks for:
+/// - Duplicate rule IDs
+/// - Empty pattern lists
+/// - Invalid regex patterns in patterns, context_patterns, and escalate_patterns
+/// - Invalid multiline_window values
+/// - Unknown rule dependencies
+/// - Invalid path globs
+///
+/// Returns a list of error messages. Empty list means validation passed.
 fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     let mut errors: Vec<String> = Vec::new();
     let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
@@ -953,7 +978,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
 
 /// Validate the environment for running diffguard.
 /// Returns 0 if all checks pass, 1 if any check fails.
-fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
+fn cmd_doctor(args: DoctorArgs) -> i32 {
     let mut all_pass = true;
 
     // Check 1: Git availability
@@ -1000,7 +1025,7 @@ fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
 
     all_pass &= validate_config_for_doctor(&config_path, args.config.is_some());
 
-    if all_pass { Ok(0) } else { Ok(1) }
+    if all_pass { 0 } else { 1 }
 }
 
 /// Validate config file for the doctor command.

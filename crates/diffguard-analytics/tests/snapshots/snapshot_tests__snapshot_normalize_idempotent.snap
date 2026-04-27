@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: normalized1 == normalized2
+---
+true
