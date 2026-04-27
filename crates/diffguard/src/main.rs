@@ -639,15 +639,22 @@ impl LanguageArg {
     }
 }
 
+/// Convert an `i32` exit code to `u8` for `std::process::ExitCode`.
+///
+/// Uses `TryFrom` for safe, fallible conversion:
+/// - Valid exit codes (0-255) pass through unchanged
+/// - Invalid values (negative or > 255) fall back to 1 (Tool error)
+///
+/// This ensures we never produce an invalid exit code that could be
+/// misinterpreted by calling processes.
+fn exit_code_from_i32(code: i32) -> u8 {
+    u8::try_from(code).unwrap_or(1)
+}
+
 #[cfg(not(test))]
 fn main() -> std::process::ExitCode {
     match run_with_args(std::env::args_os()) {
-        Ok(code) => {
-            // Use TryFrom for safe i32→u8 conversion:
-            // - Valid exit codes (0, 1, 2, 3) pass through unchanged
-            // - Out-of-range values fall back to 1 (Tool error)
-            std::process::ExitCode::from(u8::try_from(code).unwrap_or(1))
-        }
+        Ok(code) => std::process::ExitCode::from(exit_code_from_i32(code)),
         Err(err) => {
             eprintln!("{err:?}");
             std::process::ExitCode::from(1)
