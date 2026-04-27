@@ -1,0 +1,12 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_cd9db3ce.rs
+expression: snapshot
+---
+html (page.html): Some("html")
+htm (page.htm): Some("html")
+xml (document.xml): Some("xml")
+svg (image.svg): Some("xml")
+
+html == xml: false
+htm == xml: false
+html == htm: true

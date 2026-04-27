@@ -1,0 +1,11 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_cd9db3ce.rs
+expression: snapshot
+---
+page.html: Some("html")
+page.htm: Some("html")
+index.html: Some("html")
+templates/base.html: Some("html")
+src/html/layout.htm: Some("html")
+/absolute/path/to/page.html: Some("html")
+file.with.dots.html: Some("html")

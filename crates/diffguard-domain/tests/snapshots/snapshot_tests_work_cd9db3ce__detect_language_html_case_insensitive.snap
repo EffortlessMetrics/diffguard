@@ -1,0 +1,9 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_cd9db3ce.rs
+expression: snapshot
+---
+lowercase (page.html): Some("html")
+uppercase (page.HTML): Some("html")
+mixed case (page.Htm): Some("html")
+lowercase htm (page.htm): Some("html")
+uppercase htm (page.HTM): Some("html")

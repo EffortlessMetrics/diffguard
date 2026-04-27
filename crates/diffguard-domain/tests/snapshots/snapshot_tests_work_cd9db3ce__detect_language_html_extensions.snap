@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_cd9db3ce.rs
+expression: snapshot
+---
+.html: Some("html")
+.htm: Some("html")
