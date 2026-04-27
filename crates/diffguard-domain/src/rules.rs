@@ -32,29 +32,71 @@ pub enum RuleCompileError {
     UnknownDependency { rule_id: String, dependency: String },
 }
 
+/// A compiled rule ready for evaluation against diff content.
+///
+/// `CompiledRule` is produced by [`compile_rules`] from a `RuleConfig`.
+/// It pre-compiles regex patterns and glob sets for efficient matching.
+///
+/// Unlike `RuleConfig` which is a serializable configuration type,
+/// `CompiledRule` contains owned, compiled pattern objects that cannot
+/// be serialized but can be used immediately for evaluation.
 #[derive(Debug, Clone)]
 pub struct CompiledRule {
+    /// Unique identifier for this rule.
     pub id: String,
+    /// Severity level for findings emitted by this rule.
     pub severity: Severity,
+    /// Human-readable message emitted when the rule matches.
     pub message: String,
+    /// Set of language identifiers this rule applies to (e.g., "rust", "python").
+    /// Empty set means the rule applies to all languages.
     pub languages: BTreeSet<String>,
+    /// Pre-compiled regex patterns to match against diff lines.
     pub patterns: Vec<Regex>,
+    /// Glob patterns for paths to include. None means include all paths.
     pub include: Option<GlobSet>,
+    /// Glob patterns for paths to exclude. None means exclude nothing.
     pub exclude: Option<GlobSet>,
+    /// If true, skip lines that appear to be in comments.
     pub ignore_comments: bool,
+    /// If true, skip lines that appear to be in strings.
     pub ignore_strings: bool,
+    /// How multiple patterns interact (e.g., all must match, or any match).
     pub match_mode: MatchMode,
+    /// Whether this rule uses multiline pattern matching.
     pub multiline: bool,
+    /// Window size for multiline matching (number of lines to consider).
     pub multiline_window: usize,
+    /// Patterns that must be present nearby for a finding to be emitted.
     pub context_patterns: Vec<Regex>,
+    /// Number of lines to look around for context patterns.
     pub context_window: usize,
+    /// Patterns that escalate the severity of findings.
     pub escalate_patterns: Vec<Regex>,
+    /// Number of lines to look around for escalate patterns.
     pub escalate_window: usize,
+    /// If set, findings matching escalate patterns get this severity instead.
     pub escalate_to: Option<Severity>,
+    /// IDs of rules that must be compiled before this one can be used.
     pub depends_on: BTreeSet<String>,
 }
 
 impl CompiledRule {
+    /// Determines whether this rule applies to a given file path and language.
+    ///
+    /// A rule applies if it passes all three checks:
+    /// 1. The path matches the rule's `include` glob (if any)
+    /// 2. The path does not match the rule's `exclude` glob (if any)
+    /// 3. The language is in the rule's `languages` set (if non-empty)
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The file path to check
+    /// * `language` - The language identifier (e.g., "rust", "python"), or None for unknown
+    ///
+    /// # Returns
+    ///
+    /// `true` if the rule should be evaluated against this file, `false` otherwise.
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
         if self
             .include
@@ -166,6 +208,19 @@ pub fn compile_rules(configs: &[RuleConfig]) -> Result<Vec<CompiledRule>, RuleCo
     Ok(out)
 }
 
+/// Compiles a list of regex pattern strings into compiled Regex objects.
+///
+/// Each pattern is compiled individually. If any pattern is invalid,
+/// returns an error immediately with the rule ID and problematic pattern.
+///
+/// # Arguments
+///
+/// * `rule_id` - The ID of the rule these patterns belong to (for error reporting)
+/// * `patterns` - Slice of regex pattern strings to compile
+///
+/// # Returns
+///
+/// `Ok(Vec<Regex>)` on success, or `Err(RuleCompileError::InvalidRegex)` if any pattern is invalid.
 fn compile_pattern_group(
     rule_id: &str,
     patterns: &[String],
@@ -182,6 +237,21 @@ fn compile_pattern_group(
     Ok(out)
 }
 
+/// Compiles a list of glob patterns into a `GlobSet` for efficient path matching.
+///
+/// If the input slice is empty, returns `None` (no paths to match).
+/// Otherwise, compiles all globs into a single `GlobSet` that can test
+/// many patterns simultaneously.
+///
+/// # Arguments
+///
+/// * `globs` - Slice of glob pattern strings (e.g., "**/*.rs", "src/**/*.ts")
+/// * `rule_id` - The ID of the rule these globs belong to (for error reporting)
+///
+/// # Returns
+///
+/// `Ok(None)` if globs is empty, `Ok(Some(GlobSet))` on success,
+/// or `Err(RuleCompileError::InvalidGlob)` if any glob is malformed.
 fn compile_globs(globs: &[String], rule_id: &str) -> Result<Option<GlobSet>, RuleCompileError> {
     if globs.is_empty() {
         return Ok(None);
