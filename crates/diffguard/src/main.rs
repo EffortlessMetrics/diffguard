@@ -647,6 +647,7 @@ impl LanguageArg {
 ///
 /// This ensures we never produce an invalid exit code that could be
 /// misinterpreted by calling processes.
+#[allow(dead_code)]
 fn exit_code_from_i32(code: i32) -> u8 {
     u8::try_from(code).unwrap_or(1)
 }
