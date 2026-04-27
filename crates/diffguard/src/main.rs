@@ -862,7 +862,7 @@ fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     // Also try to compile all rules to catch any other issues
     if errors.is_empty() {
         if let Err(e) = compile_rules_checked(&cfg.rule) {
-            errors.push(format!("Rule compilation error: {}", e));
+            errors.push(format!("Rule compilation error: {e}"));
         }
     }
 
@@ -982,7 +982,7 @@ fn cmd_doctor(args: DoctorArgs) -> i32 {
         )
         .trim()
         .to_string();
-        println!("git: PASS ({})", version);
+        println!("git: PASS ({version})");
     } else {
         println!("git: FAIL (git not found)");
         all_pass = false;
@@ -1030,7 +1030,7 @@ fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bo
     let text = match std::fs::read_to_string(path) {
         Ok(t) => t,
         Err(e) => {
-            println!("config: FAIL ({})", e);
+            println!("config: FAIL ({e})");
             return false;
         }
     };
@@ -1039,7 +1039,7 @@ fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bo
     let expanded = match expand_env_vars(&text) {
         Ok(s) => s,
         Err(e) => {
-            println!("config: FAIL ({})", e);
+            println!("config: FAIL ({e})");
             return false;
         }
     };
@@ -1048,7 +1048,7 @@ fn validate_config_for_doctor(config_path: &Option<PathBuf>, explicit_config: bo
     let cfg: ConfigFile = match toml::from_str(&expanded) {
         Ok(c) => c,
         Err(e) => {
-            println!("config: FAIL ({})", e);
+            println!("config: FAIL ({e})");
             return false;
         }
     };
@@ -1083,7 +1083,7 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
             if !suggestions.is_empty() {
                 msg.push_str("\n\nDid you mean one of these?\n");
                 for s in &suggestions {
-                    msg.push_str(&format!("  - {}\n", s));
+                    msg.push_str(&format!("  - {s}\n"));
                 }
             }
 
@@ -1171,12 +1171,12 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
     if let Some(help) = &rule.help {
         out.push_str("\nRemediation:\n");
         for line in help.lines() {
-            out.push_str(&format!("  {}\n", line));
+            out.push_str(&format!("  {line}\n"));
         }
     }
 
     if let Some(url) = &rule.url {
-        out.push_str(&format!("\nSee also: {}\n", url));
+        out.push_str(&format!("\nSee also: {url}\n"));
     }
 
     out
@@ -1838,7 +1838,7 @@ fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     let output = Command::new("git")
         .args(["blame", "--line-porcelain", head_ref, "--", path])
         .output()
-        .with_context(|| format!("run git blame for {}", path))?;
+        .with_context(|| format!("run git blame for {path}"))?;
 
     if !output.status.success() {
         bail!(
@@ -2448,7 +2448,7 @@ fn cmd_check_inner(
     let baseline_adjusted_exit_code = if let Some(baseline_path) = &args.baseline {
         // Load baseline receipt and fingerprints
         let (baseline_fingerprints, _baseline_findings) = load_baseline_receipt(baseline_path)
-            .map_err(|e| anyhow::anyhow!("failed to load baseline: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("failed to load baseline: {e}"))?;
 
         // Partition current findings into baseline vs new
         let stats = compare_against_baseline(&run.receipt.findings, &baseline_fingerprints);
@@ -2982,9 +2982,9 @@ fn cmd_test(args: TestArgs) -> Result<i32> {
         TestFormat::Text => {
             println!("Rule tests:");
             println!("  Rules checked: {}", rules.len());
-            println!("  Test cases: {}", total_tests);
-            println!("  Passed: {}", passed);
-            println!("  Failed: {}", failed);
+            println!("  Test cases: {total_tests}");
+            println!("  Passed: {passed}");
+            println!("  Failed: {failed}");
 
             if !failures.is_empty() {
                 println!("\nFailures:");
@@ -2997,11 +2997,11 @@ fn cmd_test(args: TestArgs) -> Result<i32> {
                     );
                     if let Some(desc) = f["description"].as_str() {
                         if !desc.is_empty() {
-                            println!("     Description: {}", desc);
+                            println!("     Description: {desc}");
                         }
                     }
                     if let Some(err) = f["error"].as_str() {
-                        println!("     Error: {}", err);
+                        println!("     Error: {err}");
                     } else {
                         println!(
                             "     Expected match: {}, got: {}",
@@ -3250,7 +3250,7 @@ mod tests {
             .current_dir(dir)
             .output()
             .expect("run git");
-        assert!(output.status.success(), "git {:?} failed", args);
+        assert!(output.status.success(), "git {args:?} failed");
         String::from_utf8_lossy(&output.stdout).trim().to_string()
     }
 

@@ -68,7 +68,12 @@ impl Language {
     /// Returns the comment syntax for this language.
     pub fn comment_syntax(self) -> CommentSyntax {
         match self {
-            Language::Python | Language::Ruby | Language::Shell => CommentSyntax::Hash,
+            // Python, Ruby, Shell, YAML, and TOML all use # comments
+            Language::Python
+            | Language::Ruby
+            | Language::Shell
+            | Language::Yaml
+            | Language::Toml => CommentSyntax::Hash,
             // Rust, Swift, and Scala support nested block comments
             Language::Rust | Language::Swift | Language::Scala => CommentSyntax::CStyleNested,
             // SQL uses -- for line comments
@@ -77,8 +82,6 @@ impl Language {
             Language::Xml => CommentSyntax::Xml,
             // PHP uses //, #, and /* */
             Language::Php => CommentSyntax::Php,
-            // YAML/TOML use # comments
-            Language::Yaml | Language::Toml => CommentSyntax::Hash,
             // JSON supports comments in jsonc/json5 dialects (handled by wildcard)
             _ => CommentSyntax::CStyle,
         }
@@ -103,9 +106,10 @@ impl Language {
             Language::Xml => StringSyntax::Xml,
             // PHP uses both single and double quotes
             Language::Php => StringSyntax::Php,
-            // YAML/TOML/JSON strings are C-style-like in this best-effort model
-            Language::Yaml | Language::Toml | Language::Json => StringSyntax::CStyle,
-            // All other languages (C, C++, Java, etc.) use C-style strings
+            // YAML/TOML strings are C-style-like in this best-effort model
+            // (JSON is handled by the wildcard below since JSON uses C-style strings)
+            Language::Yaml | Language::Toml => StringSyntax::CStyle,
+            // All other languages (including JSON, C, C++, Java, etc.) use C-style strings
             _ => StringSyntax::CStyle,
         }
     }
@@ -166,10 +170,9 @@ pub struct PreprocessOptions {
 }
 
 impl PreprocessOptions {
-    /// Creates options that mask neither comments nor strings.
+    /// Create options that mask nothing.
     ///
-    /// The preprocessor will still track string/comment state to avoid
-    /// false positives, but output will be identical to input.
+    /// Neither comments nor strings are masked; the input passes through unchanged.
     pub fn none() -> Self {
         Self {
             mask_comments: false,
@@ -177,9 +180,11 @@ impl PreprocessOptions {
         }
     }
 
-    /// Creates options that mask only comments, preserving strings.
+    /// Create options that mask only comments, not strings.
     ///
-    /// Useful when you want to find patterns in string literals.
+    /// Comment tokens are replaced with spaces; string tokens are preserved.
+    /// The preprocessor still tracks strings internally to avoid starting
+    /// a comment inside a string literal.
     pub fn comments_only() -> Self {
         Self {
             mask_comments: true,
@@ -187,9 +192,9 @@ impl PreprocessOptions {
         }
     }
 
-    /// Creates options that mask only strings, preserving comments.
+    /// Create options that mask only strings, not comments.
     ///
-    /// Useful when you want to find patterns in comments.
+    /// String tokens are replaced with spaces; comment tokens are preserved.
     pub fn strings_only() -> Self {
         Self {
             mask_comments: false,
@@ -197,9 +202,9 @@ impl PreprocessOptions {
         }
     }
 
-    /// Creates options that mask both comments and strings.
+    /// Create options that mask both comments and strings.
     ///
-    /// The default for most diff-based scanning use cases.
+    /// Both comment tokens and string tokens are replaced with spaces.
     pub fn comments_and_strings() -> Self {
         Self {
             mask_comments: true,
@@ -214,27 +219,35 @@ impl PreprocessOptions {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
-    /// Default mode: scanning for comments and string literals.
     Normal,
-    /// Inside a single-line comment (extends to end of line).
     LineComment,
-    /// Inside a multi-line block comment with nesting depth tracking.
-    BlockComment { depth: u32 },
-    /// Inside a normal quoted string (`"..."` or `'...'`) with escape handling.
-    NormalString { escaped: bool, quote: u8 },
-    /// Inside a raw string (backticks in Go, `r#"...` in Rust).
-    RawString { hashes: usize },
-    /// Inside a character literal (single quotes in C-like languages).
-    Char { escaped: bool },
-    /// Inside a template literal (backticks in JavaScript/TypeScript).
-    TemplateLiteral { escaped: bool },
-    /// Inside a triple-quoted string (`"""..."""` or `'''...'''`).
-    TripleQuotedString { escaped: bool, quote: u8 },
-    /// Shell literal string: `'...'` — no escape sequences at all.
+    BlockComment {
+        depth: u32,
+    },
+    NormalString {
+        escaped: bool,
+        quote: u8,
+    },
+    RawString {
+        hashes: usize,
+    },
+    Char {
+        escaped: bool,
+    },
+    TemplateLiteral {
+        escaped: bool,
+    },
+    TripleQuotedString {
+        escaped: bool,
+        quote: u8,
+    },
+    /// Shell literal string: '...' - no escapes at all
     ShellLiteralString,
-    /// Shell ANSI-C string: `$'...'` — supports ANSI-C escape sequences.
-    ShellAnsiCString { escaped: bool },
-    /// XML/HTML block comment: `<!-- ... -->`, ends with `-->`.
+    /// Shell ANSI-C string: $'...' - with escape sequences
+    ShellAnsiCString {
+        escaped: bool,
+    },
+    /// XML/HTML block comment: <!-- ... -->
     XmlComment,
 }
 
@@ -299,9 +312,8 @@ impl Preprocessor {
 
     /// Reset the preprocessor state to Normal mode.
     ///
-    /// This clears any in-progress line/block comments or strings, treating
-    /// the next line as the start of a new file. Call this when processing
-    /// a new file to avoid carrying over state from a previous file.
+    /// This clears any in-progress comment or string parsing,
+    /// such that the next line is treated as fresh input.
     pub fn reset(&mut self) {
         self.mode = Mode::Normal;
     }
