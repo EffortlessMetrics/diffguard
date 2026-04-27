@@ -110,30 +110,35 @@ impl FileBuilderInProgress {
     }
 
     /// Mark as a binary file.
+    #[must_use = "builder methods should be chained"]
     pub fn binary(mut self) -> Self {
         self.file_builder = self.file_builder.binary();
         self
     }
 
     /// Mark as a deleted file.
+    #[must_use = "builder methods should be chained"]
     pub fn deleted(mut self) -> Self {
         self.file_builder = self.file_builder.deleted();
         self
     }
 
     /// Mark as a new file.
+    #[must_use = "builder methods should be chained"]
     pub fn new_file(mut self) -> Self {
         self.file_builder = self.file_builder.new_file();
         self
     }
 
     /// Mark as a mode-only change.
+    #[must_use = "builder methods should be chained"]
     pub fn mode_change(mut self, old_mode: &str, new_mode: &str) -> Self {
         self.file_builder = self.file_builder.mode_change(old_mode, new_mode);
         self
     }
 
     /// Mark as a rename.
+    #[must_use = "builder methods should be chained"]
     pub fn rename_from(mut self, old_path: &str) -> Self {
         self.file_builder = self.file_builder.rename_from(old_path);
         self
@@ -156,18 +161,21 @@ pub struct HunkBuilderInProgress {
 
 impl HunkBuilderInProgress {
     /// Add a context line (unchanged).
+    #[must_use = "builder methods should be chained"]
     pub fn context(mut self, content: &str) -> Self {
         self.hunk_builder = self.hunk_builder.context(content);
         self
     }
 
     /// Add an added line.
+    #[must_use = "builder methods should be chained"]
     pub fn add_line(mut self, content: &str) -> Self {
         self.hunk_builder = self.hunk_builder.add_line(content);
         self
     }
 
     /// Add a removed line.
+    #[must_use = "builder methods should be chained"]
     pub fn remove(mut self, content: &str) -> Self {
         self.hunk_builder = self.hunk_builder.remove(content);
         self
