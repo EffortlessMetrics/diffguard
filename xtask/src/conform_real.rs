@@ -238,9 +238,9 @@ fn test_schema_validation() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ],
     )?;
 
@@ -292,9 +292,9 @@ fn test_determinism() -> Result<()> {
                 "--head",
                 "HEAD",
                 "--out",
-                out_path.to_str().unwrap(),
+                out_path.to_str().expect("out_path must be valid UTF-8"),
                 "--sensor",
-                sensor_path.to_str().unwrap(),
+                sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
             ],
         )?;
 
@@ -353,9 +353,9 @@ fn test_survivability() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ])
         .current_dir(temp_dir.path())
         .output()
@@ -412,9 +412,9 @@ fn test_required_fields() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ],
     )?;
 
@@ -495,9 +495,9 @@ fn test_vocabulary() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ],
     )?;
 
@@ -577,9 +577,9 @@ fn test_json_schema_file() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ],
     )?;
 
@@ -756,9 +756,9 @@ fn test_tool_error_code() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ])
         .current_dir(temp_dir.path())
         .output()
@@ -820,9 +820,9 @@ fn test_token_lint() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ],
     )?;
 
@@ -922,9 +922,9 @@ fn test_path_hygiene() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ],
     )?;
 
@@ -989,9 +989,9 @@ fn test_fingerprint_format() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ],
     )?;
 
@@ -1040,9 +1040,9 @@ fn test_artifact_path_hygiene() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ],
     )?;
 
@@ -1208,9 +1208,9 @@ fn test_data_diffguard_shape() -> Result<()> {
             "--head",
             "HEAD",
             "--out",
-            out_path.to_str().unwrap(),
+            out_path.to_str().expect("out_path must be valid UTF-8"),
             "--sensor",
-            sensor_path.to_str().unwrap(),
+            sensor_path.to_str().expect("sensor_path must be valid UTF-8"),
         ],
     )?;
 
