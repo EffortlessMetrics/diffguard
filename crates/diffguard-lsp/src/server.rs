@@ -1,3 +1,23 @@
+//! LSP server implementation for diffguard.
+//!
+//! This module implements the Language Server Protocol for diffguard, providing
+//! real-time secret detection as developers type. It integrates with the editor's
+//! text document sync to track changes and run diffguard checks on modified lines.
+//!
+//! ## Performance Optimizations
+//!
+//! - [`apply_incremental_change()`](crate::text::apply_incremental_change): applies edits
+//!   in-place using byte offsets, avoiding O(n) full-document clone on every keystroke
+//! - [`DocumentState`] tracks a `dirty` flag to defer O(n) `changed_lines_between()`
+//!   computation until diagnostics are actually needed
+//! - git diff results are cached and reused across multiple diagnostics cycles
+//!
+//! ## Key Types
+//!
+//! - [`DocumentState`]: tracks an open document's text, baseline, and dirty flag
+//! - [`ServerState`]: global server state including config and open documents
+//! - [`GitSupport`]: enum tracking whether `git diff` is available in the workspace
+
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::process::Command;
