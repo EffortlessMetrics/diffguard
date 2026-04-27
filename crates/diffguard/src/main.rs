@@ -639,12 +639,23 @@ impl LanguageArg {
     }
 }
 
+/// Convert an `i32` exit code to `u8` for `std::process::ExitCode`.
+///
+/// Uses `TryFrom` for safe, fallible conversion:
+/// - Valid exit codes (0-255) pass through unchanged
+/// - Invalid values (negative or > 255) fall back to 1 (Tool error)
+///
+/// This ensures we never produce an invalid exit code that could be
+/// misinterpreted by calling processes.
+#[allow(dead_code)]
+fn exit_code_from_i32(code: i32) -> u8 {
+    u8::try_from(code).unwrap_or(1)
+}
+
 #[cfg(not(test))]
 fn main() -> std::process::ExitCode {
     match run_with_args(std::env::args_os()) {
-        Ok(code) => {
-            std::process::ExitCode::from(code.clamp(i32::from(u8::MIN), i32::from(u8::MAX)) as u8)
-        }
+        Ok(code) => std::process::ExitCode::from(exit_code_from_i32(code)),
         Err(err) => {
             eprintln!("{err:?}");
             std::process::ExitCode::from(1)
@@ -652,6 +663,18 @@ fn main() -> std::process::ExitCode {
     }
 }
 
+/// Parse CLI arguments, initialize logging, and dispatch to the appropriate command handler.
+///
+/// Returns an `i32` exit code suitable for conversion to `std::process::ExitCode`:
+/// - 0 = Pass (no violations)
+/// - 1 = Tool error (catastrophic failure)
+/// - 2 = Policy fail (violations found)
+/// - 3 = Warn-fail (only warnings, when `fail_on` includes `warn`)
+///
+/// # Errors
+///
+/// Propagates errors from individual command handlers (e.g., config parsing, file I/O).
+/// On error, `main()` converts this to exit code 1.
 fn run_with_args<I, T>(args: I) -> Result<i32>
 where
     I: IntoIterator<Item = T>,
@@ -694,7 +717,7 @@ where
             cmd_trend(args)?;
             Ok(0)
         }
-        Commands::Doctor(args) => cmd_doctor(args),
+        Commands::Doctor(args) => Ok(cmd_doctor(args)),
     }
 }
 
@@ -768,8 +791,17 @@ fn compile_rules_checked(
     compile_rules(rules)
 }
 
-/// Validate rules in a parsed config file and return a list of error messages.
-/// Shared between cmd_validate and cmd_doctor.
+/// Validate rule configurations for correctness.
+///
+/// Checks for:
+/// - Duplicate rule IDs
+/// - Empty pattern lists
+/// - Invalid regex patterns in patterns, context_patterns, and escalate_patterns
+/// - Invalid multiline_window values
+/// - Unknown rule dependencies
+/// - Invalid path globs
+///
+/// Returns a list of error messages. Empty list means validation passed.
 fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     let mut errors: Vec<String> = Vec::new();
     let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
@@ -953,7 +985,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
 
 /// Validate the environment for running diffguard.
 /// Returns 0 if all checks pass, 1 if any check fails.
-fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
+fn cmd_doctor(args: DoctorArgs) -> i32 {
     let mut all_pass = true;
 
     // Check 1: Git availability
@@ -1000,7 +1032,7 @@ fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
 
     all_pass &= validate_config_for_doctor(&config_path, args.config.is_some());
 
-    if all_pass { Ok(0) } else { Ok(1) }
+    if all_pass { 0 } else { 1 }
 }
 
 /// Validate config file for the doctor command.
