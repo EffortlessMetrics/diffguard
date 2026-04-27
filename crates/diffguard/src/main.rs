@@ -1089,7 +1089,7 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
 
             msg.push_str("\nUse 'diffguard rules' to list all available rules.");
 
-            bail!("{}", msg);
+            bail!("{msg}");
         }
     }
 }
@@ -2886,7 +2886,7 @@ fn cmd_test(args: TestArgs) -> Result<i32> {
 
     if rules.is_empty() {
         if let Some(filter) = &args.rule {
-            bail!("No rules match filter '{}'", filter);
+            bail!("No rules match filter {filter}");
         }
         bail!("No rules defined in configuration");
     }

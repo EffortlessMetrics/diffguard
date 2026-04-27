@@ -19,6 +19,6 @@ schemars.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true
-jsonschema = "0.18"
+jsonschema = "0.46"
 toml.workspace = true
 regex = "1"
