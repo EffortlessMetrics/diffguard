@@ -666,31 +666,28 @@ mod tests {
     /// `schema(out_dir.as_path())`.
     #[test]
     fn schema_call_site_no_needless_as_path() {
-        // Use an absolute path to the source file since file!() doesn't resolve
-        // correctly at test runtime
         let source = std::fs::read_to_string("/home/hermes/repos/diffguard/xtask/src/main.rs")
             .expect("read own source");
 
-        // Line 58 in the match arm: Cmd::Schema { out_dir } => schema(...);
-        // The call should be schema(&out_dir), NOT schema(out_dir.as_path())
-        let lines: Vec<&str> = source.lines().collect();
-        let line_58 = lines
-            .get(57) // 0-indexed
-            .expect("line 58 should exist");
+        // Find the line with the Cmd::Schema match arm and schema() call
+        let schema_call_line = source
+            .lines()
+            .find(|line| line.contains("Cmd::Schema") && line.contains("=> schema("))
+            .expect("should find Cmd::Schema match arm");
 
         // The lint trigger is schema(out_dir.as_path()) - we want to ensure
         // it has been fixed to schema(&out_dir)
         assert!(
-            line_58.contains("schema(&out_dir)"),
-            "line 58 should call schema(&out_dir) to avoid needless_pass_by_value lint, but found: {}",
-            line_58
+            schema_call_line.contains("schema(&out_dir)"),
+            "Cmd::Schema arm should call schema(&out_dir) to avoid needless_pass_by_value lint, but found: {}",
+            schema_call_line
         );
 
         // Additionally verify the old pattern is NOT present
         assert!(
-            !line_58.contains("out_dir.as_path()"),
-            "line 58 should NOT contain .as_path() (needless_pass_by_value lint), but found: {}",
-            line_58
+            !schema_call_line.contains("out_dir.as_path()"),
+            "Cmd::Schema arm should NOT contain .as_path() (needless_pass_by_value lint), but found: {}",
+            schema_call_line
         );
     }
 }
