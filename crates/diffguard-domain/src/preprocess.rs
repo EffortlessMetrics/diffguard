@@ -166,6 +166,10 @@ pub struct PreprocessOptions {
 }
 
 impl PreprocessOptions {
+    /// Creates options that mask neither comments nor strings.
+    ///
+    /// The preprocessor will still track string/comment state to avoid
+    /// false positives, but output will be identical to input.
     pub fn none() -> Self {
         Self {
             mask_comments: false,
@@ -173,6 +177,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Creates options that mask only comments, preserving strings.
+    ///
+    /// Useful when you want to find patterns in string literals.
     pub fn comments_only() -> Self {
         Self {
             mask_comments: true,
@@ -180,6 +187,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Creates options that mask only strings, preserving comments.
+    ///
+    /// Useful when you want to find patterns in comments.
     pub fn strings_only() -> Self {
         Self {
             mask_comments: false,
@@ -187,6 +197,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Creates options that mask both comments and strings.
+    ///
+    /// The default for most diff-based scanning use cases.
     pub fn comments_and_strings() -> Self {
         Self {
             mask_comments: true,
@@ -201,35 +214,27 @@ impl PreprocessOptions {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
+    /// Default mode: scanning for comments and string literals.
     Normal,
+    /// Inside a single-line comment (extends to end of line).
     LineComment,
-    BlockComment {
-        depth: u32,
-    },
-    NormalString {
-        escaped: bool,
-        quote: u8,
-    },
-    RawString {
-        hashes: usize,
-    },
-    Char {
-        escaped: bool,
-    },
-    TemplateLiteral {
-        escaped: bool,
-    },
-    TripleQuotedString {
-        escaped: bool,
-        quote: u8,
-    },
-    /// Shell literal string: '...' - no escapes at all
+    /// Inside a multi-line block comment with nesting depth tracking.
+    BlockComment { depth: u32 },
+    /// Inside a normal quoted string (`"..."` or `'...'`) with escape handling.
+    NormalString { escaped: bool, quote: u8 },
+    /// Inside a raw string (backticks in Go, `r#"...` in Rust).
+    RawString { hashes: usize },
+    /// Inside a character literal (single quotes in C-like languages).
+    Char { escaped: bool },
+    /// Inside a template literal (backticks in JavaScript/TypeScript).
+    TemplateLiteral { escaped: bool },
+    /// Inside a triple-quoted string (`"""..."""` or `'''...'''`).
+    TripleQuotedString { escaped: bool, quote: u8 },
+    /// Shell literal string: `'...'` — no escape sequences at all.
     ShellLiteralString,
-    /// Shell ANSI-C string: $'...' - with escape sequences
-    ShellAnsiCString {
-        escaped: bool,
-    },
-    /// XML/HTML block comment: <!-- ... -->
+    /// Shell ANSI-C string: `$'...'` — supports ANSI-C escape sequences.
+    ShellAnsiCString { escaped: bool },
+    /// XML/HTML block comment: `<!-- ... -->`, ends with `-->`.
     XmlComment,
 }
 
@@ -292,6 +297,11 @@ impl Preprocessor {
         self.reset();
     }
 
+    /// Reset the preprocessor state to Normal mode.
+    ///
+    /// This clears any in-progress line/block comments or strings, treating
+    /// the next line as the start of a new file. Call this when processing
+    /// a new file to avoid carrying over state from a previous file.
     pub fn reset(&mut self) {
         self.mode = Mode::Normal;
     }
