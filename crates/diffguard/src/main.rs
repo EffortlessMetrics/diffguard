@@ -1089,7 +1089,7 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
 
             msg.push_str("\nUse 'diffguard rules' to list all available rules.");
 
-            bail!("{}", msg);
+            bail!("{msg}");
         }
     }
 }
@@ -1104,7 +1104,7 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
 
     out.push_str("\nPatterns:\n");
     for p in &rule.patterns {
-        out.push_str(&format!("  - {}\n", p));
+        out.push_str(&format!("  - {p}\n"));
     }
 
     out.push_str("\nSemantics:\n");
@@ -2886,7 +2886,7 @@ fn cmd_test(args: TestArgs) -> Result<i32> {
 
     if rules.is_empty() {
         if let Some(filter) = &args.rule {
-            bail!("No rules match filter '{}'", filter);
+            bail!("No rules match filter {filter}");
         }
         bail!("No rules defined in configuration");
     }
@@ -3085,10 +3085,7 @@ fn expand_env_vars(content: &str) -> Result<String> {
                     );
                     result.push_str(default);
                 } else {
-                    bail!(
-                        "Environment variable '{}' is not set and no default provided",
-                        var_name
-                    );
+                    bail!("Environment variable '{var_name}' is not set and no default provided");
                 }
             }
         }
