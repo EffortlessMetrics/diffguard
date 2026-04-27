@@ -639,10 +639,26 @@ impl LanguageArg {
     }
 }
 
+/// Program entry point — parses CLI args, runs the requested command, and maps
+/// the verdict code to a process exit status.
+///
+/// Exit codes:
+///   0 = pass (no violations found)
+///   1 = tool/runtime error
+///   2 = policy violations found
+///   3 = warnings only (when `fail_on` includes warn)
+///
+/// The verdict code is always in the range 0..=3, but we use `TryFrom` to
+/// convert from `i32` to avoid the `clippy::cast_possible_truncation` warning.
+/// On any conversion failure (which should never happen for valid codes),
+/// we fall back to exit code 1 (tool error) rather than panicking.
 #[cfg(not(test))]
 fn main() -> std::process::ExitCode {
     match run_with_args(std::env::args_os()) {
         Ok(code) => {
+            // Use TryFrom instead of `as u8` to avoid clippy::cast_possible_truncation.
+            // All valid verdict codes (0, 1, 2, 3) are well within u8 range,
+            // so unwrap_or(1) is purely defensive — it handles impossible cases.
             std::process::ExitCode::from(u8::try_from(code).unwrap_or(1))
         }
         Err(err) => {
