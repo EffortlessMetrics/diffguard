@@ -7,6 +7,10 @@
 # standard for static analysis tools, enabling unified vulnerability
 # dashboards and rich code location tracking.
 
+# Pinned to SHA commits on 2026-04-27 per security hardening (work-5102a8b6).
+# Review quarterly for updated action versions.
+# SHA pinning ensures exactly the reviewed code runs, preventing supply chain attacks.
+
 name: diffguard
 
 on:
@@ -21,15 +25,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0  # Full history for accurate diff
 
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.85.0
 
       - name: Cache cargo dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae
 
       - name: Build diffguard
         run: cargo build --release -p diffguard
@@ -46,14 +50,14 @@ jobs:
         continue-on-error: true
 
       - name: Upload SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@865f5f5c36632f18690a3d569fa0a764f2da0c3e
         with:
           sarif_file: artifacts/diffguard/report.sarif.json
           category: diffguard
         if: always() && hashFiles('artifacts/diffguard/report.sarif.json') != ''
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: diffguard-reports
           path: artifacts/diffguard/

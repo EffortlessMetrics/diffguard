@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{"all_different":true,"base":"05cfa41d847a17ce33799760ff2a30395a729d7750193ad5dff7cd285779cb21","different_line":"4b37ea8f8e0fa74bfbc8398e30a8ba1c4b27512cf865ef08c7694cae9ec34708","different_match":"42ae2c4fccc3a1ebfd7ec9d023775fb8f46c3d216e90a6aa9ea41d98425a81ae","different_path":"642312fcfe28bbadba9ecc8cff0bb7111ac94e5a00cd5b3ad87cec5059d48213","different_rule":"a866fa026c75f90409fed3b0e0a7903c0425d3f50a18c87103f7fb074212bb44"}
