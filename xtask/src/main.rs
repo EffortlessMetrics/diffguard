@@ -55,7 +55,7 @@ where
 
     match cli.cmd {
         Cmd::Ci => ci(),
-        Cmd::Schema { out_dir } => schema(out_dir.as_path()),
+        Cmd::Schema { out_dir } => schema(&out_dir),
         Cmd::Conform { quick } => conform::run_conformance(quick),
         Cmd::Mutants { package } => mutants(package),
     }
