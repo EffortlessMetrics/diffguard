@@ -529,7 +529,7 @@ pub struct CapabilityStatus {
 pub struct SensorFinding {
     /// Check identifier (constant: "diffguard.pattern").
     pub check_id: String,
-    /// Rule code (maps from rule_id, e.g., "rust.no_unwrap").
+    /// Rule code (maps from `rule_id`, e.g., "rust.no_unwrap").
     pub code: String,
     /// Finding severity.
     pub severity: Severity,
