@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{"fingerprint":"a1363b3ffabde97d60d228b4da324aea1e374fa7429cc5e1e6ac173c5f6ae911","is_valid_hex":true,"length":64}

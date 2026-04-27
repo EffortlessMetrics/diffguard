@@ -44,6 +44,7 @@
           "type": "string"
         },
         "files_scanned": {
+          "description": "Number of distinct files that were scanned.\n\nStored as `u64` to avoid silent truncation for very large repositories\n(those with more than 2^32 - 1 unique files).",
           "type": "integer",
           "format": "uint64",
           "minimum": 0
@@ -86,6 +87,7 @@
       ]
     },
     "VerdictCounts": {
+      "description": "Severity counts for a check run.\n\n`suppressed` tracks matches disabled by inline directives and is omitted\nfrom serialized output when zero to keep receipts clean.",
       "type": "object",
       "properties": {
         "error": {
@@ -117,6 +119,7 @@
       ]
     },
     "VerdictStatus": {
+      "description": "The overall disposition of a check run.\n\n`VerdictStatus` is the top-level pass/fail/skip result, while `counts`\nprovides a breakdown by severity and `reasons` explains any non-pass outcomes.",
       "oneOf": [
         {
           "type": "string",
