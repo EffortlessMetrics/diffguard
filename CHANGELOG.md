@@ -9,18 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- **GitHub Actions hardening** for production-ready workflows:
+- **GitHub Actions hardening** — All GitHub Actions in CI/CD workflows pinned to verified SHA commits to prevent supply chain attacks via tag manipulation. Actions pinned: `actions/checkout` (`34e114876b0b11c390a56381ad16ebd13914f8d5`), `dtolnay/rust-toolchain` (`1.85.0`), `Swatinem/rust-cache` (`42dc69e1aa15d09112580998cf2ef0119e2e91ae`), `actions/upload-artifact` (`ea165f8d65b6e75b540449e92b4886f43607fa02`), `actions/download-artifact` (`d3f86a106a0bac45b974a628896c90dbdf5c8093`), `github/codeql-action/upload-sarif` (`865f5f5c36632f18690a3d569fa0a764f2da0c3e`), `softprops/action-gh-release` (`3bb12739c298aeb8a4eeaf626c5b8d85266b0e65`), `actions/github-script` (`f28e40c7f34bde8b3046d885e986cb6290c5673b`). Review quarterly for updated versions.
 
 ### Refactored
 
 - **`diffguard-types`**: Refactored `ConfigFile::built_in()` from 533 lines of hardcoded Rust to a JSON data file. 36 built-in rules across 10 languages are now loaded at compile time via `include_str!` + `serde_json`, improving maintainability and respecting the crate's "no I/O" constraint.
 
 ### Changed
-  - SHA pinning for third-party Actions (`actions/github-script@v7`, `github/codeql-action/upload-sarif@v3`) to prevent supply chain attacks
   - Explicit `permissions` block with least-privilege scopes (`contents: read`, `pull-requests: write`, `security-events: write`)
   - Windows target triple detection for MSYS/MINGW environments
   - Concurrency control on SARIF upload to prevent race conditions across workflow runs
   - Improved error handling with user-visible warning messages for fallback installation paths
+- **`parse_unified_diff` now requires explicit Result handling** — Added `#[must_use]` to `parse_unified_diff` so the compiler warns when callers ignore the `Result`. This prevents silent parse failures where malformed diffs are silently ignored. Callers must now explicitly handle the `Result` or use `let _ = ...` to indicate intentional ignore. Closes #329.
 
 ### Changed
 
