@@ -73,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
+- **`diffguard-types`**: Fixed `clippy::doc_markdown` lint on `SensorFinding::code` doc comment by wrapping `rule_id` in backticks for correct documentation rendering.
+
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
 ## [0.2.0] - 2026-04-06
