@@ -1089,7 +1089,7 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
 
             msg.push_str("\nUse 'diffguard rules' to list all available rules.");
 
-            bail!("{}", msg);
+            bail!("{msg}");
         }
     }
 }
@@ -1104,7 +1104,7 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
 
     out.push_str("\nPatterns:\n");
     for p in &rule.patterns {
-        out.push_str(&format!("  - {}\n", p));
+        out.push_str(&format!("  - {p}\n"));
     }
 
     out.push_str("\nSemantics:\n");
