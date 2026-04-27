@@ -68,7 +68,12 @@ impl Language {
     /// Returns the comment syntax for this language.
     pub fn comment_syntax(self) -> CommentSyntax {
         match self {
-            Language::Python | Language::Ruby | Language::Shell => CommentSyntax::Hash,
+            // Python, Ruby, Shell, YAML, and TOML all use # comments
+            Language::Python
+            | Language::Ruby
+            | Language::Shell
+            | Language::Yaml
+            | Language::Toml => CommentSyntax::Hash,
             // Rust, Swift, and Scala support nested block comments
             Language::Rust | Language::Swift | Language::Scala => CommentSyntax::CStyleNested,
             // SQL uses -- for line comments
@@ -77,8 +82,6 @@ impl Language {
             Language::Xml => CommentSyntax::Xml,
             // PHP uses //, #, and /* */
             Language::Php => CommentSyntax::Php,
-            // YAML/TOML use # comments
-            Language::Yaml | Language::Toml => CommentSyntax::Hash,
             // JSON supports comments in jsonc/json5 dialects (handled by wildcard)
             _ => CommentSyntax::CStyle,
         }
@@ -103,9 +106,10 @@ impl Language {
             Language::Xml => StringSyntax::Xml,
             // PHP uses both single and double quotes
             Language::Php => StringSyntax::Php,
-            // YAML/TOML/JSON strings are C-style-like in this best-effort model
-            Language::Yaml | Language::Toml | Language::Json => StringSyntax::CStyle,
-            // All other languages (C, C++, Java, etc.) use C-style strings
+            // YAML/TOML strings are C-style-like in this best-effort model
+            // (JSON is handled by the wildcard below since JSON uses C-style strings)
+            Language::Yaml | Language::Toml => StringSyntax::CStyle,
+            // All other languages (including JSON, C, C++, Java, etc.) use C-style strings
             _ => StringSyntax::CStyle,
         }
     }
