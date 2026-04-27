@@ -662,7 +662,7 @@ mod tests {
     ///
     /// The lint needless_pass_by_value fires when a PathBuf is passed via .as_path()
     /// to a function that takes &Path, because &PathBuf coerces to &Path implicitly.
-    /// The call site at line 58 should use `schema(&out_dir)` instead of
+    /// The call site should use `schema(&out_dir)` instead of
     /// `schema(out_dir.as_path())`.
     #[test]
     fn schema_call_site_no_needless_as_path() {
