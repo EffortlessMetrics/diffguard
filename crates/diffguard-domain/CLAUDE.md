@@ -25,7 +25,7 @@ Core business logic: rule compilation, line evaluation, text preprocessing, and 
 
 ```rust
 pub fn compile_rules(configs: &[RuleConfig]) -> Result<Vec<CompiledRule>>
-pub fn detect_language(path: &str) -> Option<Language>
+pub fn detect_language(path: &Path) -> Option<&'static str>
 ```
 
 `CompiledRule` contains:

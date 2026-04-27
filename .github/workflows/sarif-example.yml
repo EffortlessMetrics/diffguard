@@ -33,6 +33,10 @@
 #
 # ============================================================================
 
+
+# Pinned to SHA commits on 2026-04-27 per security hardening (work-5102a8b6).
+# Review quarterly for updated action versions.
+# SHA pinning ensures exactly the reviewed code runs, preventing supply chain attacks.
 name: diffguard-sarif-example
 
 # This workflow is disabled by default - remove 'workflow_dispatch' trigger
@@ -89,7 +93,7 @@ jobs:
       # fetch-depth: 0 ensures we have the complete git history,
       # which is necessary for accurate diff calculation between branches.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
@@ -97,14 +101,14 @@ jobs:
       # Step 2: Setup Rust toolchain
       # ----------------------------------------------------------------------
       - name: Setup Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.85.0
 
       # ----------------------------------------------------------------------
       # Step 3: Cache cargo dependencies
       # ----------------------------------------------------------------------
       # Caching significantly speeds up subsequent workflow runs.
       - name: Cache cargo dependencies
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae
         with:
           # Cache the built diffguard binary
           cache-targets: true
@@ -169,7 +173,7 @@ jobs:
       # The 'category' field groups results from different tools or runs.
       #
       - name: Upload SARIF to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@865f5f5c36632f18690a3d569fa0a764f2da0c3e
         with:
           sarif_file: ${{ env.DIFFGUARD_OUTPUT_DIR }}/report.sarif.json
           # Category helps distinguish diffguard results from other tools
@@ -186,7 +190,7 @@ jobs:
       # This allows downloading and inspecting results offline.
       #
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: diffguard-reports
           path: ${{ env.DIFFGUARD_OUTPUT_DIR }}/
@@ -200,7 +204,7 @@ jobs:
       # Requires 'pull-requests: write' permission.
       #
       - name: Post PR comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         if: github.event_name == 'pull_request' && hashFiles(format('{0}/comment.md', env.DIFFGUARD_OUTPUT_DIR)) != ''
         with:
           script: |
@@ -270,7 +274,7 @@ jobs:
   #
   #   steps:
   #     - name: Checkout repository
-  #       uses: actions/checkout@v4
+  #       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
   #       with:
   #         fetch-depth: 0
   #
@@ -287,7 +291,7 @@ jobs:
   #       continue-on-error: true
   #
   #     - name: Upload SARIF
-  #       uses: github/codeql-action/upload-sarif@v3
+  #       uses: github/codeql-action/upload-sarif@865f5f5c36632f18690a3d569fa0a764f2da0c3e
   #       with:
   #         sarif_file: artifacts/diffguard/report.sarif.json
   #         category: diffguard
@@ -305,7 +309,7 @@ jobs:
   #
   #   steps:
   #     - name: Checkout repository
-  #       uses: actions/checkout@v4
+  #       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
   #       with:
   #         fetch-depth: 0
   #
@@ -325,7 +329,7 @@ jobs:
   #       continue-on-error: true
   #
   #     - name: Upload SARIF
-  #       uses: github/codeql-action/upload-sarif@v3
+  #       uses: github/codeql-action/upload-sarif@865f5f5c36632f18690a3d569fa0a764f2da0c3e
   #       with:
   #         sarif_file: report.sarif.json
   #         category: diffguard
