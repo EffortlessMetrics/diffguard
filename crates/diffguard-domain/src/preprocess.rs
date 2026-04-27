@@ -166,6 +166,9 @@ pub struct PreprocessOptions {
 }
 
 impl PreprocessOptions {
+    /// Create options that mask nothing.
+    ///
+    /// Neither comments nor strings are masked; the input passes through unchanged.
     pub fn none() -> Self {
         Self {
             mask_comments: false,
@@ -173,6 +176,11 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask only comments, not strings.
+    ///
+    /// Comment tokens are replaced with spaces; string tokens are preserved.
+    /// The preprocessor still tracks strings internally to avoid starting
+    /// a comment inside a string literal.
     pub fn comments_only() -> Self {
         Self {
             mask_comments: true,
@@ -180,6 +188,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask only strings, not comments.
+    ///
+    /// String tokens are replaced with spaces; comment tokens are preserved.
     pub fn strings_only() -> Self {
         Self {
             mask_comments: false,
@@ -187,6 +198,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask both comments and strings.
+    ///
+    /// Both comment tokens and string tokens are replaced with spaces.
     pub fn comments_and_strings() -> Self {
         Self {
             mask_comments: true,
@@ -292,6 +306,10 @@ impl Preprocessor {
         self.reset();
     }
 
+    /// Reset the preprocessor state to Normal mode.
+    ///
+    /// This clears any in-progress comment or string parsing,
+    /// such that the next line is treated as fresh input.
     pub fn reset(&mut self) {
         self.mode = Mode::Normal;
     }
