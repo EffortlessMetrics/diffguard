@@ -245,6 +245,10 @@ impl ConfigFile {
     ///
     /// Rules are loaded from `rules/built_in.json` at compile time via `include_str!`.
     /// This ensures the JSON is embedded in the binary and avoids any I/O at runtime.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `rules/built_in.json` is missing, not valid UTF-8, or fails to parse as `ConfigFile`.
     #[must_use]
     pub fn built_in() -> Self {
         serde_json::from_str(include_str!("rules/built_in.json"))
@@ -275,6 +279,16 @@ pub struct Defaults {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub diff_context: Option<u32>,
+
+    /// Ignore comments when matching patterns.
+    /// When set to `true`, pattern matching skips comment lines.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ignore_comments: Option<bool>,
+
+    /// Ignore string literals when matching patterns.
+    /// When set to `true`, pattern matching skips string literal content.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ignore_strings: Option<bool>,
 }
 
 impl Default for Defaults {
@@ -286,6 +300,8 @@ impl Default for Defaults {
             fail_on: Some(FailOn::Error),
             max_findings: Some(200),
             diff_context: Some(0),
+            ignore_comments: None,
+            ignore_strings: None,
         }
     }
 }
@@ -588,6 +604,8 @@ mod tests {
         assert_eq!(defaults.fail_on, Some(FailOn::Error));
         assert_eq!(defaults.max_findings, Some(200));
         assert_eq!(defaults.diff_context, Some(0));
+        assert_eq!(defaults.ignore_comments, None);
+        assert_eq!(defaults.ignore_strings, None);
     }
 
     #[test]
