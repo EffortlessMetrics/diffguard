@@ -220,7 +220,8 @@ pub fn detect_language(path: &Path) -> Option<&'static str> {
         "swift" => Some("swift"),
         "scala" | "sc" => Some("scala"),
         "sql" => Some("sql"),
-        "xml" | "xsl" | "xslt" | "xsd" | "svg" | "xhtml" | "html" | "htm" => Some("xml"),
+        "xml" | "xsl" | "xslt" | "xsd" | "svg" | "xhtml" => Some("xml"),
+        "html" | "htm" => Some("html"),
         "php" | "phtml" | "php3" | "php4" | "php5" | "php7" | "phps" => Some("php"),
         "yaml" | "yml" => Some("yaml"),
         "toml" => Some("toml"),
@@ -415,8 +416,8 @@ mod tests {
         assert_eq!(detect_language(Path::new("schema.xsd")), Some("xml"));
         assert_eq!(detect_language(Path::new("icon.svg")), Some("xml"));
         assert_eq!(detect_language(Path::new("page.xhtml")), Some("xml"));
-        assert_eq!(detect_language(Path::new("page.html")), Some("xml"));
-        assert_eq!(detect_language(Path::new("page.htm")), Some("xml"));
+        assert_eq!(detect_language(Path::new("page.html")), Some("html"));
+        assert_eq!(detect_language(Path::new("page.htm")), Some("html"));
     }
 
     #[test]
