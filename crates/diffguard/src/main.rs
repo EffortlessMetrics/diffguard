@@ -694,7 +694,7 @@ where
             cmd_trend(args)?;
             Ok(0)
         }
-        Commands::Doctor(args) => cmd_doctor(args),
+        Commands::Doctor(args) => Ok(cmd_doctor(args)),
     }
 }
 
@@ -953,7 +953,7 @@ fn cmd_validate(args: ValidateArgs) -> Result<i32> {
 
 /// Validate the environment for running diffguard.
 /// Returns 0 if all checks pass, 1 if any check fails.
-fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
+fn cmd_doctor(args: DoctorArgs) -> i32 {
     let mut all_pass = true;
 
     // Check 1: Git availability
@@ -1000,7 +1000,7 @@ fn cmd_doctor(args: DoctorArgs) -> Result<i32> {
 
     all_pass &= validate_config_for_doctor(&config_path, args.config.is_some());
 
-    if all_pass { Ok(0) } else { Ok(1) }
+    if all_pass { 0 } else { 1 }
 }
 
 /// Validate config file for the doctor command.
