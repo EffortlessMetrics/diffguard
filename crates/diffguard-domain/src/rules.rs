@@ -30,8 +30,20 @@ pub enum RuleCompileError {
 
     #[error("rule '{rule_id}' depends on unknown rule '{dependency}'")]
     UnknownDependency { rule_id: String, dependency: String },
+
+    /// Rule glob set build failed — typically due to NFA overflow when too many
+    /// patterns are combined. The underlying `globset::Error` provides the specific cause.
+    #[error("rule '{rule_id}' glob set build failed: {source}")]
+    GlobSetBuild {
+        rule_id: String,
+        source: globset::Error,
+    },
 }
 
+/// A rule compiled and ready for evaluation against input lines.
+///
+/// Produced by [`compile_rules`] from [`RuleConfig`] definitions.
+/// Contains pre-compiled regex patterns and glob sets for efficient matching.
 #[derive(Debug, Clone)]
 pub struct CompiledRule {
     pub id: String,
@@ -55,6 +67,13 @@ pub struct CompiledRule {
 }
 
 impl CompiledRule {
+    /// Determines whether this rule applies to a given file path and language.
+    ///
+    /// A rule applies if ALL of the following are true:
+    /// - The path matches the rule's include glob (if any)
+    /// - The path does NOT match the rule's exclude glob (if any)
+    /// - The language is in the rule's language set (if non-empty)
+    #[must_use]
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
         if self
             .include
@@ -182,6 +201,15 @@ fn compile_pattern_group(
     Ok(out)
 }
 
+/// Compiles path glob patterns into a [`GlobSet`] for efficient path matching.
+///
+/// Returns `Ok(None)` if the glob list is empty (matches all paths).
+///
+/// # Errors
+///
+/// Returns [`RuleCompileError::InvalidGlob`] if any glob pattern is malformed.
+/// Returns [`RuleCompileError::GlobSetBuild`] if the combined glob set exceeds
+/// the NFA size limit (typically when combining thousands of broad patterns).
 fn compile_globs(globs: &[String], rule_id: &str) -> Result<Option<GlobSet>, RuleCompileError> {
     if globs.is_empty() {
         return Ok(None);
@@ -197,7 +225,12 @@ fn compile_globs(globs: &[String], rule_id: &str) -> Result<Option<GlobSet>, Rul
         builder.add(glob);
     }
 
-    Ok(Some(builder.build().expect("globset build should succeed")))
+    Ok(Some(builder.build().map_err(|source| {
+        RuleCompileError::GlobSetBuild {
+            rule_id: rule_id.to_string(),
+            source,
+        }
+    })?))
 }
 
 /// Detects programming language from file extension.

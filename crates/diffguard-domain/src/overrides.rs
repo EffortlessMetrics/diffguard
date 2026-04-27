@@ -29,6 +29,15 @@ pub enum OverrideCompileError {
         glob: String,
         source: globset::Error,
     },
+
+    /// Rule override glob set build failed — typically due to NFA overflow when too many
+    /// patterns are combined. The underlying `globset::Error` provides the specific cause.
+    #[error("rule override '{rule_id}' in '{directory}' glob set build failed: {source}")]
+    GlobSetBuild {
+        rule_id: String,
+        directory: String,
+        source: globset::Error,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -164,15 +173,29 @@ fn directory_depth(directory: &str) -> usize {
 }
 
 fn path_in_directory(path: &str, directory: &str) -> bool {
+    // Empty directory matches all paths (root override applies everywhere)
     if directory.is_empty() {
         return true;
     }
+    // Exact match counts as being in the directory
     if path == directory {
         return true;
     }
+    // Must be a proper child: path starts with directory AND next char is '/'
+    // This prevents "src/lib" from matching under "src/liga" or similar.
+    // Using byte comparison avoids allocating for the char check.
     path.starts_with(directory) && path.as_bytes().get(directory.len()) == Some(&b'/')
 }
 
+/// Compiles exclude glob patterns into a [`GlobSet`] for efficient matching.
+///
+/// Returns `Ok(None)` if the glob list is empty (no exclusions).
+///
+/// # Errors
+///
+/// Returns [`OverrideCompileError::InvalidGlob`] if any glob pattern is malformed.
+/// Returns [`OverrideCompileError::GlobSetBuild`] if the combined glob set exceeds
+/// the NFA size limit (typically when combining thousands of broad patterns).
 fn compile_exclude_globs(
     directory: &str,
     rule_id: &str,
@@ -194,14 +217,27 @@ fn compile_exclude_globs(
         builder.add(parsed);
     }
 
-    Ok(Some(builder.build().expect("globset build should succeed")))
+    Ok(Some(builder.build().map_err(|source| {
+        OverrideCompileError::GlobSetBuild {
+            rule_id: rule_id.to_string(),
+            directory: directory.to_string(),
+            source,
+        }
+    })?))
 }
 
+/// Scopes a user-provided glob pattern to a specific directory.
+///
+/// Handles three cases:
+/// - Glob already starts with `/` (absolute) — used as-is (stripping the leading `/`)
+/// - Directory is empty (root) — glob is used as-is
+/// - Otherwise — directory is prepended to the glob
 fn scope_glob_to_directory(directory: &str, glob: &str) -> String {
     let replaced = glob.replace('\\', "/");
     let without_dot = replaced.strip_prefix("./").unwrap_or(&replaced);
 
     if directory.is_empty() || without_dot.starts_with('/') {
+        // Absolute glob: strip leading slash to make it repo-relative
         without_dot.trim_start_matches('/').to_string()
     } else {
         format!("{}/{}", directory, without_dot.trim_start_matches('/'))
@@ -304,6 +340,9 @@ mod tests {
         match err {
             OverrideCompileError::InvalidGlob { glob, .. } => {
                 assert_eq!(glob, "src/[");
+            }
+            OverrideCompileError::GlobSetBuild { .. } => {
+                unreachable!("compile_exclude_globs with single glob cannot overflow")
             }
         }
     }
