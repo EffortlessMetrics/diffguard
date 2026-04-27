@@ -655,6 +655,18 @@ fn main() -> std::process::ExitCode {
     }
 }
 
+/// Parse CLI arguments, initialize logging, and dispatch to the appropriate command handler.
+///
+/// Returns an `i32` exit code suitable for conversion to `std::process::ExitCode`:
+/// - 0 = Pass (no violations)
+/// - 1 = Tool error (catastrophic failure)
+/// - 2 = Policy fail (violations found)
+/// - 3 = Warn-fail (only warnings, when `fail_on` includes `warn`)
+///
+/// # Errors
+///
+/// Propagates errors from individual command handlers (e.g., config parsing, file I/O).
+/// On error, `main()` converts this to exit code 1.
 fn run_with_args<I, T>(args: I) -> Result<i32>
 where
     I: IntoIterator<Item = T>,
