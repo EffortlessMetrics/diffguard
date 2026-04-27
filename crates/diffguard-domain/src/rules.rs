@@ -40,6 +40,10 @@ pub enum RuleCompileError {
     },
 }
 
+/// A rule compiled and ready for evaluation against input lines.
+///
+/// Produced by [`compile_rules`] from [`RuleConfig`] definitions.
+/// Contains pre-compiled regex patterns and glob sets for efficient matching.
 #[derive(Debug, Clone)]
 pub struct CompiledRule {
     pub id: String,
@@ -63,6 +67,13 @@ pub struct CompiledRule {
 }
 
 impl CompiledRule {
+    /// Determines whether this rule applies to a given file path and language.
+    ///
+    /// A rule applies if ALL of the following are true:
+    /// - The path matches the rule's include glob (if any)
+    /// - The path does NOT match the rule's exclude glob (if any)
+    /// - The language is in the rule's language set (if non-empty)
+    #[must_use]
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
         if self
             .include
@@ -190,6 +201,15 @@ fn compile_pattern_group(
     Ok(out)
 }
 
+/// Compiles path glob patterns into a [`GlobSet`] for efficient path matching.
+///
+/// Returns `Ok(None)` if the glob list is empty (matches all paths).
+///
+/// # Errors
+///
+/// Returns [`RuleCompileError::InvalidGlob`] if any glob pattern is malformed.
+/// Returns [`RuleCompileError::GlobSetBuild`] if the combined glob set exceeds
+/// the NFA size limit (typically when combining thousands of broad patterns).
 fn compile_globs(globs: &[String], rule_id: &str) -> Result<Option<GlobSet>, RuleCompileError> {
     if globs.is_empty() {
         return Ok(None);

@@ -173,15 +173,29 @@ fn directory_depth(directory: &str) -> usize {
 }
 
 fn path_in_directory(path: &str, directory: &str) -> bool {
+    // Empty directory matches all paths (root override applies everywhere)
     if directory.is_empty() {
         return true;
     }
+    // Exact match counts as being in the directory
     if path == directory {
         return true;
     }
+    // Must be a proper child: path starts with directory AND next char is '/'
+    // This prevents "src/lib" from matching under "src/liga" or similar.
+    // Using byte comparison avoids allocating for the char check.
     path.starts_with(directory) && path.as_bytes().get(directory.len()) == Some(&b'/')
 }
 
+/// Compiles exclude glob patterns into a [`GlobSet`] for efficient matching.
+///
+/// Returns `Ok(None)` if the glob list is empty (no exclusions).
+///
+/// # Errors
+///
+/// Returns [`OverrideCompileError::InvalidGlob`] if any glob pattern is malformed.
+/// Returns [`OverrideCompileError::GlobSetBuild`] if the combined glob set exceeds
+/// the NFA size limit (typically when combining thousands of broad patterns).
 fn compile_exclude_globs(
     directory: &str,
     rule_id: &str,
@@ -212,11 +226,18 @@ fn compile_exclude_globs(
     })?))
 }
 
+/// Scopes a user-provided glob pattern to a specific directory.
+///
+/// Handles three cases:
+/// - Glob already starts with `/` (absolute) — used as-is (stripping the leading `/`)
+/// - Directory is empty (root) — glob is used as-is
+/// - Otherwise — directory is prepended to the glob
 fn scope_glob_to_directory(directory: &str, glob: &str) -> String {
     let replaced = glob.replace('\\', "/");
     let without_dot = replaced.strip_prefix("./").unwrap_or(&replaced);
 
     if directory.is_empty() || without_dot.starts_with('/') {
+        // Absolute glob: strip leading slash to make it repo-relative
         without_dot.trim_start_matches('/').to_string()
     } else {
         format!("{}/{}", directory, without_dot.trim_start_matches('/'))
