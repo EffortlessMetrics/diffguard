@@ -296,7 +296,7 @@ fn handle_code_action_request(
                 connection,
                 request.id,
                 INVALID_PARAMS,
-                format!("invalid CodeActionParams: {}", err),
+                format!("invalid CodeActionParams: {err}"),
             );
         }
     };
@@ -317,13 +317,13 @@ fn build_code_actions(config: &ConfigFile, params: &CodeActionParams) -> Vec<Cod
 
         if seen_explain.insert(rule_id.clone()) {
             let command = LspCommand {
-                title: format!("Explain {}", rule_id),
+                title: format!("Explain {rule_id}"),
                 command: CMD_EXPLAIN_RULE.to_string(),
                 arguments: Some(vec![json!(rule_id.clone())]),
             };
 
             actions.push(CodeActionOrCommand::CodeAction(CodeAction {
-                title: format!("diffguard: Explain {}", rule_id),
+                title: format!("diffguard: Explain {rule_id}"),
                 kind: Some(CodeActionKind::QUICKFIX),
                 command: Some(command),
                 data: Some(json!({ "ruleId": rule_id })),
@@ -365,7 +365,7 @@ fn handle_execute_command_request(
                 connection,
                 request.id,
                 INVALID_PARAMS,
-                format!("invalid ExecuteCommandParams: {}", err),
+                format!("invalid ExecuteCommandParams: {err}"),
             );
         }
     };
@@ -435,7 +435,7 @@ fn handle_execute_command_request(
             let label = if rule_id.is_empty() {
                 "diffguard documentation".to_string()
             } else {
-                format!("diffguard rule {}", rule_id)
+                format!("diffguard rule {rule_id}")
             };
             show_message(
                 connection,
@@ -491,7 +491,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didOpen params: {}", err),
+                            &format!("invalid didOpen params: {err}"),
                         )?;
                         return Ok(false);
                     }
