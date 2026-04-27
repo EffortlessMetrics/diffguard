@@ -32,7 +32,7 @@
   },
   "$defs": {
     "Defaults": {
-      "description": "Default values applied to any rule field that is omitted in a config file.\n\nAllows configs to be concise — only fields that differ from the safe default\nneed to be specified explicitly.",
+      "description": "Default values applied to any rule field that is omitted in a config file.\n\nAllows configs to be concise \u2014 only fields that differ from the safe default\nneed to be specified explicitly.",
       "type": "object",
       "properties": {
         "base": {
@@ -277,7 +277,9 @@
       },
       "required": [
         "id",
-        "severity"
+        "severity",
+        "message",
+        "patterns"
       ]
     },
     "RuleTestCase": {
