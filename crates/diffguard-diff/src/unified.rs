@@ -2,10 +2,18 @@ use std::path::Path;
 
 use diffguard_types::Scope;
 
+/// Categorizes the type of change a line represents in a diff.
+///
+/// This enum is used in [`DiffLine::kind`] to indicate whether a line was
+/// added, changed (added after a removal in the same hunk), or deleted.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ChangeKind {
+    /// Line was added (prefixed with `+` in the diff).
     Added,
+    /// Line was added after a removal in the same hunk (indicates a replacement).
+    /// This is a subset of `Added` lines that directly follow at least one `-` line.
     Changed,
+    /// Line was removed (prefixed with `-` in the diff).
     Deleted,
 }
 
@@ -99,20 +107,39 @@ pub fn parse_rename_to(line: &str) -> Option<String> {
     parse_rename_path(rest)
 }
 
+/// Represents a single line extracted from a unified diff.
+///
+/// Each `DiffLine` corresponds to one line of content from the diff that
+/// matches the requested [`Scope`]. The `kind` field indicates whether
+/// the line was added, changed, or deleted.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiffLine {
+    /// Path to the file this line belongs to (using the new/destination path for renames).
     pub path: String,
+    /// 1-based line number in the new version of the file (for added/changed lines)
+    /// or the old version (for deleted lines).
     pub line: u32,
+    /// The actual line content, without the leading `+`, `-`, or ` ` prefix.
     pub content: String,
+    /// The type of change this line represents.
     pub kind: ChangeKind,
 }
 
+/// Aggregate statistics from parsing a diff.
+///
+/// These statistics count the number of unique files and total lines
+/// that were extracted from the diff. Both counts are stored as `u32`
+/// because they cannot exceed [`u32::MAX`] (4,294,967,295) — larger values
+/// would trigger an [`DiffParseError::Overflow`] error instead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DiffStats {
+    /// Number of unique file paths in the diff.
     pub files: u32,
+    /// Total number of diff lines extracted.
     pub lines: u32,
 }
 
+/// Errors that can occur when parsing a unified diff.
 #[derive(Debug, thiserror::Error)]
 pub enum DiffParseError {
     #[error("malformed hunk header: {0}")]
@@ -334,6 +361,10 @@ pub fn parse_unified_diff(
         files.insert(l.path.clone());
     }
 
+    // Use try_from instead of `as` casts to avoid silent truncation on 64-bit systems.
+    // On 64-bit usize has 64 bits but u32 has only 32 bits, so `as` would silently
+    // truncate values exceeding u32::MAX. The try_from returns an error instead,
+    // which we convert to a descriptive Overflow error. See issue #481.
     let stats = DiffStats {
         files: u32::try_from(files.len())
             .map_err(|_| DiffParseError::Overflow(format!("too many files (> {})", u32::MAX)))?,
