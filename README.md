@@ -3,6 +3,8 @@
 [![Crates.io](https://img.shields.io/crates/v/diffguard.svg)](https://crates.io/crates/diffguard)
 [![Documentation](https://docs.rs/diffguard/badge.svg)](https://docs.rs/diffguard)
 [![CI](https://github.com/effortlessmetrics/diffguard/actions/workflows/ci.yml/badge.svg)](https://github.com/effortlessmetrics/diffguard/actions/workflows/ci.yml)
+[![Coverage](https://github.com/EffortlessMetrics/diffguard/actions/workflows/coverage.yml/badge.svg?branch=main)](https://github.com/EffortlessMetrics/diffguard/actions/workflows/coverage.yml)
+[![Codecov](https://codecov.io/gh/EffortlessMetrics/diffguard/branch/main/graph/badge.svg)](https://codecov.io/gh/EffortlessMetrics/diffguard)
 [![License](https://img.shields.io/crates/l/diffguard.svg)](LICENSE-MIT)
 
 A diff-scoped governance linter: **rules applied to scoped lines** in a Git diff.
