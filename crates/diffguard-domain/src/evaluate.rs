@@ -574,12 +574,28 @@ fn trim_snippet(s: &str) -> String {
     out
 }
 
+/// Extracts a substring from `s` in the range `[start, end)`, with bounds clamping.
+///
+/// `end` is first clamped to `s.len()`, then `start` is clamped to the
+/// adjusted `end`. This guarantees `start <= end <= s.len()`, making the
+/// range always valid for direct indexing.
+///
+/// Returns the substring as a new `String`.
 fn safe_slice(s: &str, start: usize, end: usize) -> String {
+    // Clamp end first, then clamp start to the adjusted end.
+    // After these two lines: start <= end <= s.len(), so the range is always valid.
     let end = end.min(s.len());
     let start = start.min(end);
     s.get(start..end).unwrap_or("").to_string()
 }
 
+/// Converts a byte index to a 1-based column number (character count).
+///
+/// Returns `None` if `byte_idx` exceeds the string length, otherwise returns
+/// the number of characters in `s[..byte_idx]` plus one (to get 1-based column).
+///
+/// Uses direct slicing `s[..byte_idx]` because the guard on line 590 guarantees
+/// `byte_idx <= s.len()`, making the range always valid.
 fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
     if byte_idx > s.len() {
         return None;

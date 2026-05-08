@@ -475,7 +475,7 @@ mod tests {
             err
         );
 
-        let config = result.unwrap();
+        let config = result.expect("rust-quality preset should parse as valid TOML");
         assert!(
             !config.rule.is_empty(),
             "rust-quality preset should have rules"
@@ -491,7 +491,7 @@ mod tests {
         let err = result.as_ref().err();
         assert!(result.is_ok(), "Failed to parse secrets preset: {:?}", err);
 
-        let config = result.unwrap();
+        let config = result.expect("secrets preset should parse as valid TOML");
         assert!(!config.rule.is_empty(), "secrets preset should have rules");
         assert!(config.rule.iter().any(|r| r.id == "secrets.api_key"));
     }
@@ -507,7 +507,7 @@ mod tests {
             err
         );
 
-        let config = result.unwrap();
+        let config = result.expect("js-console preset should parse as valid TOML");
         assert!(
             !config.rule.is_empty(),
             "js-console preset should have rules"
@@ -527,7 +527,7 @@ mod tests {
             err
         );
 
-        let config = result.unwrap();
+        let config = result.expect("python-debug preset should parse as valid TOML");
         assert!(
             !config.rule.is_empty(),
             "python-debug preset should have rules"
