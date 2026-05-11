@@ -18,7 +18,7 @@ use diffguard_analytics::{
     normalize_trend_history, summarize_trend_history, trend_run_from_receipt,
 };
 use diffguard_core::{
-    CheckPlan, RuleMetadata, SensorReportContext, render_checkstyle_for_receipt,
+    CheckPlan, RuleMetadata, SensorReportContext, escape_md, render_checkstyle_for_receipt,
     render_csv_for_receipt, render_gitlab_quality_json, render_junit_for_receipt,
     render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
 };
@@ -1687,20 +1687,6 @@ fn render_finding_row_with_baseline(f: &Finding, is_baseline: bool) -> String {
         msg = msg,
         snippet = snippet
     )
-}
-
-/// Escapes special markdown characters in a string.
-fn escape_md(s: &str) -> String {
-    s.replace('|', "\\|")
-        .replace('`', "\\`")
-        .replace('#', "\\#")
-        .replace('*', "\\*")
-        .replace('_', "\\_")
-        .replace('[', "\\[")
-        .replace(']', "\\]")
-        .replace('>', "\\>")
-        .replace('\r', "\\r")
-        .replace('\n', "\\n")
 }
 
 /// Renders markdown output with baseline/new annotations.

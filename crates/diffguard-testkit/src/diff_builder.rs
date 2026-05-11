@@ -29,7 +29,7 @@
 //! assert!(diff.contains("+fn new_function() {}"));
 //! ```
 
-use crate::arb::{MAX_FILES, MAX_HUNKS_PER_FILE, MAX_LINE_LENGTH, MAX_LINES_PER_HUNK};
+use crate::arb::{MAX_FILES, MAX_HUNKS_PER_FILE, MAX_LINES_PER_HUNK, MAX_LINE_LENGTH};
 
 /// A builder for constructing unified diff strings.
 #[derive(Debug, Clone, Default)]
@@ -75,7 +75,7 @@ impl DiffBuilder {
     pub fn build(self) -> String {
         self.files
             .iter()
-            .map(|f| f.build())
+            .map(FileBuilder::build)
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -332,6 +332,12 @@ pub struct HunkBuilder {
     lines: Vec<HunkLine>,
 }
 
+/// Represents a single line within a hunk's diff output.
+///
+/// Each variant corresponds to a line type in unified diff format:
+/// - `Context`: Unchanged line (prefixed with single space in diff output)
+/// - `Add`: Added line (prefixed with `+` in diff output)
+/// - `Remove`: Removed line (prefixed with `-` in diff output)
 #[derive(Debug, Clone)]
 enum HunkLine {
     Context(String),

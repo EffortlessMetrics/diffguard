@@ -1,0 +1,16 @@
+---
+source: crates/diffguard-diff/tests/snapshot_tests.rs
+expression: snapshot
+---
+Added:
+DiffLine { path: "src/lib.rs", line: 2, content: "fn b() { 2 }", kind: Changed }
+DiffLine { path: "src/lib.rs", line: 4, content: "fn d() {}", kind: Added }
+DiffStats { files: 1, lines: 2 }
+
+Changed:
+DiffLine { path: "src/lib.rs", line: 2, content: "fn b() { 2 }", kind: Changed }
+DiffStats { files: 1, lines: 1 }
+
+Deleted:
+DiffLine { path: "src/lib.rs", line: 2, content: "fn b() {}", kind: Deleted }
+DiffStats { files: 1, lines: 1 }
