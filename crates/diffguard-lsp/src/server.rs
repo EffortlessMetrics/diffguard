@@ -1153,7 +1153,7 @@ mod tests {
     #[test]
     fn uri_to_file_path_returns_none_for_malformed_uri() {
         // A scheme without authority is not a valid file URL.
-        let uri: Uri = parse_uri("http://example.com/foo.rs");
+        let uri: Uri = parse_uri("https://example.com/foo.rs");
         assert!(uri_to_file_path(&uri).is_none());
     }
 
@@ -1432,7 +1432,7 @@ mod tests {
     fn is_config_uri_returns_false_when_uri_cannot_be_parsed() {
         let mut state = empty_state();
         state.config_path = Some(PathBuf::from("/tmp/diffguard.toml"));
-        let uri = parse_uri("http://example.com/foo.toml");
+        let uri = parse_uri("https://example.com/foo.toml");
         assert!(!is_config_uri(&state, &uri));
     }
 
@@ -1789,7 +1789,7 @@ mod tests {
     fn handle_notification_did_open_with_non_file_uri_skips_indexing() {
         let (_client, server) = Connection::memory();
         let mut state = empty_state();
-        let uri = parse_uri("http://example.com/foo.rs");
+        let uri = parse_uri("https://example.com/foo.rs");
         let params = DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
                 uri,
