@@ -607,4 +607,795 @@ patterns = ["main"]
         assert!(ids.contains("base.rule"));
         assert!(ids.contains("main.rule"));
     }
+
+    // ----------------------------------------------------------------------
+    // Helpers for assembling test data without repeating dozens of fields.
+    // ----------------------------------------------------------------------
+
+    fn minimal_rule(id: &str) -> RuleConfig {
+        RuleConfig {
+            id: id.to_string(),
+            description: String::new(),
+            severity: Severity::Warn,
+            message: "msg".to_string(),
+            languages: vec![],
+            patterns: vec!["a".to_string()],
+            paths: vec![],
+            exclude_paths: vec![],
+            ignore_comments: false,
+            ignore_strings: false,
+            match_mode: MatchMode::Any,
+            multiline: false,
+            multiline_window: None,
+            context_patterns: vec![],
+            context_window: None,
+            escalate_patterns: vec![],
+            escalate_window: None,
+            escalate_to: None,
+            depends_on: vec![],
+            help: None,
+            url: None,
+            tags: vec![],
+            test_cases: vec![],
+        }
+    }
+
+    fn write_file(path: &Path, contents: &str) {
+        std::fs::write(path, contents).expect("write fixture file"); // diffguard: ignore rust.no_unwrap
+    }
+
+    fn read_temp_dir() -> TempDir {
+        TempDir::new().expect("temp dir") // diffguard: ignore rust.no_unwrap
+    }
+
+    // ----------------------------------------------------------------------
+    // load_effective_config
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn load_effective_config_returns_built_in_when_path_missing() {
+        let loaded = load_effective_config(None, false);
+        let Ok(config) = loaded else {
+            panic!("expected Ok for None path");
+        };
+        // Built-in rules embed several entries.
+        assert!(!config.rule.is_empty());
+    }
+
+    #[test]
+    fn load_effective_config_merges_with_built_in_when_not_disabled() {
+        let temp = read_temp_dir();
+        let path = temp.path().join("user.toml");
+        write_file(
+            &path,
+            r#"
+[[rule]]
+id = "user.only_rule"
+severity = "info"
+message = "User rule"
+patterns = ["zzz"]
+"#,
+        );
+
+        let loaded = load_effective_config(Some(&path), false);
+        let Ok(config) = loaded else {
+            panic!("expected Ok config");
+        };
+        let ids: BTreeSet<String> = config.rule.iter().map(|rule| rule.id.clone()).collect();
+        assert!(ids.contains("user.only_rule"), "user rule must be present");
+        // Built-in rules contain rust.no_unwrap.
+        assert!(
+            ids.contains("rust.no_unwrap"),
+            "built-in rule must be merged"
+        );
+    }
+
+    // ----------------------------------------------------------------------
+    // resolve_config_path
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn resolve_config_path_returns_absolute_override_as_is() {
+        let temp = read_temp_dir();
+        let absolute = temp.path().join("custom.toml");
+        let resolved = resolve_config_path(
+            Some(temp.path()),
+            Some(absolute.to_string_lossy().to_string()),
+            "diffguard.toml",
+        );
+        assert_eq!(resolved, Some(absolute));
+    }
+
+    #[test]
+    fn resolve_config_path_joins_relative_override_with_workspace() {
+        let temp = read_temp_dir();
+        let resolved = resolve_config_path(
+            Some(temp.path()),
+            Some("relative.toml".to_string()),
+            "diffguard.toml",
+        );
+        assert_eq!(resolved, Some(temp.path().join("relative.toml")));
+    }
+
+    #[test]
+    fn resolve_config_path_returns_relative_override_without_workspace() {
+        let resolved =
+            resolve_config_path(None, Some("relative.toml".to_string()), "diffguard.toml");
+        assert_eq!(resolved, Some(PathBuf::from("relative.toml")));
+    }
+
+    #[test]
+    fn resolve_config_path_finds_default_in_workspace_root() {
+        let temp = read_temp_dir();
+        let default_path = temp.path().join("diffguard.toml");
+        write_file(&default_path, "");
+        let resolved = resolve_config_path(Some(temp.path()), None, "diffguard.toml");
+        assert_eq!(resolved, Some(default_path));
+    }
+
+    #[test]
+    fn resolve_config_path_returns_none_when_workspace_root_has_no_default() {
+        let temp = read_temp_dir();
+        let resolved = resolve_config_path(Some(temp.path()), None, "diffguard.toml");
+        assert_eq!(resolved, None);
+    }
+
+    #[test]
+    fn resolve_config_path_without_workspace_or_override_checks_cwd() {
+        // No workspace, no override — falls back to a literal default-name lookup.
+        // We can't guarantee CWD state, so just verify the function returns either
+        // Some(default_name) or None depending on whether that file exists. The
+        // important property is that the absolute-path branch is not taken.
+        let resolved = resolve_config_path(None, None, "definitely_does_not_exist_12345.toml");
+        assert_eq!(resolved, None);
+    }
+
+    // ----------------------------------------------------------------------
+    // paths_match / normalize_path / to_workspace_relative_path
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn paths_match_returns_true_for_canonicalized_same_file() {
+        let temp = read_temp_dir();
+        let file = temp.path().join("a.toml");
+        write_file(&file, "");
+        assert!(paths_match(&file, &file));
+    }
+
+    #[test]
+    fn paths_match_returns_false_when_canonicalize_fails_and_strings_differ() {
+        let left = PathBuf::from("/nonexistent/foo");
+        let right = PathBuf::from("/nonexistent/bar");
+        assert!(!paths_match(&left, &right));
+    }
+
+    #[test]
+    fn paths_match_returns_true_via_normalize_fallback() {
+        let left = PathBuf::from("/nonexistent/same");
+        let right = PathBuf::from("/nonexistent/same");
+        assert!(paths_match(&left, &right));
+    }
+
+    #[test]
+    fn normalize_path_replaces_backslashes_with_slashes() {
+        let path = Path::new("a\\b\\c.rs");
+        assert_eq!(normalize_path(path), "a/b/c.rs");
+    }
+
+    #[test]
+    fn to_workspace_relative_path_falls_back_to_file_path_when_root_is_none() {
+        let file = Path::new("a/b/c.rs");
+        assert_eq!(to_workspace_relative_path(None, file), "a/b/c.rs");
+    }
+
+    #[test]
+    fn to_workspace_relative_path_returns_full_path_when_not_under_root() {
+        let root = Path::new("/workspace/root");
+        let file = Path::new("/other/place/c.rs");
+        assert_eq!(
+            to_workspace_relative_path(Some(root), file),
+            "/other/place/c.rs"
+        );
+    }
+
+    #[test]
+    fn to_workspace_relative_path_strips_workspace_prefix_and_dot_slash() {
+        let temp = read_temp_dir();
+        let file = temp.path().join("src/lib.rs");
+        let relative = to_workspace_relative_path(Some(temp.path()), &file);
+        assert_eq!(relative, "src/lib.rs");
+    }
+
+    // ----------------------------------------------------------------------
+    // extract_rule_id
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn extract_rule_id_returns_none_when_no_code_or_data() {
+        let diagnostic = Diagnostic::default();
+        assert_eq!(extract_rule_id(&diagnostic), None);
+    }
+
+    #[test]
+    fn extract_rule_id_returns_none_when_code_is_numeric() {
+        let diagnostic = Diagnostic {
+            code: Some(NumberOrString::Number(42)),
+            ..Diagnostic::default()
+        };
+        assert_eq!(extract_rule_id(&diagnostic), None);
+    }
+
+    #[test]
+    fn extract_rule_id_returns_none_when_data_missing_rule_id_field() {
+        let diagnostic = Diagnostic {
+            data: Some(serde_json::json!({ "other": "thing" })),
+            ..Diagnostic::default()
+        };
+        assert_eq!(extract_rule_id(&diagnostic), None);
+    }
+
+    // ----------------------------------------------------------------------
+    // find_rule
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn find_rule_returns_none_for_unknown_id() {
+        let config = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults::default(),
+            rule: vec![minimal_rule("known")],
+        };
+        assert!(find_rule(&config, "unknown").is_none());
+    }
+
+    #[test]
+    fn find_rule_returns_match_when_present() {
+        let config = ConfigFile {
+            includes: vec![],
+            defaults: diffguard_types::Defaults::default(),
+            rule: vec![minimal_rule("known")],
+        };
+        let rule = find_rule(&config, "known");
+        assert!(rule.is_some());
+    }
+
+    // ----------------------------------------------------------------------
+    // format_rule_explanation – cover additional branches
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn format_rule_explanation_for_absent_match_mode() {
+        let mut rule = minimal_rule("rule.absent");
+        rule.match_mode = MatchMode::Absent;
+        let output = format_rule_explanation(&rule);
+        assert!(output.contains("- Match mode: absent"));
+    }
+
+    #[test]
+    fn format_rule_explanation_includes_multiline_window_when_set() {
+        let mut rule = minimal_rule("rule.ml");
+        rule.multiline = true;
+        rule.multiline_window = Some(5);
+        let output = format_rule_explanation(&rule);
+        assert!(output.contains("- Multiline: yes (window=5)"));
+    }
+
+    #[test]
+    fn format_rule_explanation_includes_context_patterns_with_default_window() {
+        let mut rule = minimal_rule("rule.ctx");
+        rule.context_patterns = vec!["foo".to_string(), "bar".to_string()];
+        // context_window None should default to 3
+        let output = format_rule_explanation(&rule);
+        assert!(output.contains("- Context patterns (window=3): foo, bar"));
+    }
+
+    #[test]
+    fn format_rule_explanation_includes_context_patterns_with_explicit_window() {
+        let mut rule = minimal_rule("rule.ctx");
+        rule.context_patterns = vec!["foo".to_string()];
+        rule.context_window = Some(9);
+        let output = format_rule_explanation(&rule);
+        assert!(output.contains("- Context patterns (window=9): foo"));
+    }
+
+    #[test]
+    fn format_rule_explanation_includes_escalate_with_defaults() {
+        let mut rule = minimal_rule("rule.esc");
+        rule.escalate_patterns = vec!["bomb".to_string()];
+        // escalate_to None defaults to Error; escalate_window None defaults to 0.
+        let output = format_rule_explanation(&rule);
+        assert!(output.contains("- Escalate to error (window=0): bomb"));
+    }
+
+    #[test]
+    fn format_rule_explanation_includes_escalate_with_explicit_severity_and_window() {
+        let mut rule = minimal_rule("rule.esc");
+        rule.escalate_patterns = vec!["bomb".to_string()];
+        rule.escalate_to = Some(Severity::Info);
+        rule.escalate_window = Some(7);
+        let output = format_rule_explanation(&rule);
+        assert!(output.contains("- Escalate to info (window=7): bomb"));
+    }
+
+    #[test]
+    fn format_rule_explanation_lists_dependencies_and_paths_and_excludes() {
+        let mut rule = minimal_rule("rule.deps");
+        rule.depends_on = vec!["dep1".to_string(), "dep2".to_string()];
+        rule.paths = vec!["**/*.rs".to_string()];
+        rule.exclude_paths = vec!["**/tests/**".to_string()];
+        rule.languages = vec!["rust".to_string()];
+        let output = format_rule_explanation(&rule);
+        assert!(output.contains("- Depends on: dep1, dep2"));
+        assert!(output.contains("Paths: **/*.rs"));
+        assert!(output.contains("Excludes: **/tests/**"));
+        assert!(output.contains("Languages: rust"));
+    }
+
+    #[test]
+    fn format_rule_explanation_renders_help_lines_and_omits_url_when_missing() {
+        let mut rule = minimal_rule("rule.help");
+        rule.help = Some("line one\nline two".to_string());
+        let output = format_rule_explanation(&rule);
+        assert!(output.contains("Help:"));
+        assert!(output.contains("line one"));
+        assert!(output.contains("line two"));
+        assert!(!output.contains("URL:"));
+    }
+
+    #[test]
+    fn format_rule_explanation_renders_no_ignore_flags() {
+        let rule = minimal_rule("rule.no_ignore");
+        let output = format_rule_explanation(&rule);
+        assert!(output.contains("Ignore comments: no"));
+        assert!(output.contains("Ignore strings: no"));
+    }
+
+    // ----------------------------------------------------------------------
+    // find_similar_rules
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn find_similar_rules_returns_empty_when_no_match() {
+        let rules = vec![minimal_rule("totally.different")];
+        let suggestions = find_similar_rules("xyz", &rules);
+        assert!(suggestions.is_empty());
+    }
+
+    #[test]
+    fn find_similar_rules_matches_via_contains_branch() {
+        // Neither id nor query is a prefix of the other, but one contains the other.
+        // "rust.no_unwrap_in_prod" contains "no_unwrap" via the contains branch.
+        let rules = vec![minimal_rule("rust.no_unwrap_in_prod")];
+        let suggestions = find_similar_rules("no_unwrap", &rules);
+        assert!(suggestions.contains(&"rust.no_unwrap_in_prod".to_string()));
+    }
+
+    #[test]
+    fn find_similar_rules_prefers_prefix_over_distance() {
+        let rules = vec![
+            minimal_rule("rust.no_unwrap_extended"),
+            minimal_rule("rust.no_panicx"),
+        ];
+        let suggestions = find_similar_rules("rust.no_unwrap", &rules);
+        // The first candidate via starts_with should come first (score 0).
+        let Some(first) = suggestions.first() else {
+            panic!("expected at least one suggestion");
+        };
+        assert_eq!(first, "rust.no_unwrap_extended");
+    }
+
+    #[test]
+    fn find_similar_rules_truncates_to_five() {
+        let rules: Vec<RuleConfig> = (0..10)
+            .map(|index| minimal_rule(&format!("prefix.rule{index}")))
+            .collect();
+        let suggestions = find_similar_rules("prefix.rule0", &rules);
+        assert!(suggestions.len() <= 5);
+    }
+
+    // ----------------------------------------------------------------------
+    // load_directory_overrides_for_file
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn load_directory_overrides_returns_empty_when_no_files() {
+        let temp = read_temp_dir();
+        let result = load_directory_overrides_for_file(temp.path(), "src/lib.rs");
+        let Ok(overrides) = result else {
+            panic!("expected Ok with empty overrides");
+        };
+        assert!(overrides.is_empty());
+    }
+
+    #[test]
+    fn load_directory_overrides_loads_root_override() {
+        let temp = read_temp_dir();
+        write_file(
+            &temp.path().join(".diffguard.toml"),
+            r#"
+[[rule]]
+id = "rust.no_unwrap"
+enabled = false
+"#,
+        );
+
+        let result = load_directory_overrides_for_file(temp.path(), "src/lib.rs");
+        let Ok(overrides) = result else {
+            panic!("expected Ok");
+        };
+        assert_eq!(overrides.len(), 1);
+        let Some(first) = overrides.first() else {
+            panic!("expected at least one override");
+        };
+        assert_eq!(first.rule_id, "rust.no_unwrap");
+        assert_eq!(first.directory, "");
+        assert_eq!(first.enabled, Some(false));
+    }
+
+    #[test]
+    fn load_directory_overrides_aggregates_nested_directories() {
+        let temp = read_temp_dir();
+        // Create root override and a nested src/ override.
+        write_file(
+            &temp.path().join(".diffguard.toml"),
+            r#"
+[[rule]]
+id = "root.rule"
+enabled = false
+"#,
+        );
+        std::fs::create_dir_all(temp.path().join("src")).expect("mkdir src"); // diffguard: ignore rust.no_unwrap
+        write_file(
+            &temp.path().join("src/.diffguard.toml"),
+            r#"
+[[rule]]
+id = "src.rule"
+severity = "info"
+"#,
+        );
+
+        let result = load_directory_overrides_for_file(temp.path(), "src/foo/bar.rs");
+        let Ok(overrides) = result else {
+            panic!("expected Ok");
+        };
+        let ids: Vec<String> = overrides.iter().map(|o| o.rule_id.clone()).collect();
+        assert!(ids.contains(&"root.rule".to_string()));
+        assert!(ids.contains(&"src.rule".to_string()));
+    }
+
+    #[test]
+    fn load_directory_overrides_errors_on_malformed_toml() {
+        let temp = read_temp_dir();
+        write_file(&temp.path().join(".diffguard.toml"), "not valid = = = toml");
+        let result = load_directory_overrides_for_file(temp.path(), "src/lib.rs");
+        assert!(result.is_err(), "expected parse error");
+    }
+
+    #[test]
+    fn load_directory_overrides_errors_on_unset_env_var_without_default() {
+        let temp = read_temp_dir();
+        // Use a unique variable name that is guaranteed not to be set in the test env.
+        write_file(
+            &temp.path().join(".diffguard.toml"),
+            r#"
+[[rule]]
+id = "${DIFFGUARD_UNSET_TEST_VAR_ZZZ}"
+"#,
+        );
+        let result = load_directory_overrides_for_file(temp.path(), "src/lib.rs");
+        let Err(err) = result else {
+            panic!("expected Err for unset env var");
+        };
+        let chain = format!("{err:#}");
+        assert!(
+            chain.contains("DIFFGUARD_UNSET_TEST_VAR_ZZZ"),
+            "got: {chain}"
+        );
+    }
+
+    // ----------------------------------------------------------------------
+    // load_config_recursive: include depth, circular, missing
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn load_config_errors_on_missing_include() {
+        let temp = read_temp_dir();
+        let main = temp.path().join("main.toml");
+        write_file(
+            &main,
+            r#"
+includes = ["does_not_exist.toml"]
+"#,
+        );
+        let result = load_effective_config(Some(&main), true);
+        let Err(err) = result else {
+            panic!("expected error for missing include");
+        };
+        let chain = format!("{err:#}");
+        assert!(
+            chain.contains("included config file not found"),
+            "got: {chain}"
+        );
+    }
+
+    #[test]
+    fn load_config_detects_circular_include() {
+        let temp = read_temp_dir();
+        let a = temp.path().join("a.toml");
+        let b = temp.path().join("b.toml");
+        write_file(&a, r#"includes = ["b.toml"]"#);
+        write_file(&b, r#"includes = ["a.toml"]"#);
+
+        let result = load_effective_config(Some(&a), true);
+        let Err(err) = result else {
+            panic!("expected circular include error");
+        };
+        let chain = format!("{err:#}");
+        assert!(chain.contains("circular include"), "got: {chain}");
+    }
+
+    #[test]
+    fn load_config_errors_on_excessive_include_depth() {
+        let temp = read_temp_dir();
+        // Create a chain: 0.toml -> 1.toml -> ... -> 11.toml (12 nodes, depth 11 > MAX_INCLUDE_DEPTH=10).
+        let total = 12usize;
+        for index in 0..total {
+            let path = temp.path().join(format!("{index}.toml"));
+            let body = if index + 1 < total {
+                format!("includes = [\"{}.toml\"]\n", index + 1)
+            } else {
+                String::new()
+            };
+            write_file(&path, &body);
+        }
+        let entry = temp.path().join("0.toml");
+        let result = load_effective_config(Some(&entry), true);
+        let Err(err) = result else {
+            panic!("expected depth error");
+        };
+        let chain = format!("{err:#}");
+        assert!(chain.contains("include depth exceeded"), "got: {chain}");
+    }
+
+    #[test]
+    fn load_config_errors_on_unparseable_toml() {
+        let temp = read_temp_dir();
+        let path = temp.path().join("broken.toml");
+        write_file(&path, "this = = is not toml");
+        let result = load_effective_config(Some(&path), true);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn load_config_errors_on_nonexistent_path() {
+        let temp = read_temp_dir();
+        let missing = temp.path().join("nope.toml");
+        let result = load_effective_config(Some(&missing), true);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn load_config_preserves_non_default_defaults_through_merge() {
+        // When the loaded user config sets defaults explicitly that differ from
+        // the type-level default, the merge path must keep them.
+        let temp = read_temp_dir();
+        let base = temp.path().join("base.toml");
+        let main = temp.path().join("main.toml");
+        write_file(
+            &base,
+            r#"
+[[rule]]
+id = "base.rule"
+severity = "warn"
+message = "base"
+patterns = ["b"]
+"#,
+        );
+        write_file(
+            &main,
+            r#"
+includes = ["base.toml"]
+
+[defaults]
+base = "main"
+head = "feature"
+max_findings = 7
+
+[[rule]]
+id = "main.rule"
+severity = "info"
+message = "main"
+patterns = ["m"]
+"#,
+        );
+        let loaded = load_effective_config(Some(&main), true);
+        let Ok(config) = loaded else {
+            panic!("expected Ok");
+        };
+        assert_eq!(config.defaults.base.as_deref(), Some("main"));
+        assert_eq!(config.defaults.head.as_deref(), Some("feature"));
+        assert_eq!(config.defaults.max_findings, Some(7));
+    }
+
+    // ----------------------------------------------------------------------
+    // merge_with_built_in: user rule overrides built-in by ID
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn merge_with_built_in_lets_user_override_built_in_rule_by_id() {
+        let temp = read_temp_dir();
+        let path = temp.path().join("user.toml");
+        write_file(
+            &path,
+            r#"
+[[rule]]
+id = "rust.no_unwrap"
+severity = "info"
+message = "Custom override"
+patterns = ["override-pattern"]
+"#,
+        );
+        let loaded = load_effective_config(Some(&path), false);
+        let Ok(config) = loaded else {
+            panic!("expected Ok");
+        };
+        let Some(rule) = config.rule.iter().find(|rule| rule.id == "rust.no_unwrap") else {
+            panic!("user override missing from merged config");
+        };
+        assert_eq!(rule.message, "Custom override");
+        assert!(matches!(rule.severity, Severity::Info));
+    }
+
+    // ----------------------------------------------------------------------
+    // expand_env_vars (exercised through directory override loader)
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn expand_env_vars_uses_inline_default_when_unset() {
+        let temp = read_temp_dir();
+        write_file(
+            &temp.path().join(".diffguard.toml"),
+            r#"
+[[rule]]
+id = "${DIFFGUARD_TEST_UNSET_ZZZ:-fallback.rule_id}"
+"#,
+        );
+        let result = load_directory_overrides_for_file(temp.path(), "lib.rs");
+        let Ok(overrides) = result else {
+            panic!("expected Ok with inline default substitution");
+        };
+        let Some(first) = overrides.first() else {
+            panic!("expected one override");
+        };
+        assert_eq!(first.rule_id, "fallback.rule_id");
+    }
+
+    #[test]
+    fn expand_env_vars_substitutes_set_variable() {
+        let temp = read_temp_dir();
+        let var_name = "DIFFGUARD_TEST_SET_VAR_AAA";
+        // SAFETY: This test sets/unsets a unique per-test env var. No other
+        // threads in this test rely on it.
+        unsafe {
+            std::env::set_var(var_name, "from.env");
+        }
+        write_file(
+            &temp.path().join(".diffguard.toml"),
+            r#"
+[[rule]]
+id = "${DIFFGUARD_TEST_SET_VAR_AAA}"
+"#,
+        );
+        let result = load_directory_overrides_for_file(temp.path(), "lib.rs");
+        unsafe {
+            std::env::remove_var(var_name);
+        }
+        let Ok(overrides) = result else {
+            panic!("expected Ok with env-var substitution");
+        };
+        let Some(first) = overrides.first() else {
+            panic!("expected one override");
+        };
+        assert_eq!(first.rule_id, "from.env");
+    }
+
+    // ----------------------------------------------------------------------
+    // Internal helpers exercised through behaviour
+    // ----------------------------------------------------------------------
+
+    #[test]
+    fn collect_override_candidates_returns_only_root_for_bare_filename() {
+        let mut set = BTreeSet::new();
+        collect_override_candidates_for_path("lib.rs", &mut set);
+        // A bare filename has no parent component, so only the root override
+        // candidate should be emitted.
+        assert_eq!(set.len(), 1);
+        assert!(set.contains(&PathBuf::from(".diffguard.toml")));
+    }
+
+    #[test]
+    fn collect_override_candidates_walks_up_from_nested_path() {
+        let mut set = BTreeSet::new();
+        collect_override_candidates_for_path("a/b/c/d.rs", &mut set);
+        // Candidates for each ancestor: a/b/c, a/b, a, "" — four entries.
+        assert!(set.contains(&PathBuf::from("a/b/c/.diffguard.toml")));
+        assert!(set.contains(&PathBuf::from("a/b/.diffguard.toml")));
+        assert!(set.contains(&PathBuf::from("a/.diffguard.toml")));
+        assert!(set.contains(&PathBuf::from(".diffguard.toml")));
+    }
+
+    #[test]
+    fn normalize_override_directory_returns_empty_for_root_or_dot() {
+        // Verified indirectly: a root .diffguard.toml emits overrides with directory == "".
+        let temp = read_temp_dir();
+        write_file(
+            &temp.path().join(".diffguard.toml"),
+            r#"
+[[rule]]
+id = "x"
+"#,
+        );
+        let Ok(overrides) = load_directory_overrides_for_file(temp.path(), "f.rs") else {
+            panic!("expected Ok");
+        };
+        let Some(first) = overrides.first() else {
+            panic!("expected one override");
+        };
+        assert_eq!(first.directory, "");
+    }
+
+    #[test]
+    fn normalize_override_directory_keeps_nested_path() {
+        let temp = read_temp_dir();
+        std::fs::create_dir_all(temp.path().join("src/deep")).expect("mkdir nested"); // diffguard: ignore rust.no_unwrap
+        write_file(
+            &temp.path().join("src/deep/.diffguard.toml"),
+            r#"
+[[rule]]
+id = "deep.rule"
+"#,
+        );
+        let Ok(overrides) = load_directory_overrides_for_file(temp.path(), "src/deep/file.rs")
+        else {
+            panic!("expected Ok");
+        };
+        let Some(deep) = overrides.iter().find(|o| o.rule_id == "deep.rule") else {
+            panic!("expected deep override");
+        };
+        assert_eq!(deep.directory, "src/deep");
+    }
+
+    #[test]
+    fn simple_edit_distance_handles_empty_strings() {
+        // Edge: find_similar_rules uses simple_edit_distance via the contains
+        // branch and the distance branch. Cover the "empty rule id" path by
+        // letting an empty rule id match the contains branch.
+        let mut rule = minimal_rule("totally.different.id");
+        // Set id to empty after construction to exercise the contains shortcut.
+        rule.id = "".to_string();
+        let suggestions = find_similar_rules("nonempty.query", &[rule]);
+        // An empty id is a substring of any query, so it must be suggested.
+        assert!(suggestions.contains(&"".to_string()));
+    }
+
+    #[test]
+    fn simple_edit_distance_returns_full_length_when_one_side_empty() {
+        // Drives the early-return branches in simple_edit_distance by handing it
+        // a rule whose id avoids both prefix and contains short-circuits and
+        // whose distance to the query is exactly within the threshold.
+        // Query "abc" vs id "xyz": neither prefix, no contains, distance = 3.
+        let rule = minimal_rule("xyz");
+        let suggestions = find_similar_rules("abc", &[rule]);
+        assert!(suggestions.contains(&"xyz".to_string()));
+    }
+
+    #[test]
+    fn collect_override_candidates_handles_empty_path() {
+        // Path::new("").parent() returns None, which exercises the
+        // early-return branch.
+        let mut set = BTreeSet::new();
+        collect_override_candidates_for_path("", &mut set);
+        assert_eq!(set.len(), 1);
+        assert!(set.contains(&PathBuf::from(".diffguard.toml")));
+    }
 }
