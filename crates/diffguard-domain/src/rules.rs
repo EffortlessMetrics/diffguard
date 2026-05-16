@@ -6,6 +6,10 @@ use regex::Regex;
 
 use diffguard_types::{MatchMode, RuleConfig, Severity};
 
+/// Errors that can occur when compiling rule configurations into compiled rules.
+///
+/// These errors indicate problems with rule definitions that prevent
+/// the rule from being used for evaluation.
 #[derive(Debug, thiserror::Error)]
 pub enum RuleCompileError {
     #[error("rule '{rule_id}' has no patterns")]
@@ -32,6 +36,11 @@ pub enum RuleCompileError {
     UnknownDependency { rule_id: String, dependency: String },
 }
 
+/// A compiled rule ready for evaluation.
+///
+/// This is the runtime representation of a rule configuration, with all
+/// patterns pre-compiled into regexes and glob sets for efficient matching.
+/// Created by [`compile_rules()`].
 #[derive(Debug, Clone)]
 pub struct CompiledRule {
     pub id: String,
@@ -55,6 +64,14 @@ pub struct CompiledRule {
 }
 
 impl CompiledRule {
+    /// Checks whether this rule applies to a given file path and language.
+    ///
+    /// A rule applies if ALL of the following are true:
+    /// - The path matches the rule's include glob (if specified)
+    /// - The path does NOT match the rule's exclude glob (if specified)
+    /// - The language is in the rule's language set (if specified)
+    ///
+    /// When `language` is `None`, the language check is skipped (only path matters).
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
         if self
             .include
@@ -166,6 +183,11 @@ pub fn compile_rules(configs: &[RuleConfig]) -> Result<Vec<CompiledRule>, RuleCo
     Ok(out)
 }
 
+/// Compiles a list of regex pattern strings into compiled Regex objects.
+///
+/// # Errors
+///
+/// Returns [`RuleCompileError::InvalidRegex`] if any pattern string is not a valid regex.
 fn compile_pattern_group(
     rule_id: &str,
     patterns: &[String],
@@ -182,6 +204,13 @@ fn compile_pattern_group(
     Ok(out)
 }
 
+/// Compiles a list of glob patterns into a [`GlobSet`].
+///
+/// Returns `None` if the input list is empty (no filtering).
+///
+/// # Errors
+///
+/// Returns [`RuleCompileError::InvalidGlob`] if any glob pattern is malformed.
 fn compile_globs(globs: &[String], rule_id: &str) -> Result<Option<GlobSet>, RuleCompileError> {
     if globs.is_empty() {
         return Ok(None);

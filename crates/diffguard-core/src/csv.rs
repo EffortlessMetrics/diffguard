@@ -103,7 +103,7 @@ fn escape_csv_field(s: &str) -> String {
 
     if needs_quoting {
         let escaped = s.replace('"', "\"\"");
-        format!("\"{}\"", escaped)
+        format!("\"{escaped}\"")
     } else {
         s.to_string()
     }
