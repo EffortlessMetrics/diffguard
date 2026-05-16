@@ -383,6 +383,197 @@ mod tests {
     }
 
     #[test]
+    fn normalize_baseline_fills_missing_schema() {
+        let baseline = FalsePositiveBaseline {
+            schema: String::new(),
+            entries: vec![],
+        };
+        let normalized = normalize_false_positive_baseline(baseline);
+        assert_eq!(normalized.schema, FALSE_POSITIVE_BASELINE_SCHEMA_V1);
+    }
+
+    #[test]
+    fn normalize_baseline_dedupes_by_fingerprint() {
+        let baseline = FalsePositiveBaseline {
+            schema: FALSE_POSITIVE_BASELINE_SCHEMA_V1.to_string(),
+            entries: vec![
+                FalsePositiveEntry {
+                    fingerprint: "fp-1".to_string(),
+                    rule_id: "rule.a".to_string(),
+                    path: "a.rs".to_string(),
+                    line: 1,
+                    note: None,
+                },
+                FalsePositiveEntry {
+                    fingerprint: "fp-1".to_string(),
+                    rule_id: "rule.a".to_string(),
+                    path: "a.rs".to_string(),
+                    line: 1,
+                    note: None,
+                },
+                FalsePositiveEntry {
+                    fingerprint: "fp-2".to_string(),
+                    rule_id: "rule.b".to_string(),
+                    path: "b.rs".to_string(),
+                    line: 2,
+                    note: None,
+                },
+            ],
+        };
+        let normalized = normalize_false_positive_baseline(baseline);
+        assert_eq!(normalized.entries.len(), 2);
+        assert_eq!(normalized.entries[0].fingerprint, "fp-1");
+        assert_eq!(normalized.entries[1].fingerprint, "fp-2");
+    }
+
+    #[test]
+    fn merge_baseline_appends_base_only_fingerprints() {
+        // Covers the `seen.insert(...)` true branch that pushes a base entry
+        // not present in `incoming`.
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "only-in-base".to_string(),
+            rule_id: "rule.x".to_string(),
+            path: "x.rs".to_string(),
+            line: 10,
+            note: Some("kept".to_string()),
+        });
+
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "only-in-incoming".to_string(),
+            rule_id: "rule.y".to_string(),
+            path: "y.rs".to_string(),
+            line: 20,
+            note: None,
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+        assert_eq!(merged.entries.len(), 2);
+        let base_entry = merged
+            .entries
+            .iter()
+            .find(|e| e.fingerprint == "only-in-base")
+            .expect("base-only entry present");
+        assert_eq!(base_entry.note.as_deref(), Some("kept"));
+        assert!(
+            merged
+                .entries
+                .iter()
+                .any(|e| e.fingerprint == "only-in-incoming")
+        );
+    }
+
+    #[test]
+    fn merge_baseline_fills_missing_rule_id_path_and_line_from_base() {
+        // Covers the fill-in branches when an incoming/existing entry has empty
+        // rule_id, empty path, or line == 0 — base values supply the defaults.
+        let mut base = FalsePositiveBaseline::default();
+        base.entries.push(FalsePositiveEntry {
+            fingerprint: "shared-fp".to_string(),
+            rule_id: "rule.full".to_string(),
+            path: "filled.rs".to_string(),
+            line: 42,
+            note: Some("base-note".to_string()),
+        });
+
+        let mut incoming = FalsePositiveBaseline::default();
+        incoming.entries.push(FalsePositiveEntry {
+            fingerprint: "shared-fp".to_string(),
+            rule_id: String::new(),
+            path: String::new(),
+            line: 0,
+            note: None,
+        });
+
+        let merged = merge_false_positive_baselines(&base, &incoming);
+        assert_eq!(merged.entries.len(), 1);
+        let entry = &merged.entries[0];
+        assert_eq!(entry.rule_id, "rule.full");
+        assert_eq!(entry.path, "filled.rs");
+        assert_eq!(entry.line, 42);
+        assert_eq!(entry.note.as_deref(), Some("base-note"));
+    }
+
+    #[test]
+    fn normalize_trend_history_fills_missing_schema() {
+        let history = TrendHistory {
+            schema: String::new(),
+            runs: vec![],
+        };
+        let normalized = normalize_trend_history(history);
+        assert_eq!(normalized.schema, TREND_HISTORY_SCHEMA_V1);
+    }
+
+    #[test]
+    fn append_trend_run_with_no_limit_keeps_all_runs() {
+        let receipt = receipt_with_findings();
+        let run = trend_run_from_receipt(
+            &receipt,
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T00:00:01Z",
+            1000,
+        );
+        let mut history = TrendHistory::default();
+        history = append_trend_run(history, run.clone(), None);
+        history = append_trend_run(history, run.clone(), None);
+        history = append_trend_run(history, run, Some(0)); // 0 also disables trimming
+        assert_eq!(history.runs.len(), 3);
+    }
+
+    #[test]
+    fn false_positive_fingerprint_set_returns_all_fingerprints() {
+        let mut baseline = FalsePositiveBaseline::default();
+        baseline.entries.push(FalsePositiveEntry {
+            fingerprint: "a".to_string(),
+            rule_id: "r".to_string(),
+            path: "p".to_string(),
+            line: 1,
+            note: None,
+        });
+        baseline.entries.push(FalsePositiveEntry {
+            fingerprint: "b".to_string(),
+            rule_id: "r".to_string(),
+            path: "p".to_string(),
+            line: 2,
+            note: None,
+        });
+        let set = false_positive_fingerprint_set(&baseline);
+        assert_eq!(set.len(), 2);
+        assert!(set.contains("a"));
+        assert!(set.contains("b"));
+    }
+
+    #[test]
+    fn summarize_empty_history_reports_no_delta() {
+        let history = TrendHistory::default();
+        let summary = summarize_trend_history(&history);
+        assert_eq!(summary.run_count, 0);
+        assert_eq!(summary.total_findings, 0);
+        assert!(summary.latest.is_none());
+        assert!(summary.delta_from_previous.is_none());
+    }
+
+    #[test]
+    fn summarize_single_run_history_has_latest_but_no_delta() {
+        let receipt = receipt_with_findings();
+        let run = trend_run_from_receipt(
+            &receipt,
+            "2026-01-01T00:00:00Z",
+            "2026-01-01T00:00:01Z",
+            1000,
+        );
+        let history = TrendHistory {
+            schema: TREND_HISTORY_SCHEMA_V1.to_string(),
+            runs: vec![run],
+        };
+        let summary = summarize_trend_history(&history);
+        assert_eq!(summary.run_count, 1);
+        assert!(summary.latest.is_some());
+        assert!(summary.delta_from_previous.is_none());
+    }
+
+    #[test]
     fn summarize_history_reports_delta() {
         let receipt = receipt_with_findings();
         let mut run1 = trend_run_from_receipt(
