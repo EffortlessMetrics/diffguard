@@ -450,11 +450,13 @@ mod tests {
 
         let merged = merge_false_positive_baselines(&base, &incoming);
         assert_eq!(merged.entries.len(), 2);
-        let base_entry = merged
+        let Some(base_entry) = merged
             .entries
             .iter()
             .find(|e| e.fingerprint == "only-in-base")
-            .expect("base-only entry present");
+        else {
+            panic!("base-only entry missing from merged baseline");
+        };
         assert_eq!(base_entry.note.as_deref(), Some("kept"));
         assert!(
             merged
