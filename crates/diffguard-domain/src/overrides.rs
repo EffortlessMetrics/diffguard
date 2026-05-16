@@ -29,6 +29,15 @@ pub enum OverrideCompileError {
         glob: String,
         source: globset::Error,
     },
+
+    /// Rule override glob set build failed — typically due to NFA overflow when too many
+    /// patterns are combined. The underlying `globset::Error` provides the specific cause.
+    #[error("rule override '{rule_id}' in '{directory}' glob set build failed: {source}")]
+    GlobSetBuild {
+        rule_id: String,
+        directory: String,
+        source: globset::Error,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -194,7 +203,13 @@ fn compile_exclude_globs(
         builder.add(parsed);
     }
 
-    Ok(Some(builder.build().expect("globset build should succeed")))
+    Ok(Some(builder.build().map_err(|source| {
+        OverrideCompileError::GlobSetBuild {
+            rule_id: rule_id.to_string(),
+            directory: directory.to_string(),
+            source,
+        }
+    })?))
 }
 
 fn scope_glob_to_directory(directory: &str, glob: &str) -> String {
@@ -304,6 +319,9 @@ mod tests {
         match err {
             OverrideCompileError::InvalidGlob { glob, .. } => {
                 assert_eq!(glob, "src/[");
+            }
+            OverrideCompileError::GlobSetBuild { .. } => {
+                unreachable!("compile_exclude_globs with single glob cannot overflow")
             }
         }
     }

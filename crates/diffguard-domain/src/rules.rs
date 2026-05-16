@@ -30,6 +30,14 @@ pub enum RuleCompileError {
 
     #[error("rule '{rule_id}' depends on unknown rule '{dependency}'")]
     UnknownDependency { rule_id: String, dependency: String },
+
+    /// Rule glob set build failed — typically due to NFA overflow when too many
+    /// patterns are combined. The underlying `globset::Error` provides the specific cause.
+    #[error("rule '{rule_id}' glob set build failed: {source}")]
+    GlobSetBuild {
+        rule_id: String,
+        source: globset::Error,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -197,7 +205,12 @@ fn compile_globs(globs: &[String], rule_id: &str) -> Result<Option<GlobSet>, Rul
         builder.add(glob);
     }
 
-    Ok(Some(builder.build().expect("globset build should succeed")))
+    Ok(Some(builder.build().map_err(|source| {
+        RuleCompileError::GlobSetBuild {
+            rule_id: rule_id.to_string(),
+            source,
+        }
+    })?))
 }
 
 /// Detects programming language from file extension.

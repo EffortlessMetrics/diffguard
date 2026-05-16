@@ -1,3 +1,23 @@
+//! LSP server implementation for diffguard.
+//!
+//! This module implements the Language Server Protocol for diffguard, providing
+//! real-time secret detection as developers type. It integrates with the editor's
+//! text document sync to track changes and run diffguard checks on modified lines.
+//!
+//! ## Performance Optimizations
+//!
+//! - [`apply_incremental_change()`](crate::text::apply_incremental_change): applies edits
+//!   in-place using byte offsets, avoiding O(n) full-document clone on every keystroke
+//! - [`DocumentState`] tracks a `dirty` flag to defer O(n) `changed_lines_between()`
+//!   computation until diagnostics are actually needed
+//! - git diff results are cached and reused across multiple diagnostics cycles
+//!
+//! ## Key Types
+//!
+//! - [`DocumentState`]: tracks an open document's text, baseline, and dirty flag
+//! - [`ServerState`]: global server state including config and open documents
+//! - [`GitSupport`]: enum tracking whether `git diff` is available in the workspace
+
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -55,6 +75,11 @@ struct DocumentState {
     baseline_text: String,
     text: String,
     changed_lines: BTreeSet<u32>,
+    /// Tracks whether the document has unsaved changes that require
+    /// recomputation of `changed_lines`. When `dirty == true`, the
+    /// `changed_lines` set may be stale and needs recomputation via
+    /// `changed_lines_between()` before use.
+    dirty: bool,
 }
 
 impl DocumentState {
@@ -65,6 +90,7 @@ impl DocumentState {
             baseline_text: text.clone(),
             text,
             changed_lines: BTreeSet::new(),
+            dirty: false,
         }
     }
 
@@ -75,7 +101,8 @@ impl DocumentState {
 
         if let Some(full_change) = changes.iter().rev().find(|change| change.range.is_none()) {
             self.text.clone_from(&full_change.text);
-            self.changed_lines = changed_lines_between(&self.baseline_text, &self.text);
+            // O(1) per keystroke: just mark dirty, defer O(n) line comparison
+            self.dirty = true;
             return Ok(());
         }
 
@@ -83,7 +110,8 @@ impl DocumentState {
             apply_incremental_change(&mut self.text, change)?;
         }
 
-        self.changed_lines = changed_lines_between(&self.baseline_text, &self.text);
+        // O(1) per keystroke: just mark dirty, defer O(n) line comparison
+        self.dirty = true;
         Ok(())
     }
 
@@ -93,6 +121,7 @@ impl DocumentState {
         }
         self.baseline_text = self.text.clone();
         self.changed_lines.clear();
+        self.dirty = false;
     }
 }
 
@@ -666,9 +695,17 @@ fn refresh_document_diagnostics(
     state: &mut ServerState,
     uri: &Uri,
 ) -> Result<()> {
-    let Some(document) = state.documents.get(uri).cloned() else {
+    let Some(document) = state.documents.get_mut(uri) else {
         return Ok(());
     };
+
+    // Lazily recompute changed_lines if document is dirty.
+    // This is the O(n) cost deferred from every keystroke to diagnostics time.
+    // We use get_mut so modifications persist in state.documents.
+    if document.dirty {
+        document.changed_lines = changed_lines_between(&document.baseline_text, &document.text);
+        document.dirty = false;
+    }
 
     let relative_path = to_workspace_relative_path(state.workspace_root.as_deref(), &document.path);
     if relative_path.is_empty() {
@@ -1035,5 +1072,225 @@ mod tests {
 
         let actions = build_code_actions(&config, &params);
         assert!(!actions.is_empty());
+    }
+
+    // =============================================================================
+    // Lazy Evaluation Tests for changed_lines_between optimization
+    // =============================================================================
+    // These tests verify the dirty-flag lazy evaluation behavior for AC1, AC4, AC5.
+    // They are RED (fail to compile/fail at runtime) before the implementation.
+    // They are GREEN (pass) after the dirty flag is added.
+    // =============================================================================
+
+    #[test]
+    fn test_document_state_initial_dirty_is_false() {
+        let state = DocumentState::new(PathBuf::from("/test.rs"), 1, "fn main() {}\n".to_string());
+
+        // AC4: After construction, dirty should be false (no unsaved changes yet)
+        // AC5: This is the key invariant - new documents don't need recomputation
+        assert!(
+            !state.dirty,
+            "New DocumentState should have dirty=false, but dirty=true"
+        );
+        // Initially changed_lines should also be empty
+        assert!(
+            state.changed_lines.is_empty(),
+            "New DocumentState should have changed_lines empty"
+        );
+    }
+
+    #[test]
+    fn test_apply_changes_sets_dirty_flag() {
+        let mut state =
+            DocumentState::new(PathBuf::from("/test.rs"), 1, "fn main() {}\n".to_string());
+
+        // Apply an incremental change
+        let change = TextDocumentContentChangeEvent {
+            range: Some(Range::new(Position::new(0, 4), Position::new(0, 8))),
+            range_length: Some(4),
+            text: "test".to_string(),
+        };
+
+        state
+            .apply_changes(&[change])
+            .expect("apply_changes should succeed");
+
+        // AC4: After apply_changes, dirty should be true (document has unsaved changes)
+        assert!(
+            state.dirty,
+            "After apply_changes, dirty should be true, but dirty=false"
+        );
+    }
+
+    #[test]
+    fn test_mark_saved_resets_dirty_flag() {
+        let mut state =
+            DocumentState::new(PathBuf::from("/test.rs"), 1, "fn main() {}\n".to_string());
+
+        // Apply changes to make document dirty
+        let change = TextDocumentContentChangeEvent {
+            range: Some(Range::new(Position::new(0, 4), Position::new(0, 8))),
+            range_length: Some(4),
+            text: "test".to_string(),
+        };
+        state
+            .apply_changes(&[change])
+            .expect("apply_changes should succeed");
+
+        // Verify dirty is now true
+        assert!(state.dirty, "dirty should be true after apply_changes");
+
+        // Save the document
+        state.mark_saved(None);
+
+        // AC5: After mark_saved, dirty should be false
+        assert!(
+            !state.dirty,
+            "After mark_saved, dirty should be false, but dirty=true"
+        );
+    }
+
+    #[test]
+    fn test_apply_changes_defers_changed_lines_computation() {
+        let mut state =
+            DocumentState::new(PathBuf::from("/test.rs"), 1, "fn main() {}\n".to_string());
+
+        // Before apply_changes - changed_lines should be empty
+        assert!(
+            state.changed_lines.is_empty(),
+            "Initially changed_lines should be empty"
+        );
+
+        // Apply an incremental change
+        let change = TextDocumentContentChangeEvent {
+            range: Some(Range::new(Position::new(0, 4), Position::new(0, 8))),
+            range_length: Some(4),
+            text: "test".to_string(),
+        };
+        state
+            .apply_changes(&[change])
+            .expect("apply_changes should succeed");
+
+        // AC1: After apply_changes, dirty should be true BUT changed_lines should NOT
+        // have been recomputed yet. The O(n) recomputation is deferred until
+        // refresh_document_diagnostics() is called.
+        //
+        // This is the key optimization: we avoid O(n) line splitting on every keystroke.
+        assert!(state.dirty, "dirty should be true after apply_changes");
+        // NOTE: changed_lines at this point is still empty - it hasn't been
+        // recomputed because we deferred the O(n) work until diagnostics needed.
+    }
+
+    #[test]
+    fn test_mark_saved_clears_changed_lines_and_dirty() {
+        let mut state =
+            DocumentState::new(PathBuf::from("/test.rs"), 1, "fn main() {}\n".to_string());
+
+        // Apply changes
+        let change = TextDocumentContentChangeEvent {
+            range: Some(Range::new(Position::new(0, 4), Position::new(0, 8))),
+            range_length: Some(4),
+            text: "test".to_string(),
+        };
+        state
+            .apply_changes(&[change])
+            .expect("apply_changes should succeed");
+
+        // Save the document
+        state.mark_saved(None);
+
+        // AC5: After save, both changed_lines and dirty should reflect clean state
+        assert!(
+            state.changed_lines.is_empty(),
+            "changed_lines should be empty after mark_saved"
+        );
+        assert!(!state.dirty, "dirty should be false after mark_saved");
+    }
+
+    #[test]
+    fn test_dirty_false_invariance_new_document() {
+        let state = DocumentState::new(PathBuf::from("/test.rs"), 1, "fn main() {}\n".to_string());
+
+        // Invariant: dirty=false implies no pending changes
+        assert!(!state.dirty, "New document should have dirty=false");
+        assert!(
+            state.changed_lines.is_empty(),
+            "New document should have changed_lines empty"
+        );
+    }
+
+    #[test]
+    fn test_dirty_true_after_incremental_change() {
+        let mut state =
+            DocumentState::new(PathBuf::from("/test.rs"), 1, "fn main() {}\n".to_string());
+
+        // Initially not dirty
+        assert!(!state.dirty);
+
+        // Apply changes - now dirty
+        let change = TextDocumentContentChangeEvent {
+            range: Some(Range::new(Position::new(0, 4), Position::new(0, 8))),
+            range_length: Some(4),
+            text: "test".to_string(),
+        };
+        state
+            .apply_changes(&[change])
+            .expect("apply_changes should succeed");
+
+        // AC1: Now dirty=true, and changed_lines was NOT recomputed
+        // (this is the O(1) per keystroke optimization)
+        assert!(state.dirty, "After apply_changes, dirty should be true");
+    }
+
+    #[test]
+    fn test_full_sync_change_also_sets_dirty() {
+        let mut state =
+            DocumentState::new(PathBuf::from("/test.rs"), 1, "fn main() {}\n".to_string());
+
+        // Apply a FULL document sync change (range = None)
+        let full_change = TextDocumentContentChangeEvent {
+            range: None,
+            range_length: None,
+            text: "fn test() {}\n".to_string(),
+        };
+
+        state
+            .apply_changes(&[full_change])
+            .expect("apply_changes should succeed");
+
+        // AC4: Full sync should also set dirty=true
+        assert!(
+            state.dirty,
+            "After full sync apply_changes, dirty should be true"
+        );
+    }
+
+    #[test]
+    fn test_mark_saved_with_new_text_resets_dirty() {
+        let mut state =
+            DocumentState::new(PathBuf::from("/test.rs"), 1, "fn main() {}\n".to_string());
+
+        // Apply changes
+        let change = TextDocumentContentChangeEvent {
+            range: Some(Range::new(Position::new(0, 4), Position::new(0, 8))),
+            range_length: Some(4),
+            text: "test".to_string(),
+        };
+        state
+            .apply_changes(&[change])
+            .expect("apply_changes should succeed");
+
+        // Save with new text
+        state.mark_saved(Some("fn test() {}\n".to_string()));
+
+        // AC5: After mark_saved with new text, dirty should be false
+        assert!(
+            !state.dirty,
+            "After mark_saved with new text, dirty should be false"
+        );
+        assert!(
+            state.changed_lines.is_empty(),
+            "After mark_saved, changed_lines should be empty"
+        );
     }
 }

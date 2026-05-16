@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Full workspace tests in CI** — `cargo test --workspace` now runs all tests including xtask tests in the CI test job (previously excluded with `--exclude xtask`)
 - **xtask CI job enabled** — The `xtask ci` job (which runs fmt + clippy + test + conform) now executes in CI on pull requests and pushes to main (was previously disabled via `if: false`)
 
+- **`diffguard-lsp` keystroke performance** — The LSP server now handles every keystroke in O(1) time regardless of file size by deferring the O(n) line-comparison computation until diagnostics are actually needed (save, open, or config change). Previously, typing in a 5,000-line file caused ~10,000 string slice allocations per keystroke. Closes #574.
+
 ### Added
 
 - **`--color` flag for CI log output control** — Controls ANSI color output with `--color <never|always|auto>`. Use `--color=never` to suppress ANSI codes in CI logs (GitHub Actions, GitLab CI), `--color=always` to force colors in piped output, `--color=auto` (default) to auto-detect based on terminal. Respects `NO_COLOR=1` environment variable.

@@ -79,6 +79,11 @@ pub enum PathFilterError {
         glob: String,
         source: globset::Error,
     },
+
+    /// Path filter glob set build failed — typically due to NFA overflow when too many
+    /// patterns are combined. The underlying `globset::Error` provides the specific cause.
+    #[error("path filter glob set build failed: {source}")]
+    GlobSetBuild { source: globset::Error },
 }
 
 /// Run a policy check over a unified diff text.
@@ -265,7 +270,8 @@ fn compile_filter_globs(globs: &[String]) -> Result<GlobSet, PathFilterError> {
         })?;
         b.add(glob);
     }
-    Ok(b.build().expect("globset build should succeed"))
+    b.build()
+        .map_err(|source| PathFilterError::GlobSetBuild { source })
 }
 
 /// Filter a rule based on tag criteria in the plan.
@@ -436,6 +442,9 @@ mod tests {
         let err = compile_filter_globs(&["[".to_string()]).unwrap_err();
         match err {
             PathFilterError::InvalidGlob { glob, .. } => assert_eq!(glob, "["),
+            PathFilterError::GlobSetBuild { .. } => {
+                unreachable!("compile_filter_globs with single glob cannot overflow")
+            }
         }
     }
 
