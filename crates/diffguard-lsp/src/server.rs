@@ -1002,7 +1002,7 @@ mod tests {
     }
 
     fn parse_uri(uri_str: &str) -> Uri {
-        uri_str.parse().expect("uri parse")
+        uri_str.parse().expect("uri parse") // diffguard: ignore rust.no_unwrap
     }
 
     fn drain_messages(connection: &Connection) -> Vec<Message> {
@@ -1053,11 +1053,11 @@ mod tests {
 
     #[test]
     fn initialize_payload_contains_server_name() {
-        let value = initialize_payload().expect("payload");
+        let value = initialize_payload().expect("payload"); // diffguard: ignore rust.no_unwrap
         let info = value
             .get("serverInfo")
             .and_then(|v| v.as_object())
-            .expect("server info");
+            .expect("server info"); // diffguard: ignore rust.no_unwrap
         assert_eq!(
             info.get("name").and_then(|v| v.as_str()),
             Some("diffguard-lsp")
@@ -1160,7 +1160,7 @@ mod tests {
     #[test]
     fn uri_to_file_path_parses_valid_file_uri() {
         let uri: Uri = parse_uri("file:///tmp/some/path.rs");
-        let parsed = uri_to_file_path(&uri).expect("file path");
+        let parsed = uri_to_file_path(&uri).expect("file path"); // diffguard: ignore rust.no_unwrap
         assert_eq!(parsed, PathBuf::from("/tmp/some/path.rs"));
     }
 
@@ -1249,7 +1249,7 @@ mod tests {
     #[test]
     fn document_state_apply_changes_handles_empty_change_list() {
         let mut doc = DocumentState::new(PathBuf::from("a.rs"), 1, "hello\n".to_string());
-        doc.apply_changes(&[]).expect("apply ok");
+        doc.apply_changes(&[]).expect("apply ok"); // diffguard: ignore rust.no_unwrap
         assert_eq!(doc.text, "hello\n");
         assert!(doc.changed_lines.is_empty());
     }
@@ -1262,7 +1262,7 @@ mod tests {
             range_length: None,
             text: "after\n".to_string(),
         };
-        doc.apply_changes(&[change]).expect("apply ok");
+        doc.apply_changes(&[change]).expect("apply ok"); // diffguard: ignore rust.no_unwrap
         assert_eq!(doc.text, "after\n");
         assert!(!doc.changed_lines.is_empty());
     }
@@ -1282,7 +1282,7 @@ mod tests {
                 text: "final\n".to_string(),
             },
         ];
-        doc.apply_changes(&changes).expect("apply ok");
+        doc.apply_changes(&changes).expect("apply ok"); // diffguard: ignore rust.no_unwrap
         assert_eq!(doc.text, "final\n");
     }
 
@@ -1294,7 +1294,7 @@ mod tests {
             range_length: None,
             text: "after\n".to_string(),
         };
-        doc.apply_changes(&[change]).expect("apply ok");
+        doc.apply_changes(&[change]).expect("apply ok"); // diffguard: ignore rust.no_unwrap
         assert!(!doc.changed_lines.is_empty());
 
         doc.mark_saved(Some("saved\n".to_string()));
@@ -1311,7 +1311,7 @@ mod tests {
             range_length: None,
             text: "after\n".to_string(),
         };
-        doc.apply_changes(&[change]).expect("apply ok");
+        doc.apply_changes(&[change]).expect("apply ok"); // diffguard: ignore rust.no_unwrap
 
         doc.mark_saved(None);
         assert_eq!(doc.text, "after\n");
@@ -1413,7 +1413,7 @@ mod tests {
         // Falls back to built-in rules when load fails.
         assert!(!state.config.rule.is_empty());
         assert!(warning.is_some());
-        let warning_text = warning.expect("warning string");
+        let warning_text = warning.expect("warning string"); // diffguard: ignore rust.no_unwrap
         assert!(warning_text.contains("failed to load config"));
     }
 
@@ -1455,7 +1455,7 @@ mod tests {
         // we set no_default_rules=true so we get an empty/built-in-less config.
         state.no_default_rules = true;
         state.config_path = None;
-        let result = reload_config(&mut state).expect("reload ok");
+        let result = reload_config(&mut state).expect("reload ok"); // diffguard: ignore rust.no_unwrap
         assert!(result.contains("config reloaded"));
     }
 
@@ -1484,10 +1484,10 @@ mod tests {
             method: "totally/unsupported".to_string(),
             params: json!({}),
         };
-        handle_request(&server, &mut state, request).expect("handle ok");
+        handle_request(&server, &mut state, request).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response sent");
-        let error = response.error.as_ref().expect("error response");
+        let response = find_response(&messages).expect("response sent"); // diffguard: ignore rust.no_unwrap
+        let error = response.error.as_ref().expect("error response"); // diffguard: ignore rust.no_unwrap
         assert_eq!(error.code, METHOD_NOT_FOUND);
         assert!(error.message.contains("totally/unsupported"));
     }
@@ -1501,10 +1501,10 @@ mod tests {
             method: CodeActionRequest::METHOD.to_string(),
             params: json!({ "totally": "wrong" }),
         };
-        handle_request(&server, &mut state, request).expect("handle ok");
+        handle_request(&server, &mut state, request).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response sent");
-        let error = response.error.as_ref().expect("error response");
+        let response = find_response(&messages).expect("response sent"); // diffguard: ignore rust.no_unwrap
+        let error = response.error.as_ref().expect("error response"); // diffguard: ignore rust.no_unwrap
         assert_eq!(error.code, INVALID_PARAMS);
         assert!(error.message.contains("invalid CodeActionParams"));
     }
@@ -1518,10 +1518,10 @@ mod tests {
             method: ExecuteCommand::METHOD.to_string(),
             params: json!({ "nope": true }),
         };
-        handle_request(&server, &mut state, request).expect("handle ok");
+        handle_request(&server, &mut state, request).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response sent");
-        let error = response.error.as_ref().expect("error response");
+        let response = find_response(&messages).expect("response sent"); // diffguard: ignore rust.no_unwrap
+        let error = response.error.as_ref().expect("error response"); // diffguard: ignore rust.no_unwrap
         assert_eq!(error.code, INVALID_PARAMS);
         assert!(error.message.contains("invalid ExecuteCommandParams"));
     }
@@ -1538,12 +1538,12 @@ mod tests {
         let request = Request {
             id: RequestId::from(3),
             method: ExecuteCommand::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        handle_request(&server, &mut state, request).expect("handle ok");
+        handle_request(&server, &mut state, request).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response sent");
-        let error = response.error.as_ref().expect("error response");
+        let response = find_response(&messages).expect("response sent"); // diffguard: ignore rust.no_unwrap
+        let error = response.error.as_ref().expect("error response"); // diffguard: ignore rust.no_unwrap
         assert_eq!(error.code, INVALID_PARAMS);
         assert!(error.message.contains("missing rule ID"));
     }
@@ -1560,12 +1560,12 @@ mod tests {
         let request = Request {
             id: RequestId::from(4),
             method: ExecuteCommand::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        handle_request(&server, &mut state, request).expect("handle ok");
+        handle_request(&server, &mut state, request).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response sent");
-        let error = response.error.as_ref().expect("error response");
+        let response = find_response(&messages).expect("response sent"); // diffguard: ignore rust.no_unwrap
+        let error = response.error.as_ref().expect("error response"); // diffguard: ignore rust.no_unwrap
         assert_eq!(error.code, INVALID_PARAMS);
         assert!(error.message.contains("missing URL"));
     }
@@ -1582,12 +1582,12 @@ mod tests {
         let request = Request {
             id: RequestId::from(5),
             method: ExecuteCommand::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        handle_request(&server, &mut state, request).expect("handle ok");
+        handle_request(&server, &mut state, request).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response sent");
-        let error = response.error.as_ref().expect("error response");
+        let response = find_response(&messages).expect("response sent"); // diffguard: ignore rust.no_unwrap
+        let error = response.error.as_ref().expect("error response"); // diffguard: ignore rust.no_unwrap
         assert_eq!(error.code, INVALID_PARAMS);
         assert!(error.message.contains("unsupported command"));
         assert!(error.message.contains("diffguard.unknown"));
@@ -1606,12 +1606,12 @@ mod tests {
         let request = Request {
             id: RequestId::from(6),
             method: ExecuteCommand::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        handle_request(&server, &mut state, request).expect("handle ok");
+        handle_request(&server, &mut state, request).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response sent");
-        let result = response.result.as_ref().expect("result payload");
+        let response = find_response(&messages).expect("response sent"); // diffguard: ignore rust.no_unwrap
+        let result = response.result.as_ref().expect("result payload"); // diffguard: ignore rust.no_unwrap
         assert_eq!(result.get("found").and_then(|v| v.as_bool()), Some(true));
         assert_eq!(
             result.get("ruleId").and_then(|v| v.as_str()),
@@ -1633,17 +1633,17 @@ mod tests {
         let request = Request {
             id: RequestId::from(8),
             method: ExecuteCommand::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        handle_request(&server, &mut state, request).expect("handle ok");
+        handle_request(&server, &mut state, request).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response sent");
-        let result = response.result.as_ref().expect("result payload");
+        let response = find_response(&messages).expect("response sent"); // diffguard: ignore rust.no_unwrap
+        let result = response.result.as_ref().expect("result payload"); // diffguard: ignore rust.no_unwrap
         assert_eq!(
             result.get("url").and_then(|v| v.as_str()),
             Some("https://example.com/docs")
         );
-        let notif = find_notification(&messages, ShowMessage::METHOD).expect("show message");
+        let notif = find_notification(&messages, ShowMessage::METHOD).expect("show message"); // diffguard: ignore rust.no_unwrap
         let body = notif.params.to_string();
         assert!(body.contains("diffguard documentation"));
     }
@@ -1656,10 +1656,10 @@ mod tests {
             method: DidOpenTextDocument::METHOD.to_string(),
             params: json!({ "garbage": true }),
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         let messages = drain_messages(&client);
-        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning");
+        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning"); // diffguard: ignore rust.no_unwrap
         assert!(notif.params.to_string().contains("invalid didOpen"));
     }
 
@@ -1671,10 +1671,10 @@ mod tests {
             method: DidChangeTextDocument::METHOD.to_string(),
             params: json!({ "garbage": true }),
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         let messages = drain_messages(&client);
-        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning");
+        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning"); // diffguard: ignore rust.no_unwrap
         assert!(notif.params.to_string().contains("invalid didChange"));
     }
 
@@ -1686,10 +1686,10 @@ mod tests {
             method: DidSaveTextDocument::METHOD.to_string(),
             params: json!({ "garbage": true }),
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         let messages = drain_messages(&client);
-        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning");
+        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning"); // diffguard: ignore rust.no_unwrap
         assert!(notif.params.to_string().contains("invalid didSave"));
     }
 
@@ -1701,10 +1701,10 @@ mod tests {
             method: DidCloseTextDocument::METHOD.to_string(),
             params: json!({ "garbage": true }),
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         let messages = drain_messages(&client);
-        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning");
+        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning"); // diffguard: ignore rust.no_unwrap
         assert!(notif.params.to_string().contains("invalid didClose"));
     }
 
@@ -1716,10 +1716,10 @@ mod tests {
             method: DidChangeConfiguration::METHOD.to_string(),
             params: json!("not-an-object"),
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         let messages = drain_messages(&client);
-        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning");
+        let notif = find_notification(&messages, ShowMessage::METHOD).expect("warning"); // diffguard: ignore rust.no_unwrap
         assert!(
             notif
                 .params
@@ -1736,7 +1736,7 @@ mod tests {
             method: Exit::METHOD.to_string(),
             params: json!(null),
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(exit);
     }
 
@@ -1748,7 +1748,7 @@ mod tests {
             method: "made/up/method".to_string(),
             params: json!({}),
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         let messages = drain_messages(&client);
         assert!(messages.is_empty());
@@ -1768,20 +1768,20 @@ mod tests {
         };
         let notification = Notification {
             method: DidCloseTextDocument::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         assert!(!state.documents.contains_key(&uri));
         let messages = drain_messages(&client);
         // publishDiagnostics with empty list is emitted.
         let publish =
-            find_notification(&messages, PublishDiagnostics::METHOD).expect("publish notif");
-        let value = serde_json::to_value(&publish.params).expect("to value");
+            find_notification(&messages, PublishDiagnostics::METHOD).expect("publish notif"); // diffguard: ignore rust.no_unwrap
+        let value = serde_json::to_value(&publish.params).expect("to value"); // diffguard: ignore rust.no_unwrap
         let diags = value
             .get("diagnostics")
             .and_then(|d| d.as_array())
-            .expect("diagnostics array");
+            .expect("diagnostics array"); // diffguard: ignore rust.no_unwrap
         assert!(diags.is_empty());
     }
 
@@ -1800,9 +1800,9 @@ mod tests {
         };
         let notification = Notification {
             method: DidOpenTextDocument::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         // Document was not inserted because the URI couldn't be parsed as a file path.
         assert!(state.documents.is_empty());
@@ -1823,9 +1823,9 @@ mod tests {
         };
         let notification = Notification {
             method: DidChangeTextDocument::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         // No document was inserted, no diagnostics are published.
         let messages = drain_messages(&client);
@@ -1848,7 +1848,7 @@ mod tests {
                 range_length: None,
                 text: "second\n".to_string(),
             };
-            doc.apply_changes(&[change]).expect("apply ok");
+            doc.apply_changes(&[change]).expect("apply ok"); // diffguard: ignore rust.no_unwrap
             assert!(!doc.changed_lines.is_empty());
         }
 
@@ -1858,11 +1858,11 @@ mod tests {
         };
         let notification = Notification {
             method: DidSaveTextDocument::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
-        let doc = state.documents.get(&uri).expect("doc still present");
+        let doc = state.documents.get(&uri).expect("doc still present"); // diffguard: ignore rust.no_unwrap
         assert_eq!(doc.text, "third\n");
         assert_eq!(doc.baseline_text, "third\n");
         assert!(doc.changed_lines.is_empty());
@@ -1877,12 +1877,12 @@ mod tests {
         };
         let notification = Notification {
             method: DidChangeConfiguration::METHOD.to_string(),
-            params: serde_json::to_value(params).expect("serialize"),
+            params: serde_json::to_value(params).expect("serialize"), // diffguard: ignore rust.no_unwrap
         };
-        let exit = handle_notification(&server, &mut state, notification).expect("handle ok");
+        let exit = handle_notification(&server, &mut state, notification).expect("handle ok"); // diffguard: ignore rust.no_unwrap
         assert!(!exit);
         let messages = drain_messages(&client);
-        let notif = find_notification(&messages, ShowMessage::METHOD).expect("show message");
+        let notif = find_notification(&messages, ShowMessage::METHOD).expect("show message"); // diffguard: ignore rust.no_unwrap
         // With no config_path set, reload succeeds and reports the rule count.
         assert!(notif.params.to_string().contains("config reloaded"));
     }
@@ -1900,15 +1900,15 @@ mod tests {
         state
             .documents
             .insert(uri.clone(), DocumentState::new(workspace, 1, String::new()));
-        refresh_document_diagnostics(&server, &mut state, &uri).expect("refresh ok");
+        refresh_document_diagnostics(&server, &mut state, &uri).expect("refresh ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
         let publish =
-            find_notification(&messages, PublishDiagnostics::METHOD).expect("publish notif");
-        let value = serde_json::to_value(&publish.params).expect("to value");
+            find_notification(&messages, PublishDiagnostics::METHOD).expect("publish notif"); // diffguard: ignore rust.no_unwrap
+        let value = serde_json::to_value(&publish.params).expect("to value"); // diffguard: ignore rust.no_unwrap
         let diags = value
             .get("diagnostics")
             .and_then(|d| d.as_array())
-            .expect("diagnostics array");
+            .expect("diagnostics array"); // diffguard: ignore rust.no_unwrap
         assert!(diags.is_empty());
     }
 
@@ -1917,7 +1917,7 @@ mod tests {
         let (client, server) = Connection::memory();
         let mut state = empty_state();
         let uri = parse_uri("file:///tmp/missing.rs");
-        refresh_document_diagnostics(&server, &mut state, &uri).expect("refresh ok");
+        refresh_document_diagnostics(&server, &mut state, &uri).expect("refresh ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
         assert!(messages.is_empty());
     }
@@ -1935,10 +1935,10 @@ mod tests {
             INVALID_PARAMS,
             "bad".to_string(),
         )
-        .expect("send ok");
+        .expect("send ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response");
-        let error = response.error.as_ref().expect("has error");
+        let response = find_response(&messages).expect("response"); // diffguard: ignore rust.no_unwrap
+        let error = response.error.as_ref().expect("has error"); // diffguard: ignore rust.no_unwrap
         assert_eq!(error.code, INVALID_PARAMS);
         assert_eq!(error.message, "bad");
         assert!(response.result.is_none());
@@ -1947,20 +1947,20 @@ mod tests {
     #[test]
     fn send_ok_response_constructs_proper_response_object() {
         let (client, server) = Connection::memory();
-        send_ok_response(&server, RequestId::from(101), json!({ "ok": true })).expect("send ok");
+        send_ok_response(&server, RequestId::from(101), json!({ "ok": true })).expect("send ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let response = find_response(&messages).expect("response");
+        let response = find_response(&messages).expect("response"); // diffguard: ignore rust.no_unwrap
         assert!(response.error.is_none());
-        let result = response.result.as_ref().expect("has result");
+        let result = response.result.as_ref().expect("has result"); // diffguard: ignore rust.no_unwrap
         assert_eq!(result.get("ok").and_then(|v| v.as_bool()), Some(true));
     }
 
     #[test]
     fn show_message_emits_show_message_notification() {
         let (client, server) = Connection::memory();
-        show_message(&server, MessageType::INFO, "hello").expect("send ok");
+        show_message(&server, MessageType::INFO, "hello").expect("send ok"); // diffguard: ignore rust.no_unwrap
         let messages = drain_messages(&client);
-        let notif = find_notification(&messages, ShowMessage::METHOD).expect("show message");
+        let notif = find_notification(&messages, ShowMessage::METHOD).expect("show message"); // diffguard: ignore rust.no_unwrap
         assert!(notif.params.to_string().contains("hello"));
     }
 }
