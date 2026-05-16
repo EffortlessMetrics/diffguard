@@ -158,4 +158,165 @@ mod tests {
         apply_incremental_change(&mut text, &change).expect("apply");
         assert_eq!(text, "alpha\ngamma\n");
     }
+
+    #[test]
+    fn split_lines_returns_empty_for_empty_input() {
+        assert!(split_lines("").is_empty());
+    }
+
+    #[test]
+    fn split_lines_handles_single_line_without_newline() {
+        assert_eq!(split_lines("hello"), vec!["hello"]);
+    }
+
+    #[test]
+    fn changed_lines_between_returns_empty_for_identical_text() {
+        let same = "a\nb\nc\n";
+        assert!(changed_lines_between(same, same).is_empty());
+    }
+
+    #[test]
+    fn changed_lines_between_marks_truncation_boundary_only() {
+        // When `after` is shorter than `before`, only indices that still exist in `after`
+        // can be reported. The trailing empty string from a final newline counts as an index.
+        let before = "a\nb\nc\nd\n";
+        let after = "a\nb\n";
+        // before split = ["a","b","c","d",""], after split = ["a","b",""].
+        // Differences within after's range: index 2 ("c" vs "") -> reports line 3.
+        assert_eq!(
+            changed_lines_between(before, after),
+            BTreeSet::from([3_u32])
+        );
+    }
+
+    #[test]
+    fn build_synthetic_diff_skips_line_number_zero() {
+        let changed = BTreeSet::from([0_u32, 1_u32]);
+        let diff = build_synthetic_diff("src/lib.rs", "one\ntwo\n", &changed);
+        assert!(!diff.contains("@@ -0,0 +0,"));
+        assert!(diff.contains("@@ -0,0 +1,1 @@"));
+        assert!(diff.contains("+one"));
+    }
+
+    #[test]
+    fn build_synthetic_diff_skips_out_of_range_lines() {
+        let changed = BTreeSet::from([1_u32, 99_u32]);
+        let diff = build_synthetic_diff("src/lib.rs", "only\n", &changed);
+        assert!(diff.contains("+only"));
+        assert!(!diff.contains("+99"));
+        assert_eq!(diff.matches("@@ -0,0").count(), 1);
+    }
+
+    #[test]
+    fn build_synthetic_diff_emits_header_even_with_no_changes() {
+        let changed = BTreeSet::new();
+        let diff = build_synthetic_diff("src/lib.rs", "x\n", &changed);
+        assert!(diff.contains("diff --git a/src/lib.rs b/src/lib.rs"));
+        assert!(diff.contains("--- a/src/lib.rs"));
+        assert!(diff.contains("+++ b/src/lib.rs"));
+        assert!(!diff.contains("@@"));
+    }
+
+    #[test]
+    fn apply_incremental_change_with_no_range_replaces_whole_text() {
+        let mut text = "old contents".to_string();
+        let change = TextDocumentContentChangeEvent {
+            range: None,
+            range_length: None,
+            text: "new contents".to_string(),
+        };
+        apply_incremental_change(&mut text, &change).expect("apply");
+        assert_eq!(text, "new contents");
+    }
+
+    #[test]
+    fn apply_incremental_change_errors_on_invalid_start_position() {
+        let mut text = "alpha\n".to_string();
+        let change = TextDocumentContentChangeEvent {
+            range: Some(Range::new(Position::new(99, 0), Position::new(99, 0))),
+            range_length: None,
+            text: "x".to_string(),
+        };
+        let err = apply_incremental_change(&mut text, &change).expect_err("must err");
+        let msg = format!("{err:#}");
+        assert!(msg.contains("invalid start position"), "got: {msg}");
+    }
+
+    #[test]
+    fn apply_incremental_change_errors_on_invalid_end_position() {
+        let mut text = "alpha\nbeta\n".to_string();
+        let change = TextDocumentContentChangeEvent {
+            range: Some(Range::new(Position::new(0, 0), Position::new(99, 0))),
+            range_length: None,
+            text: "x".to_string(),
+        };
+        let err = apply_incremental_change(&mut text, &change).expect_err("must err");
+        let msg = format!("{err:#}");
+        assert!(msg.contains("invalid end position"), "got: {msg}");
+    }
+
+    #[test]
+    fn apply_incremental_change_errors_when_start_after_end() {
+        // Build a text where line 1 has character 5 valid but line 0 has only character 0.
+        // Then craft start=(1,0), end=(0,0) so start > end after resolving offsets.
+        let mut text = "ab\ncd\n".to_string();
+        let change = TextDocumentContentChangeEvent {
+            range: Some(Range::new(Position::new(1, 0), Position::new(0, 0))),
+            range_length: None,
+            text: "x".to_string(),
+        };
+        let err = apply_incremental_change(&mut text, &change).expect_err("must err");
+        let msg = format!("{err:#}");
+        assert!(msg.contains("invalid edit range"), "got: {msg}");
+    }
+
+    #[test]
+    fn byte_offset_at_position_returns_end_for_position_at_text_end() {
+        let text = "abc";
+        let pos = Position::new(0, 3);
+        assert_eq!(byte_offset_at_position(text, pos), Some(text.len()));
+    }
+
+    #[test]
+    fn byte_offset_at_position_returns_none_for_past_end() {
+        let text = "abc";
+        let pos = Position::new(0, 10);
+        assert_eq!(byte_offset_at_position(text, pos), None);
+    }
+
+    #[test]
+    fn byte_offset_at_position_returns_none_for_past_last_line() {
+        let text = "abc\n";
+        let pos = Position::new(5, 0);
+        assert_eq!(byte_offset_at_position(text, pos), None);
+    }
+
+    #[test]
+    fn byte_offset_at_position_returns_none_for_character_beyond_line_length() {
+        let text = "abc\ndef\n";
+        let pos = Position::new(0, 10);
+        assert_eq!(byte_offset_at_position(text, pos), None);
+    }
+
+    #[test]
+    fn byte_offset_at_position_handles_multibyte_characters() {
+        // "café" — 'é' is two UTF-16 code units only when it's a surrogate pair, but here it's one.
+        // Use a non-BMP character to exercise the utf16 width path: '𝄞' (U+1D11E) is 2 utf16 units.
+        let text = "a𝄞b";
+        assert_eq!(byte_offset_at_position(text, Position::new(0, 0)), Some(0));
+        assert_eq!(byte_offset_at_position(text, Position::new(0, 1)), Some(1));
+        // After 'a' (1 utf16 unit) + '𝄞' (2 utf16 units) we are at character 3 of line 0.
+        assert_eq!(
+            byte_offset_at_position(text, Position::new(0, 3)),
+            Some("a𝄞".len())
+        );
+    }
+
+    #[test]
+    fn utf16_length_counts_surrogate_pairs() {
+        assert_eq!(utf16_length(""), 0);
+        assert_eq!(utf16_length("abc"), 3);
+        // '𝄞' (U+1D11E) is encoded as a surrogate pair in UTF-16 (length 2).
+        assert_eq!(utf16_length("a𝄞b"), 4);
+    }
 }
