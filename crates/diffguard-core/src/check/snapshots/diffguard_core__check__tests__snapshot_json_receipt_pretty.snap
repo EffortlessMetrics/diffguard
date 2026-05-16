@@ -1,5 +1,5 @@
 ---
-source: crates/diffguard-core/src/check.rs
+source: crates/diffguard-core/src/check/mod.rs
 expression: json
 ---
 {
