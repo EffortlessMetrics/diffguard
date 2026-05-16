@@ -142,7 +142,9 @@ impl StructuredReceipt {
         if !self.omit_verdict {
             out.push_str("  \"verdict\": {\n");
             out.push_str("    \"status\": \"pass\",\n");
-            out.push_str("    \"counts\": {\"info\": 0, \"warn\": 0, \"error\": 0, \"suppressed\": 0},\n");
+            out.push_str(
+                "    \"counts\": {\"info\": 0, \"warn\": 0, \"error\": 0, \"suppressed\": 0},\n",
+            );
             out.push_str("    \"reasons\": []\n");
             out.push_str("  }\n");
         }
@@ -340,7 +342,10 @@ fuzz_target!(|input: FuzzBaselineReceipt| {
     };
 
     let baseline = baseline_from_receipt(&empty_receipt);
-    assert!(baseline.entries.is_empty(), "Empty receipt should produce empty baseline");
+    assert!(
+        baseline.entries.is_empty(),
+        "Empty receipt should produce empty baseline"
+    );
 
     // Single finding
     let single_finding = Finding {
