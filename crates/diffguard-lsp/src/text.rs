@@ -225,7 +225,7 @@ mod tests {
             range_length: None,
             text: "new contents".to_string(),
         };
-        apply_incremental_change(&mut text, &change).expect("apply");
+        apply_incremental_change(&mut text, &change).expect("apply"); // diffguard: ignore rust.no_unwrap
         assert_eq!(text, "new contents");
     }
 
