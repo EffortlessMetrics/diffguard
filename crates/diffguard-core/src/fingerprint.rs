@@ -10,6 +10,7 @@ use sha2::{Digest, Sha256};
 ///
 /// The fingerprint is a full SHA-256 hash of `rule_id:path:line:match_text`
 /// (64 hex characters / 32 bytes).
+#[must_use]
 pub fn compute_fingerprint(f: &Finding) -> String {
     let input = format!("{}:{}:{}:{}", f.rule_id, f.path, f.line, f.match_text);
     compute_fingerprint_raw(&input)
@@ -18,6 +19,7 @@ pub fn compute_fingerprint(f: &Finding) -> String {
 /// Computes a full SHA-256 fingerprint from an arbitrary input string.
 ///
 /// Returns 64 hex characters (32 bytes).
+#[must_use]
 pub fn compute_fingerprint_raw(input: &str) -> String {
     let hash = Sha256::digest(input.as_bytes());
     hex::encode(hash)

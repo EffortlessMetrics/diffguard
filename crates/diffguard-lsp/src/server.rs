@@ -161,6 +161,14 @@ impl ServerState {
     }
 }
 
+/// Run the LSP server main loop.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - LSP protocol initialization or message handling fails
+/// - LSP messages cannot be parsed as JSON
+/// - Sending LSP messages to the client fails
 pub fn run_server(connection: Connection) -> Result<()> {
     // Use the lower-level initialize_start/initialize_finish methods
     // to send a custom InitializeResult with server_info.

@@ -28,3 +28,6 @@ mod multiple_file_types;
 
 #[path = "integration/directory_overrides.rs"]
 mod directory_overrides;
+
+#[path = "integration/json_preprocessing.rs"]
+mod json_preprocessing;
