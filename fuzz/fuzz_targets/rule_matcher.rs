@@ -57,7 +57,7 @@ struct FuzzSuppression {
 impl FuzzSuppression {
     /// Generate a suppression directive string.
     fn to_directive(&self) -> String {
-        let kind_str = if self.kind % 2 == 0 {
+        let kind_str = if self.kind.is_multiple_of(2) {
             "ignore"
         } else {
             "ignore-next-line"
@@ -68,11 +68,7 @@ impl FuzzSuppression {
         } else if self.rule_ids.is_empty() {
             format!("// diffguard: {}", kind_str)
         } else {
-            format!(
-                "// diffguard: {} {}",
-                kind_str,
-                self.rule_ids.join(", ")
-            )
+            format!("// diffguard: {} {}", kind_str, self.rule_ids.join(", "))
         }
     }
 }
@@ -222,7 +218,7 @@ fuzz_target!(|input: FuzzInput| {
         .collect();
 
     // Use a bounded max_findings to test truncation behavior
-    let max_findings = (input.max_findings as usize).max(1).min(100);
+    let max_findings = (input.max_findings as usize).clamp(1, 100);
 
     // Exercise evaluate_lines - this should never panic regardless of input
     let evaluation = evaluate_lines(input_lines.clone(), &compiled_rules, max_findings);
@@ -236,8 +232,7 @@ fuzz_target!(|input: FuzzInput| {
     );
 
     // Property: total counts should be >= findings.len() (since we might truncate)
-    let total_counts =
-        evaluation.counts.info + evaluation.counts.warn + evaluation.counts.error;
+    let total_counts = evaluation.counts.info + evaluation.counts.warn + evaluation.counts.error;
     assert!(
         total_counts >= evaluation.findings.len() as u32,
         "total counts ({}) should be >= findings.len() ({})",
