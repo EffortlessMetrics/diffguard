@@ -8,7 +8,7 @@
 use arbitrary::Arbitrary;
 use libfuzzer_sys::fuzz_target;
 
-use diffguard_domain::{InputLine, compile_rules, evaluate_lines};
+use diffguard_domain::{compile_rules, evaluate_lines, InputLine};
 use diffguard_types::{RuleConfig, Severity};
 
 #[derive(Arbitrary, Debug)]

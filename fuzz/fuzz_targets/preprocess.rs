@@ -115,4 +115,3 @@ fuzz_target!(|input: PreprocessInput| {
         );
     }
 });
-
