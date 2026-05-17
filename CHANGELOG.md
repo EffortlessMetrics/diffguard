@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Windows target triple detection for MSYS/MINGW environments
   - Concurrency control on SARIF upload to prevent race conditions across workflow runs
   - Improved error handling with user-visible warning messages for fallback installation paths
+- **`parse_unified_diff` now requires explicit Result handling** — Added `#[must_use]` to `parse_unified_diff` so the compiler warns when callers ignore the `Result`. This prevents silent parse failures where malformed diffs are silently ignored. Callers must now explicitly handle the `Result` or use `let _ = ...` to indicate intentional ignore. Closes #329.
 
 ### Changed
 
@@ -73,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+- **`diffguard-domain`**: Removed redundant explicit match arm in `Language::string_syntax()`. The explicit arm `Language::Yaml | Language::Toml | Language::Json => StringSyntax::CStyle` was removed since it returned the same value (`CStyle`) as the wildcard arm `_ => StringSyntax::CStyle`. YAML, TOML, and JSON now fall through to the wildcard. No behavioral change — this is purely internal code cleanup.
 
 ## [0.2.0] - 2026-04-06
 

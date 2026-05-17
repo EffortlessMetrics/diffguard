@@ -103,8 +103,6 @@ impl Language {
             Language::Xml => StringSyntax::Xml,
             // PHP uses both single and double quotes
             Language::Php => StringSyntax::Php,
-            // YAML/TOML/JSON strings are C-style-like in this best-effort model
-            Language::Yaml | Language::Toml | Language::Json => StringSyntax::CStyle,
             // All other languages (C, C++, Java, etc.) use C-style strings
             _ => StringSyntax::CStyle,
         }
@@ -166,6 +164,9 @@ pub struct PreprocessOptions {
 }
 
 impl PreprocessOptions {
+    /// Create options that mask nothing.
+    ///
+    /// Both `mask_comments` and `mask_strings` are `false`.
     pub fn none() -> Self {
         Self {
             mask_comments: false,
@@ -173,6 +174,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask only comments.
+    ///
+    /// `mask_comments` is `true`, `mask_strings` is `false`.
     pub fn comments_only() -> Self {
         Self {
             mask_comments: true,
@@ -180,6 +184,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask only strings.
+    ///
+    /// `mask_comments` is `false`, `mask_strings` is `true`.
     pub fn strings_only() -> Self {
         Self {
             mask_comments: false,
@@ -187,6 +194,9 @@ impl PreprocessOptions {
         }
     }
 
+    /// Create options that mask both comments and strings.
+    ///
+    /// Both `mask_comments` and `mask_strings` are `true`.
     pub fn comments_and_strings() -> Self {
         Self {
             mask_comments: true,
@@ -269,6 +279,9 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
+    /// Create a new preprocessor with default `Language::Unknown`.
+    ///
+    /// Use `with_language()` to specify a language upfront, or `set_language()` later.
     pub fn new(opts: PreprocessOptions) -> Self {
         Self {
             opts,
@@ -292,6 +305,10 @@ impl Preprocessor {
         self.reset();
     }
 
+    /// Reset the preprocessor state to `Normal` mode.
+    ///
+    /// This terminates any in-progress comment or string being processed.
+    /// Does not change the language or options.
     pub fn reset(&mut self) {
         self.mode = Mode::Normal;
     }
@@ -1016,6 +1033,15 @@ mod tests {
         assert_eq!("yaml".parse::<Language>().unwrap(), Language::Yaml);
         assert_eq!("toml".parse::<Language>().unwrap(), Language::Toml);
         assert_eq!("json".parse::<Language>().unwrap(), Language::Json);
+    }
+
+    #[test]
+    fn language_from_str_yaml_toml_json_aliases() {
+        // YAML has 'yml' alias
+        assert_eq!("yml".parse::<Language>().unwrap(), Language::Yaml);
+        // JSON has 'jsonc' and 'json5' aliases (JSON with comments)
+        assert_eq!("jsonc".parse::<Language>().unwrap(), Language::Json);
+        assert_eq!("json5".parse::<Language>().unwrap(), Language::Json);
     }
 
     #[test]
@@ -2649,6 +2675,53 @@ mod tests {
         let s = p.sanitize_line("{\"key\": \"value\" // trailing note");
         assert!(s.contains("{\"key\": \"value\""));
         assert!(!s.contains("trailing note"));
+    }
+
+    // ==================== YAML/TOML/JSON string masking tests ====================
+    // These languages use C-style string syntax (double-quoted strings with escapes)
+
+    #[test]
+    fn yaml_masks_double_quoted_strings() {
+        // YAML uses C-style double-quoted strings
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Yaml);
+        let s = p.sanitize_line("key: \"secret value\"");
+        assert!(s.contains("key:")); // key: is preserved
+        assert!(!s.contains("secret")); // string content is masked
+        assert!(!s.contains("value"));
+    }
+
+    #[test]
+    fn toml_masks_double_quoted_strings() {
+        // TOML uses C-style double-quoted strings
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Toml);
+        let s = p.sanitize_line("name = \"secret\"");
+        assert!(s.contains("name =")); // name = is preserved
+        assert!(!s.contains("secret")); // string content is masked
+    }
+
+    #[test]
+    fn json_masks_double_quoted_strings() {
+        // JSON uses C-style double-quoted strings
+        // Both key and value are double-quoted strings, so both get masked
+        let mut p = Preprocessor::with_language(PreprocessOptions::strings_only(), Language::Json);
+        let s = p.sanitize_line("{\"key\": \"value\"}");
+        // Only structural characters { } : , should remain
+        assert!(s.contains("{")); // opening brace preserved
+        assert!(s.contains("}")); // closing brace preserved
+        assert!(s.contains(":")); // colon preserved
+        assert!(!s.contains("key")); // string content masked
+        assert!(!s.contains("value")); // string content masked
+    }
+
+    #[test]
+    fn yaml_string_preserves_hash_comment() {
+        // YAML hash comments should still work even when strings are masked
+        let mut p =
+            Preprocessor::with_language(PreprocessOptions::comments_and_strings(), Language::Yaml);
+        let s = p.sanitize_line("key: \"value\" # this is a comment");
+        assert!(s.contains("key:")); // key: is preserved
+        assert!(!s.contains("value")); // string is masked
+        assert!(!s.contains("comment")); // comment is masked
     }
 
     #[test]
