@@ -10,7 +10,7 @@ pub enum Preset {
     /// Minimal starter config with basic settings
     #[default]
     Minimal,
-    /// Rust best practices (no_unwrap, no_dbg, no_todo, no_print)
+    /// Rust best practices (rust.no_unwrap, rust.no_dbg, rust.no_todo, rust.no_println)
     RustQuality,
     /// Credential and secret detection patterns
     Secrets,
@@ -37,7 +37,9 @@ impl Preset {
     pub fn description(&self) -> &'static str {
         match self {
             Preset::Minimal => "Minimal starter configuration with basic settings",
-            Preset::RustQuality => "Rust best practices (no unwrap, no dbg, no todo, no print)",
+            Preset::RustQuality => {
+                "Rust best practices (rust.no_unwrap, rust.no_dbg, rust.no_todo, rust.no_println)"
+            }
             Preset::Secrets => "Credential and secret detection patterns",
             Preset::JsConsole => "JavaScript/TypeScript console and debugger detection",
             Preset::PythonDebug => "Python print, breakpoint, and pdb detection",

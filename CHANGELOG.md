@@ -70,7 +70,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Affects all output formats (markdown, SARIF, GitLab Quality JSON, JUnit, CSV)
   - Rationale: enterprises need to onboard existing codebases without flagging pre-existing issues
 
+### Changed
+
+- **`RustQuality` preset documentation** — Updated doc comment and `description()` to use correct namespaced rule IDs (`rust.no_unwrap`, `rust.no_dbg`, `rust.no_todo`, `rust.no_println`) matching the generated TOML output (previously showed non-existent shorthand names like `no_todo`, `no_print`)
+
 ### Internal
+
+- **`escape_xml` safety invariant documented** — Added comment in `xml_utils.rs` explaining why `.unwrap()` on `write!()` is safe (only fails on OOM/signal, not logic errors)
+- **`safe_slice` and `byte_to_column` documented** — Added `# Errors` sections and bounds-contract comments to public helper functions in `evaluate.rs`
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 
