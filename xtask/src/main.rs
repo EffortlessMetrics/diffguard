@@ -108,6 +108,10 @@ fn schema(out_dir: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Returns the list of all workspace crates that `cargo mutants` can target.
+///
+/// Hard-coded rather than discovered via `cargo metadata` to avoid a
+/// bootstrap dependency on a working cargo installation during test.
 fn default_mutants_packages() -> Vec<String> {
     vec![
         "diffguard-analytics".to_string(),
@@ -122,6 +126,8 @@ fn default_mutants_packages() -> Vec<String> {
     ]
 }
 
+/// Run `cargo mutants` on the specified packages, or all workspace crates if
+/// `package` is empty.
 fn mutants(package: Vec<String>) -> Result<()> {
     let packages = if package.is_empty() {
         default_mutants_packages()
@@ -137,12 +143,18 @@ fn mutants(package: Vec<String>) -> Result<()> {
     Ok(())
 }
 
+/// Serialize `value` as pretty-printed JSON and write it to `path`.
 fn write_pretty_json(path: &std::path::Path, value: &impl serde::Serialize) -> Result<()> {
     let bytes = serde_json::to_vec_pretty(value).context("serialize json")?;
     std::fs::write(path, bytes).with_context(|| format!("write {}", path.display()))?;
     Ok(())
 }
 
+/// Execute `bin` with `args` and return the exit status.
+///
+/// When `bin` is `"cargo"`, the `DIFFGUARD_XTASK_CARGO` environment variable is
+/// checked first — if set, its value is used instead. This allows tests to
+/// intercept cargo invocations without patching PATH.
 fn run(bin: &str, args: &[&str]) -> Result<()> {
     let resolved = if bin == "cargo" {
         std::env::var_os("DIFFGUARD_XTASK_CARGO").unwrap_or_else(|| bin.into())
