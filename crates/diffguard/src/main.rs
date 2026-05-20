@@ -768,8 +768,17 @@ fn compile_rules_checked(
     compile_rules(rules)
 }
 
-/// Validate rules in a parsed config file and return a list of error messages.
-/// Shared between cmd_validate and cmd_doctor.
+/// Validate rule configurations for correctness.
+///
+/// Checks for:
+/// - Duplicate rule IDs
+/// - Empty pattern lists
+/// - Invalid regex patterns in patterns, context_patterns, and escalate_patterns
+/// - Invalid multiline_window values
+/// - Unknown rule dependencies
+/// - Invalid path globs
+///
+/// Returns a list of error messages. Empty list means validation passed.
 fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     let mut errors: Vec<String> = Vec::new();
     let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
@@ -1922,7 +1931,7 @@ fn cmd_check(mut args: CheckArgs) -> Result<i32> {
 
     // End timing
     let ended_at = Utc::now();
-    let duration_ms = start_time.elapsed().as_millis() as u64;
+    let duration_ms = start_time.elapsed().as_millis().min(u128::from(u64::MAX)) as u64;
 
     match mode {
         Mode::Standard => {
@@ -2605,8 +2614,12 @@ fn cmd_check_inner(
         });
     }
 
+    #[allow(clippy::unnecessary_min_or_max, clippy::manual_clamp)]
     let ended_at = Utc::now();
-    let duration_ms = (ended_at - *started_at).num_milliseconds().max(0) as u64;
+    let duration_ms = (ended_at - *started_at)
+        .num_milliseconds()
+        .max(0)
+        .min(i64::MAX) as u64;
 
     if let Some(write_baseline_path) = &args.write_false_positive_baseline {
         let generated = baseline_from_receipt(&run.receipt);
