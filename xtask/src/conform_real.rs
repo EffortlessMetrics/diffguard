@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::sync::OnceLock;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{bail, Context, ensure, Result};
 use tempfile::TempDir;
 
 /// Run all conformance tests.
@@ -114,9 +114,16 @@ pub fn run_conformance(quick: bool) -> Result<()> {
 
     // Test 8: Vocabulary constants
     print!("  [8/15] Vocabulary constants... ");
-    test_vocabulary_constants();
-    println!("PASS");
-    passed += 1;
+    match test_vocabulary_constants() {
+        Ok(()) => {
+            println!("PASS");
+            passed += 1;
+        }
+        Err(e) => {
+            println!("FAIL: {e}");
+            failed += 1;
+        }
+    }
 
     // Test 9: Tool error code in sensor report
     print!("  [9/15] Tool error code field... ");
@@ -701,7 +708,7 @@ fn canonicalize_json(value: &serde_json::Value) -> String {
 }
 
 /// Test that frozen vocabulary constants have the expected values.
-fn test_vocabulary_constants() {
+fn test_vocabulary_constants() -> Result<()> {
     use diffguard_types::{
         CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_SKIPPED, CAP_STATUS_UNAVAILABLE,
         CHECK_ID_INTERNAL, CHECK_ID_PATTERN, CHECK_SCHEMA_V1, CODE_TOOL_RUNTIME_ERROR,
@@ -710,30 +717,32 @@ fn test_vocabulary_constants() {
     };
 
     // Schema identifiers
-    assert_eq!(CHECK_SCHEMA_V1, "diffguard.check.v1");
-    assert_eq!(SENSOR_REPORT_SCHEMA_V1, "sensor.report.v1");
+    ensure!(CHECK_SCHEMA_V1 == "diffguard.check.v1", "CHECK_SCHEMA_V1: expected 'diffguard.check.v1', got '{CHECK_SCHEMA_V1}'");
+    ensure!(SENSOR_REPORT_SCHEMA_V1 == "sensor.report.v1", "SENSOR_REPORT_SCHEMA_V1: expected 'sensor.report.v1', got '{SENSOR_REPORT_SCHEMA_V1}'");
 
     // Check IDs
-    assert_eq!(CHECK_ID_PATTERN, "diffguard.pattern");
-    assert_eq!(CHECK_ID_INTERNAL, "diffguard.internal");
+    ensure!(CHECK_ID_PATTERN == "diffguard.pattern", "CHECK_ID_PATTERN: expected 'diffguard.pattern', got '{CHECK_ID_PATTERN}'");
+    ensure!(CHECK_ID_INTERNAL == "diffguard.internal", "CHECK_ID_INTERNAL: expected 'diffguard.internal', got '{CHECK_ID_INTERNAL}'");
 
     // Reason tokens
-    assert_eq!(REASON_NO_DIFF_INPUT, "no_diff_input");
-    assert_eq!(REASON_MISSING_BASE, "missing_base");
-    assert_eq!(REASON_GIT_UNAVAILABLE, "git_unavailable");
-    assert_eq!(REASON_TOOL_ERROR, "tool_error");
-    assert_eq!(REASON_HAS_ERROR, "has_error");
-    assert_eq!(REASON_HAS_WARNING, "has_warning");
-    assert_eq!(REASON_TRUNCATED, "truncated");
+    ensure!(REASON_NO_DIFF_INPUT == "no_diff_input", "REASON_NO_DIFF_INPUT: expected 'no_diff_input', got '{REASON_NO_DIFF_INPUT}'");
+    ensure!(REASON_MISSING_BASE == "missing_base", "REASON_MISSING_BASE: expected 'missing_base', got '{REASON_MISSING_BASE}'");
+    ensure!(REASON_GIT_UNAVAILABLE == "git_unavailable", "REASON_GIT_UNAVAILABLE: expected 'git_unavailable', got '{REASON_GIT_UNAVAILABLE}'");
+    ensure!(REASON_TOOL_ERROR == "tool_error", "REASON_TOOL_ERROR: expected 'tool_error', got '{REASON_TOOL_ERROR}'");
+    ensure!(REASON_HAS_ERROR == "has_error", "REASON_HAS_ERROR: expected 'has_error', got '{REASON_HAS_ERROR}'");
+    ensure!(REASON_HAS_WARNING == "has_warning", "REASON_HAS_WARNING: expected 'has_warning', got '{REASON_HAS_WARNING}'");
+    ensure!(REASON_TRUNCATED == "truncated", "REASON_TRUNCATED: expected 'truncated', got '{REASON_TRUNCATED}'");
 
     // Tool error code (R1 survivability)
-    assert_eq!(CODE_TOOL_RUNTIME_ERROR, "tool.runtime_error");
+    ensure!(CODE_TOOL_RUNTIME_ERROR == "tool.runtime_error", "CODE_TOOL_RUNTIME_ERROR: expected 'tool.runtime_error', got '{CODE_TOOL_RUNTIME_ERROR}'");
 
     // Capability names and statuses
-    assert_eq!(CAP_GIT, "git");
-    assert_eq!(CAP_STATUS_AVAILABLE, "available");
-    assert_eq!(CAP_STATUS_UNAVAILABLE, "unavailable");
-    assert_eq!(CAP_STATUS_SKIPPED, "skipped");
+    ensure!(CAP_GIT == "git", "CAP_GIT: expected 'git', got '{CAP_GIT}'");
+    ensure!(CAP_STATUS_AVAILABLE == "available", "CAP_STATUS_AVAILABLE: expected 'available', got '{CAP_STATUS_AVAILABLE}'");
+    ensure!(CAP_STATUS_UNAVAILABLE == "unavailable", "CAP_STATUS_UNAVAILABLE: expected 'unavailable', got '{CAP_STATUS_UNAVAILABLE}'");
+    ensure!(CAP_STATUS_SKIPPED == "skipped", "CAP_STATUS_SKIPPED: expected 'skipped', got '{CAP_STATUS_SKIPPED}'");
+
+    Ok(())
 
 }
 

@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Windows target triple detection for MSYS/MINGW environments
   - Concurrency control on SARIF upload to prevent race conditions across workflow runs
   - Improved error handling with user-visible warning messages for fallback installation paths
+- **`parse_unified_diff` now requires explicit Result handling** — Added `#[must_use]` to `parse_unified_diff` so the compiler warns when callers ignore the `Result`. This prevents silent parse failures where malformed diffs are silently ignored. Callers must now explicitly handle the `Result` or use `let _ = ...` to indicate intentional ignore. Closes #329.
+- **`parse_suppression` and `parse_suppression_in_comments` now require explicit handling** — Added `#[must_use]` to both functions so the compiler warns when callers ignore the `Option<Suppression>` return value. This prevents silent dropping of suppression directives, which would cause rules to fire when they should have been suppressed — a semantic correctness bug in a security-critical path. Closes #307.
 
 ### Changed
 
@@ -71,6 +73,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Rationale: enterprises need to onboard existing codebases without flagging pre-existing issues
 
 ### Internal
+
+- **`diffguard-analytics`**: Added `#[must_use]` to `merge_false_positive_baselines()` to prevent silent data loss. If callers discard the return value (e.g., expression-bodied call), the compiler now emits a warning instead of silently skipping the baseline merge. Consistent with existing `#[must_use]` on `normalize_false_positive_baseline`, `fingerprint_for_finding`, and `baseline_from_receipt` in the same crate.
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
 

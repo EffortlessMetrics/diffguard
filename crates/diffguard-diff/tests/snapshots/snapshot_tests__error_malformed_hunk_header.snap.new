@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-diff/tests/snapshot_tests.rs
+assertion_line: 400
+expression: "format!(\"{:?}\", err)"
+---
+MalformedHunkHeader("@@ -1 +x @@")

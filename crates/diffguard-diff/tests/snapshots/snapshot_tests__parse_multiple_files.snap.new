@@ -1,0 +1,10 @@
+---
+source: crates/diffguard-diff/tests/snapshot_tests.rs
+assertion_line: 133
+expression: snapshot
+---
+lines:
+DiffLine { path: "src/first.rs", line: 2, content: "fn first_added() {}", kind: Added }
+DiffLine { path: "src/second.rs", line: 2, content: "fn second_added() {}", kind: Added }
+stats:
+DiffStats { files: 2, lines: 2 }
