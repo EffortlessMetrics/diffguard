@@ -55,8 +55,8 @@ const KNOWN_EXTENSIONS: &[(&str, &str)] = &[
     ("xsd", "xml"),
     ("svg", "xml"),
     ("xhtml", "xml"),
-    ("html", "xml"),
-    ("htm", "xml"),
+    ("html", "html"),
+    ("htm", "html"),
     // PHP - Requirement 1.18
     ("php", "php"),
     ("phtml", "php"),

@@ -768,8 +768,17 @@ fn compile_rules_checked(
     compile_rules(rules)
 }
 
-/// Validate rules in a parsed config file and return a list of error messages.
-/// Shared between cmd_validate and cmd_doctor.
+/// Validate rule configurations for correctness.
+///
+/// Checks for:
+/// - Duplicate rule IDs
+/// - Empty pattern lists
+/// - Invalid regex patterns in patterns, context_patterns, and escalate_patterns
+/// - Invalid multiline_window values
+/// - Unknown rule dependencies
+/// - Invalid path globs
+///
+/// Returns a list of error messages. Empty list means validation passed.
 fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     let mut errors: Vec<String> = Vec::new();
     let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
@@ -1080,7 +1089,7 @@ fn cmd_explain(args: ExplainArgs) -> Result<()> {
 
             msg.push_str("\nUse 'diffguard rules' to list all available rules.");
 
-            bail!("{}", msg);
+            bail!("{msg}");
         }
     }
 }
@@ -1095,7 +1104,7 @@ fn format_rule_explanation(rule: &RuleConfig) -> String {
 
     out.push_str("\nPatterns:\n");
     for p in &rule.patterns {
-        out.push_str(&format!("  - {}\n", p));
+        out.push_str(&format!("  - {p}\n"));
     }
 
     out.push_str("\nSemantics:\n");
