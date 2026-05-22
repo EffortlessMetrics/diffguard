@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{"count":2,"fingerprints":["aaa111","bbb222"]}
