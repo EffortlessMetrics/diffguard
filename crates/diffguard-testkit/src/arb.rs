@@ -371,6 +371,8 @@ pub fn arb_defaults() -> impl Strategy<Value = Defaults> {
                 fail_on,
                 max_findings,
                 diff_context,
+                ignore_comments: None,
+                ignore_strings: None,
             },
         )
 }
