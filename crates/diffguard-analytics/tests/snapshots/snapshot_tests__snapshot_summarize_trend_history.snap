@@ -1,0 +1,37 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "run_count": 2,
+  "totals": {
+    "info": 0,
+    "warn": 0,
+    "error": 3
+  },
+  "total_findings": 3,
+  "latest": {
+    "started_at": "2026-01-01T00:00:02Z",
+    "ended_at": "2026-01-01T00:00:03Z",
+    "duration_ms": 1000,
+    "base": "origin/main",
+    "head": "HEAD",
+    "scope": "added",
+    "status": "fail",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 2
+    },
+    "files_scanned": 1,
+    "lines_scanned": 10,
+    "findings": 2
+  },
+  "delta_from_previous": {
+    "findings": 1,
+    "info": 0,
+    "warn": 0,
+    "error": 1,
+    "suppressed": 0
+  }
+}
