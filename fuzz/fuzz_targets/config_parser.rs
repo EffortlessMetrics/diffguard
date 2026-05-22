@@ -51,6 +51,7 @@ struct FuzzDefaults {
 
 /// Fuzz-friendly rule config.
 #[derive(Arbitrary, Debug)]
+#[allow(dead_code)]
 struct FuzzRuleConfig {
     id: String,
     severity: u8,
@@ -121,7 +122,10 @@ impl StructuredConfig {
                 _ => "error",
             };
             out.push_str(&format!("severity = \"{}\"\n", sev));
-            out.push_str(&format!("message = {}\n", escape_toml_string(&rule.message)));
+            out.push_str(&format!(
+                "message = {}\n",
+                escape_toml_string(&rule.message)
+            ));
 
             if !rule.languages.is_empty() {
                 out.push_str(&format!(

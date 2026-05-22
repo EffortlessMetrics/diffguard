@@ -491,7 +491,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didOpen params: {}", err),
+                            &format!("invalid didOpen params: {err}"),
                         )?;
                         return Ok(false);
                     }
