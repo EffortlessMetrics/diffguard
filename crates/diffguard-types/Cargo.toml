@@ -21,4 +21,4 @@ schemars.workspace = true
 proptest.workspace = true
 jsonschema = "0.18"
 toml.workspace = true
-regex = "1"
+regex.workspace = true
