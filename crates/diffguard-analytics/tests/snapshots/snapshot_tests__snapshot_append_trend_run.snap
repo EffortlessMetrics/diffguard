@@ -1,0 +1,26 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "schema": "diffguard.trend_history.v1",
+  "runs": [
+    {
+      "started_at": "2026-01-01T00:00:00Z",
+      "ended_at": "2026-01-01T00:00:01Z",
+      "duration_ms": 1000,
+      "base": "origin/main",
+      "head": "HEAD",
+      "scope": "added",
+      "status": "fail",
+      "counts": {
+        "info": 0,
+        "warn": 0,
+        "error": 1
+      },
+      "files_scanned": 1,
+      "lines_scanned": 10,
+      "findings": 1
+    }
+  ]
+}
