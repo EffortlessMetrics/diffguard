@@ -39,6 +39,8 @@ scope = "added"         # added|changed|modified|deleted (changed kept for compa
 fail_on = "error"       # error|warn|never
 max_findings = 200
 diff_context = 0
+# ignore_comments = true  # ignore comment lines when matching patterns
+# ignore_strings = true   # ignore string literal content when matching patterns
 
 [[rule]]
 id = "rust.no_unwrap"
