@@ -1,6 +1,6 @@
 use diffguard_types::{
     CheckReceipt, Finding, REASON_GIT_UNAVAILABLE, REASON_MISSING_BASE, REASON_NO_DIFF_INPUT,
-    REASON_TOOL_ERROR, REASON_TRUNCATED, VerdictStatus,
+    REASON_TOOL_ERROR, REASON_TRUNCATED, VerdictStatus, escape_md,
 };
 
 /// Reasons that are meaningful to render in markdown output.
@@ -112,28 +112,6 @@ fn render_finding_row(f: &Finding) -> String {
         msg = msg,
         snippet = snippet
     )
-}
-
-/// Escapes special Markdown characters in table cell content.
-///
-/// Escapes pipe (`|`), backtick (`` ` ``), hash (`#`), asterisk (`*`),
-/// underscore (`_`), open bracket (`[`), close bracket (`]`), and greater-than
-/// (`>`) characters by prefixing with backslash. Also escapes CRLF (`\r\n`)
-/// and LF (`\n`) line endings to prevent breaking the markdown table structure.
-///
-/// These escapes are needed to prevent breaking the markdown table structure
-/// and prevent unintended markdown formatting.
-fn escape_md(s: &str) -> String {
-    s.replace('|', "\\|")
-        .replace('`', "\\`")
-        .replace('#', "\\#")
-        .replace('*', "\\*")
-        .replace('_', "\\_")
-        .replace('[', "\\[")
-        .replace(']', "\\]")
-        .replace('>', "\\>")
-        .replace('\r', "\\r")
-        .replace('\n', "\\n")
 }
 
 #[cfg(test)]

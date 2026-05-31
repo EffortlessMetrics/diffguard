@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-diff/src/unified.rs
+expression: "unescape_git_path(r#\"dir\\ name\\\"quote\\\"\\\\tab\\tnewline\\ncarriage\\rend\"#)"
+---
+dir name"quote"\tab	newline
+carriageend

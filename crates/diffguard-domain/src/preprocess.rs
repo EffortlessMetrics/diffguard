@@ -166,6 +166,7 @@ pub struct PreprocessOptions {
 }
 
 impl PreprocessOptions {
+    #[must_use]
     pub fn none() -> Self {
         Self {
             mask_comments: false,
@@ -173,6 +174,7 @@ impl PreprocessOptions {
         }
     }
 
+    #[must_use]
     pub fn comments_only() -> Self {
         Self {
             mask_comments: true,
@@ -180,6 +182,7 @@ impl PreprocessOptions {
         }
     }
 
+    #[must_use]
     pub fn strings_only() -> Self {
         Self {
             mask_comments: false,
@@ -187,6 +190,7 @@ impl PreprocessOptions {
         }
     }
 
+    #[must_use]
     pub fn comments_and_strings() -> Self {
         Self {
             mask_comments: true,
@@ -269,6 +273,7 @@ pub struct Preprocessor {
 }
 
 impl Preprocessor {
+    #[must_use]
     pub fn new(opts: PreprocessOptions) -> Self {
         Self {
             opts,
@@ -278,6 +283,7 @@ impl Preprocessor {
     }
 
     /// Create a new preprocessor with language-specific syntax support.
+    #[must_use]
     pub fn with_language(opts: PreprocessOptions, lang: Language) -> Self {
         Self {
             opts,

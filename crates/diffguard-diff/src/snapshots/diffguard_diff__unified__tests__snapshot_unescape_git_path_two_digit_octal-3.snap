@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-diff/src/unified.rs
+expression: "unescape_git_path(r#\"\\10\"#)"
+---
+

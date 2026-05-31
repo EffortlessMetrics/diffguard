@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+- **Deduplicated `escape_md` function** — moved from private copies in `diffguard/src/main.rs` and `diffguard-core/src/render.rs` to `diffguard-types` as a shared public utility for markdown table cell escaping
 
 ## [0.2.0] - 2026-04-06
 

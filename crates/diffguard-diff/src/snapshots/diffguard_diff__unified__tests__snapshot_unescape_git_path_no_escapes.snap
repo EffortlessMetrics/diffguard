@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-diff/src/unified.rs
+expression: "unescape_git_path(\"plain_string_no_escapes\")"
+---
+plain_string_no_escapes
