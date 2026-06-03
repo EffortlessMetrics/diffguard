@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+- **`bench` crate proptest alignment**: Changed `proptest = "1.5"` to `proptest.workspace = true` in `bench/Cargo.toml` dev-dependencies to align with workspace pinned version 1.10.0. Ensures benchmark property tests run against the same proptest version as the rest of the workspace.
 
 ## [0.2.0] - 2026-04-06
 

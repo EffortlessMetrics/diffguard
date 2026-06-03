@@ -39,7 +39,7 @@ diffguard-core = { path = "../crates/diffguard-core", version = "0.2.0" }
 diffguard-types = { path = "../crates/diffguard-types", version = "0.2.0" }
 
 [dev-dependencies]
-proptest = "1.5"
+proptest.workspace = true
 diffguard-core = { path = "../crates/diffguard-core", version = "0.2.0" }
 diffguard-testkit = { path = "../crates/diffguard-testkit", version = "0.2.0" }
 insta.workspace = true
