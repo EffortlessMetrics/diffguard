@@ -1,0 +1,6 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 68
+expression: result.len()
+---
+0

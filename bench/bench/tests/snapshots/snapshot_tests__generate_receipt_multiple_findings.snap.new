@@ -1,0 +1,67 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 145
+expression: json
+---
+{
+  "schema": "diffguard.v1",
+  "tool": {
+    "name": "diffguard",
+    "version": "0.2.0"
+  },
+  "diff": {
+    "base": "abc123",
+    "head": "def456",
+    "context_lines": 3,
+    "scope": "added",
+    "files_scanned": 1,
+    "lines_scanned": 100
+  },
+  "findings": [
+    {
+      "rule_id": "rule_0",
+      "severity": "warn",
+      "message": "Finding 0",
+      "path": "src/file0.rs",
+      "line": 0,
+      "column": 5,
+      "match_text": "match_0",
+      "snippet": "context"
+    },
+    {
+      "rule_id": "rule_1",
+      "severity": "warn",
+      "message": "Finding 1",
+      "path": "src/file1.rs",
+      "line": 10,
+      "column": 5,
+      "match_text": "match_1",
+      "snippet": "context"
+    },
+    {
+      "rule_id": "rule_2",
+      "severity": "warn",
+      "message": "Finding 2",
+      "path": "src/file2.rs",
+      "line": 20,
+      "column": 5,
+      "match_text": "match_2",
+      "snippet": "context"
+    }
+  ],
+  "verdict": {
+    "status": "pass",
+    "counts": {
+      "info": 0,
+      "warn": 0,
+      "error": 0
+    },
+    "reasons": []
+  },
+  "timing": {
+    "total_ms": 42,
+    "diff_parse_ms": 10,
+    "rule_compile_ms": 5,
+    "evaluation_ms": 27
+  }
+}

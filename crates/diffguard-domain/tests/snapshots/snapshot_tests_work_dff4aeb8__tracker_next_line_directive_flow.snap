@@ -1,0 +1,7 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_dff4aeb8.rs
+expression: snapshot
+---
+line1_effective: EffectiveSuppressions { suppress_all: false, suppressed_rules: {} }
+line2_effective: EffectiveSuppressions { suppress_all: false, suppressed_rules: {"rule1"} }
+line3_effective: EffectiveSuppressions { suppress_all: false, suppressed_rules: {} }

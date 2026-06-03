@@ -1,0 +1,6 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 76
+expression: as_string
+---
+[InputLine { path: "test.rs", line: 1, content: "line 1 content here with some padding\n" }, InputLine { path: "test.rs", line: 2, content: "line 2 content here with some padding\n" }, InputLine { path: "test.rs", line: 3, content: "line 3 content here with some padding\n" }, InputLine { path: "test.rs", line: 4, content: "line 4 content here with some padding\n" }, InputLine { path: "test.rs", line: 5, content: "line 5 content here with some padding\n" }]

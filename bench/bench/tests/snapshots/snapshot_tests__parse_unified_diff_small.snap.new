@@ -1,0 +1,6 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 238
+expression: summary
+---
+lines=5, stats_lines=5, first_path=src/lib.rs, first_line=1

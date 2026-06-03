@@ -1,0 +1,6 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 218
+expression: "format!(\"{:?}\", input_line)"
+---
+InputLine { path: "src/main.rs", line: 42, content: "let x = 1;" }

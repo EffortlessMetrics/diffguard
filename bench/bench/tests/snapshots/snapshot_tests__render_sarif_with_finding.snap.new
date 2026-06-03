@@ -1,0 +1,60 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 199
+expression: json
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "diffguard",
+          "version": "0.2.0",
+          "informationUri": "https://github.com/effortlessmetrics/diffguard",
+          "rules": [
+            {
+              "id": "rust.no_unwrap",
+              "shortDescription": {
+                "text": "Avoid unwrap in production code"
+              },
+              "defaultConfiguration": {
+                "level": "error"
+              }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "rust.no_unwrap",
+          "level": "error",
+          "message": {
+            "text": "Avoid unwrap in production code"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/lib.rs",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 42,
+                  "startColumn": 15,
+                  "snippet": {
+                    "text": "x.unwrap()"
+                  }
+                }
+              }
+            }
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "rust.no_unwrap:src/lib.rs:42"
+          }
+        }
+      ]
+    }
+  ]
+}

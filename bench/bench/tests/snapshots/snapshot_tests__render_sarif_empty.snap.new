@@ -1,0 +1,21 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 181
+expression: json
+---
+{
+  "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "diffguard",
+          "version": "0.2.0",
+          "informationUri": "https://github.com/effortlessmetrics/diffguard"
+        }
+      },
+      "results": []
+    }
+  ]
+}

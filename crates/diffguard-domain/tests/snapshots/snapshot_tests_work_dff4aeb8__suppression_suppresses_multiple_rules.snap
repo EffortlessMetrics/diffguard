@@ -1,0 +1,8 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_dff4aeb8.rs
+expression: snapshot
+---
+suppresses_rule1: true
+suppresses_rule2: true
+suppresses_rule3: true
+suppresses_rule4: false

@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_dff4aeb8.rs
+expression: formatted
+---
+EffectiveSuppressions { suppress_all: false, suppressed_rules: {"rule1", "rule2"} }

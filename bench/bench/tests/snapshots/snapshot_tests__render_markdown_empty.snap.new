@@ -1,0 +1,10 @@
+---
+source: bench/tests/snapshot_tests.rs
+assertion_line: 156
+expression: output
+---
+## diffguard — PASS
+
+Scanned **1** file(s), **100** line(s) (scope: `added`, base: `abc123`, head: `def456`)
+
+No findings.
