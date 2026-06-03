@@ -1,0 +1,13 @@
+---
+source: crates/diffguard/tests/snapshot_tests_work_7ef3eee3_cmd_doctor.rs
+expression: "format!(\"exit_code={:?}\\n\\nSTDOUT:\\n{}\\n\\nSTDERR:\\n{}\", exit_code,\nnormalized_stdout, stderr)"
+---
+exit_code=Some(0)
+
+STDOUT:
+git: PASS (git version X.XX.X)
+git-repo: PASS
+config: PASS
+
+
+STDERR:
