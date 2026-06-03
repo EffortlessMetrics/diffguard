@@ -23,6 +23,14 @@ pub fn load_effective_config(path: Option<&Path>, no_default_rules: bool) -> Res
     }
 }
 
+/// Resolves the path to a configuration file.
+///
+/// Resolution order:
+/// 1. If `override_path` is provided, use it (resolving relative paths against `workspace_root`)
+/// 2. If `workspace_root` is provided, look for `default_name` in that directory
+/// 3. Look for `default_name` in the current working directory
+///
+/// Relative paths in `override_path` are joined with `workspace_root` if available.
 pub fn resolve_config_path(
     workspace_root: Option<&Path>,
     override_path: Option<String>,
