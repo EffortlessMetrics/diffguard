@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: diff
+---
+"diff --git a/old.rs b/old.rs\ndeleted file mode 100644\nindex 1111111..0000000\n--- a/old.rs\n+++ /dev/null\n@@ -1,2 +0,0 @@\n-fn old() {}\n-fn deprecated() {}\ndiff --git a/new.rs b/new.rs\nnew file mode 100644\nindex 0000000..1111111 100644\n--- /dev/null\n+++ b/new.rs\n@@ -0,0 +1,1 @@\n+fn new() {}\n"

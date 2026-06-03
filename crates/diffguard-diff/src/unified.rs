@@ -543,11 +543,11 @@ fn unescape_git_path(s: &str) -> String {
             b'r' => out.push(b'\r'),
             b' ' => out.push(b' '),
             b'0'..=b'7' => {
-                let mut val = (next - b'0') as u32;
+                let mut val = u32::from(next - b'0');
                 for _ in 0..2 {
                     match iter.peek().copied() {
                         Some(d) if (b'0'..=b'7').contains(&d) => {
-                            val = val * 8 + (d - b'0') as u32;
+                            val = val * 8 + u32::from(d - b'0');
                             iter.next();
                         }
                         _ => break,

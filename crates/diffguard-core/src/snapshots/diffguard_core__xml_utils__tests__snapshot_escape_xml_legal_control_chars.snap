@@ -1,0 +1,6 @@
+---
+source: crates/diffguard-core/src/xml_utils.rs
+expression: result
+---
+a	b
+c&#xD;d

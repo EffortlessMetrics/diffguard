@@ -1,0 +1,60 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "defaults": {
+    "base": "origin/main",
+    "diff_context": 0,
+    "fail_on": "error",
+    "head": "HEAD",
+    "max_findings": 200,
+    "scope": "added"
+  },
+  "rule": [
+    {
+      "exclude_paths": [
+        "**/tests/**",
+        "**/*.test.*",
+        "**/*.spec.*"
+      ],
+      "id": "js.no_console",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "message": "Remove console.log before merging",
+      "paths": [
+        "**/*.js",
+        "**/*.ts",
+        "**/*.jsx",
+        "**/*.tsx"
+      ],
+      "patterns": [
+        "\\bconsole\\.(log|debug|info)\\s*\\("
+      ],
+      "severity": "warn"
+    },
+    {
+      "exclude_paths": [],
+      "id": "js.no_debugger",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "message": "Remove debugger statements",
+      "paths": [
+        "**/*.js",
+        "**/*.ts"
+      ],
+      "patterns": [
+        "\\bdebugger\\b"
+      ],
+      "severity": "error"
+    }
+  ]
+}

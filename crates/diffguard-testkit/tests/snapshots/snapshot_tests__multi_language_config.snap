@@ -1,0 +1,140 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "defaults": {
+    "base": "origin/main",
+    "diff_context": 0,
+    "fail_on": "error",
+    "head": "HEAD",
+    "max_findings": 200,
+    "scope": "added"
+  },
+  "rule": [
+    {
+      "exclude_paths": [
+        "**/tests/**"
+      ],
+      "id": "rust.no_unwrap",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "rust"
+      ],
+      "message": "Avoid unwrap in production code",
+      "paths": [
+        "**/*.rs"
+      ],
+      "patterns": [
+        "\\.unwrap\\(",
+        "\\.expect\\("
+      ],
+      "severity": "error"
+    },
+    {
+      "exclude_paths": [
+        "**/tests/**",
+        "**/examples/**"
+      ],
+      "id": "rust.no_dbg",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "rust"
+      ],
+      "message": "Remove debug macros before merging",
+      "paths": [
+        "**/*.rs"
+      ],
+      "patterns": [
+        "\\bdbg!\\(",
+        "\\bprintln!\\("
+      ],
+      "severity": "warn"
+    },
+    {
+      "exclude_paths": [
+        "**/tests/**",
+        "**/*.test.*",
+        "**/*.spec.*"
+      ],
+      "id": "js.no_console",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "message": "Remove console.log before merging",
+      "paths": [
+        "**/*.js",
+        "**/*.ts",
+        "**/*.jsx",
+        "**/*.tsx"
+      ],
+      "patterns": [
+        "\\bconsole\\.(log|debug|info)\\s*\\("
+      ],
+      "severity": "warn"
+    },
+    {
+      "exclude_paths": [],
+      "id": "js.no_debugger",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "message": "Remove debugger statements",
+      "paths": [
+        "**/*.js",
+        "**/*.ts"
+      ],
+      "patterns": [
+        "\\bdebugger\\b"
+      ],
+      "severity": "error"
+    },
+    {
+      "exclude_paths": [
+        "**/tests/**",
+        "**/test_*.py"
+      ],
+      "id": "python.no_print",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "python"
+      ],
+      "message": "Remove print statements before merging",
+      "paths": [
+        "**/*.py"
+      ],
+      "patterns": [
+        "\\bprint\\s*\\("
+      ],
+      "severity": "warn"
+    },
+    {
+      "exclude_paths": [],
+      "id": "python.no_pdb",
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "languages": [
+        "python"
+      ],
+      "message": "Remove debugger statements",
+      "paths": [
+        "**/*.py"
+      ],
+      "patterns": [
+        "\\bimport\\s+pdb\\b",
+        "\\bpdb\\.set_trace\\s*\\(",
+        "\\bbreakpoint\\s*\\("
+      ],
+      "severity": "error"
+    }
+  ]
+}

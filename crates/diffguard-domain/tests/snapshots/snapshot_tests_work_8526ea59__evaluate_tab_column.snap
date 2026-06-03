@@ -1,0 +1,18 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_8526ea59.rs
+expression: snapshot
+---
+=== Evaluation ===
+findings_count: 1
+truncated_findings: 0
+files_scanned: 1
+lines_scanned: 1
+
+=== Counts ===
+info: 0, warn: 0, error: 1, suppressed: 0
+
+=== Findings ===
+- rule_id: test.rule, severity: Error, message: found: b, path: test.txt, line: 1, column: Some(3), match_text: "b", snippet: "a\tb"
+
+=== Rule Hits ===
+- rule_id: test.rule, total: 1, emitted: 1, suppressed: 0, info: 0, warn: 0, error: 1
