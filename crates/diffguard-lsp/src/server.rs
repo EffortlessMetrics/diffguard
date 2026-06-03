@@ -909,6 +909,19 @@ fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<Strin
     Ok(combined)
 }
 
+/// Run `git diff` (or `git diff --cached` for staged) in the LSP workspace.
+///
+/// # Arguments
+/// * `workspace_root` - The LSP workspace root path
+/// * `relative_path` - The file path relative to the workspace root
+/// * `staged` - If true, run `git diff --cached` to get staged changes
+///
+/// # Returns
+/// Raw git diff output as a `String`. Uses `into_owned()` on the `Cow<str>`
+/// from `from_utf8_lossy` to explicitly convert to an owned string.
+///
+/// # Timeout
+/// Spawns with a 10-second timeout to avoid blocking the LSP indefinitely.
 fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Result<String> {
     // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
     const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);
@@ -948,7 +961,7 @@ fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Res
         );
     }
 
-    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
 fn uri_to_file_path(uri: &Uri) -> Option<PathBuf> {

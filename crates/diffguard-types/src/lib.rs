@@ -275,6 +275,16 @@ pub struct Defaults {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub diff_context: Option<u32>,
+
+    /// Ignore comments when matching patterns.
+    /// When set to `true`, pattern matching skips comment lines.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ignore_comments: Option<bool>,
+
+    /// Ignore string literals when matching patterns.
+    /// When set to `true`, pattern matching skips string literal content.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ignore_strings: Option<bool>,
 }
 
 impl Default for Defaults {
@@ -286,6 +296,8 @@ impl Default for Defaults {
             fail_on: Some(FailOn::Error),
             max_findings: Some(200),
             diff_context: Some(0),
+            ignore_comments: None,
+            ignore_strings: None,
         }
     }
 }
@@ -504,7 +516,7 @@ pub struct RunMeta {
 pub struct CapabilityStatus {
     /// Status: "available", "unavailable", or "skipped".
     pub status: String,
-    /// Stable token reason (e.g., "missing_base", "tool_error").
+    /// Stable token reason (e.g., `missing_base`, `tool_error`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     /// Human-readable detail for diagnostics.
@@ -588,6 +600,8 @@ mod tests {
         assert_eq!(defaults.fail_on, Some(FailOn::Error));
         assert_eq!(defaults.max_findings, Some(200));
         assert_eq!(defaults.diff_context, Some(0));
+        assert_eq!(defaults.ignore_comments, None);
+        assert_eq!(defaults.ignore_strings, None);
     }
 
     #[test]
