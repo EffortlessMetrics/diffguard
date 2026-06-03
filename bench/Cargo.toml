@@ -35,7 +35,6 @@ criterion = "0.5"
 # Workspace crates as dependencies for benchmarking
 diffguard-diff = { path = "../crates/diffguard-diff", version = "0.2.0" }
 diffguard-domain = { path = "../crates/diffguard-domain", version = "0.2.0" }
-diffguard-core = { path = "../crates/diffguard-core", version = "0.2.0" }
 diffguard-types = { path = "../crates/diffguard-types", version = "0.2.0" }
 
 [dev-dependencies]
