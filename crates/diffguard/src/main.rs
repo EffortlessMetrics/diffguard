@@ -1908,6 +1908,14 @@ fn serialize_sensor_report_checked(
     serde_json::to_string_pretty(report)
 }
 
+/// Executes the `check` command.
+///
+/// Handles timing using both wall-clock (`Utc::now()`) and monotonic (`Instant::now()`)
+/// timestamps to compute duration. Duration calculation uses explicit saturation before
+/// narrowing casts to prevent silent overflow (see lines 1925 and 2610).
+///
+/// In Standard mode, errors propagate normally. In Cockpit mode, errors are classified
+/// to determine whether to write a skip receipt or a full error receipt.
 fn cmd_check(mut args: CheckArgs) -> Result<i32> {
     let mode = resolve_mode(&args);
     resolve_extras_paths(&mut args, mode);
