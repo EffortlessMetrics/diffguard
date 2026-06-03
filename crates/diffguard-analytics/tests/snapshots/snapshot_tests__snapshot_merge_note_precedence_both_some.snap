@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: note_value
+---
+Some("base note")
