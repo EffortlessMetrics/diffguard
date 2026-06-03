@@ -37,3 +37,4 @@ diffguard-types = { version = "0.2", path = "../diffguard-types" }
 diffguard-testkit = { path = "../diffguard-testkit" }
 tempfile.workspace = true
 insta.workspace = true
+proptest.workspace = true
