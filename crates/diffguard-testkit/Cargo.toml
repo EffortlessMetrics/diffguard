@@ -27,3 +27,4 @@ diffguard-domain = { path = "../diffguard-domain" }
 
 [dev-dependencies]
 # For testing the testkit itself
+insta.workspace = true

@@ -15,7 +15,7 @@
 //! - Max paths per rule: 5
 
 use diffguard_types::{
-    ConfigFile, Defaults, FailOn, Finding, RuleConfig, Scope, Severity, VerdictCounts,
+    ConfigFile, Defaults, FailOn, Finding, MatchMode, RuleConfig, Scope, Severity, VerdictCounts,
     VerdictStatus,
 };
 use proptest::prelude::*;
@@ -300,7 +300,7 @@ pub fn arb_rule_config() -> impl Strategy<Value = RuleConfig> {
                     exclude_paths,
                     ignore_comments,
                     ignore_strings,
-                    match_mode: Default::default(),
+                    match_mode: MatchMode::default(),
                     multiline: false,
                     multiline_window: None,
                     context_patterns: vec![],
@@ -332,7 +332,7 @@ pub fn arb_minimal_rule_config() -> impl Strategy<Value = RuleConfig> {
             exclude_paths: vec![],
             ignore_comments: false,
             ignore_strings: false,
-            match_mode: Default::default(),
+            match_mode: MatchMode::default(),
             multiline: false,
             multiline_window: None,
             context_patterns: vec![],
