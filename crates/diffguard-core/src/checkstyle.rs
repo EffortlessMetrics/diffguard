@@ -6,6 +6,7 @@
 //! Schema reference: https://checkstyle.org/index.html
 
 use std::collections::BTreeMap;
+use std::fmt::Write;
 
 use super::xml_utils::escape_xml;
 use diffguard_types::{CheckReceipt, Finding, Severity};
@@ -66,7 +67,7 @@ pub fn render_checkstyle_for_receipt(receipt: &CheckReceipt) -> String {
 
     // Emit a <file> element per unique path
     for (path, findings) in &files {
-        out.push_str(&format!("  <file name=\"{}\">\n", escape_xml(path)));
+        writeln!(out, r#"  <file name="{}">"#, escape_xml(path)).unwrap();
         for f in findings {
             let severity_str = match f.severity {
                 Severity::Error => "error",
