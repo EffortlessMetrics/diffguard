@@ -1,0 +1,18 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_76372a5b.rs
+expression: snapshot
+---
+Evaluation {
+  findings: 3 items
+    [0] rule_id=info_rule, severity=Info, message=info message, path=test.txt, line=1, column=Some(1), match_text="info_pattern", snippet="info_pattern"
+    [1] rule_id=warn_rule, severity=Warn, message=warn message, path=test.txt, line=2, column=Some(1), match_text="warn_pattern", snippet="warn_pattern"
+    [2] rule_id=error_rule, severity=Error, message=error message, path=test.txt, line=3, column=Some(1), match_text="error_pattern", snippet="error_pattern"
+  counts: VerdictCounts { info: 1, warn: 1, error: 1, suppressed: 0 }
+  truncated_findings: 0
+  files_scanned: 1
+  lines_scanned: 3
+  rule_hits: 3 items (sorted by rule_id)
+    RuleHitStat { rule_id=error_rule, total=1, emitted=1, suppressed=0, info=0, warn=0, error=1 }
+    RuleHitStat { rule_id=info_rule, total=1, emitted=1, suppressed=0, info=1, warn=0, error=0 }
+    RuleHitStat { rule_id=warn_rule, total=1, emitted=1, suppressed=0, info=0, warn=1, error=0 }
+}

@@ -1,0 +1,17 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_53f352f9.rs
+expression: snapshot
+---
+file.RS                        => Some("rust")         (expected \"rust\") ✓
+file.PY                        => Some("python")       (expected \"python\") ✓
+file.JS                        => Some("javascript")   (expected \"javascript\") ✓
+file.TS                        => Some("typescript")   (expected \"typescript\") ✓
+file.GO                        => Some("go")           (expected \"go\") ✓
+file.JAVA                      => Some("java")         (expected \"java\") ✓
+file.KT                        => Some("kotlin")       (expected \"kotlin\") ✓
+file.XML                       => Some("xml")          (expected \"xml\") ✓
+file.HTML                      => Some("xml")          (expected \"xml\") ✓
+file.HTM                       => Some("xml")          (expected \"xml\") ✓
+file.JSON                      => Some("json")         (expected \"json\") ✓
+file.YAML                      => Some("yaml")         (expected \"yaml\") ✓
+file.YML                       => Some("yaml")         (expected \"yaml\") ✓

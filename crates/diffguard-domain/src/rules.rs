@@ -6,6 +6,10 @@ use regex::Regex;
 
 use diffguard_types::{MatchMode, RuleConfig, Severity};
 
+/// Errors that can occur when compiling rule configurations into executable rules.
+///
+/// These errors indicate configuration problems that must be fixed before
+/// the rule system can operate.
 #[derive(Debug, thiserror::Error)]
 pub enum RuleCompileError {
     #[error("rule '{rule_id}' has no patterns")]
@@ -32,6 +36,11 @@ pub enum RuleCompileError {
     UnknownDependency { rule_id: String, dependency: String },
 }
 
+/// A compiled rule ready for evaluation against diff content.
+///
+/// Contains pre-compiled regex patterns, compiled glob sets for path matching,
+/// and all configuration needed to determine if a rule applies to a given file.
+/// Created by [`compile_rules`] from a [`RuleConfig`].
 #[derive(Debug, Clone)]
 pub struct CompiledRule {
     pub id: String,
@@ -55,6 +64,15 @@ pub struct CompiledRule {
 }
 
 impl CompiledRule {
+    /// Determines whether this rule applies to a given file path and language.
+    ///
+    /// Evaluation order: include glob → exclude glob → language filter.
+    /// A file must pass all applicable filters to match.
+    ///
+    /// - `path`: The file path to check
+    /// - `language`: The detected language identifier (lowercase), or `None` if unknown
+    ///
+    /// Returns `true` if the rule should be evaluated against this file.
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
         if self
             .include
@@ -166,6 +184,11 @@ pub fn compile_rules(configs: &[RuleConfig]) -> Result<Vec<CompiledRule>, RuleCo
     Ok(out)
 }
 
+/// Compiles a list of regex pattern strings into compiled Regex objects.
+///
+/// # Errors
+///
+/// Returns [`RuleCompileError::InvalidRegex`] if any pattern is not valid regex syntax.
 fn compile_pattern_group(
     rule_id: &str,
     patterns: &[String],
@@ -182,6 +205,13 @@ fn compile_pattern_group(
     Ok(out)
 }
 
+/// Compiles a list of glob patterns into a [`GlobSet`] for efficient path matching.
+///
+/// Returns `None` if the input list is empty (no path filtering needed).
+///
+/// # Errors
+///
+/// Returns [`RuleCompileError::InvalidGlob`] if any glob pattern is malformed.
 fn compile_globs(globs: &[String], rule_id: &str) -> Result<Option<GlobSet>, RuleCompileError> {
     if globs.is_empty() {
         return Ok(None);
@@ -220,6 +250,10 @@ pub fn detect_language(path: &Path) -> Option<&'static str> {
         "swift" => Some("swift"),
         "scala" | "sc" => Some("scala"),
         "sql" => Some("sql"),
+        // HTML and HTM are classified as "xml" because they are SGML-based formats
+        // that can be preprocessed using XML-compatible parsing rules (e.g., finding
+        // tags, attributes). This allows diffguard to apply XML-family preprocessing
+        // to HTML files for pattern matching purposes.
         "xml" | "xsl" | "xslt" | "xsd" | "svg" | "xhtml" | "html" | "htm" => Some("xml"),
         "php" | "phtml" | "php3" | "php4" | "php5" | "php7" | "phps" => Some("php"),
         "yaml" | "yml" => Some("yaml"),

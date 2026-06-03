@@ -28,3 +28,6 @@ mod multiple_file_types;
 
 #[path = "integration/directory_overrides.rs"]
 mod directory_overrides;
+
+#[path = "integration/evaluate_lines_integration.rs"]
+mod evaluate_lines_integration;
