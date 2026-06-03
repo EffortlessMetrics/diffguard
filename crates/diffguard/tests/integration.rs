@@ -28,3 +28,6 @@ mod multiple_file_types;
 
 #[path = "integration/directory_overrides.rs"]
 mod directory_overrides;
+
+#[path = "integration/deleted_file_blame_skip.rs"]
+mod deleted_file_blame_skip;

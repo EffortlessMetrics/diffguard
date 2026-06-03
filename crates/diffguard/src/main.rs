@@ -22,7 +22,7 @@ use diffguard_core::{
     render_csv_for_receipt, render_gitlab_quality_json, render_junit_for_receipt,
     render_sarif_json, render_sensor_json, render_tsv_for_receipt, run_check,
 };
-use diffguard_diff::parse_unified_diff;
+use diffguard_diff::{is_deleted_file, parse_unified_diff};
 use diffguard_domain::{DirectoryRuleOverride, compile_rules};
 use diffguard_types::{
     Artifact, CAP_GIT, CAP_STATUS_AVAILABLE, CAP_STATUS_UNAVAILABLE, CHECK_ID_INTERNAL,
@@ -1449,9 +1449,19 @@ fn directory_depth(path: &Path) -> usize {
     path.components().count()
 }
 
+/// Filters for selecting lines based on git blame metadata.
+///
+/// `BlameFilters` is used to whitelist certain lines from being flagged,
+/// based on who last modified them (`author_patterns`) and how old those
+/// modifications are (`max_age_days`).
+///
+/// When a line's author matches one of the author patterns AND the line
+/// was last modified within the max age threshold, it is allowed (not flagged).
 #[derive(Debug, Clone)]
 struct BlameFilters {
+    /// Case-insensitive patterns to match against `author` and `author_mail`.
     author_patterns: Vec<String>,
+    /// Maximum age in days; lines older than this are not allowed.
     max_age_days: Option<u32>,
 }
 
@@ -1505,10 +1515,18 @@ impl BlameFilters {
     }
 }
 
+/// Metadata for a single line from `git blame --line-porcelain`.
+///
+/// Contains the author and timestamp of the commit that last modified
+/// a given line. Used by `BlameFilters` to determine if a line should
+/// be allowed based on author and age criteria.
 #[derive(Debug, Clone, Default)]
 struct BlameLineMeta {
+    /// Display name of the author (e.g., "Jane Doe").
     author: String,
+    /// Email address of the author (e.g., "jane@example.com").
     author_mail: String,
+    /// Unix timestamp of when the author made the commit.
     author_time: i64,
 }
 
@@ -1825,6 +1843,15 @@ fn parse_blame_porcelain(blame_text: &str) -> BTreeMap<u32, BlameLineMeta> {
     out
 }
 
+/// Runs `git blame --line-porcelain` for a single file at a given ref.
+///
+/// Returns the raw porcelain output which is later parsed by `parse_blame_porcelain`.
+/// The `path` is passed after `--` to ensure git treats it as a file path,
+/// not a revision. This prevents ambiguous ref/branch names from being misread.
+///
+/// # Errors
+///
+/// Returns an error if git fails to run or if the file does not exist at `head_ref`.
 fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     let output = Command::new("git")
         .args(["blame", "--line-porcelain", head_ref, "--", path])
@@ -1843,6 +1870,140 @@ fn git_blame_porcelain(head_ref: &str, path: &str) -> Result<String> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
+/// Extracts paths of deleted files from a unified diff text.
+///
+/// This function scans `diff_text` for `diff --git a/<path> b/<path>` lines followed
+/// by `deleted file mode <mode>` lines, returning the set of deleted file paths.
+///
+/// The path extraction logic mirrors `parse_diff_git_line` from `diffguard-diff`:
+/// - Strips `diff --git ` prefix
+/// - Takes the `b/` path variant
+/// - Strips `b/` prefix
+/// - Normalizes to forward slashes
+///
+/// # Arguments
+///
+/// * `diff_text` - Raw unified diff string from `git diff`
+///
+/// # Returns
+///
+/// A `BTreeSet<String>` containing the paths of all deleted files in the diff.
+///
+/// # Example
+///
+/// ```
+/// let diff = "diff --git a/src/lib.rs b/src/lib.rs\ndeleted file mode 100644\n";
+/// let deleted = extract_deleted_paths(diff);
+/// assert!(deleted.contains("src/lib.rs"));
+/// ```
+fn extract_deleted_paths(diff_text: &str) -> BTreeSet<String> {
+    let mut deleted_paths = BTreeSet::new();
+    let mut current_path: Option<String> = None;
+
+    for line in diff_text.lines() {
+        // Check for diff --git header line to capture current file path
+        if let Some(rest) = line.strip_prefix("diff --git ") {
+            // Format: "diff --git a/path b/path" or "diff --git \"a/path\" \"b/path\""
+            current_path = parse_diff_git_path_from_header(rest);
+        } else if let Some(path) = current_path.take() {
+            // If we already have a path and see "deleted file mode", mark it as deleted
+            if is_deleted_file(line) {
+                deleted_paths.insert(path);
+            }
+        }
+    }
+
+    deleted_paths
+}
+
+/// Parses the `b/` path from a `diff --git <rest>` header line.
+///
+/// Handles both unquoted paths (e.g., `a/foo b/foo`) and quoted paths
+/// (e.g., `"a/foo" "b/foo"`). Also handles Windows-style backslash paths
+/// by normalizing them to forward slashes.
+///
+/// Returns `None` if the input doesn't look like a valid diff --git header
+/// (e.g., if the first path doesn't start with `a/`).
+fn parse_diff_git_path_from_header(rest: &str) -> Option<String> {
+    // Tokenize to find the two paths (a/ and b/)
+    let mut paths = Vec::new();
+    let mut buf = String::new();
+    let mut in_quotes = false;
+
+    for ch in rest.chars() {
+        match ch {
+            '"' => {
+                in_quotes = !in_quotes;
+            }
+            ' ' if !in_quotes && !buf.is_empty() => {
+                paths.push(buf.clone());
+                buf.clear();
+            }
+            _ => {
+                buf.push(ch);
+            }
+        }
+    }
+    if !buf.is_empty() {
+        paths.push(buf);
+    }
+
+    // We need at least 2 paths (a/ and b/)
+    if paths.len() < 2 {
+        return None;
+    }
+
+    // Validate that the first path starts with "a/" - this confirms it's a valid diff --git header
+    let a_path = &paths[0];
+    let normalized_a = a_path.replace('\\', "/");
+    if !normalized_a.starts_with("a/") {
+        // Not a valid diff --git header (e.g., "diff --gi a/src b/src")
+        return None;
+    }
+
+    // Return the b/ path, unquoted and with prefix stripped
+    let b_path = &paths[1];
+    let unquoted = b_path
+        .strip_prefix('"')
+        .and_then(|s| s.strip_suffix('"'))
+        .unwrap_or(b_path);
+
+    // Normalize backslashes to forward slashes first (before stripping prefix)
+    // This handles Windows-style paths like "a\path b\path"
+    let normalized_b = unquoted.replace('\\', "/");
+
+    // Strip b/ prefix (after normalization)
+    let path = normalized_b.strip_prefix("b/").unwrap_or(&normalized_b);
+
+    if path.is_empty() {
+        None
+    } else {
+        Some(path.to_string())
+    }
+}
+
+/// Collects lines that pass the blame filter.
+///
+/// For each file+line in the diff, runs `git blame` (via `git_blame_porcelain`)
+/// and checks whether the author/timestamp matches the `filters` criteria.
+/// Lines matching the filter are added to the allowed set and are not flagged
+/// by subsequent rule checking.
+///
+/// Deleted files are detected via `extract_deleted_paths` and skipped entirely:
+/// git blame on a deleted file would fail because the file does not exist at `head_ref`,
+/// so skipping them avoids spurious tool errors and wasted work.
+///
+/// # Arguments
+///
+/// * `diff_text` - Raw unified diff text from `git diff`
+/// * `scope` - Which lines to consider (e.g., `Added`, `Modified`, `Context`)
+/// * `head_ref` - Git ref (branch, tag, SHA) at which to run blame
+/// * `filters` - Author and age filters to apply
+///
+/// # Returns
+///
+/// A `BTreeSet` of `(path, line_number)` tuples for lines that pass the filter.
+/// These lines are considered "allowed" and will not trigger rule violations.
 fn collect_blame_allowed_lines(
     diff_text: &str,
     scope: Scope,
@@ -1860,10 +2021,20 @@ fn collect_blame_allowed_lines(
             .insert(line.line);
     }
 
+    // Extract deleted file paths from diff text to avoid calling git blame on them.
+    // Deleted files don't exist at head_ref, so git blame would fail.
+    let deleted_paths = extract_deleted_paths(diff_text);
+    debug!("deleted paths in diff: {:?}", deleted_paths);
+
     let now = Utc::now().timestamp();
     let mut allowed = BTreeSet::<(String, u32)>::new();
 
     for (path, lines) in lines_by_path {
+        // Skip git blame for deleted files - they don't exist at head_ref
+        if deleted_paths.contains(&path) {
+            debug!("skipping git blame for deleted file: {}", path);
+            continue;
+        }
         let blame_text = git_blame_porcelain(head_ref, &path)?;
         let blame_map = parse_blame_porcelain(&blame_text);
         for line in lines {
@@ -5563,5 +5734,145 @@ should_match = true
             assert!(write_json(json_path, &serde_json::json!({"ok": true})).is_err());
             assert!(write_text(text_path, "hi").is_err());
         });
+    }
+
+    // =============================================================================
+    // extract_deleted_paths and parse_diff_git_path_from_header tests
+    // =============================================================================
+
+    #[test]
+    fn extract_deleted_paths_finds_simple_deleted_file() {
+        let diff = r#"diff --git a/src/lib.rs b/src/lib.rs
+deleted file mode 100644
+index 1234567..0000000
+--- a/src/lib.rs
++++ /dev/null
+@@ -1 +0,0 @@
+-fn base()
+"#;
+        let deleted = extract_deleted_paths(diff);
+        assert!(deleted.contains("src/lib.rs"));
+        assert_eq!(deleted.len(), 1);
+    }
+
+    #[test]
+    fn extract_deleted_paths_finds_multiple_deleted_files() {
+        let diff = r#"diff --git a/src/lib.rs b/src/lib.rs
+deleted file mode 100644
+--- a/src/lib.rs
++++ /dev/null
+diff --git a/src/other.rs b/src/other.rs
+deleted file mode 100644
+--- a/src/other.rs
++++ /dev/null
+"#;
+        let deleted = extract_deleted_paths(diff);
+        assert!(deleted.contains("src/lib.rs"));
+        assert!(deleted.contains("src/other.rs"));
+        assert_eq!(deleted.len(), 2);
+    }
+
+    #[test]
+    fn extract_deleted_paths_ignores_non_deleted_files() {
+        let diff = r#"diff --git a/src/lib.rs b/src/lib.rs
+new file mode 100644
+--- /dev/null
++++ b/src/lib.rs
+@@ -0,0 +1 @@
++fn new()
+"#;
+        let deleted = extract_deleted_paths(diff);
+        assert!(deleted.is_empty());
+    }
+
+    #[test]
+    fn extract_deleted_paths_ignores_modified_files() {
+        let diff = r#"diff --git a/src/lib.rs b/src/lib.rs
+index 1234567..7654321 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1 +1 @@
+-fn base()
++fn modified()
+"#;
+        let deleted = extract_deleted_paths(diff);
+        assert!(deleted.is_empty());
+    }
+
+    #[test]
+    fn extract_deleted_paths_handles_mixed_changes() {
+        let diff = r#"diff --git a/src/deleted.rs b/src/deleted.rs
+deleted file mode 100644
+--- a/src/deleted.rs
++++ /dev/null
+diff --git a/src/modified.rs b/src/modified.rs
+index 1234567..7654321 100644
+--- a/src/modified.rs
++++ b/src/modified.rs
+@@ -1 +1 @@
+-fn base()
++fn modified()
+diff --git a/src/added.rs b/src/added.rs
+new file mode 100644
+--- /dev/null
++++ b/src/added.rs
+@@ -0,0 +1 @@
++fn new()
+"#;
+        let deleted = extract_deleted_paths(diff);
+        assert!(deleted.contains("src/deleted.rs"));
+        assert!(!deleted.contains("src/modified.rs"));
+        assert!(!deleted.contains("src/added.rs"));
+        assert_eq!(deleted.len(), 1);
+    }
+
+    #[test]
+    fn parse_diff_git_path_from_header_simple_paths() {
+        assert_eq!(
+            parse_diff_git_path_from_header("a/src/lib.rs b/src/lib.rs"),
+            Some("src/lib.rs".to_string())
+        );
+        assert_eq!(
+            parse_diff_git_path_from_header("a/foo b/foo"),
+            Some("foo".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_diff_git_path_from_header_quoted_paths() {
+        assert_eq!(
+            parse_diff_git_path_from_header(r#""a/dir name/file.rs" "b/dir name/file.rs""#),
+            Some("dir name/file.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_diff_git_path_from_header_strips_b_prefix() {
+        assert_eq!(
+            parse_diff_git_path_from_header("a/path b/path"),
+            Some("path".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_diff_git_path_from_header_handles_windows_paths() {
+        // Windows-style paths with backslashes should be normalized
+        assert_eq!(
+            parse_diff_git_path_from_header(r#"a\src\lib.rs b\src\lib.rs"#),
+            Some("src/lib.rs".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_diff_git_path_from_header_rejects_single_path() {
+        assert_eq!(parse_diff_git_path_from_header("a/only"), None);
+    }
+
+    #[test]
+    fn parse_diff_git_path_from_header_rejects_invalid_prefix() {
+        assert_eq!(
+            parse_diff_git_path_from_header("diff --gi a/src b/src"),
+            None
+        );
     }
 }
