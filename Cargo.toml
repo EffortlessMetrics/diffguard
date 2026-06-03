@@ -30,6 +30,7 @@ categories = ["development-tools", "command-line-utilities"]
 readme = "README.md"
 
 [workspace.dependencies]
+tracing = "0.1"
 anyhow = "1.0.101"
 thiserror = "2.0.18"
 serde = { version = "1.0.228", features = ["derive"] }
