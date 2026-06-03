@@ -98,7 +98,7 @@ fuzz_target!(|input: FuzzSarifInput| {
             context_lines: 0,
             scope: Scope::Added,
             files_scanned: findings.len() as u64,
-            lines_scanned: findings.len() as u32 * 10,
+            lines_scanned: findings.len() as u64 * 10,
         },
         findings,
         verdict: Verdict {

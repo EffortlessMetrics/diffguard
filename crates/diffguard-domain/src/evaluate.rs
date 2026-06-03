@@ -26,7 +26,13 @@ pub struct Evaluation {
     /// The previous `u32` cast would silently truncate, producing incorrect
     /// (often zero) counts for very large codebases.
     pub files_scanned: u64,
-    pub lines_scanned: u32,
+    /// Number of distinct lines that were scanned.
+    ///
+    /// Changed from `u32` to `u64` to avoid silent truncation when scanning
+    /// repositories with more than 2^32 - 1 (≈4.3 billion) unique lines.
+    /// The previous `u32` cast would silently truncate, producing incorrect
+    /// counts for very large diffs.
+    pub lines_scanned: u64,
     /// Aggregated per-rule hit counts (deterministically sorted by rule ID).
     pub rule_hits: Vec<RuleHitStat>,
 }
@@ -102,7 +108,7 @@ pub fn evaluate_lines_with_overrides_and_language(
         .iter()
         .map(|line| line.path.clone())
         .collect::<BTreeSet<_>>();
-    let lines_scanned = u32::try_from(input_lines.len()).unwrap_or(u32::MAX);
+    let lines_scanned = u64::try_from(input_lines.len()).unwrap_or(u64::MAX);
 
     let mut current_file: Option<String> = None;
     let mut current_lang = Language::Unknown;
