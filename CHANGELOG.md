@@ -73,6 +73,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - **Extracted duplicated `escape_xml` function** from `checkstyle.rs` and `junit.rs` into shared `xml_utils.rs` module
+- **Removed orphaned build artifacts from git tracking** (issue #569): untracked `libpreprocess.rlib` (compiled Rust library), `test_source` (ELF binary), `info,` (debug artifact), `issue_body.txt` (conveyor artifact), and `integration_outcome_work-*.json` (conveyor test artifact). Updated `.gitignore` with patterns to prevent future re-tracking: `*.rlib`, `info,`, `issue_body.txt`, `integration_outcome_work-*.json`
 
 ## [0.2.0] - 2026-04-06
 

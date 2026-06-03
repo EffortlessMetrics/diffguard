@@ -1738,6 +1738,7 @@ proptest! {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(200))]
 
+    #[allow(unused_must_use)]
     #[test]
     fn property_no_panic_on_arbitrary_utf8(
         input in prop::string::string_regex("[\\x00-\\x7F\\u{0080}-\\u{FFFF}]{0,500}").expect("valid regex"),
@@ -1750,6 +1751,7 @@ proptest! {
         // If we reach here without panicking, the test passes
     }
 
+    #[allow(unused_must_use)]
     #[test]
     fn property_no_panic_on_unicode_content(
         prefix in prop::string::string_regex("[a-zA-Z0-9_]{0,20}").expect("valid regex"),
