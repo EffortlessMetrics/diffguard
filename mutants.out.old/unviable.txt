@@ -1,3 +1,10 @@
-crates/diffguard-diff/src/unified.rs:134:5: replace parse_unified_diff -> Result<(Vec<DiffLine>, DiffStats), DiffParseError> with Ok((vec![Default::default()], Default::default()))
-crates/diffguard-diff/src/unified.rs:341:5: replace parse_hunk_header -> Result<HunkHeader, DiffParseError> with Ok(Default::default())
-crates/diffguard-diff/src/unified.rs:423:5: replace tokenize_git_paths -> Vec<GitPathToken> with vec![Default::default()]
+crates/diffguard-core/src/check.rs:89:5: replace run_check -> Result<CheckRun, anyhow::Error> with Ok(Default::default())
+crates/diffguard-core/src/gitlab_quality.rs:72:9: replace <impl From<Severity> for GitLabSeverity>::from -> Self with Default::default()
+crates/diffguard-core/src/gitlab_quality.rs:93:5: replace finding_to_gitlab -> GitLabFinding with Default::default()
+crates/diffguard-core/src/sarif.rs:97:9: replace <impl From<Severity> for SarifLevel>::from -> Self with Default::default()
+crates/diffguard-core/src/sarif.rs:165:5: replace render_sarif_for_receipt -> SarifReport with Default::default()
+crates/diffguard-core/src/sarif.rs:200:5: replace collect_rules_from_findings -> Vec<SarifRule> with vec![Default::default()]
+crates/diffguard-core/src/sarif.rs:225:5: replace finding_to_sarif_result -> SarifResult with Default::default()
+crates/diffguard-core/src/sensor.rs:45:5: replace render_sensor_report -> SensorReport with Default::default()
+crates/diffguard-core/src/sensor_api.rs:38:9: replace Substrate::repo_root -> Option<&std::path::Path> with Some(Box::leak(Box::new(Default::default())))
+crates/diffguard-core/src/sensor_api.rs:55:5: replace run_sensor -> Result<SensorReport, anyhow::Error> with Ok(Default::default())

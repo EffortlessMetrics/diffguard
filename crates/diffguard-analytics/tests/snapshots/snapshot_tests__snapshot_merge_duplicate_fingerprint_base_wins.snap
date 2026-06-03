@@ -1,0 +1,16 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "schema": "diffguard.false_positive_baseline.v1",
+  "entries": [
+    {
+      "fingerprint": "shared_fp",
+      "rule_id": "INCOMING_RULE",
+      "path": "incoming/path.rs",
+      "line": 200,
+      "note": "incoming note"
+    }
+  ]
+}

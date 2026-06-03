@@ -1,25 +1,26 @@
 --- crates/diffguard-domain/src/evaluate.rs
-+++ replace bump_counts with ()
-@@ -537,21 +537,17 @@
-         if let Some(m) = p.find(s) {
-             return Some((m.start(), m.end()));
++++ replace first_match -> Option<(usize, usize)> with None
+@@ -537,22 +537,17 @@
+             Severity::Error => 2,
          }
      }
-     None
+ 
+     if rank(a) >= rank(b) { a } else { b }
+ }
+ 
+ fn first_match(patterns: &[regex::Regex], s: &str) -> Option<(usize, usize)> {
+-    for p in patterns {
+-        if let Some(m) = p.find(s) {
+-            return Some((m.start(), m.end()));
+-        }
+-    }
+-    None
++    None /* ~ changed by cargo-mutants ~ */
  }
  
  fn bump_counts(counts: &mut VerdictCounts, severity: Severity) {
--    match severity {
--        Severity::Info => counts.info = counts.info.saturating_add(1),
--        Severity::Warn => counts.warn = counts.warn.saturating_add(1),
--        Severity::Error => counts.error = counts.error.saturating_add(1),
--    }
-+    () /* ~ changed by cargo-mutants ~ */
- }
- 
- fn trim_snippet(s: &str) -> String {
-     let trimmed = s.trim_end();
-     const MAX_CHARS: usize = 240;
- 
-     // Avoid slicing by byte indices (which can panic on Unicode boundaries).
-     let mut out = String::new();
+     match severity {
+         Severity::Info => counts.info = counts.info.saturating_add(1),
+         Severity::Warn => counts.warn = counts.warn.saturating_add(1),
+         Severity::Error => counts.error = counts.error.saturating_add(1),
+     }
