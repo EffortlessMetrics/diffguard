@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: json
+---
+{"are_equal":true,"fp1":"4b88b622afc2ea3423ecc2ae0e363928e706b03c404fa588e393547f094177f7","fp2":"4b88b622afc2ea3423ecc2ae0e363928e706b03c404fa588e393547f094177f7"}

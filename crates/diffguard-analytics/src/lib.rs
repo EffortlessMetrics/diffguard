@@ -118,13 +118,13 @@ pub fn merge_false_positive_baselines(
         {
             // Preserve manually curated metadata from the existing baseline.
             if existing.note.is_none() && entry.note.is_some() {
-                existing.note = entry.note.clone();
+                existing.note.clone_from(&entry.note);
             }
             if existing.rule_id.is_empty() {
-                existing.rule_id = entry.rule_id.clone();
+                existing.rule_id.clone_from(&entry.rule_id);
             }
             if existing.path.is_empty() {
-                existing.path = entry.path.clone();
+                existing.path.clone_from(&entry.path);
             }
             if existing.line == 0 {
                 existing.line = entry.line;
