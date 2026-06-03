@@ -27,9 +27,9 @@ use diffguard_types::{CheckReceipt, Finding, Severity};
 /// - `Warn`  → "warning"
 /// - `Info`  → "info"
 ///
-/// Formats a `<error>` element for a finding.
+/// Formats a single `<error>` element for a Checkstyle XML report.
 ///
-/// Column is optional in Checkstyle — only included when present.
+/// The column attribute is only included when a column number is provided.
 fn error_element(
     line: u32,
     column: Option<u32>,
@@ -38,7 +38,7 @@ fn error_element(
     rule_id: &str,
 ) -> String {
     let column_attr = column
-        .map(|c| format!(" column=\"{}\"", c))
+        .map(|c| format!(" column=\"{c}\""))
         .unwrap_or_default();
     format!(
         "    <error line=\"{}\"{column_attr} severity=\"{}\" message=\"{}\" source=\"{}\"/>\n",
