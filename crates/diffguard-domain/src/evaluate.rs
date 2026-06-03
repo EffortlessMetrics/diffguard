@@ -7,6 +7,11 @@ use crate::preprocess::{Language, PreprocessOptions, Preprocessor};
 use crate::rules::{CompiledRule, detect_language};
 use crate::suppression::SuppressionTracker;
 
+/// A single line of input to be evaluated against compiled rules.
+///
+/// `InputLine` represents one line from a diff or file content that will be
+/// checked for rule violations. The `path` identifies the source file,
+/// `line` is the 1-based line number, and `content` is the actual text.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InputLine {
     pub path: String,
@@ -14,6 +19,20 @@ pub struct InputLine {
     pub content: String,
 }
 
+/// The result of evaluating a set of lines against compiled rules.
+///
+/// `Evaluation` contains all findings (rule violations) discovered during evaluation,
+/// along with aggregated statistics. The findings are limited by `max_findings`;
+/// any additional matches are counted in `truncated_findings`.
+///
+/// # Fields
+///
+/// * `findings` - Individual rule violations discovered
+/// * `counts` - Aggregated counts by severity level
+/// * `truncated_findings` - Number of findings omitted due to `max_findings` limit
+/// * `files_scanned` - Number of distinct files that were processed
+/// * `lines_scanned` - Total number of lines evaluated
+/// * `rule_hits` - Per-rule hit counts (total, emitted, suppressed)
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Evaluation {
     pub findings: Vec<Finding>,
@@ -31,6 +50,11 @@ pub struct Evaluation {
     pub rule_hits: Vec<RuleHitStat>,
 }
 
+/// Aggregated hit counts for a single rule across an evaluation run.
+///
+/// `RuleHitStat` tracks how many times a rule matched, was emitted (not suppressed),
+/// and was suppressed, broken down by severity level. The counts are deterministically
+/// sorted by rule ID when collected into the `Evaluation::rule_hits` vector.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RuleHitStat {
     pub rule_id: String,
@@ -68,6 +92,21 @@ struct MatchEvent {
     severity: Severity,
 }
 
+/// Evaluates a collection of input lines against compiled rules.
+///
+/// This is the main entry point for evaluating lines for rule violations.
+/// It processes each line through all applicable rules and returns an `Evaluation`
+/// containing all findings and aggregated statistics.
+///
+/// # Arguments
+///
+/// * `lines` - Iterable collection of `InputLine` structs to evaluate
+/// * `rules` - Slice of compiled rules to check against
+/// * `max_findings` - Maximum number of findings to return (excess matches are counted in `truncated_findings`)
+///
+/// # Returns
+///
+/// `Evaluation` containing all findings, counts, and statistics
 pub fn evaluate_lines(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -76,6 +115,18 @@ pub fn evaluate_lines(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, None, None)
 }
 
+/// Evaluates lines against rules with rule override support.
+///
+/// This variant allows certain rules to be selectively disabled or have their
+/// severity changed based on directory-level overrides configured via
+/// `RuleOverrideMatcher`. All other behavior is identical to `evaluate_lines`.
+///
+/// # Arguments
+///
+/// * `lines` - Iterable collection of `InputLine` structs to evaluate
+/// * `rules` - Slice of compiled rules to check against
+/// * `max_findings` - Maximum number of findings to return
+/// * `overrides` - Optional rule override matcher for per-directory rule configuration
 pub fn evaluate_lines_with_overrides(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -85,6 +136,25 @@ pub fn evaluate_lines_with_overrides(
     evaluate_lines_with_overrides_and_language(lines, rules, max_findings, overrides, None)
 }
 
+/// Evaluates lines against rules with full override and language control.
+///
+/// This is the most general entry point, supporting both rule overrides and
+/// forced language detection. Use this when you need to bypass automatic language
+/// detection or apply directory-specific rule configurations.
+///
+/// # Arguments
+///
+/// * `lines` - Iterable collection of `InputLine` structs to evaluate
+/// * `rules` - Slice of compiled rules to check against
+/// * `max_findings` - Maximum number of findings to return
+/// * `overrides` - Optional rule override matcher for per-directory rule configuration
+/// * `force_language` - Optional language tag (e.g., "rust", "python") to force language detection;
+///
+/// # Implementation Notes
+///
+/// Language detection is performed per-file based on the file path extension.
+/// When `force_language` is provided, automatic detection is bypassed and the
+/// specified language is used for all files (including those with unknown extensions).
 pub fn evaluate_lines_with_overrides_and_language(
     lines: impl IntoIterator<Item = InputLine>,
     rules: &[CompiledRule],
@@ -292,6 +362,18 @@ pub fn evaluate_lines_with_overrides_and_language(
         }
 
         if findings.len() < max_findings {
+            // Convert byte index to 1-based character column.
+            //
+            // `byte_to_column` returns `Option<usize>` — the character count before
+            // the match. This is converted to `Option<u32>` for `Finding.column`.
+            //
+            // We use checked conversion (`u32::try_from`) rather than `as u32` because:
+            // - A line with >u32::MAX (4.3B) characters would silently truncate
+            // - `Option<u32>` semantically means "known column" (Some) vs "unknown" (None)
+            // - A truncated column would be a wrong-but-plausible value — worse than None
+            // - Returning None on overflow is a false negative, preferred over false positive
+            //
+            // See ADR-0247 for the full decision rationale.
             let column = event
                 .match_start
                 .and_then(|start| byte_to_column(&prepared.line.content, start))
@@ -574,12 +656,28 @@ fn trim_snippet(s: &str) -> String {
     out
 }
 
+/// Extracts a substring from `s` in the range `[start, end)`, with bounds clamping.
+///
+/// `end` is first clamped to `s.len()`, then `start` is clamped to the
+/// adjusted `end`. This guarantees `start <= end <= s.len()`, making the
+/// range always valid for direct indexing.
+///
+/// Returns the substring as a new `String`.
 fn safe_slice(s: &str, start: usize, end: usize) -> String {
+    // Clamp end first, then clamp start to the adjusted end.
+    // After these two lines: start <= end <= s.len(), so the range is always valid.
     let end = end.min(s.len());
     let start = start.min(end);
     s.get(start..end).unwrap_or("").to_string()
 }
 
+/// Converts a byte index to a 1-based column number (character count).
+///
+/// Returns `None` if `byte_idx` exceeds the string length, otherwise returns
+/// the number of characters in `s[..byte_idx]` plus one (to get 1-based column).
+///
+/// Uses direct slicing `s[..byte_idx]` because the guard on line 590 guarantees
+/// `byte_idx <= s.len()`, making the range always valid.
 fn byte_to_column(s: &str, byte_idx: usize) -> Option<usize> {
     if byte_idx > s.len() {
         return None;

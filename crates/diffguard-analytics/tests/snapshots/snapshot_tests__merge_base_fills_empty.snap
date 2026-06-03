@@ -1,0 +1,16 @@
+---
+source: crates/diffguard-analytics/tests/snapshot_tests.rs
+expression: merged
+---
+{
+  "schema": "diffguard.false_positive_baseline.v1",
+  "entries": [
+    {
+      "fingerprint": "dup_fp",
+      "rule_id": "rust.no_unwrap",
+      "path": "src/lib.rs",
+      "line": 42,
+      "note": "base note"
+    }
+  ]
+}

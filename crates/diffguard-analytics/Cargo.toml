@@ -22,4 +22,5 @@ hex = "0.4"
 diffguard-types = { version = "0.2", path = "../diffguard-types" }
 
 [dev-dependencies]
+insta = { workspace = true }
 proptest.workspace = true
