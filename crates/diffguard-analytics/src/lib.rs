@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 
 pub const FALSE_POSITIVE_BASELINE_SCHEMA_V1: &str = "diffguard.false_positive_baseline.v1";
 pub const TREND_HISTORY_SCHEMA_V1: &str = "diffguard.trend_history.v1";
+pub const TREND_HISTORY_SCHEMA_V2: &str = "diffguard.trend_history.v2";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct FalsePositiveBaseline {
@@ -154,7 +155,7 @@ pub struct TrendHistory {
 impl Default for TrendHistory {
     fn default() -> Self {
         Self {
-            schema: TREND_HISTORY_SCHEMA_V1.to_string(),
+            schema: TREND_HISTORY_SCHEMA_V2.to_string(),
             runs: vec![],
         }
     }
@@ -176,14 +177,26 @@ pub struct TrendRun {
     /// (those with more than 2^32 - 1 unique files).
     pub files_scanned: u64,
     pub lines_scanned: u32,
-    pub findings: u32,
+    /// Number of findings detected in this run.
+    ///
+    /// Stored as `u64` to avoid silent truncation for repositories with very
+    /// large finding counts (those with more than 2^32 - 1 findings).
+    pub findings: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendSummary {
-    pub run_count: u32,
+    /// Number of runs in the trend history.
+    ///
+    /// Stored as `u64` to avoid silent truncation for repositories with very
+    /// large run counts (those with more than 2^32 - 1 runs).
+    pub run_count: u64,
     pub totals: VerdictCounts,
-    pub total_findings: u32,
+    /// Total findings across all runs in the trend history.
+    ///
+    /// Stored as `u64` to avoid silent truncation for repositories with very
+    /// large total finding counts (those with more than 2^32 - 1 findings).
+    pub total_findings: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latest: Option<TrendRun>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -202,7 +215,7 @@ pub struct TrendDelta {
 /// Deterministically normalizes trend history by setting schema id when missing.
 pub fn normalize_trend_history(mut history: TrendHistory) -> TrendHistory {
     if history.schema.is_empty() {
-        history.schema = TREND_HISTORY_SCHEMA_V1.to_string();
+        history.schema = TREND_HISTORY_SCHEMA_V2.to_string();
     }
     history
 }
@@ -225,7 +238,7 @@ pub fn trend_run_from_receipt(
         counts: receipt.verdict.counts.clone(),
         files_scanned: receipt.diff.files_scanned,
         lines_scanned: receipt.diff.lines_scanned,
-        findings: receipt.findings.len().min(u32::MAX as usize) as u32,
+        findings: receipt.findings.len() as u64,
     }
 }
 
@@ -252,7 +265,7 @@ pub fn append_trend_run(
 /// Summarizes trend history totals and latest delta.
 pub fn summarize_trend_history(history: &TrendHistory) -> TrendSummary {
     let mut totals = VerdictCounts::default();
-    let mut total_findings = 0u32;
+    let mut total_findings = 0u64;
 
     for run in &history.runs {
         totals.info = totals.info.saturating_add(run.counts.info);
@@ -267,7 +280,7 @@ pub fn summarize_trend_history(history: &TrendHistory) -> TrendSummary {
         let prev = &history.runs[history.runs.len() - 2];
         let curr = &history.runs[history.runs.len() - 1];
         Some(TrendDelta {
-            findings: i64::from(curr.findings) - i64::from(prev.findings),
+            findings: curr.findings as i64 - prev.findings as i64,
             info: i64::from(curr.counts.info) - i64::from(prev.counts.info),
             warn: i64::from(curr.counts.warn) - i64::from(prev.counts.warn),
             error: i64::from(curr.counts.error) - i64::from(prev.counts.error),
@@ -278,7 +291,7 @@ pub fn summarize_trend_history(history: &TrendHistory) -> TrendSummary {
     };
 
     TrendSummary {
-        run_count: history.runs.len().min(u32::MAX as usize) as u32,
+        run_count: history.runs.len() as u64,
         totals,
         total_findings,
         latest,
