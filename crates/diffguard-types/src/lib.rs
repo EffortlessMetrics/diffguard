@@ -133,7 +133,11 @@ pub struct DiffMeta {
     /// Stored as `u64` to avoid silent truncation for very large repositories
     /// (those with more than 2^32 - 1 unique files).
     pub files_scanned: u64,
-    pub lines_scanned: u32,
+    /// Number of distinct lines that were scanned.
+    ///
+    /// Stored as `u64` to avoid silent truncation for very large diffs
+    /// (those with more than 2^32 - 1 unique lines).
+    pub lines_scanned: u64,
 }
 
 /// A single rule match within a scoped file.
@@ -395,11 +399,11 @@ pub struct RuleTestCase {
     /// Whether the rule should match this input.
     pub should_match: bool,
 
-    /// Optional: override ignore_comments for this test case.
+    /// Optional: override `ignore_comments` for this test case.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ignore_comments: Option<bool>,
 
-    /// Optional: override ignore_strings for this test case.
+    /// Optional: override `ignore_strings` for this test case.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ignore_strings: Option<bool>,
 

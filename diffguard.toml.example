@@ -50,6 +50,18 @@ paths = ["**/*.rs"]
 exclude_paths = ["**/tests/**", "**/benches/**", "**/examples/**"]
 ignore_comments = true
 ignore_strings = true
+tags = ["safety"]
+
+# Test cases validate rule behavior using `diff test`
+[[rule.test_cases]]
+description = "Positive: unwrap() should match"
+input = "let x = y.unwrap();"
+should_match = true
+
+[[rule.test_cases]]
+description = "Negative: ok() is safe and should not match"
+input = "let x = y.ok();"
+should_match = false
 
 [[rule]]
 id = "rust.no_dbg"
