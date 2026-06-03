@@ -768,8 +768,17 @@ fn compile_rules_checked(
     compile_rules(rules)
 }
 
-/// Validate rules in a parsed config file and return a list of error messages.
-/// Shared between cmd_validate and cmd_doctor.
+/// Validate rule configurations for correctness.
+///
+/// Checks for:
+/// - Duplicate rule IDs
+/// - Empty pattern lists
+/// - Invalid regex patterns in patterns, context_patterns, and escalate_patterns
+/// - Invalid multiline_window values
+/// - Unknown rule dependencies
+/// - Invalid path globs
+///
+/// Returns a list of error messages. Empty list means validation passed.
 fn validate_config_rules(cfg: &ConfigFile) -> Vec<String> {
     let mut errors: Vec<String> = Vec::new();
     let mut seen_ids: std::collections::HashSet<&str> = std::collections::HashSet::new();
@@ -1689,7 +1698,15 @@ fn render_finding_row_with_baseline(f: &Finding, is_baseline: bool) -> String {
     )
 }
 
-/// Escapes special markdown characters in a string.
+/// Escapes special Markdown characters in table cell content.
+///
+/// Escapes pipe (`|`), backtick (`` ` ``), hash (`#`), asterisk (`*`),
+/// underscore (`_`), open bracket (`[`), close bracket (`]`), and greater-than
+/// (`>`) characters by prefixing with backslash. Also escapes CRLF (`\r\n`)
+/// and LF (`\n`) line endings to prevent breaking the markdown table structure.
+///
+/// These escapes are needed to prevent breaking the markdown table structure
+/// and prevent unintended markdown formatting.
 fn escape_md(s: &str) -> String {
     s.replace('|', "\\|")
         .replace('`', "\\`")
