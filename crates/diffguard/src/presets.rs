@@ -10,7 +10,7 @@ pub enum Preset {
     /// Minimal starter config with basic settings
     #[default]
     Minimal,
-    /// Rust best practices (no_unwrap, no_dbg, no_todo, no_print)
+    /// Rust best practices (rust.no_unwrap, rust.no_dbg, rust.no_todo, rust.no_println)
     RustQuality,
     /// Credential and secret detection patterns
     Secrets,
@@ -37,7 +37,9 @@ impl Preset {
     pub fn description(&self) -> &'static str {
         match self {
             Preset::Minimal => "Minimal starter configuration with basic settings",
-            Preset::RustQuality => "Rust best practices (no unwrap, no dbg, no todo, no print)",
+            Preset::RustQuality => {
+                "Rust best practices (rust.no_unwrap, rust.no_dbg, rust.no_todo, rust.no_println)"
+            }
             Preset::Secrets => "Credential and secret detection patterns",
             Preset::JsConsole => "JavaScript/TypeScript console and debugger detection",
             Preset::PythonDebug => "Python print, breakpoint, and pdb detection",
@@ -583,5 +585,98 @@ mod tests {
                 preset
             );
         }
+    }
+
+    /// Edge case: RustQuality description must use namespaced rule IDs
+    /// that match the actual generated TOML rule IDs.
+    #[test]
+    fn test_rust_quality_description_has_namespaced_rule_ids() {
+        let desc = Preset::RustQuality.description();
+        assert!(
+            desc.contains("rust.no_unwrap"),
+            "RustQuality description should contain 'rust.no_unwrap', got: {}",
+            desc
+        );
+        assert!(
+            desc.contains("rust.no_dbg"),
+            "RustQuality description should contain 'rust.no_dbg', got: {}",
+            desc
+        );
+        assert!(
+            desc.contains("rust.no_todo"),
+            "RustQuality description should contain 'rust.no_todo', got: {}",
+            desc
+        );
+        assert!(
+            desc.contains("rust.no_println"),
+            "RustQuality description should contain 'rust.no_println', got: {}",
+            desc
+        );
+    }
+
+    /// Edge case: Verify no behavioral change - exactly 6 rules generated.
+    #[test]
+    fn test_rust_quality_generates_exactly_six_rules() {
+        let content = Preset::RustQuality.generate();
+        let config: ConfigFile =
+            toml::from_str(&content).expect("RustQuality preset should generate valid TOML");
+        assert_eq!(
+            config.rule.len(),
+            6,
+            "RustQuality should generate exactly 6 rules, got {}",
+            config.rule.len()
+        );
+        let rule_ids: Vec<&str> = config.rule.iter().map(|r| r.id.as_str()).collect();
+        assert!(rule_ids.contains(&"rust.no_unwrap"));
+        assert!(rule_ids.contains(&"rust.no_expect"));
+        assert!(rule_ids.contains(&"rust.no_dbg"));
+        assert!(rule_ids.contains(&"rust.no_println"));
+        assert!(rule_ids.contains(&"rust.no_todo"));
+        assert!(rule_ids.contains(&"rust.no_unimplemented"));
+    }
+
+    /// Edge case: Non-minimal presets produce rules with non-empty IDs and messages.
+    #[test]
+    fn test_non_minimal_presets_produce_rules_with_valid_ids() {
+        for preset in [
+            Preset::RustQuality,
+            Preset::Secrets,
+            Preset::JsConsole,
+            Preset::PythonDebug,
+        ] {
+            let content = preset.generate();
+            let config: ConfigFile = toml::from_str(&content)
+                .unwrap_or_else(|_| panic!("{:?} should produce valid TOML", preset));
+            assert!(
+                !config.rule.is_empty(),
+                "{:?} should generate at least one rule",
+                preset
+            );
+            for rule in &config.rule {
+                assert!(
+                    !rule.id.is_empty(),
+                    "{:?} rule should have non-empty id",
+                    preset
+                );
+                assert!(
+                    !rule.message.is_empty(),
+                    "{:?} rule {} should have non-empty message",
+                    preset,
+                    rule.id
+                );
+            }
+        }
+    }
+
+    /// Edge case: Minimal preset produces valid TOML with defaults but no rules.
+    #[test]
+    fn test_minimal_preset_produces_valid_toml_with_defaults() {
+        let content = Preset::Minimal.generate();
+        let config: ConfigFile =
+            toml::from_str(&content).expect("Minimal preset should produce valid TOML");
+        assert!(
+            config.defaults.base.is_some() || config.defaults.scope.is_some(),
+            "Minimal preset should have some defaults configured"
+        );
     }
 }

@@ -83,6 +83,10 @@ pub fn render_gitlab_quality_for_receipt(receipt: &CheckReceipt) -> GitLabQualit
 }
 
 /// Renders a GitLab Code Quality report as a JSON string.
+///
+/// # Errors
+///
+/// Returns [`serde_json::Error`] if serialization fails.
 pub fn render_gitlab_quality_json(receipt: &CheckReceipt) -> Result<String, serde_json::Error> {
     let report = render_gitlab_quality_for_receipt(receipt);
     serde_json::to_string_pretty(&report)

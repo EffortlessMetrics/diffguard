@@ -1,0 +1,8 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_e8a88475.rs
+assertion_line: 194
+expression: combined
+---
+let x = 1;         
+                 
+              end

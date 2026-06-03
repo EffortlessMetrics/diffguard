@@ -1,0 +1,5 @@
+---
+source: crates/diffguard-testkit/tests/snapshot_tests.rs
+expression: diff
+---
+"diff --git a/old/path.rs b/new/path.rs\nsimilarity index 90%\nrename from old/path.rs\nrename to new/path.rs\nindex 0000000..1111111 100644\n--- a/old/path.rs\n+++ b/new/path.rs\n@@ -1,1 +1,2 @@\n fn existing() {}\n+fn added_after_rename() {}\n"

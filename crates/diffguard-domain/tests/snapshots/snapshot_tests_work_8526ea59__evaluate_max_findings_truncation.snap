@@ -1,0 +1,20 @@
+---
+source: crates/diffguard-domain/tests/snapshot_tests_work_8526ea59.rs
+expression: snapshot
+---
+=== Evaluation ===
+findings_count: 3
+truncated_findings: 7
+files_scanned: 10
+lines_scanned: 10
+
+=== Counts ===
+info: 0, warn: 0, error: 10, suppressed: 0
+
+=== Findings ===
+- rule_id: test.rule, severity: Error, message: found: error, path: file0.rs, line: 1, column: Some(1), match_text: "error", snippet: "error on this line"
+- rule_id: test.rule, severity: Error, message: found: error, path: file1.rs, line: 1, column: Some(1), match_text: "error", snippet: "error on this line"
+- rule_id: test.rule, severity: Error, message: found: error, path: file2.rs, line: 1, column: Some(1), match_text: "error", snippet: "error on this line"
+
+=== Rule Hits ===
+- rule_id: test.rule, total: 10, emitted: 10, suppressed: 0, info: 0, warn: 0, error: 10
