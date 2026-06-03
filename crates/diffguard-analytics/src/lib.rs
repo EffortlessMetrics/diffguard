@@ -179,23 +179,45 @@ pub struct TrendRun {
     pub findings: u32,
 }
 
+/// Aggregated statistics across all runs in a [`TrendHistory`].
+///
+/// `TrendSummary` collapses a full `TrendHistory` into a single summary struct
+/// containing `run_count`, `totals` (summed verdict counts), `total_findings`,
+/// the most recent `run`, and the `delta_from_previous` run (if at least two runs exist).
+///
+/// Use [`summarize_trend_history`] to compute this from a `TrendHistory`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendSummary {
+    /// Total number of runs in the history.
     pub run_count: u32,
+    /// Sum of verdict counts across all runs.
     pub totals: VerdictCounts,
+    /// Sum of findings across all runs.
     pub total_findings: u32,
+    /// The most recent run, if the history is non-empty.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub latest: Option<TrendRun>,
+    /// Difference in verdict counts between the last two runs, if at least two exist.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub delta_from_previous: Option<TrendDelta>,
 }
 
+/// The change in verdict counts between two consecutive [`TrendRun`]s.
+///
+/// Each field is the signed difference `current_count - previous_count`.
+/// Positive values indicate more findings of that severity; negative values
+/// indicate fewer.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct TrendDelta {
+    /// Change in total findings between the two runs.
     pub findings: i64,
+    /// Change in informational findings.
     pub info: i64,
+    /// Change in warning findings.
     pub warn: i64,
+    /// Change in error findings.
     pub error: i64,
+    /// Change in suppressed (false-positive) findings.
     pub suppressed: i64,
 }
 
