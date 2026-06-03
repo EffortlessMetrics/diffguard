@@ -74,6 +74,8 @@ pub mod sample_configs {
                 fail_on: Some(FailOn::Error),
                 max_findings: Some(100),
                 diff_context: Some(0),
+                ignore_comments: None,
+                ignore_strings: None,
             },
             rule: vec![
                 RuleConfig {

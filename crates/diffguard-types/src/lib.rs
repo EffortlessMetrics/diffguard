@@ -275,6 +275,16 @@ pub struct Defaults {
 
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub diff_context: Option<u32>,
+
+    /// Ignore comments when matching patterns.
+    /// When set to `true`, pattern matching skips comment lines.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ignore_comments: Option<bool>,
+
+    /// Ignore string literals when matching patterns.
+    /// When set to `true`, pattern matching skips string literal content.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ignore_strings: Option<bool>,
 }
 
 impl Default for Defaults {
@@ -286,6 +296,8 @@ impl Default for Defaults {
             fail_on: Some(FailOn::Error),
             max_findings: Some(200),
             diff_context: Some(0),
+            ignore_comments: None,
+            ignore_strings: None,
         }
     }
 }
@@ -395,11 +407,11 @@ pub struct RuleTestCase {
     /// Whether the rule should match this input.
     pub should_match: bool,
 
-    /// Optional: override ignore_comments for this test case.
+    /// Optional: override `ignore_comments` for this test case.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ignore_comments: Option<bool>,
 
-    /// Optional: override ignore_strings for this test case.
+    /// Optional: override `ignore_strings` for this test case.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ignore_strings: Option<bool>,
 
@@ -444,7 +456,7 @@ pub struct DirectoryOverrideConfig {
 /// Override settings for a specific rule in a directory.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub struct RuleOverride {
-    /// The rule ID to override (e.g., "rust.no_unwrap").
+    /// The rule ID to override (e.g., `rust.no_unwrap`).
     pub id: String,
 
     /// Set to false to disable this rule for this directory.
@@ -504,7 +516,7 @@ pub struct RunMeta {
 pub struct CapabilityStatus {
     /// Status: "available", "unavailable", or "skipped".
     pub status: String,
-    /// Stable token reason (e.g., "missing_base", "tool_error").
+    /// Stable token reason (e.g., `missing_base`, `tool_error`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     /// Human-readable detail for diagnostics.
@@ -517,7 +529,7 @@ pub struct CapabilityStatus {
 pub struct SensorFinding {
     /// Check identifier (constant: "diffguard.pattern").
     pub check_id: String,
-    /// Rule code (maps from rule_id, e.g., "rust.no_unwrap").
+    /// Rule code (maps from `rule_id`, e.g., `rust.no_unwrap`).
     pub code: String,
     /// Finding severity.
     pub severity: Severity,
@@ -533,7 +545,7 @@ pub struct SensorFinding {
     /// Optional URL for more information.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub url: Option<String>,
-    /// Additional data (match_text, snippet).
+    /// Additional data (`match_text`, snippet).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub data: Option<serde_json::Value>,
 }
@@ -588,6 +600,8 @@ mod tests {
         assert_eq!(defaults.fail_on, Some(FailOn::Error));
         assert_eq!(defaults.max_findings, Some(200));
         assert_eq!(defaults.diff_context, Some(0));
+        assert_eq!(defaults.ignore_comments, None);
+        assert_eq!(defaults.ignore_strings, None);
     }
 
     #[test]
