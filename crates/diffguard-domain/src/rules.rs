@@ -32,6 +32,11 @@ pub enum RuleCompileError {
     UnknownDependency { rule_id: String, dependency: String },
 }
 
+/// A rule that has been compiled from configuration and is ready for evaluation.
+///
+/// `CompiledRule` contains pre-compiled regex patterns, glob sets for path filtering,
+/// and language filters. Use [`applies_to`](Self::applies_to) to check if a rule
+/// should be evaluated for a given file path and language.
 #[derive(Debug, Clone)]
 pub struct CompiledRule {
     pub id: String,
@@ -55,6 +60,65 @@ pub struct CompiledRule {
 }
 
 impl CompiledRule {
+    /// Returns `true` if this rule applies to the given file path and language.
+    ///
+    /// The return value indicates whether the rule should be evaluated against
+    /// the file at `path`. Callers **must** check this result — if the rule does
+    /// not apply, pattern matching should be skipped for this file.
+    ///
+    /// # Checking Order
+    ///
+    /// The rule applies if **all** of the following pass:
+    /// 1. **Include glob** — `path` matches the rule's include pattern (if any)
+    /// 2. **Exclude glob** — `path` does **not** match the rule's exclude pattern (if any)
+    /// 3. **Language filter** — `language` is in the rule's language set (if non-empty)
+    ///
+    /// # Arguments
+    ///
+    /// * `path` — The file path to check against include/exclude globs
+    /// * `language` — The detected language identifier (e.g., `"rust"`, `"python"`).
+    ///   Pass `None` if the language is unknown.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    /// use diffguard_domain::rules::CompiledRule;
+    /// use diffguard_types::Severity;
+    /// use regex::Regex;
+    /// use std::collections::BTreeSet;
+    ///
+    /// // Create a minimal rule that applies to Rust files
+    /// let mut languages = BTreeSet::new();
+    /// languages.insert("rust".to_string());
+    ///
+    /// let rule = CompiledRule {
+    ///     id: "test".to_string(),
+    ///     severity: Severity::Warn,
+    ///     message: "test".to_string(),
+    ///     languages,
+    ///     patterns: vec![Regex::new("unwrap").unwrap()],
+    ///     include: None,
+    ///     exclude: None,
+    ///     ignore_comments: false,
+    ///     ignore_strings: false,
+    ///     match_mode: Default::default(),
+    ///     multiline: false,
+    ///     multiline_window: 2,
+    ///     context_patterns: vec![],
+    ///     context_window: 3,
+    ///     escalate_patterns: vec![],
+    ///     escalate_window: 0,
+    ///     escalate_to: None,
+    ///     depends_on: BTreeSet::new(),
+    /// };
+    ///
+    /// // Rule applies to Rust file
+    /// assert!(rule.applies_to(Path::new("src/lib.rs"), Some("rust")));
+    /// // Rule does not apply to Python file
+    /// assert!(!rule.applies_to(Path::new("src/lib.rs"), Some("python")));
+    /// ```
+    #[must_use]
     pub fn applies_to(&self, path: &Path, language: Option<&str>) -> bool {
         if self
             .include
