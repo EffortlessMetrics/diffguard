@@ -515,3 +515,214 @@ mod tests {
         assert!(md.contains("- tool_error"));
     }
 }
+
+// =============================================================================
+// Property-based tests for escape_md function
+// =============================================================================
+
+#[cfg(test)]
+mod escape_md_properties {
+    use super::*;
+    use proptest::prelude::*;
+
+    /// The set of special markdown characters that escape_md should escape.
+    const SPECIAL_CHARS: &[char] = &['|', '`', '#', '*', '_', '[', ']', '>'];
+
+    // ============================================================================
+    // Property 1: Special characters are escaped (appear with backslash prefix)
+    // ============================================================================
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(500))]
+
+        #[test]
+        fn property_special_char_pipe_is_escaped(s in "[^|]*[|][^|]*") {
+            let result = escape_md(&s);
+            // Every | in output should be preceded by backslash
+            // Check: no unescaped | OR has escaped |
+            prop_assert!(!result.contains('|') || result.contains("\\|"));
+        }
+
+        #[test]
+        fn property_special_char_backtick_is_escaped(s in "[^`]*[`][^`]*") {
+            let result = escape_md(&s);
+            prop_assert!(!result.contains("`") || result.contains("\\`"));
+        }
+
+        #[test]
+        fn property_special_char_hash_is_escaped(s in "[^#]*[#][^#]*") {
+            let result = escape_md(&s);
+            prop_assert!(!result.contains("#") || result.contains("\\#"));
+        }
+
+        #[test]
+        fn property_special_char_asterisk_is_escaped(s in "[^*]*[*][^*]*") {
+            let result = escape_md(&s);
+            prop_assert!(!result.contains("*") || result.contains("\\*"));
+        }
+
+        #[test]
+        fn property_special_char_underscore_is_escaped(s in "[^_]*[_][^_]*") {
+            let result = escape_md(&s);
+            prop_assert!(!result.contains("_") || result.contains("\\_"));
+        }
+
+        #[test]
+        fn property_special_char_open_bracket_is_escaped(s in "[^\\[]*\\[[^\\[]*") {
+            let result = escape_md(&s);
+            prop_assert!(!result.contains("[") || result.contains("\\["));
+        }
+
+        #[test]
+        fn property_special_char_close_bracket_is_escaped(s in "[^\\]]*\\][^\\]]*") {
+            let result = escape_md(&s);
+            prop_assert!(!result.contains("]") || result.contains("\\]"));
+        }
+
+        #[test]
+        fn property_special_char_greater_than_is_escaped(s in "[^>]*[>][^>]*") {
+            let result = escape_md(&s);
+            prop_assert!(!result.contains(">") || result.contains("\\>"));
+        }
+    }
+
+    // ============================================================================
+    // Property 2: Non-special characters are preserved unchanged
+    // ============================================================================
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(500))]
+
+        #[test]
+        fn property_non_special_chars_preserved(s in "[a-zA-Z0-9 \\t.,;:+-=(){}]{0,200}") {
+            let result = escape_md(&s);
+            // All these chars are not special, so they should pass through unchanged
+            prop_assert_eq!(result, s, "non-special chars should be preserved");
+        }
+
+        #[test]
+        fn property_alpha_numeric_preserved(s in "[a-zA-Z0-9]{0,500}") {
+            let result = escape_md(&s);
+            prop_assert_eq!(result, s, "alphanumeric should pass through unchanged");
+        }
+    }
+
+    // ============================================================================
+    // Property 3: Line endings are escaped
+    // ============================================================================
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(500))]
+
+        #[test]
+        fn property_carriage_return_escaped(s1 in "[^\\r]*", s2 in ".*") {
+            let input = format!("{}\r{}", s1, s2);
+            let result = escape_md(&input);
+            prop_assert!(!result.contains("\r"), "CR should be escaped to \\r");
+            prop_assert!(result.contains("\\r"), "escaped CR should appear as \\r");
+        }
+
+        #[test]
+        fn property_newline_escaped(s1 in "[^\\n]*", s2 in ".*") {
+            let input = format!("{}\n{}", s1, s2);
+            let result = escape_md(&input);
+            prop_assert!(!result.contains("\n"), "LF should be escaped to \\n");
+            prop_assert!(result.contains("\\n"), "escaped LF should appear as \\n");
+        }
+    }
+
+    // ============================================================================
+    // Property 4: Multiple special characters in various positions
+    // ============================================================================
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(300))]
+
+        #[test]
+        fn property_consecutive_special_chars(s in "[|*#*_\\[\\]>]{3,20}") {
+            let result = escape_md(&s);
+
+            // Count special chars in original
+            let original_special_count: usize = s.chars().filter(|c| SPECIAL_CHARS.contains(c)).count();
+
+            // Count escaped special chars in result (backslash followed by special char)
+            let mut escaped_count = 0;
+            let mut chars = result.chars().peekable();
+            while let Some(c) = chars.next() {
+                if c == '\\' {
+                    if let Some(&next) = chars.peek() {
+                        if SPECIAL_CHARS.contains(&next) {
+                            escaped_count += 1;
+                            chars.next(); // consume the special char
+                        }
+                    }
+                }
+            }
+            prop_assert_eq!(escaped_count, original_special_count,
+                "all {} special chars should be escaped", original_special_count);
+        }
+    }
+
+    // ============================================================================
+    // Property 5: Strings at boundaries (empty, single char, very long)
+    // ============================================================================
+
+    #[test]
+    fn property_escape_md_empty_string() {
+        let result = escape_md("");
+        assert_eq!(result, "", "empty string should produce empty string");
+    }
+
+    #[test]
+    fn property_escape_md_single_special_char() {
+        for c in SPECIAL_CHARS {
+            let result = escape_md(&c.to_string());
+            assert_eq!(
+                result,
+                format!("\\{}", c),
+                "single {:?} should be escaped",
+                c
+            );
+        }
+    }
+
+    #[test]
+    fn property_escape_md_single_non_special_char() {
+        for c in ['a', 'Z', '9', ' ', '\t', '.', ','] {
+            let result = escape_md(&c.to_string());
+            assert_eq!(
+                result,
+                c.to_string(),
+                "non-special {:?} should pass through",
+                c
+            );
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(100))]
+
+        #[test]
+        fn property_long_string(s in "[a-zA-Z0-9 .,;:+-=_(){}|\\[`\\]>*#]{0,1000}") {
+            let result = escape_md(&s);
+            // Should not panic and should have reasonable output size
+            prop_assert!(result.len() <= s.len() * 2, "output length should be bounded");
+        }
+    }
+
+    // ============================================================================
+    // Property 6: Backslash in input is preserved (not double-escaped)
+    // ============================================================================
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(200))]
+
+        #[test]
+        fn property_backslash_preserved(s in "[^\\\\]*") {
+            let input = format!("{}\\", s);
+            let result = escape_md(&input);
+            // Backslash should pass through unchanged
+            prop_assert!(result.contains('\\'), "backslash should be preserved");
+        }
+    }
+}
