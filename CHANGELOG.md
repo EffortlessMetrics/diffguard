@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`diffguard-types`**: Refactored `ConfigFile::built_in()` from 533 lines of hardcoded Rust to a JSON data file. 36 built-in rules across 10 languages are now loaded at compile time via `include_str!` + `serde_json`, improving maintainability and respecting the crate's "no I/O" constraint.
 
+- **`diffguard-domain`**: Refactored `sanitize_line` from 465 lines to 49 lines by extracting 10 mode-specific handler methods on `Preprocessor`. The dispatch loop in `sanitize_line` now delegates to `handle_*_mode` methods (`handle_line_comment_mode`, `handle_block_comment_mode`, `handle_normal_string_mode`, `handle_raw_string_mode`, `handle_char_mode`, `handle_template_literal_mode`, `handle_triple_quoted_string_mode`, `handle_shell_literal_string_mode`, `handle_shell_ansi_c_string_mode`, `handle_xml_comment_mode`). Each handler is self-contained, independently testable, and under 40 lines. The refactoring improves maintainability by making the state-machine structure visible at a glance. No user-facing API changes.
+
 ### Changed
   - SHA pinning for third-party Actions (`actions/github-script@v7`, `github/codeql-action/upload-sarif@v3`) to prevent supply chain attacks
   - Explicit `permissions` block with least-privilege scopes (`contents: read`, `pull-requests: write`, `security-events: write`)

@@ -1,0 +1,866 @@
+---
+source: crates/diffguard-types/tests/snapshot_tests.rs
+expression: json
+---
+{
+  "defaults": {
+    "base": "origin/main",
+    "head": "HEAD",
+    "scope": "added",
+    "fail_on": "error",
+    "max_findings": 200,
+    "diff_context": 0
+  },
+  "rule": [
+    {
+      "id": "rust.no_unwrap",
+      "severity": "error",
+      "message": "Avoid unwrap/expect in production code.",
+      "languages": [
+        "rust"
+      ],
+      "patterns": [
+        "\\.unwrap\\(",
+        "\\.expect\\("
+      ],
+      "paths": [
+        "**/*.rs"
+      ],
+      "exclude_paths": [
+        "**/tests/**",
+        "**/benches/**",
+        "**/examples/**"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Use the ? operator to propagate errors, or use expect() with a meaningful message that explains the invariant. Consider using anyhow or thiserror for structured error handling.",
+      "url": "https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html",
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "rust.no_dbg",
+      "severity": "warn",
+      "message": "Remove dbg!/println! before merging.",
+      "languages": [
+        "rust"
+      ],
+      "patterns": [
+        "\\bdbg!\\(",
+        "\\bprintln!\\(",
+        "\\beprintln!\\("
+      ],
+      "paths": [
+        "**/*.rs"
+      ],
+      "exclude_paths": [
+        "**/tests/**",
+        "**/benches/**",
+        "**/examples/**"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Remove debug output before merging. For logging, use the log or tracing crate instead. If you need to keep the output, consider using conditional compilation with #[cfg(debug_assertions)].",
+      "url": "https://doc.rust-lang.org/std/macro.dbg.html",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "rust.no_todo",
+      "severity": "warn",
+      "message": "Resolve TODO/FIXME comments before merging.",
+      "languages": [
+        "rust"
+      ],
+      "patterns": [
+        "\\bTODO\\b",
+        "\\bFIXME\\b",
+        "\\btodo!\\s*\\(",
+        "\\bunimplemented!\\s*\\("
+      ],
+      "paths": [
+        "**/*.rs"
+      ],
+      "exclude_paths": [],
+      "ignore_comments": false,
+      "ignore_strings": true,
+      "help": "Address TODO/FIXME comments before merging, or create tracking issues for planned work. The todo! and unimplemented! macros will panic at runtime.",
+      "tags": [
+        "style"
+      ]
+    },
+    {
+      "id": "python.no_print",
+      "severity": "warn",
+      "message": "Remove print() before merging.",
+      "languages": [
+        "python"
+      ],
+      "patterns": [
+        "\\bprint\\s*\\("
+      ],
+      "paths": [
+        "**/*.py"
+      ],
+      "exclude_paths": [
+        "**/tests/**",
+        "**/test_*.py"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Use the logging module instead of print() for production code. Configure logging levels appropriately (DEBUG, INFO, WARNING, ERROR).",
+      "url": "https://docs.python.org/3/library/logging.html",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "python.no_pdb",
+      "severity": "error",
+      "message": "Remove debugger statements before merging.",
+      "languages": [
+        "python"
+      ],
+      "patterns": [
+        "\\bimport\\s+pdb\\b",
+        "\\bpdb\\.set_trace\\s*\\("
+      ],
+      "paths": [
+        "**/*.py"
+      ],
+      "exclude_paths": [],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Remove pdb debugger statements before merging. These will cause the application to pause and wait for interactive input in production.",
+      "url": "https://docs.python.org/3/library/pdb.html",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "python.no_breakpoint",
+      "severity": "error",
+      "message": "Remove breakpoint() calls before merging.",
+      "languages": [
+        "python"
+      ],
+      "patterns": [
+        "\\bbreakpoint\\s*\\("
+      ],
+      "paths": [
+        "**/*.py"
+      ],
+      "exclude_paths": [],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Remove breakpoint() calls before merging. The breakpoint() function (Python 3.7+) invokes the debugger and will pause execution in production.",
+      "url": "https://docs.python.org/3/library/functions.html#breakpoint",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "js.no_console",
+      "severity": "warn",
+      "message": "Remove console.log before merging.",
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "patterns": [
+        "\\bconsole\\.(log|debug|info)\\s*\\("
+      ],
+      "paths": [
+        "**/*.js",
+        "**/*.ts",
+        "**/*.jsx",
+        "**/*.tsx"
+      ],
+      "exclude_paths": [
+        "**/tests/**",
+        "**/*.test.*",
+        "**/*.spec.*"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Use a proper logging library (e.g., winston, pino, bunyan) instead of console.log. For client-side code, consider using a logger that can be disabled in production builds.",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/console",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "js.no_debugger",
+      "severity": "error",
+      "message": "Remove debugger statements before merging.",
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "patterns": [
+        "\\bdebugger\\b"
+      ],
+      "paths": [
+        "**/*.js",
+        "**/*.ts",
+        "**/*.jsx",
+        "**/*.tsx"
+      ],
+      "exclude_paths": [],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Remove debugger statements before merging. These will pause execution in the browser's developer tools, which is not intended for production code.",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/debugger",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "ruby.no_binding_pry",
+      "severity": "error",
+      "message": "Remove binding.pry before merging.",
+      "languages": [
+        "ruby"
+      ],
+      "patterns": [
+        "\\bbinding\\.pry\\b"
+      ],
+      "paths": [
+        "**/*.rb",
+        "**/*.rake"
+      ],
+      "exclude_paths": [
+        "**/test/**",
+        "**/spec/**"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Remove binding.pry debugger statements before merging. These will pause execution and open an interactive REPL in production.",
+      "url": "https://github.com/pry/pry",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "ruby.no_byebug",
+      "severity": "error",
+      "message": "Remove byebug statements before merging.",
+      "languages": [
+        "ruby"
+      ],
+      "patterns": [
+        "\\bbyebug\\b"
+      ],
+      "paths": [
+        "**/*.rb",
+        "**/*.rake"
+      ],
+      "exclude_paths": [
+        "**/test/**",
+        "**/spec/**"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Remove byebug debugger statements before merging. These will pause execution and open an interactive debugger in production.",
+      "url": "https://github.com/deivid-rodriguez/byebug",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "java.no_sout",
+      "severity": "warn",
+      "message": "Remove System.out.println before merging.",
+      "languages": [
+        "java"
+      ],
+      "patterns": [
+        "\\bSystem\\.out\\.println\\s*\\("
+      ],
+      "paths": [
+        "**/*.java"
+      ],
+      "exclude_paths": [
+        "**/test/**",
+        "**/tests/**"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Use a logging framework (e.g., SLF4J, Log4j, java.util.logging) instead of System.out.println for production code. Logging frameworks provide log levels, formatting, and configurable output destinations.",
+      "url": "https://www.slf4j.org/",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "csharp.no_console",
+      "severity": "warn",
+      "message": "Remove Console.WriteLine before merging.",
+      "languages": [
+        "csharp"
+      ],
+      "patterns": [
+        "\\bConsole\\.WriteLine\\s*\\("
+      ],
+      "paths": [
+        "**/*.cs"
+      ],
+      "exclude_paths": [
+        "**/Tests/**",
+        "**/*.Tests/**"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Use a logging framework (e.g., Serilog, NLog, Microsoft.Extensions.Logging) instead of Console.WriteLine for production code. Logging frameworks provide structured logging, log levels, and configurable sinks.",
+      "url": "https://learn.microsoft.com/en-us/dotnet/core/extensions/logging",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "go.no_fmt_print",
+      "severity": "warn",
+      "message": "Remove fmt.Print* before merging.",
+      "languages": [
+        "go"
+      ],
+      "patterns": [
+        "\\bfmt\\.(Print|Println|Printf)\\s*\\("
+      ],
+      "paths": [
+        "**/*.go"
+      ],
+      "exclude_paths": [
+        "**/*_test.go"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Use the log package or a structured logging library (e.g., zap, zerolog, logrus) instead of fmt.Print* for production code.",
+      "url": "https://pkg.go.dev/log",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "go.no_panic",
+      "severity": "warn",
+      "message": "Avoid panic() in production code.",
+      "languages": [
+        "go"
+      ],
+      "patterns": [
+        "\\bpanic\\s*\\("
+      ],
+      "paths": [
+        "**/*.go"
+      ],
+      "exclude_paths": [
+        "**/*_test.go"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Return errors instead of panicking. Use panic only for truly unrecoverable situations. Consider using errors.New() or fmt.Errorf() to create descriptive error values that callers can handle gracefully.",
+      "url": "https://go.dev/doc/effective_go#errors",
+      "tags": [
+        "safety"
+      ]
+    },
+    {
+      "id": "kotlin.no_println",
+      "severity": "warn",
+      "message": "Remove println() before merging.",
+      "languages": [
+        "kotlin"
+      ],
+      "patterns": [
+        "\\bprintln\\s*\\("
+      ],
+      "paths": [
+        "**/*.kt",
+        "**/*.kts"
+      ],
+      "exclude_paths": [
+        "**/test/**",
+        "**/tests/**"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "Use a logging framework (e.g., SLF4J, Logback, kotlin-logging) instead of println() for production code. Logging frameworks provide log levels, structured output, and configurable destinations.",
+      "url": "https://www.slf4j.org/",
+      "tags": [
+        "debug"
+      ]
+    },
+    {
+      "id": "secrets.aws_access_key",
+      "severity": "error",
+      "message": "Potential AWS Access Key ID detected.",
+      "languages": [],
+      "patterns": [
+        "AKIA[0-9A-Z]{16}"
+      ],
+      "paths": [],
+      "exclude_paths": [],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "AWS Access Key IDs should never be committed to source control. Use environment variables, AWS IAM roles, or a secrets manager (e.g., AWS Secrets Manager, HashiCorp Vault) to manage credentials.",
+      "url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.github_token",
+      "severity": "error",
+      "message": "Potential GitHub token detected.",
+      "languages": [],
+      "patterns": [
+        "(ghp_|gho_|ghu_|ghs_|ghr_)[a-zA-Z0-9]{36}"
+      ],
+      "paths": [],
+      "exclude_paths": [],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "GitHub tokens should never be committed to source control. Use environment variables or GitHub Actions secrets to manage tokens. If a token was accidentally committed, revoke it immediately.",
+      "url": "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.generic_api_key",
+      "severity": "error",
+      "message": "Potential API key detected.",
+      "languages": [],
+      "patterns": [
+        "(?i)(api[_-]?key|apikey)\\s*[:=]\\s*[\"'][^\"']{16,}[\"']"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*",
+        "**/CHANGELOG*"
+      ],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "API keys should not be hardcoded in source files. Use environment variables or a secrets manager to inject credentials at runtime. Consider using .env files (excluded from version control) for local development.",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.private_key",
+      "severity": "error",
+      "message": "Private key detected.",
+      "languages": [],
+      "patterns": [
+        "-----BEGIN (RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*"
+      ],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "Private keys must never be committed to source control. Store private keys securely using a secrets manager, encrypted storage, or environment variables. If a private key was accidentally committed, consider it compromised and generate a new key pair.",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.slack_token",
+      "severity": "error",
+      "message": "Potential Slack token detected.",
+      "languages": [],
+      "patterns": [
+        "xox[baprs]-[0-9a-zA-Z]{10,}"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*"
+      ],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "Slack tokens should never be committed to source control. Use environment variables or a secrets manager. If a token was accidentally committed, revoke it in your Slack workspace settings.",
+      "url": "https://api.slack.com/authentication/token-types",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.stripe_key",
+      "severity": "error",
+      "message": "Potential Stripe API key detected.",
+      "languages": [],
+      "patterns": [
+        "(sk|rk)_live_[0-9a-zA-Z]{24,}"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*"
+      ],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "Stripe live API keys should never be committed to source control. Use environment variables or a secrets manager. If a key was accidentally committed, rotate it immediately in your Stripe dashboard.",
+      "url": "https://stripe.com/docs/keys",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.google_api_key",
+      "severity": "error",
+      "message": "Potential Google API key detected.",
+      "languages": [],
+      "patterns": [
+        "AIza[0-9A-Za-z\\-_]{35}"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*"
+      ],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "Google API keys should not be committed to source control. Use environment variables or Google Cloud Secret Manager. Restrict the key's allowed APIs and referrers in the Google Cloud Console.",
+      "url": "https://cloud.google.com/docs/authentication/api-keys",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.twilio_key",
+      "severity": "error",
+      "message": "Potential Twilio API key detected.",
+      "languages": [],
+      "patterns": [
+        "SK[0-9a-fA-F]{32}"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*"
+      ],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "Twilio API keys should not be committed to source control. Use environment variables or a secrets manager. If compromised, revoke the key in your Twilio console.",
+      "url": "https://www.twilio.com/docs/iam/api-keys",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.npm_token",
+      "severity": "error",
+      "message": "Potential npm token detected.",
+      "languages": [],
+      "patterns": [
+        "npm_[0-9a-zA-Z]{36}"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*"
+      ],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "npm tokens should not be committed to source control. Use environment variables or npm's built-in .npmrc configuration. If compromised, revoke the token on npmjs.com.",
+      "url": "https://docs.npmjs.com/about-access-tokens",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.pypi_token",
+      "severity": "error",
+      "message": "Potential PyPI token detected.",
+      "languages": [],
+      "patterns": [
+        "pypi-[0-9a-zA-Z_-]{50,}"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*"
+      ],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "PyPI tokens should not be committed to source control. Use environment variables or a secrets manager. If compromised, revoke the token on pypi.org.",
+      "url": "https://pypi.org/help/#apitoken",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.password_assignment",
+      "severity": "warn",
+      "message": "Potential hardcoded password detected.",
+      "languages": [],
+      "patterns": [
+        "(?i)(password|passwd|pwd)\\s*[:=]\\s*[\"'][^\"']{8,}[\"']"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*",
+        "**/*.example*",
+        "**/*test*"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": false,
+      "help": "Passwords should not be hardcoded in source files. Use environment variables, a secrets manager, or secure configuration files excluded from version control.",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "secrets.jwt_token",
+      "severity": "warn",
+      "message": "Potential JWT token detected.",
+      "languages": [],
+      "patterns": [
+        "eyJ[a-zA-Z0-9_-]{10,}\\.eyJ[a-zA-Z0-9_-]{10,}\\.[a-zA-Z0-9_-]{10,}"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*",
+        "**/*test*"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": false,
+      "help": "JWT tokens should not be hardcoded in source files. They may contain sensitive claims or grant unauthorized access. Generate tokens dynamically at runtime.",
+      "url": "https://jwt.io/introduction",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "security.hardcoded_ipv4",
+      "severity": "warn",
+      "message": "Hardcoded IPv4 address detected.",
+      "languages": [],
+      "patterns": [
+        "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*",
+        "**/*test*",
+        "**/Dockerfile*"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": false,
+      "help": "Hardcoded IP addresses make code inflexible and can expose internal network topology. Use configuration files, environment variables, or DNS names instead.",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "security.http_url",
+      "severity": "warn",
+      "message": "Non-HTTPS URL detected.",
+      "languages": [],
+      "patterns": [
+        "[\"']http://[^\"']+[\"']"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*",
+        "**/*test*",
+        "**/localhost*"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": false,
+      "help": "Use HTTPS instead of HTTP for secure communication. HTTP transmits data in plaintext, making it vulnerable to man-in-the-middle attacks.",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "js.no_eval",
+      "severity": "error",
+      "message": "Avoid eval() - potential code injection risk.",
+      "languages": [
+        "javascript",
+        "typescript"
+      ],
+      "patterns": [
+        "\\beval\\s*\\(",
+        "\\bFunction\\s*\\("
+      ],
+      "paths": [
+        "**/*.js",
+        "**/*.ts",
+        "**/*.jsx",
+        "**/*.tsx"
+      ],
+      "exclude_paths": [
+        "**/*test*"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "eval() and the Function constructor execute arbitrary code, creating severe security risks. Use safer alternatives like JSON.parse() for data or template literals for strings.",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/eval#never_use_direct_eval!",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "python.no_eval",
+      "severity": "error",
+      "message": "Avoid eval()/exec() - potential code injection risk.",
+      "languages": [
+        "python"
+      ],
+      "patterns": [
+        "\\beval\\s*\\(",
+        "\\bexec\\s*\\("
+      ],
+      "paths": [
+        "**/*.py"
+      ],
+      "exclude_paths": [
+        "**/*test*"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "eval() and exec() execute arbitrary Python code, creating severe security risks. Use ast.literal_eval() for safe literal evaluation or find alternative approaches.",
+      "url": "https://docs.python.org/3/library/functions.html#eval",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "ruby.no_eval",
+      "severity": "error",
+      "message": "Avoid eval/instance_eval - potential code injection risk.",
+      "languages": [
+        "ruby"
+      ],
+      "patterns": [
+        "\\beval\\s*[\\(\\s]",
+        "\\binstance_eval\\s*[\\(\\s{]"
+      ],
+      "paths": [
+        "**/*.rb",
+        "**/*.rake"
+      ],
+      "exclude_paths": [
+        "**/*test*",
+        "**/spec/**"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "eval and instance_eval execute arbitrary Ruby code, creating severe security risks. Use safer metaprogramming techniques like define_method or public_send.",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "php.no_eval",
+      "severity": "error",
+      "message": "Avoid eval()/create_function() - potential code injection risk.",
+      "languages": [
+        "php"
+      ],
+      "patterns": [
+        "\\beval\\s*\\(",
+        "\\bcreate_function\\s*\\("
+      ],
+      "paths": [
+        "**/*.php"
+      ],
+      "exclude_paths": [
+        "**/*test*"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "eval() and create_function() execute arbitrary PHP code, creating severe security risks. Use anonymous functions or other safe alternatives.",
+      "url": "https://www.php.net/manual/en/function.eval.php",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "shell.no_eval",
+      "severity": "error",
+      "message": "Avoid eval in shell scripts - potential code injection risk.",
+      "languages": [
+        "shell"
+      ],
+      "patterns": [
+        "\\beval\\s+"
+      ],
+      "paths": [
+        "**/*.sh",
+        "**/*.bash",
+        "**/*.zsh"
+      ],
+      "exclude_paths": [
+        "**/*test*"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": true,
+      "help": "eval in shell scripts executes arbitrary commands, creating severe security risks especially with user input. Use safer alternatives like arrays or direct command execution.",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "security.sql_concat",
+      "severity": "warn",
+      "message": "Potential SQL injection - avoid string concatenation in queries.",
+      "languages": [],
+      "patterns": [
+        "(?i)(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*\\+.*[\"']",
+        "(?i)(SELECT|INSERT|UPDATE|DELETE|FROM|WHERE).*[\"'].*\\+"
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*test*",
+        "**/*.md"
+      ],
+      "ignore_comments": true,
+      "ignore_strings": false,
+      "help": "String concatenation in SQL queries can lead to SQL injection attacks. Use parameterized queries or prepared statements instead.",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Query_Parameterization_Cheat_Sheet.html",
+      "tags": [
+        "security"
+      ]
+    },
+    {
+      "id": "security.xxe",
+      "severity": "error",
+      "message": "Potential XML External Entity (XXE) vulnerability detected.",
+      "languages": [],
+      "patterns": [
+        "<!DOCTYPE\\s+.*\\s+SYSTEM\\s+[\"']",
+        "<!ENTITY\\s+.*\\s+SYSTEM\\s+[\"']",
+        "xml.etree\\.ElementTree\\.parse\\s*\\(",
+        "DocumentBuilder\\.new\\s*\\(\\)",
+        "lxml\\.etree\\.parse\\s*\\("
+      ],
+      "paths": [],
+      "exclude_paths": [
+        "**/*.md",
+        "**/README*",
+        "**/*test*"
+      ],
+      "ignore_comments": false,
+      "ignore_strings": false,
+      "help": "XML parsers should be configured to disable external entity processing to prevent XXE attacks. Use secure parsing configurations that set disallow-doctype-decl or similar security features.",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html",
+      "tags": [
+        "security"
+      ]
+    }
+  ]
+}
