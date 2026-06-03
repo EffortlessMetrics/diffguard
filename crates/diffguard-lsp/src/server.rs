@@ -41,6 +41,10 @@ const CMD_EXPLAIN_RULE: &str = "diffguard.explainRule";
 const CMD_RELOAD_CONFIG: &str = "diffguard.reloadConfig";
 const CMD_SHOW_RULE_URL: &str = "diffguard.showRuleUrl";
 
+/// Tracks whether git diff is available for a workspace.
+///
+/// Used to avoid repeatedly warning about unavailable git diff
+/// when processing multiple documents in a session without git support.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum GitSupport {
     Unknown,
@@ -48,6 +52,10 @@ enum GitSupport {
     Unavailable,
 }
 
+/// Represents the state of an open text document within the LSP session.
+///
+/// Tracks the document's path, version number, current text content,
+/// and which lines have been modified since the last save.
 #[derive(Debug, Clone)]
 struct DocumentState {
     path: PathBuf,
@@ -58,6 +66,10 @@ struct DocumentState {
 }
 
 impl DocumentState {
+    /// Creates a new document state with the given path, version, and text.
+    ///
+    /// The baseline text is initialized to the same value as the current text,
+    /// and changed_lines starts empty.
     fn new(path: PathBuf, version: i32, text: String) -> Self {
         Self {
             path,
@@ -68,6 +80,12 @@ impl DocumentState {
         }
     }
 
+    /// Applies a list of content changes to the document.
+    ///
+    /// If the changes contain a full-document replacement (range is None),
+    /// the entire text is replaced. Otherwise, each incremental change
+    /// is applied in order. After applying changes, recomputes which
+    /// lines differ from the baseline (last saved) version.
     fn apply_changes(&mut self, changes: &[TextDocumentContentChangeEvent]) -> Result<()> {
         if changes.is_empty() {
             return Ok(());
@@ -87,6 +105,10 @@ impl DocumentState {
         Ok(())
     }
 
+    /// Marks the document as saved with optional new text.
+    ///
+    /// Updates the baseline text to the current text (or provided text),
+    /// clears the changed_lines set, and updates the version if new text is given.
     fn mark_saved(&mut self, new_text: Option<String>) {
         if let Some(text) = new_text {
             self.text = text;
@@ -96,6 +118,10 @@ impl DocumentState {
     }
 }
 
+/// Initialization options for the LSP server, passed during initialization.
+///
+/// These options configure the server's behavior, such as custom config paths
+/// and limits on the number of findings reported.
 #[derive(Debug, Default, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 struct InitOptions {
@@ -105,6 +131,10 @@ struct InitOptions {
     force_language: Option<String>,
 }
 
+/// Holds all mutable state for the LSP server session.
+///
+/// Includes the workspace root, configuration, open documents, and whether
+/// git diff is available for the current workspace.
 #[derive(Debug)]
 struct ServerState {
     workspace_root: Option<PathBuf>,
@@ -118,6 +148,11 @@ struct ServerState {
 }
 
 impl ServerState {
+    /// Creates a new ServerState from LSP initialization params.
+    ///
+    /// Loads the configuration file, resolving the path relative to the workspace
+    /// root if needed. Returns both the state and an optional warning message
+    /// (e.g., if the config file could not be loaded and built-in rules are used).
     fn from_initialize(params: &InitializeParams) -> (Self, Option<String>) {
         let options = parse_init_options(params.initialization_options.as_ref());
         let workspace_root = extract_workspace_root(params);
@@ -129,21 +164,22 @@ impl ServerState {
         let max_findings = options.max_findings.unwrap_or(DEFAULT_MAX_FINDINGS).max(1);
         let force_language = normalize_option_string(options.force_language);
 
-        let (config, warning) =
-            match load_effective_config(config_path.as_deref(), options.no_default_rules) {
-                Ok(config) => (config, None),
-                Err(err) => {
-                    let config_label = config_path
-                        .as_ref()
-                        .map(|p| p.display().to_string())
-                        .unwrap_or_else(|| "<built-in>".to_string());
-                    let warning = format!(
-                        "diffguard-lsp: failed to load config from {} (using built-in rules): {}",
-                        config_label, err
-                    );
-                    (ConfigFile::built_in(), Some(warning))
-                }
-            };
+        let (config, warning) = match load_effective_config(
+            config_path.as_deref(),
+            options.no_default_rules,
+        ) {
+            Ok(config) => (config, None),
+            Err(err) => {
+                let config_label = config_path
+                    .as_ref()
+                    .map(|p| p.display().to_string())
+                    .unwrap_or_else(|| "<built-in>".to_string());
+                let warning = format!(
+                    "diffguard-lsp: failed to load config from {config_label} (using built-in rules): {err}",
+                );
+                (ConfigFile::built_in(), Some(warning))
+            }
+        };
 
         (
             Self {
@@ -161,6 +197,16 @@ impl ServerState {
     }
 }
 
+/// Runs the LSP server on the given connection.
+///
+/// This is the main entry point for the diffguard-lsp binary. It handles
+/// the LSP initialization handshake, then processes messages in a loop
+/// until the client disconnects or the server sends an Exit notification.
+///
+/// # Errors
+///
+/// Returns an error if initialization fails or if message processing
+/// encounters an irrecoverable error.
 pub fn run_server(connection: Connection) -> Result<()> {
     // Use the lower-level initialize_start/initialize_finish methods
     // to send a custom InitializeResult with server_info.
@@ -296,7 +342,7 @@ fn handle_code_action_request(
                 connection,
                 request.id,
                 INVALID_PARAMS,
-                format!("invalid CodeActionParams: {}", err),
+                format!("invalid CodeActionParams: {err}"),
             );
         }
     };
@@ -305,6 +351,13 @@ fn handle_code_action_request(
     send_ok_response(connection, request.id, serde_json::to_value(actions)?)
 }
 
+/// Builds a list of code actions based on the given diagnostics.
+///
+/// For each diagnostic that references a diffguard rule, this function creates:
+/// - A "Explain {rule_id}" action that shows detailed rule information
+/// - An "Open docs for {rule_id}" action that opens the rule's documentation URL
+///
+/// Each action is only created once per rule ID or URL to avoid duplicates.
 fn build_code_actions(config: &ConfigFile, params: &CodeActionParams) -> Vec<CodeActionOrCommand> {
     let mut actions = Vec::new();
     let mut seen_explain = BTreeSet::new();
@@ -317,13 +370,13 @@ fn build_code_actions(config: &ConfigFile, params: &CodeActionParams) -> Vec<Cod
 
         if seen_explain.insert(rule_id.clone()) {
             let command = LspCommand {
-                title: format!("Explain {}", rule_id),
+                title: format!("Explain {rule_id}"),
                 command: CMD_EXPLAIN_RULE.to_string(),
                 arguments: Some(vec![json!(rule_id.clone())]),
             };
 
             actions.push(CodeActionOrCommand::CodeAction(CodeAction {
-                title: format!("diffguard: Explain {}", rule_id),
+                title: format!("diffguard: Explain {rule_id}"),
                 kind: Some(CodeActionKind::QUICKFIX),
                 command: Some(command),
                 data: Some(json!({ "ruleId": rule_id })),
@@ -353,6 +406,14 @@ fn build_code_actions(config: &ConfigFile, params: &CodeActionParams) -> Vec<Cod
     actions
 }
 
+/// Handles an ExecuteCommand request from the LSP client.
+///
+/// Supports three commands:
+/// - `diffguard.explainRule`: Shows detailed information about a rule
+/// - `diffguard.reloadConfig`: Reloads the configuration file
+/// - `diffguard.showRuleUrl`: Opens a URL for a rule's documentation
+///
+/// Returns an error response if command parsing fails or if a required argument is missing.
 fn handle_execute_command_request(
     connection: &Connection,
     state: &mut ServerState,
@@ -365,7 +426,7 @@ fn handle_execute_command_request(
                 connection,
                 request.id,
                 INVALID_PARAMS,
-                format!("invalid ExecuteCommandParams: {}", err),
+                format!("invalid ExecuteCommandParams: {err}"),
             );
         }
     };
@@ -435,13 +496,9 @@ fn handle_execute_command_request(
             let label = if rule_id.is_empty() {
                 "diffguard documentation".to_string()
             } else {
-                format!("diffguard rule {}", rule_id)
+                format!("diffguard rule {rule_id}")
             };
-            show_message(
-                connection,
-                MessageType::INFO,
-                &format!("{}: {}", label, url),
-            )?;
+            show_message(connection, MessageType::INFO, &format!("{label}: {url}"))?;
 
             send_ok_response(
                 connection,
@@ -461,22 +518,36 @@ fn handle_execute_command_request(
     }
 }
 
+/// Builds an explanation message for a rule, including suggestions for similar rules.
+///
+/// If the rule is found, returns (explanation, true). If not found, returns
+/// a message suggesting similar rules (based on prefix, substring, and edit distance)
+/// along with (message, false).
 fn explain_rule_message(config: &ConfigFile, rule_id: &str) -> (String, bool) {
     if let Some(rule) = find_rule(config, rule_id) {
         return (format_rule_explanation(rule), true);
     }
 
     let suggestions = find_similar_rules(rule_id, &config.rule);
-    let mut message = format!("Rule '{}' not found.", rule_id);
+    let mut message = format!("Rule '{rule_id}' not found.");
     if !suggestions.is_empty() {
         message.push_str("\nDid you mean:");
         for suggestion in suggestions {
-            message.push_str(&format!("\n- {}", suggestion));
+            message.push_str(&format!("\n- {suggestion}"));
         }
     }
     (message, false)
 }
 
+/// Handles a notification message from the LSP client.
+///
+/// Dispatches to the appropriate handler based on the notification method:
+/// - Text document notifications (didOpen, didChange, didSave, didClose)
+/// - Configuration change notifications
+/// - Exit notification
+///
+/// Returns `Ok(true)` when the server should shut down (收到了 Exit notification).
+/// Returns `Ok(false)` for all other notifications.
 fn handle_notification(
     connection: &Connection,
     state: &mut ServerState,
@@ -491,7 +562,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didOpen params: {}", err),
+                            &format!("invalid didOpen params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -516,7 +587,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didChange params: {}", err),
+                            &format!("invalid didChange params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -543,7 +614,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didSave params: {}", err),
+                            &format!("invalid didSave params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -578,7 +649,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didClose params: {}", err),
+                            &format!("invalid didClose params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -596,7 +667,7 @@ fn handle_notification(
                         show_message(
                             connection,
                             MessageType::WARNING,
-                            &format!("invalid didChangeConfiguration params: {}", err),
+                            &format!("invalid didChangeConfiguration params: {err}"),
                         )?;
                         return Ok(false);
                     }
@@ -636,18 +707,12 @@ fn reload_config(state: &mut ServerState) -> Result<String> {
         Ok(config) => {
             let rules = config.rule.len();
             state.config = config;
-            Ok(format!(
-                "diffguard-lsp: config reloaded ({} rule(s)).",
-                rules
-            ))
+            Ok(format!("diffguard-lsp: config reloaded ({rules} rule(s)).",))
         }
         Err(err) => {
             state.config = ConfigFile::built_in();
             state.git_support = GitSupport::Unknown;
-            bail!(
-                "diffguard-lsp: failed to reload config (using built-in rules): {}",
-                err
-            )
+            bail!("diffguard-lsp: failed to reload config (using built-in rules): {err}",)
         }
     }
 }
@@ -661,6 +726,15 @@ fn refresh_all_documents(connection: &Connection, state: &mut ServerState) -> Re
     Ok(())
 }
 
+/// Refreshes and publishes diagnostics for a single document.
+///
+/// Computes the diff to analyze (either in-memory changes or git diff),
+/// runs the diffguard checker on it, and publishes the resulting diagnostics.
+///
+/// Uses git diff when the document has no in-memory changes and a workspace
+/// root is available. Falls back to in-memory changes-only when git is
+/// unavailable. Directory overrides are loaded from `.diffguard.toml` files
+/// in the directory hierarchy.
 fn refresh_document_diagnostics(
     connection: &Connection,
     state: &mut ServerState,
@@ -700,8 +774,7 @@ fn refresh_document_diagnostics(
                         connection,
                         MessageType::WARNING,
                         &format!(
-                            "diffguard-lsp: git diff unavailable (falling back to in-memory changes only): {}",
-                            err
+                            "diffguard-lsp: git diff unavailable (falling back to in-memory changes only): {err}",
                         ),
                     )?;
                 }
@@ -725,7 +798,7 @@ fn refresh_document_diagnostics(
                 show_message(
                     connection,
                     MessageType::WARNING,
-                    &format!("diffguard-lsp: failed to load directory overrides: {}", err),
+                    &format!("diffguard-lsp: failed to load directory overrides: {err}"),
                 )?;
                 Vec::new()
             }
@@ -757,7 +830,7 @@ fn refresh_document_diagnostics(
             show_message(
                 connection,
                 MessageType::ERROR,
-                &format!("diffguard-lsp: check failed for {}: {}", relative_path, err),
+                &format!("diffguard-lsp: check failed for {relative_path}: {err}"),
             )?;
             publish_diagnostics(connection, uri.clone(), Some(document.version), Vec::new())?;
             return Ok(());
@@ -768,6 +841,16 @@ fn refresh_document_diagnostics(
     publish_diagnostics(connection, uri.clone(), Some(document.version), diagnostics)
 }
 
+/// Converts diffguard findings into LSP diagnostic messages.
+///
+/// Each finding is transformed into a Diagnostic with:
+/// - range: the line and column of the match
+/// - severity: mapped from diffguard Severity to LSP DiagnosticSeverity
+/// - code: the rule ID
+/// - source: "diffguard"
+/// - message: the finding's message
+///
+/// Results are sorted by position (line, then character, then message).
 fn findings_to_diagnostics(findings: &[Finding]) -> Vec<Diagnostic> {
     let mut diagnostics: Vec<Diagnostic> = findings
         .iter()
@@ -890,6 +973,10 @@ fn publish_diagnostics(
     Ok(())
 }
 
+/// Gets a combined git diff for a file, including both staged and unstaged changes.
+///
+/// If only unstaged changes exist, returns those. If only staged changes exist,
+/// returns those. If both exist, combines them into a single diff.
 fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<String> {
     let unstaged = run_git_diff(workspace_root, relative_path, false)?;
     let staged = run_git_diff(workspace_root, relative_path, true)?;
@@ -909,6 +996,15 @@ fn git_diff_for_path(workspace_root: &Path, relative_path: &str) -> Result<Strin
     Ok(combined)
 }
 
+/// Runs `git diff` for a specific file with a 10-second timeout.
+///
+/// The `staged` parameter controls whether to show staged changes or unstaged changes.
+/// Uses `--unified=0` to show only the exact changed lines without surrounding context.
+///
+/// # Errors
+///
+/// Returns an error if git is not available, the command times out after 10 seconds,
+/// or git exits with a non-zero status.
 fn run_git_diff(workspace_root: &Path, relative_path: &str, staged: bool) -> Result<String> {
     // Spawn with a 10-second timeout to avoid blocking the LSP indefinitely
     const GIT_DIFF_TIMEOUT: Duration = Duration::from_secs(10);

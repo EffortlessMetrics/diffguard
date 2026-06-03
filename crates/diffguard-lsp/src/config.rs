@@ -10,6 +10,12 @@ use regex::Regex;
 const DIRECTORY_OVERRIDE_NAME: &str = ".diffguard.toml";
 const MAX_INCLUDE_DEPTH: usize = 10;
 
+/// Loads the effective configuration for the LSP server.
+///
+/// If a path is provided, loads and parses the config file (including any
+/// includes it references). If `no_default_rules` is false, merges the
+/// loaded config with the built-in rules. If no path is provided or the
+/// file cannot be loaded, returns the built-in configuration.
 pub fn load_effective_config(path: Option<&Path>, no_default_rules: bool) -> Result<ConfigFile> {
     let Some(path) = path else {
         return Ok(ConfigFile::built_in());
@@ -23,6 +29,16 @@ pub fn load_effective_config(path: Option<&Path>, no_default_rules: bool) -> Res
     }
 }
 
+/// Resolves the configuration file path based on workspace root and override path.
+///
+/// If an override path is provided and is absolute, returns it directly.
+/// If it's relative, joins it with the workspace root (if available).
+///
+/// If no override is provided, looks for a file named `default_name` in the
+/// workspace root, and returns its path if it exists. Otherwise, checks
+/// if `default_name` exists in the current directory.
+///
+/// Returns `None` if no config file is found.
 pub fn resolve_config_path(
     workspace_root: Option<&Path>,
     override_path: Option<String>,
@@ -56,6 +72,11 @@ pub fn resolve_config_path(
     }
 }
 
+/// Checks if two paths refer to the same file.
+///
+/// First attempts to canonicalize both paths. If canonicalization succeeds
+/// for both, compares the canonical paths. Otherwise, falls back to
+/// comparing normalized path strings (handles cross-platform differences).
 pub fn paths_match(left: &Path, right: &Path) -> bool {
     let left_canonical = left.canonicalize().ok();
     let right_canonical = right.canonicalize().ok();
@@ -65,10 +86,19 @@ pub fn paths_match(left: &Path, right: &Path) -> bool {
     normalize_path(left) == normalize_path(right)
 }
 
+/// Normalizes a path for cross-platform comparison.
+///
+/// Converts backslashes to forward slashes to ensure consistent
+/// path representation regardless of operating system.
 pub fn normalize_path(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
+/// Converts an absolute file path to a workspace-relative path.
+///
+/// If a workspace root is provided, strips the root prefix from the file path.
+/// Normalizes the result and removes leading `./` if present.
+/// If no workspace root is provided, returns the normalized path.
 pub fn to_workspace_relative_path(workspace_root: Option<&Path>, file_path: &Path) -> String {
     let normalized = if let Some(root) = workspace_root {
         if let Ok(stripped) = file_path.strip_prefix(root) {
@@ -83,6 +113,11 @@ pub fn to_workspace_relative_path(workspace_root: Option<&Path>, file_path: &Pat
     normalized.trim_start_matches("./").to_string()
 }
 
+/// Extracts the rule ID from an LSP diagnostic.
+///
+/// The rule ID can be in either the diagnostic's `code` field (as a string)
+/// or nested in the `data` field under the key "ruleId".
+/// Returns `None` if neither source has a valid rule ID.
 pub fn extract_rule_id(diagnostic: &Diagnostic) -> Option<String> {
     if let Some(NumberOrString::String(rule_id)) = diagnostic.code.as_ref() {
         return Some(rule_id.clone());
@@ -96,11 +131,20 @@ pub fn extract_rule_id(diagnostic: &Diagnostic) -> Option<String> {
         .map(|s| s.to_string())
 }
 
+/// Finds a rule by its ID in the configuration.
+///
+/// Returns a reference to the rule config if found, or `None` if no rule
+/// with the given ID exists.
 #[must_use]
 pub fn find_rule<'a>(config: &'a ConfigFile, rule_id: &str) -> Option<&'a RuleConfig> {
     config.rule.iter().find(|rule| rule.id == rule_id)
 }
 
+/// Formats a detailed explanation of a rule as a human-readable string.
+///
+/// Includes the rule ID, severity, message, patterns, match mode, multiline settings,
+/// context patterns, escalation rules, dependencies, language and path filters,
+/// ignore settings, help text, and documentation URL.
 pub fn format_rule_explanation(rule: &RuleConfig) -> String {
     let mut output = String::new();
     output.push_str(&format!("Rule: {}\n", rule.id));
@@ -170,6 +214,14 @@ pub fn format_rule_explanation(rule: &RuleConfig) -> String {
     output
 }
 
+/// Finds rules with IDs similar to the given rule ID for "did you mean" suggestions.
+///
+/// Uses three similarity strategies:
+/// 1. Prefix match (score 0): one ID starts with the other
+/// 2. Substring match (score 1): one ID contains the other
+/// 3. Edit distance (score 2-5): Levenshtein distance <= 3, weighted higher
+///
+/// Returns up to 5 suggestions, sorted by score (best matches first).
 pub fn find_similar_rules(rule_id: &str, rules: &[RuleConfig]) -> Vec<String> {
     let rule_id_lower = rule_id.to_lowercase();
     let mut candidates: Vec<(String, usize)> = Vec::new();
@@ -195,6 +247,15 @@ pub fn find_similar_rules(rule_id: &str, rules: &[RuleConfig]) -> Vec<String> {
     candidates.into_iter().map(|(id, _)| id).collect()
 }
 
+/// Loads directory-level rule overrides for a file.
+///
+/// Searches for `.diffguard.toml` files in each directory from the file's
+/// directory up to the workspace root. Each file can contain rule overrides
+/// (enabled, severity, exclude_paths) that apply to all files in that directory
+/// and its subdirectories.
+///
+/// Files are processed in order of increasing depth (closest to the file first),
+/// so more specific overrides can override less specific ones.
 pub fn load_directory_overrides_for_file(
     workspace_root: &Path,
     relative_file_path: &str,
